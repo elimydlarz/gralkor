@@ -11,8 +11,16 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "pack": "npm pack"
   },
+  "files": [
+    "src",
+    "openclaw.plugin.json",
+    "docker-compose.yml",
+    "config.yaml",
+    ".env.example"
+  ],
   "peerDependencies": {
     "openclaw": ">= 2026.1.26"
   },

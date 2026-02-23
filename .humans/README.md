@@ -13,18 +13,34 @@ When an agent converses with a user, Gralkor automatically extracts entities and
 - [Docker](https://docs.docker.com/get-docker/) (with Compose)
 - An API key for a supported LLM provider (see below)
 
-### 2. Tell your agent to install Gralkor
+### 2. Install the plugin
 
-Ask your OpenClaw agent to install the plugin. It will clone the repo and register it:
+#### Build the tarball (on your local machine)
+
+```bash
+npm pack
+# produces: openclaw-memory-gralkor-0.1.0.tgz
+```
+
+#### Deploy to your agent's server
+
+Copy the tarball to your agent's host (e.g. via scp, CI artifact, or include it in your deployment):
+
+```bash
+scp openclaw-memory-gralkor-0.1.0.tgz user@your-hetzner-host:~/
+```
+
+#### Tell your agent to install it
+
+Ask your OpenClaw agent:
 
 ```
-Install the Gralkor memory plugin from github:your-org/openclaw-plugin-gralkor
+Install the Gralkor memory plugin from ~/openclaw-memory-gralkor-0.1.0.tgz
 ```
 
 The agent will:
-1. Clone the repository
-2. Run `openclaw plugins install -l .` from the repo root
-3. Set `plugins.slots.memory = "memory-gralkor"` in your `openclaw.json`
+1. Run `openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz`
+2. Set `plugins.slots.memory = "memory-gralkor"` in your `openclaw.json`
 
 ### 3. Set up environment
 

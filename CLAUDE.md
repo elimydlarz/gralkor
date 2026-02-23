@@ -74,7 +74,7 @@ docker compose up -d
 # Verify Graphiti is running
 curl http://localhost:8000/health
 
-# Install plugin locally in OpenClaw
+# Install plugin locally in OpenClaw (for development)
 openclaw plugins install -l .
 
 # Set memory slot in openclaw.json:
@@ -87,11 +87,25 @@ npx tsc --noEmit
 npx vitest
 ```
 
+## Building & Deploying
+
+```bash
+# Build a tarball for deployment
+npm pack
+# produces: openclaw-memory-gralkor-0.1.0.tgz
+
+# Install from tarball on the remote host
+openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz
+```
+
+The `files` field in `package.json` controls what goes into the tarball: `src/`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`.
+
 ## Key Commands
 
 - `docker compose up -d` — start FalkorDB + Graphiti
 - `docker compose down` — stop services
 - `docker compose logs graphiti` — check Graphiti logs
+- `npm pack` — build deployment tarball
 - `npx tsc --noEmit` — type-check
 - `npx vitest` — run tests
 
