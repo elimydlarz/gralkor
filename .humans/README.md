@@ -11,17 +11,42 @@ When an agent converses with a user, Gralkor automatically extracts entities and
 ### 1. Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (with Compose)
-- [Node.js](https://nodejs.org/) >= 20
-- An [OpenAI API key](https://platform.openai.com/api-keys) (used by Graphiti for embeddings)
+- An API key for a supported LLM provider (see below)
 
-### 2. Set up environment
+### 2. Tell your agent to install Gralkor
+
+Ask your OpenClaw agent to install the plugin. It will clone the repo and register it:
+
+```
+Install the Gralkor memory plugin from github:your-org/openclaw-plugin-gralkor
+```
+
+The agent will:
+1. Clone the repository
+2. Run `openclaw plugins install -l .` from the repo root
+3. Set `plugins.slots.memory = "memory-gralkor"` in your `openclaw.json`
+
+### 3. Set up environment
+
+Create a `.env` file in the plugin directory with your LLM provider key:
 
 ```bash
 cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Edit .env and set the API key for your provider
 ```
 
-### 3. Start the backend
+Graphiti supports several LLM providers:
+
+| Provider | Env var | Embeddings |
+|---|---|---|
+| **OpenAI** (default) | `OPENAI_API_KEY` | Built-in |
+| **Google Gemini** | `GOOGLE_API_KEY` | Built-in |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Needs `OPENAI_API_KEY` too |
+| **Groq** | `GROQ_API_KEY` | Needs `OPENAI_API_KEY` too |
+
+If you switch providers, also update `config.yaml` to set the `llm.provider` and `llm.model`.
+
+### 4. Start the backend
 
 ```bash
 docker compose up -d
@@ -35,24 +60,6 @@ Verify it's running:
 
 ```bash
 curl http://localhost:8000/health
-```
-
-### 4. Install the plugin
-
-```bash
-openclaw plugins install -l .
-```
-
-Then set the memory slot in your `openclaw.json`:
-
-```json
-{
-  "plugins": {
-    "slots": {
-      "memory": "memory-gralkor"
-    }
-  }
-}
 ```
 
 ### 5. Start chatting
@@ -129,7 +136,7 @@ Open [localhost:3000](http://localhost:3000) to browse FalkorDB's web UI. You'll
 ## Troubleshooting
 
 **Graphiti container keeps restarting**
-Check logs with `docker compose logs graphiti`. Most likely cause: missing or invalid `OPENAI_API_KEY`.
+Check logs with `docker compose logs graphiti`. Most likely cause: missing or invalid LLM provider API key in `.env`.
 
 **`gralkor status` says unreachable**
 Make sure Docker is running and the containers are up: `docker compose ps`.

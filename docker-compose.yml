@@ -12,8 +12,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
       FALKORDB_URI: redis://falkordb:6379
+      # LLM provider — set the key for your chosen provider
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     depends_on:
       - falkordb
 

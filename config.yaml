@@ -1,0 +1,22 @@
+# Graphiti configuration
+# See: https://help.getzep.com/graphiti/configuration/llm-configuration
+#
+# Change the provider/model to match your API key in .env
+# Supported providers: openai, anthropic, gemini, groq, azure_openai
+
+server:
+  transport: "http"
+
+llm:
+  provider: "openai"
+  model: "gpt-4.1"
+
+embedder:
+  provider: "openai"
+  model: "text-embedding-3-small"
+
+database:
+  provider: "falkordb"
+  providers:
+    falkordb:
+      uri: "${FALKORDB_URI:redis://falkordb:6379}"

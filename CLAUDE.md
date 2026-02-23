@@ -57,8 +57,13 @@ Controls how the knowledge graph is partitioned:
 
 ## Environment Variables
 
-- `OPENAI_API_KEY` — **Required by Graphiti** for embeddings and entity extraction. Set in `.env` (see `.env.example`).
+- `OPENAI_API_KEY` — API key for OpenAI. Default LLM + embeddings provider.
+- `ANTHROPIC_API_KEY` — API key for Anthropic (still needs `OPENAI_API_KEY` for embeddings).
+- `GOOGLE_API_KEY` — API key for Gemini (fully self-contained: LLM + embeddings + reranking).
+- `GROQ_API_KEY` — API key for Groq (still needs `OPENAI_API_KEY` for embeddings).
 - `GRAPHITI_URL` — Optional. Checked by the plugin as a fallback if `graphitiUrl` isn't in the plugin config.
+
+LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provider`). See `.env.example` for details.
 
 ## Dev Workflow
 
@@ -101,7 +106,7 @@ npx vitest
 
 ## Gotchas
 
-- Graphiti requires `OPENAI_API_KEY` — without it the container starts but all operations fail
+- Graphiti requires an LLM provider API key — without one the container starts but all operations fail
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
 - Auto-recall injects context as XML-tagged content marked `trust="untrusted"`
