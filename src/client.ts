@@ -1,0 +1,159 @@
+export interface Episode {
+  uuid: string;
+  name: string;
+  content: string;
+  source_description: string;
+  group_id: string;
+  created_at: string;
+}
+
+export interface Fact {
+  uuid: string;
+  name: string;
+  fact: string;
+  valid_at: string | null;
+  invalid_at: string | null;
+  created_at: string;
+}
+
+export interface EntityNode {
+  uuid: string;
+  name: string;
+  summary: string;
+  group_id: string;
+  created_at: string;
+}
+
+export interface AddEpisodeParams {
+  name: string;
+  episode_body: string;
+  source_description: string;
+  group_id: string;
+  reference_time?: string;
+}
+
+export interface GraphitiClientOptions {
+  baseUrl: string;
+  timeoutMs?: number;
+  maxRetries?: number;
+}
+
+export class GraphitiClient {
+  private baseUrl: string;
+  private timeoutMs: number;
+  private maxRetries: number;
+
+  constructor(options: GraphitiClientOptions) {
+    this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+    this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.maxRetries = options.maxRetries ?? 2;
+  }
+
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      try {
+        const res = await fetch(`${this.baseUrl}${path}`, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          const err = new Error(
+            `Graphiti ${method} ${path} returned ${res.status}: ${text}`,
+          );
+          // Don't retry client errors (4xx) — only server errors are transient
+          if (res.status >= 400 && res.status < 500) throw err;
+          lastError = err;
+          if (attempt < this.maxRetries) {
+            await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          }
+          continue;
+        }
+
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          return (await res.json()) as T;
+        }
+        return (await res.text()) as unknown as T;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    throw lastError!;
+  }
+
+  async health(): Promise<{ status: string }> {
+    return this.request("GET", "/health");
+  }
+
+  async addEpisode(params: AddEpisodeParams): Promise<Episode> {
+    return this.request("POST", "/episodes", {
+      ...params,
+      reference_time: params.reference_time ?? new Date().toISOString(),
+    });
+  }
+
+  async searchFacts(
+    query: string,
+    groupId: string,
+    limit = 10,
+  ): Promise<Fact[]> {
+    return this.request("POST", "/search", {
+      query,
+      group_ids: [groupId],
+      num_results: limit,
+    });
+  }
+
+  async searchNodes(
+    query: string,
+    groupId: string,
+    limit = 10,
+  ): Promise<EntityNode[]> {
+    return this.request("POST", "/search/nodes", {
+      query,
+      group_ids: [groupId],
+      num_results: limit,
+    });
+  }
+
+  async getEpisodes(groupId: string, limit = 10): Promise<Episode[]> {
+    return this.request(
+      "GET",
+      `/episodes?group_id=${encodeURIComponent(groupId)}&limit=${limit}`,
+    );
+  }
+
+  async deleteEpisode(uuid: string): Promise<void> {
+    await this.request("DELETE", `/episodes/${encodeURIComponent(uuid)}`);
+  }
+
+  async deleteEdge(uuid: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/edges/${encodeURIComponent(uuid)}`,
+    );
+  }
+
+  async getStatus(): Promise<{ status: string }> {
+    return this.health();
+  }
+}
