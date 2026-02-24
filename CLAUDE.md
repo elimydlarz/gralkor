@@ -32,6 +32,10 @@ OpenClaw Gateway (Node.js)
 - `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupId()`.
 - `openclaw.plugin.json` — Plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
+- `server/main.py` — Graphiti REST API server (FastAPI). Thin wrapper around `graphiti-core`.
+- `server/requirements.txt` — Python runtime dependencies.
+- `server/requirements-dev.txt` — Python test dependencies (pytest, pytest-asyncio, httpx).
+- `server/tests/` — Functional tests for the REST API. Mock `graphiti-core` at the boundary; exercise real HTTP through FastAPI's ASGI stack.
 
 ## Configuration
 
@@ -81,10 +85,19 @@ openclaw plugins install -l .
 #   plugins.slots.memory = "memory-gralkor"
 
 # Type-check
-npx tsc --noEmit
+make typecheck
 
-# Run tests
-npx vitest
+# Run all tests (plugin + server)
+make test
+
+# Run only plugin tests (TypeScript)
+make test-plugin
+
+# Run only server tests (Python) — no Docker/FalkorDB needed
+make test-server
+
+# First time only: install server test deps
+cd server && pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 ## Building & Deploying
@@ -102,13 +115,45 @@ The `files` field in `package.json` controls what goes into the tarball: `src/`,
 
 ## Key Commands
 
-- `docker compose up -d` — start FalkorDB + Graphiti
-- `docker compose down` — stop services
-- `docker compose logs graphiti` — check Graphiti logs
+- `make test` — run all tests (plugin + server)
+- `make test-plugin` — plugin tests only (vitest)
+- `make test-server` — server tests only (pytest, no Docker needed)
+- `make typecheck` — type-check TypeScript
+- `make up` / `make down` / `make logs` — Docker services
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
 - `npm pack` — build deployment tarball
-- `npx tsc --noEmit` — type-check
-- `npx vitest` — run tests
+
+## Server Tests
+
+Functional tests for the Graphiti REST API live in `server/tests/`. They need **no Docker, no FalkorDB, no LLM API keys**.
+
+```bash
+cd server
+pip install -r requirements.txt -r requirements-dev.txt
+pytest tests/ -v
+```
+
+### What's mocked vs. real
+
+| Mocked (graphiti-core boundary) | Exercised for real |
+|---|---|
+| `Graphiti` instance methods (`add_episode`, `search`, etc.) | FastAPI routing, ASGI stack |
+| `Graphiti.driver` (FalkorDB access) | Pydantic request validation |
+| `EntityEdge.get_by_uuid()` / `edge.delete()` | Serializer functions (`_serialize_fact`, `_serialize_node`, `_serialize_episode`) |
+| `Node.delete_by_group_id()` | HTTP status codes, response bodies |
+
+### How it works
+
+`httpx.AsyncClient` with `ASGITransport(app=app)` sends real HTTP through FastAPI in-process. `ASGITransport` does **not** trigger lifespan events, so the real `Graphiti(...)` constructor and FalkorDB connection are never called. The `conftest.py` `client` fixture injects an `AsyncMock` into the `main.graphiti` module global instead.
+
+Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNamespace` objects that duck-type the real `graphiti-core` domain objects — the serializers only read plain attributes, so this works without importing the real classes (which would try to connect to FalkorDB).
+
+### Test files
+
+- `test_health.py` — `GET /health`
+- `test_episodes.py` — `POST /episodes`, `GET /episodes`, `DELETE /episodes/{uuid}`
+- `test_search.py` — `POST /search`, `POST /search/nodes`
+- `test_graph_ops.py` — `DELETE /edges/{uuid}`, `POST /clear`, `POST /build-indices`, `POST /build-communities`
 
 ## Conventions
 
