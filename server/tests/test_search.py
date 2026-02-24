@@ -27,6 +27,7 @@ async def test_search_facts_returns_serialized_edges(client, mock_graphiti):
     assert len(body) == 2
     assert body[0]["uuid"] == "e1"
     assert body[0]["fact"] == "Alice knows Bob"
+    assert body[0]["group_id"] == "grp-1"
     assert body[1]["uuid"] == "e2"
     assert "valid_at" in body[0]
     assert "created_at" in body[0]

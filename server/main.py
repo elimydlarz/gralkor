@@ -130,6 +130,7 @@ def _serialize_fact(edge: EntityEdge) -> dict[str, Any]:
         "uuid": edge.uuid,
         "name": edge.name,
         "fact": edge.fact,
+        "group_id": edge.group_id,
         "valid_at": _ts(edge.valid_at),
         "invalid_at": _ts(edge.invalid_at),
         "created_at": _ts(edge.created_at),

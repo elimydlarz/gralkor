@@ -1,20 +1,19 @@
 import type { GraphitiClient, Fact, EntityNode } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId } from "./config.js";
+import { resolveGroupIds, SHARED_GROUP_ID } from "./config.js";
 
 interface ToolContext {
-  senderId?: string;
-  sessionKey?: string;
-  channel?: string;
+  agentId?: string;
 }
 
-function formatFacts(facts: Fact[]): string {
+function formatFacts(facts: Fact[], agentGroupId: string): string {
   if (facts.length === 0) return "No facts found.";
   return facts
     .map((f) => {
+      const source = f.group_id === agentGroupId ? "own" : "family";
       const validity =
         f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-      return `- ${f.fact}${validity}`;
+      return `- [${source}] ${f.fact}${validity}`;
     })
     .join("\n");
 }
@@ -54,15 +53,15 @@ export function createMemoryRecallTool(
       args: { query: string; limit?: number },
       ctx: ToolContext,
     ): Promise<string> {
-      const groupId = resolveGroupId(config.groupIdStrategy, ctx);
+      const ids = resolveGroupIds(ctx);
       const limit = args.limit ?? 10;
 
       const [facts, nodes] = await Promise.all([
-        client.searchFacts(args.query, groupId, limit),
-        client.searchNodes(args.query, groupId, limit),
+        client.searchFacts(args.query, [ids.agent, ids.shared], limit),
+        client.searchNodes(args.query, [ids.agent, ids.shared], limit),
       ]);
 
-      return formatFacts(facts) + formatNodes(nodes);
+      return formatFacts(facts, ids.agent) + formatNodes(nodes);
     },
   };
 }
@@ -93,14 +92,17 @@ export function createMemoryStoreTool(
       args: { content: string; source?: string },
       ctx: ToolContext,
     ): Promise<string> {
-      const groupId = resolveGroupId(config.groupIdStrategy, ctx);
-
-      await client.addEpisode({
+      const ids = resolveGroupIds(ctx);
+      const episode = {
         name: `memory-store-${Date.now()}`,
         episode_body: args.content,
         source_description: args.source ?? "manual memory_store",
-        group_id: groupId,
-      });
+      };
+
+      await Promise.all([
+        client.addEpisode({ ...episode, group_id: ids.agent }),
+        client.addEpisode({ ...episode, group_id: ids.shared }),
+      ]);
 
       return "Stored successfully. The knowledge graph will extract entities and relationships from this content.";
     },
@@ -147,8 +149,8 @@ export function createMemoryForgetTool(
       }
 
       if (args.query) {
-        const groupId = resolveGroupId(config.groupIdStrategy, ctx);
-        const facts = await client.searchFacts(args.query, groupId, 5);
+        const ids = resolveGroupIds(ctx);
+        const facts = await client.searchFacts(args.query, [ids.agent, ids.shared], 5);
         if (facts.length === 0) {
           return "No matching items found to forget.";
         }

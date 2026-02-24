@@ -1,5 +1,7 @@
+declare const process: { env: Record<string, string | undefined> };
+
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, type GralkorConfig } from "./config.js";
+import { resolveConfig, SHARED_GROUP_ID, type GralkorConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
@@ -11,15 +13,17 @@ import {
 } from "./hooks.js";
 
 interface PluginApi {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerTool(tool: {
     name: string;
     description: string;
     parameters: unknown;
-    execute: (args: unknown, ctx: unknown) => Promise<unknown>;
+    execute: (args: any, ctx: any) => Promise<any>;
   }): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerHook(hook: {
     name: string;
-    execute: (ctx: unknown) => Promise<unknown>;
+    execute: (ctx: any) => Promise<any>;
   }): void;
   registerService(service: {
     name: string;
@@ -98,13 +102,13 @@ function registerCli(
       },
       {
         name: "search",
-        description: "Search the knowledge graph (usage: gralkor search <query>)",
+        description: "Search the shared knowledge graph (usage: gralkor search <query>)",
         async execute(args: string[]) {
           const query = args.join(" ");
           if (!query) return "Usage: gralkor search <query>";
 
           try {
-            const facts = await client.searchFacts(query, "gralkor", 10);
+            const facts = await client.searchFacts(query, [SHARED_GROUP_ID], 10);
             if (facts.length === 0) return "No results found.";
             return facts.map((f) => `- ${f.fact}`).join("\n");
           } catch (err) {
@@ -116,7 +120,7 @@ function registerCli(
         name: "clear",
         description: "Clear the knowledge graph for a group (usage: gralkor clear [group_id])",
         async execute(args: string[]) {
-          const groupId = args[0] ?? "gralkor";
+          const groupId = args[0] ?? SHARED_GROUP_ID;
 
           try {
             await client.clearGraph(groupId);
@@ -141,11 +145,6 @@ export default {
     type: "object" as const,
     properties: {
       graphitiUrl: { type: "string" as const, default: "http://localhost:8000" },
-      groupIdStrategy: {
-        type: "string" as const,
-        enum: ["per-user", "per-conversation", "global"],
-        default: "per-user",
-      },
       autoCapture: {
         type: "object" as const,
         properties: {

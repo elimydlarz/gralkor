@@ -1,11 +1,9 @@
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId } from "./config.js";
+import { resolveGroupIds } from "./config.js";
 
 interface HookContext {
-  senderId?: string;
-  sessionKey?: string;
-  channel?: string;
+  agentId?: string;
   userMessage?: string;
   agentResponse?: string;
 }
@@ -51,19 +49,22 @@ export function createBeforeAgentStartHook(
       const query = extractKeyTerms(ctx.userMessage);
       if (!query) return;
 
-      const groupId = resolveGroupId(config.groupIdStrategy, ctx);
+      const ids = resolveGroupIds(ctx);
 
       try {
         const facts = await client.searchFacts(
           query,
-          groupId,
+          [ids.agent, ids.shared],
           config.autoRecall.maxResults,
         );
 
         if (facts.length === 0) return;
 
         const formatted = facts
-          .map((f) => `- ${f.fact}`)
+          .map((f) => {
+            const source = f.group_id === ids.agent ? "own" : "family";
+            return `- [${source}] ${f.fact}`;
+          })
           .join("\n");
 
         return {
@@ -93,16 +94,19 @@ export function createAgentEndHook(
       if (userMsg.length < 10 && agentMsg.length < 10) return;
       if (userMsg.startsWith("/")) return;
 
-      const groupId = resolveGroupId(config.groupIdStrategy, ctx);
+      const ids = resolveGroupIds(ctx);
       const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
+      const episode = {
+        name: `conversation-${Date.now()}`,
+        episode_body: body,
+        source_description: "auto-capture",
+      };
 
       try {
-        await client.addEpisode({
-          name: `conversation-${Date.now()}`,
-          episode_body: body,
-          source_description: "auto-capture",
-          group_id: groupId,
-        });
+        await Promise.all([
+          client.addEpisode({ ...episode, group_id: ids.agent }),
+          client.addEpisode({ ...episode, group_id: ids.shared }),
+        ]);
       } catch {
         // Graphiti unavailable — degrade silently
       }
