@@ -11,6 +11,7 @@ export interface Fact {
   uuid: string;
   name: string;
   fact: string;
+  group_id: string;
   valid_at: string | null;
   invalid_at: string | null;
   created_at: string;
@@ -113,24 +114,24 @@ export class GraphitiClient {
 
   async searchFacts(
     query: string,
-    groupId: string,
+    groupIds: string[],
     limit = 10,
   ): Promise<Fact[]> {
     return this.request("POST", "/search", {
       query,
-      group_ids: [groupId],
+      group_ids: groupIds,
       num_results: limit,
     });
   }
 
   async searchNodes(
     query: string,
-    groupId: string,
+    groupIds: string[],
     limit = 10,
   ): Promise<EntityNode[]> {
     return this.request("POST", "/search/nodes", {
       query,
-      group_ids: [groupId],
+      group_ids: groupIds,
       num_results: limit,
     });
   }

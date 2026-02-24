@@ -29,7 +29,7 @@ OpenClaw Gateway (Node.js)
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
 - `src/tools.ts` — Tool factories: `memory_recall`, `memory_store`, `memory_forget`. Each takes `(client, config)` and returns a tool object.
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
-- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupId()`.
+- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupIds()`.
 - `openclaw.plugin.json` — Plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
 - `server/main.py` — Graphiti REST API server (FastAPI). Thin wrapper around `graphiti-core`.
@@ -42,17 +42,21 @@ OpenClaw Gateway (Node.js)
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `graphitiUrl` | string | `http://localhost:8000` | Graphiti REST API URL |
-| `groupIdStrategy` | enum | `per-user` | How to partition the knowledge graph |
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
 
-### Group ID Strategy
+### Dual-Partition Group IDs
 
-Controls how the knowledge graph is partitioned:
-- `per-user` — each user gets their own graph, keyed by `ctx.senderId` (default)
-- `per-conversation` — per session, keyed by `ctx.sessionKey` or `channel-senderId`
-- `global` — single shared graph under the key `"gralkor"`
+Every agent gets two graph partitions automatically — no configuration needed:
+
+- **Agent partition** (`ctx.agentId`, falls back to `"default"`) — private to this agent
+- **Shared partition** (`"agent-family"`) — visible to all agents on the installation
+
+**Ingest** (store/auto-capture): writes to both partitions in parallel (two `addEpisode` calls).
+**Search** (recall/auto-recall): single API call with `group_ids: [agentId, "agent-family"]`. Results are tagged `[own]` or `[family]` so the agent can distinguish its own memories from shared ones.
+
+The `resolveGroupIds(ctx)` function in `src/config.ts` returns `{ agent, shared }` for any context with an optional `agentId`.
 
 ### Graceful Degradation
 
@@ -96,8 +100,8 @@ make test-plugin
 # Run only server tests (Python) — no Docker/FalkorDB needed
 make test-server
 
-# First time only: install server test deps
-cd server && pip install -r requirements.txt -r requirements-dev.txt
+# First time only: create venv and install server test deps
+make setup-server
 ```
 
 ## Building & Deploying
@@ -115,9 +119,10 @@ The `files` field in `package.json` controls what goes into the tarball: `src/`,
 
 ## Key Commands
 
+- `make setup-server` — create venv and install server deps (first time only)
 - `make test` — run all tests (plugin + server)
 - `make test-plugin` — plugin tests only (vitest)
-- `make test-server` — server tests only (pytest, no Docker needed)
+- `make test-server` — server tests only (pytest via `server/.venv`, no Docker needed)
 - `make typecheck` — type-check TypeScript
 - `make up` / `make down` / `make logs` — Docker services
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
@@ -128,9 +133,8 @@ The `files` field in `package.json` controls what goes into the tarball: `src/`,
 Functional tests for the Graphiti REST API live in `server/tests/`. They need **no Docker, no FalkorDB, no LLM API keys**.
 
 ```bash
-cd server
-pip install -r requirements.txt -r requirements-dev.txt
-pytest tests/ -v
+make setup-server   # first time only — creates server/.venv
+make test-server
 ```
 
 ### What's mocked vs. real

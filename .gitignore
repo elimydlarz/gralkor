@@ -3,3 +3,4 @@ dist/
 *.tgz
 .env
 __pycache__
+.venv/

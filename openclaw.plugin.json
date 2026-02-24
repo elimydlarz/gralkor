@@ -11,12 +11,6 @@
         "default": "http://localhost:8000",
         "description": "URL of the Graphiti REST API"
       },
-      "groupIdStrategy": {
-        "type": "string",
-        "enum": ["per-user", "per-conversation", "global"],
-        "default": "per-user",
-        "description": "How to partition the knowledge graph"
-      },
       "autoCapture": {
         "type": "object",
         "properties": {
@@ -48,10 +42,6 @@
     "graphitiUrl": {
       "label": "Graphiti API URL",
       "placeholder": "http://localhost:8000"
-    },
-    "groupIdStrategy": {
-      "label": "Graph Partitioning",
-      "placeholder": "per-user"
     },
     "autoCapture.enabled": {
       "label": "Auto-capture conversations"
