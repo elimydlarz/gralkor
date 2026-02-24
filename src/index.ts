@@ -134,44 +134,42 @@ function registerCli(
   });
 }
 
-export default {
-  id: "memory-gralkor",
-  name: "Gralkor Memory",
-  description:
-    "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB",
-  kind: "memory" as const,
+export const id = "memory-gralkor";
+export const name = "Gralkor Memory";
+export const description =
+  "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
+export const kind = "memory" as const;
 
-  configSchema: {
-    type: "object" as const,
-    properties: {
-      graphitiUrl: { type: "string" as const, default: "http://localhost:8000" },
-      autoCapture: {
-        type: "object" as const,
-        properties: {
-          enabled: { type: "boolean" as const, default: true },
-        },
+export const configSchema = {
+  type: "object" as const,
+  properties: {
+    graphitiUrl: { type: "string" as const, default: "http://localhost:8000" },
+    autoCapture: {
+      type: "object" as const,
+      properties: {
+        enabled: { type: "boolean" as const, default: true },
       },
-      autoRecall: {
-        type: "object" as const,
-        properties: {
-          enabled: { type: "boolean" as const, default: true },
-          maxResults: { type: "number" as const, default: 5 },
-        },
+    },
+    autoRecall: {
+      type: "object" as const,
+      properties: {
+        enabled: { type: "boolean" as const, default: true },
+        maxResults: { type: "number" as const, default: 5 },
       },
     },
   },
-
-  register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
-    const config = resolveConfig(rawConfig);
-
-    if (!rawConfig?.graphitiUrl && !process.env.GRAPHITI_URL) {
-      // No explicit URL configured — only register CLI so the user can set things up
-      const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-      registerCli(api, client, config);
-      return;
-    }
-
-    const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-    registerFullPlugin(api, client, config);
-  },
 };
+
+export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
+  const config = resolveConfig(rawConfig);
+
+  if (!rawConfig?.graphitiUrl && !process.env.GRAPHITI_URL) {
+    // No explicit URL configured — only register CLI so the user can set things up
+    const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
+    registerCli(api, client, config);
+    return;
+  }
+
+  const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
+  registerFullPlugin(api, client, config);
+}
