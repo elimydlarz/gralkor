@@ -71,8 +71,8 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 # Start backend services
 docker compose up -d
 
-# Verify Graphiti is running
-curl http://localhost:8000/health
+# Verify Graphiti is running (port 8001 on host, 8000 inside container)
+curl http://localhost:8001/health
 
 # Install plugin locally in OpenClaw (for development)
 openclaw plugins install -l .
@@ -105,6 +105,7 @@ The `files` field in `package.json` controls what goes into the tarball: `src/`,
 - `docker compose up -d` — start FalkorDB + Graphiti
 - `docker compose down` — stop services
 - `docker compose logs graphiti` — check Graphiti logs
+- Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
 - `npm pack` — build deployment tarball
 - `npx tsc --noEmit` — type-check
 - `npx vitest` — run tests
@@ -125,3 +126,7 @@ The `files` field in `package.json` controls what goes into the tarball: `src/`,
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
 - Auto-recall injects context as XML-tagged content marked `trust="untrusted"`
 - Auto-capture skips messages shorter than 10 chars and messages starting with `/`
+
+## Deployment
+
+When deployed alongside OpenClaw on a VPS, set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. This way existing backup/restore scripts capture graph data automatically. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8000` (container-internal port).

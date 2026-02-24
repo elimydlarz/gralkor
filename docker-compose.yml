@@ -1,27 +1,34 @@
 services:
   falkordb:
     image: falkordb/falkordb:latest
+    restart: unless-stopped
     ports:
       - "6379:6379"
       - "3000:3000"
     volumes:
-      - falkordb_data:/var/lib/falkordb/data
+      - ${FALKORDB_DATA_DIR:-falkordb_data}:/var/lib/falkordb/data
+    networks:
+      - gralkor
 
   graphiti:
     image: zepai/knowledge-graph-mcp:latest
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    env_file:
+      - .env
     environment:
       FALKORDB_URI: redis://falkordb:6379
-      # LLM provider — set the key for your chosen provider
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     depends_on:
       - falkordb
+    networks:
+      - gralkor
+
+networks:
+  gralkor:
+    name: gralkor
 
 volumes:
   falkordb_data:
