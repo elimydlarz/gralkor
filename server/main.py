@@ -1,0 +1,250 @@
+"""Thin FastAPI server wrapping graphiti-core for the Gralkor plugin."""
+
+from __future__ import annotations
+
+import os
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Any
+
+import yaml
+from fastapi import FastAPI, Response
+from pydantic import BaseModel
+
+from graphiti_core import Graphiti
+from graphiti_core.edges import EntityEdge
+from graphiti_core.nodes import EntityNode, EpisodicNode, EpisodeType, Node
+from graphiti_core.llm_client import LLMConfig
+from graphiti_core.search.search_config_recipes import NODE_HYBRID_SEARCH_RRF
+
+
+# ── Config ────────────────────────────────────────────────────
+
+
+def _load_config() -> dict:
+    path = os.getenv("CONFIG_PATH", "/app/config.yaml")
+    if os.path.exists(path):
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+def _build_llm_client(cfg: dict):
+    provider = cfg.get("llm", {}).get("provider", "openai")
+    model = cfg.get("llm", {}).get("model")
+    llm_cfg = LLMConfig(model=model) if model else None
+
+    if provider == "anthropic":
+        from graphiti_core.llm_client.anthropic_client import AnthropicClient
+
+        return AnthropicClient(config=llm_cfg)
+    if provider == "gemini":
+        from graphiti_core.llm_client.gemini_client import GeminiClient
+
+        return GeminiClient(config=llm_cfg)
+    if provider == "groq":
+        from graphiti_core.llm_client.groq_client import GroqClient
+
+        return GroqClient(config=llm_cfg)
+
+    # Default: openai (also covers azure_openai with base_url set via env)
+    from graphiti_core.llm_client import OpenAIClient
+
+    return OpenAIClient(config=llm_cfg)
+
+
+def _build_embedder(cfg: dict):
+    provider = cfg.get("embedder", {}).get("provider", "openai")
+    model = cfg.get("embedder", {}).get("model")
+
+    if provider == "gemini":
+        from graphiti_core.embedder.gemini import GeminiEmbedder, GeminiEmbedderConfig
+
+        ecfg = GeminiEmbedderConfig(embedding_model=model) if model else GeminiEmbedderConfig()
+        return GeminiEmbedder(ecfg)
+
+    from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
+
+    ecfg = OpenAIEmbedderConfig(embedding_model=model) if model else OpenAIEmbedderConfig()
+    return OpenAIEmbedder(ecfg)
+
+
+# ── Graphiti singleton ────────────────────────────────────────
+
+graphiti: Graphiti | None = None
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    global graphiti
+    cfg = _load_config()
+
+    uri = os.getenv("FALKORDB_URI", "falkor://falkordb:6379")
+    # graphiti-core expects falkor:// scheme for FalkorDB
+    if uri.startswith("redis://"):
+        uri = "falkor://" + uri[len("redis://"):]
+
+    graphiti = Graphiti(
+        uri=uri,
+        llm_client=_build_llm_client(cfg),
+        embedder=_build_embedder(cfg),
+    )
+    await graphiti.build_indices_and_constraints()
+    yield
+    await graphiti.close()
+
+
+app = FastAPI(title="Gralkor Graphiti Server", lifespan=lifespan)
+
+
+# ── Request / response models ────────────────────────────────
+
+
+class AddEpisodeRequest(BaseModel):
+    name: str
+    episode_body: str
+    source_description: str
+    group_id: str
+    reference_time: str | None = None
+
+
+class SearchRequest(BaseModel):
+    query: str
+    group_ids: list[str]
+    num_results: int = 10
+
+
+class ClearRequest(BaseModel):
+    group_id: str
+
+
+# ── Serializers ───────────────────────────────────────────────
+
+
+def _ts(dt: datetime | None) -> str | None:
+    return dt.isoformat() if dt else None
+
+
+def _serialize_fact(edge: EntityEdge) -> dict[str, Any]:
+    return {
+        "uuid": edge.uuid,
+        "name": edge.name,
+        "fact": edge.fact,
+        "valid_at": _ts(edge.valid_at),
+        "invalid_at": _ts(edge.invalid_at),
+        "created_at": _ts(edge.created_at),
+    }
+
+
+def _serialize_node(node: EntityNode) -> dict[str, Any]:
+    return {
+        "uuid": node.uuid,
+        "name": node.name,
+        "summary": node.summary,
+        "group_id": node.group_id,
+        "created_at": _ts(node.created_at),
+    }
+
+
+def _serialize_episode(ep: EpisodicNode) -> dict[str, Any]:
+    return {
+        "uuid": ep.uuid,
+        "name": ep.name,
+        "content": ep.content,
+        "source_description": ep.source_description,
+        "group_id": ep.group_id,
+        "created_at": _ts(ep.created_at),
+    }
+
+
+# ── Endpoints ─────────────────────────────────────────────────
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.post("/episodes")
+async def add_episode(req: AddEpisodeRequest):
+    ref_time = (
+        datetime.fromisoformat(req.reference_time)
+        if req.reference_time
+        else datetime.now(timezone.utc)
+    )
+    result = await graphiti.add_episode(
+        name=req.name,
+        episode_body=req.episode_body,
+        source_description=req.source_description,
+        group_id=req.group_id,
+        reference_time=ref_time,
+        source=EpisodeType.message,
+    )
+    # add_episode returns AddEpisodeResults; find the episode node
+    episode = result.episode
+    return _serialize_episode(episode)
+
+
+@app.get("/episodes")
+async def get_episodes(group_id: str, limit: int = 10):
+    episodes = await graphiti.retrieve_episodes(
+        reference_time=datetime.now(timezone.utc),
+        last_n=limit,
+        group_ids=[group_id],
+    )
+    return [_serialize_episode(ep) for ep in episodes]
+
+
+@app.delete("/episodes/{uuid}")
+async def delete_episode(uuid: str):
+    await graphiti.remove_episode(uuid)
+    return Response(status_code=204)
+
+
+@app.post("/search")
+async def search_facts(req: SearchRequest):
+    edges = await graphiti.search(
+        query=req.query,
+        group_ids=req.group_ids,
+        num_results=req.num_results,
+    )
+    return [_serialize_fact(e) for e in edges]
+
+
+@app.post("/search/nodes")
+async def search_nodes(req: SearchRequest):
+    results = await graphiti.search_(
+        query=req.query,
+        config=NODE_HYBRID_SEARCH_RRF,
+        group_ids=req.group_ids,
+    )
+    return [_serialize_node(n) for n in results.nodes[: req.num_results]]
+
+
+@app.delete("/edges/{uuid}")
+async def delete_edge(uuid: str):
+    driver = graphiti.driver
+    edge = await EntityEdge.get_by_uuid(driver, uuid)
+    await edge.delete(driver)
+    return Response(status_code=204)
+
+
+@app.post("/clear")
+async def clear_graph(req: ClearRequest):
+    driver = graphiti.driver
+    await Node.delete_by_group_id(driver, req.group_id)
+    return {"deleted": True}
+
+
+@app.post("/build-indices")
+async def build_indices():
+    await graphiti.build_indices_and_constraints()
+    return {"status": "ok"}
+
+
+@app.post("/build-communities")
+async def build_communities(req: ClearRequest):
+    communities, edges = await graphiti.build_communities(
+        group_ids=[req.group_id],
+    )
+    return {"communities": len(communities), "edges": len(edges)}

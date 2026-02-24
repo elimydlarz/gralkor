@@ -16,6 +16,7 @@
   },
   "files": [
     "src",
+    "server",
     "openclaw.plugin.json",
     "docker-compose.yml",
     "config.yaml",

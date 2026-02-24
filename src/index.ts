@@ -114,21 +114,13 @@ function registerCli(
       },
       {
         name: "clear",
-        description: "Clear all episodes for a group (usage: gralkor clear [group_id])",
+        description: "Clear the knowledge graph for a group (usage: gralkor clear [group_id])",
         async execute(args: string[]) {
           const groupId = args[0] ?? "gralkor";
 
           try {
-            const episodes = await client.getEpisodes(groupId, 100);
-            if (episodes.length === 0)
-              return `No episodes found for group "${groupId}".`;
-
-            let deleted = 0;
-            for (const ep of episodes) {
-              await client.deleteEpisode(ep.uuid);
-              deleted++;
-            }
-            return `Deleted ${deleted} episode(s) from group "${groupId}".`;
+            await client.clearGraph(groupId);
+            return `Cleared graph for group "${groupId}".`;
           } catch (err) {
             return `Clear failed: ${err instanceof Error ? err.message : err}`;
           }

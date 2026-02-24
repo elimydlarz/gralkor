@@ -153,6 +153,10 @@ export class GraphitiClient {
     );
   }
 
+  async clearGraph(groupId: string): Promise<void> {
+    await this.request("POST", "/clear", { group_id: groupId });
+  }
+
   async getStatus(): Promise<{ status: string }> {
     return this.health();
   }

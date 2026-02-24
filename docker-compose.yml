@@ -11,7 +11,7 @@ services:
       - gralkor
 
   graphiti:
-    image: zepai/knowledge-graph-mcp:latest
+    build: ./server
     restart: unless-stopped
     ports:
       - "8001:8000"
