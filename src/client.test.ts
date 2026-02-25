@@ -161,7 +161,9 @@ describe("retry logic", () => {
 
   it("includes method, path, and status in error message for HTTP errors", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(textResponse("gone", 410));
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(textResponse("gone", 410)),
+    );
 
     await expect(client.health()).rejects.toThrow(
       "Graphiti GET /health returned 410: gone",
@@ -374,7 +376,7 @@ describe("getEpisodes()", () => {
 describe("deleteEpisode()", () => {
   it("sends DELETE to /episodes/{uuid}", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(textResponse("", 204));
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
     await client.deleteEpisode("ep-42");
 
@@ -385,7 +387,7 @@ describe("deleteEpisode()", () => {
 
   it("encodes special characters in uuid", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(textResponse("", 204));
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
     await client.deleteEpisode("uuid/with spaces");
 
@@ -397,7 +399,7 @@ describe("deleteEpisode()", () => {
 describe("deleteEdge()", () => {
   it("sends DELETE to /edges/{uuid}", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(textResponse("", 204));
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
     await client.deleteEdge("edge-42");
 

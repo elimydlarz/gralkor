@@ -144,6 +144,41 @@ describe("memory_recall", () => {
 
     expect(result).toContain("No facts found.");
   });
+
+  it("accepts ToolOverrides for name and description", () => {
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, {
+      name: "graph_search",
+      description: "Custom description",
+    });
+    expect(tool.name).toBe("graph_search");
+    expect(tool.description).toBe("Custom description");
+  });
+
+  it("propagates errors when searchFacts throws", async () => {
+    client.searchFacts.mockRejectedValue(new Error("connection refused"));
+    client.searchNodes.mockResolvedValue([]);
+
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
+    await expect(tool.execute({ query: "test" }, ctx)).rejects.toThrow("connection refused");
+  });
+
+  it("propagates errors when searchNodes throws", async () => {
+    client.searchFacts.mockResolvedValue([]);
+    client.searchNodes.mockRejectedValue(new Error("timeout"));
+
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
+    await expect(tool.execute({ query: "test" }, ctx)).rejects.toThrow("timeout");
+  });
+
+  it("falls back to 'default' group when agentId is missing", async () => {
+    client.searchFacts.mockResolvedValue([]);
+    client.searchNodes.mockResolvedValue([]);
+
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
+    await tool.execute({ query: "test" }, {});
+
+    expect(client.searchFacts).toHaveBeenCalledWith("test", ["default"], 10);
+  });
 });
 
 describe("memory_store", () => {
@@ -191,6 +226,34 @@ describe("memory_store", () => {
     const result = await tool.execute({ content: "x" }, ctx);
 
     expect(result).toContain("Stored successfully");
+  });
+
+  it("passes content as episode_body and generates name", async () => {
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
+    await tool.execute({ content: "Important insight" }, ctx);
+
+    const call = client.addEpisode.mock.calls[0][0] as {
+      name: string;
+      episode_body: string;
+    };
+    expect(call.episode_body).toBe("Important insight");
+    expect(call.name).toMatch(/^memory-store-\d+$/);
+  });
+
+  it("accepts ToolOverrides for name and description", () => {
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, {
+      name: "graph_add",
+      description: "Custom store description",
+    });
+    expect(tool.name).toBe("graph_add");
+    expect(tool.description).toBe("Custom store description");
+  });
+
+  it("propagates errors when addEpisode throws", async () => {
+    client.addEpisode.mockRejectedValue(new Error("server down"));
+
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
+    await expect(tool.execute({ content: "x" }, ctx)).rejects.toThrow("server down");
   });
 });
 
@@ -263,5 +326,16 @@ describe("memory_forget", () => {
     const result = await tool.execute({}, ctx);
 
     expect(result).toContain("provide either a query or a uuid");
+  });
+
+  it("prefers uuid over query when both are provided", async () => {
+    client.deleteEpisode.mockResolvedValue(undefined);
+
+    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
+    const result = await tool.execute({ uuid: "ep-123", query: "something" }, ctx);
+
+    expect(client.deleteEpisode).toHaveBeenCalledWith("ep-123");
+    expect(client.searchFacts).not.toHaveBeenCalled();
+    expect(result).toContain("Deleted episode ep-123");
   });
 });

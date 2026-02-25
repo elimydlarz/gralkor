@@ -60,6 +60,7 @@ export class GraphitiClient {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      let clientError: Error | undefined;
 
       try {
         const res = await fetch(`${this.baseUrl}${path}`, {
@@ -75,7 +76,10 @@ export class GraphitiClient {
             `Graphiti ${method} ${path} returned ${res.status}: ${text}`,
           );
           // Don't retry client errors (4xx) — only server errors are transient
-          if (res.status >= 400 && res.status < 500) throw err;
+          if (res.status >= 400 && res.status < 500) {
+            clientError = err;
+            throw err;
+          }
           lastError = err;
           if (attempt < this.maxRetries) {
             await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
@@ -89,6 +93,7 @@ export class GraphitiClient {
         }
         return (await res.text()) as unknown as T;
       } catch (err) {
+        if (clientError) throw clientError;
         lastError = err instanceof Error ? err : new Error(String(err));
         if (attempt < this.maxRetries) {
           await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
