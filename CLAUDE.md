@@ -12,12 +12,12 @@ Gralkor ships **two entry points** in the same package. Only one should be activ
 | Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
 | Plugin ID | `memory-gralkor` | `tool-gralkor` |
 | Kind | `"memory"` | `"tool"` |
-| Tool names | `memory_recall`, `memory_store`, `memory_forget` | `graph_search`, `graph_add` |
+| Tool names | `graph_memory_recall`, `graph_memory_store`, `memory_search`, `memory_get` | `graph_search`, `graph_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
 | Hooks | `before_agent_start`, `agent_end` | Same |
-| CLI | `gralkor` | `gralkor` |
+| CLI | `gralkor`, `memory` | `gralkor` |
 
-**Memory mode** (`memory-gralkor`): Replaces the native memory plugin. The agent uses Graphiti as its sole memory backend.
+**Memory mode** (`memory-gralkor`): Replaces the native memory plugin. The agent gets Graphiti-powered graph tools AND native `memory_search`/`memory_get` for file-based memory (re-registered via `api.runtime.tools`).
 
 **Tool mode** (`tool-gralkor`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
@@ -45,6 +45,8 @@ Both entry points follow the same sequence in their `register()` function:
 5. If probe fails: register **CLI only** (`registerCli`) — no tools, no hooks.
 
 Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
+
+Memory mode additionally re-registers `memory_search` and `memory_get` via a factory callback that calls `api.runtime.tools.createMemorySearchTool()` / `createMemoryGetTool()`. This restores the file-based memory tools that would otherwise be lost when Gralkor displaces `memory-core` from the memory slot. The `memory` CLI namespace is also re-registered via `api.runtime.tools.registerMemoryCli()`.
 
 ### Data Lifecycle
 
@@ -75,12 +77,12 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
 | Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode |
 | Automatic context recall | `before_agent_start` hook injects relevant facts before each turn |
-| Manual search | `memory_recall` / `graph_search` queries facts and entity nodes in parallel |
-| Manual store | `memory_store` / `graph_add` creates episodes; Graphiti extracts structure |
-| Manual forget | `memory_forget` deletes episodes or edges by UUID |
+| Manual search | `graph_memory_recall` (memory mode) / `graph_search` (tool mode) queries facts and entity nodes in parallel |
+| Manual store | `graph_memory_store` (memory mode) / `graph_add` (tool mode) creates episodes; Graphiti extracts structure |
 | Per-agent graph partitioning | `group_id` derived from `ctx.agentId` isolates each agent's knowledge |
 | CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` work even in CLI-only mode |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
+| Native memory file access in memory mode | `memory_search` and `memory_get` re-registered via `api.runtime.tools`; `graph_memory_recall/store` prefix makes graph vs. file tools unambiguous |
 | Dual operating modes | Memory mode (replaces native memory) or tool mode (coexists with it) |
 
 ### Cross-functional
@@ -90,7 +92,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Graceful degradation (unconfigured) | No explicit URL + probe fails → CLI-only mode, no errors, no broken tools |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
-| Slot compatibility | Memory-mode tool names (`memory_*`) match `memory-lancedb` for drop-in slot replacement |
+| Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix to distinguish from native file tools; `memory_search`/`memory_get` match memory-core exactly |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
 | Auto-probe discovery | On startup, probes `graphiti:8000`, `localhost:8001`, `localhost:8000` in parallel; uses first responder |
@@ -102,7 +104,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 OpenClaw Gateway (Node.js)
   └── gralkor plugin (TypeScript)
         ├── Entry: memory-gralkor (kind: memory) OR tool-gralkor (kind: tool)
-        ├── Tools: memory_recall/store/forget (memory mode)
+        ├── Tools: graph_memory_recall/store + memory_search/get (memory mode)
         │      OR: graph_search/graph_add (tool mode)
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: health monitor (60s interval)
@@ -117,11 +119,11 @@ OpenClaw Gateway (Node.js)
 
 ## File Structure
 
-- `src/index.ts` — Memory-mode entry point (`memory-gralkor`, `kind: "memory"`). Registers `memory_recall`, `memory_store`, `memory_forget`. Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
+- `src/index.ts` — Memory-mode entry point (`memory-gralkor`, `kind: "memory"`). Registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`). Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
 - `src/tool-entry.ts` — Tool-mode entry point (`tool-gralkor`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
 - `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
-- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`, `createMemoryForgetTool`. Accept optional `ToolOverrides` to customize name/description (used by tool-entry for `graph_*` names).
+- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names).
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
 - `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
@@ -256,12 +258,13 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - TypeScript, ES modules (`"type": "module"`)
 - Target: ES2022, module resolution: bundler
 - All Graphiti communication is HTTP via `src/client.ts` — no direct FalkorDB access
-- Memory-mode tool names follow the `memory_*` pattern (matches `memory-lancedb` for slot compatibility). Tool-mode uses `graph_*` names to coexist with native `memory_*` tools.
+- Memory-mode graph tools use `graph_memory_*` names (via `ToolOverrides`); file tools keep their native `memory_search`/`memory_get` names. Tool-mode uses `graph_*` names to coexist with native `memory_*` tools.
 - Config types are plain TypeScript interfaces in `src/config.ts`
 - Imports use `.js` extensions (required for ESM with TypeScript)
 
 ## Gotchas
 
+- Each entry in `package.json` `openclaw.extensions` must use `{ "entry": "...", "manifest": "..." }` object form — if you use plain strings, both extensions inherit the package-level ID from `openclaw.plugin.json` and `tool-gralkor` can never be activated
 - Graphiti requires an LLM provider API key — without one the container starts but all operations fail
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
@@ -271,3 +274,11 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 ## Deployment
 
 When deployed alongside OpenClaw on a VPS, set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. This way existing backup/restore scripts capture graph data automatically. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8000` (container-internal port).
+
+## Recommended Reading
+
+- https://docs.openclaw.ai/concepts/memory
+- https://docs.openclaw.ai/cli/memory
+- https://docs.openclaw.ai/tools/plugin
+- https://docs.openclaw.ai/cli/plugins
+- https://docs.openclaw.ai/tools

@@ -8,10 +8,7 @@ import {
 
 interface PluginApi {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(hook: {
-    name: string;
-    execute: (ctx: any) => Promise<any>;
-  }): void;
+  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
   registerService(service: {
     name: string;
     interval: number;
@@ -33,8 +30,10 @@ export function registerHooks(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  api.registerHook(createBeforeAgentStartHook(client, config));
-  api.registerHook(createAgentEndHook(client, config));
+  const beforeHook = createBeforeAgentStartHook(client, config);
+  const agentEndHook = createAgentEndHook(client, config);
+  api.registerHook(beforeHook.name, beforeHook.execute);
+  api.registerHook(agentEndHook.name, agentEndHook.execute);
 }
 
 export function registerHealthService(
