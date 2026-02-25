@@ -9,7 +9,7 @@ tarballs=()
 for mode in memory tool; do
   cp resources/$mode/package.json package.json
   cp resources/$mode/openclaw.plugin.json openclaw.plugin.json
-  pnpm pack --silent
+  pnpm pack >/dev/null 2>&1
 
   # pnpm produces openclaw-gralkor-<version>.tgz for both modes (same package name).
   # Rename to mode-specific tarball so the second pack doesn't overwrite the first.
