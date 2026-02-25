@@ -173,3 +173,5 @@ export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
   const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
   registerFullPlugin(api, client, config);
 }
+
+export default { id, name, description, kind, configSchema, register };

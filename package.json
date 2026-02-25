@@ -3,19 +3,21 @@
   "version": "2.0.1",
   "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "openclaw": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ]
   },
   "scripts": {
+    "build": "tsc",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "pack": "npm pack"
   },
   "files": [
-    "src",
+    "dist",
     "server",
     "openclaw.plugin.json",
     "docker-compose.yml",
@@ -26,7 +28,6 @@
     "openclaw": ">= 2026.1.26"
   },
   "devDependencies": {
-    "openclaw": "workspace:*",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },

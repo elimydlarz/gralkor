@@ -17,6 +17,23 @@ describe("plugin export shape", () => {
     expect(mod.configSchema).toBeDefined();
     expect(mod.configSchema.type).toBe("object");
   });
+
+  it("default export has register as a function (OpenClaw CLI loader)", async () => {
+    const mod = await import("./index.js");
+    const entry = mod.default;
+    expect(entry).toBeDefined();
+    expect(typeof entry.register).toBe("function");
+  });
+
+  it("default export includes all metadata fields", async () => {
+    const mod = await import("./index.js");
+    const entry = mod.default;
+    expect(entry.id).toBe("memory-gralkor");
+    expect(entry.name).toBe("Gralkor Memory");
+    expect(typeof entry.description).toBe("string");
+    expect(entry.kind).toBe("memory");
+    expect(entry.configSchema).toBeDefined();
+  });
 });
 
 describe("register()", () => {
