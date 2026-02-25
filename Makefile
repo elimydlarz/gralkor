@@ -12,8 +12,7 @@ SYNC_RESOURCES = node -e " \
 
 TAG_VERSION = \
   V=$$(node -p "require('./package.json').version"); \
-  git add package.json resources/memory/package.json resources/tool/package.json; \
-  git commit -m "$$V"; \
+  git commit --only package.json resources/memory/package.json resources/tool/package.json -m "$$V"; \
   git tag "v$$V"
 
 help:
