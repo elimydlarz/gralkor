@@ -50,12 +50,12 @@ function registerFullPlugin(
   const searchTool = createMemoryRecallTool(client, config, {
     name: "graph_search",
     description:
-      "Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning. Complements memory_search for structured knowledge retrieval.",
+      "Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning. Recent conversation context is automatically injected — use this for deeper queries, older context, or specific entity lookups.",
   });
   const addTool = createMemoryStoreTool(client, config, {
     name: "graph_add",
     description:
-      "Store a fact, relationship, or decision in the Graphiti knowledge graph. The system extracts entities and relationships automatically.",
+      "Store a thought, insight, reflection, or decision in the Graphiti knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
   });
 
   api.registerTool(searchTool);

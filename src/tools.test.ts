@@ -65,7 +65,7 @@ describe("memory_recall", () => {
     expect(typeof tool.execute).toBe("function");
   });
 
-  it("searches both agent and shared partitions", async () => {
+  it("searches the agent partition", async () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
@@ -74,12 +74,12 @@ describe("memory_recall", () => {
 
     expect(client.searchFacts).toHaveBeenCalledWith(
       "test",
-      ["agent-42", "agent-family"],
+      ["agent-42"],
       10,
     );
     expect(client.searchNodes).toHaveBeenCalledWith(
       "test",
-      ["agent-42", "agent-family"],
+      ["agent-42"],
       10,
     );
   });
@@ -98,18 +98,18 @@ describe("memory_recall", () => {
     );
   });
 
-  it("tags own facts as [own] and shared as [family]", async () => {
+  it("formats facts without source tags", async () => {
     client.searchFacts.mockResolvedValue([
-      makeFact({ group_id: "agent-42", fact: "own fact" }),
-      makeFact({ group_id: "agent-family", fact: "shared fact" }),
+      makeFact({ group_id: "agent-42", fact: "remembered fact" }),
     ]);
     client.searchNodes.mockResolvedValue([]);
 
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
     const result = await tool.execute({ query: "test" }, ctx);
 
-    expect(result).toContain("[own] own fact");
-    expect(result).toContain("[family] shared fact");
+    expect(result).toContain("- remembered fact");
+    expect(result).not.toContain("[own]");
+    expect(result).not.toContain("[family]");
   });
 
   it("shows invalidation date for expired facts", async () => {
@@ -160,16 +160,14 @@ describe("memory_store", () => {
     expect(tool.parameters.required).toContain("content");
   });
 
-  it("writes to both agent and shared partitions", async () => {
+  it("writes to the agent partition", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
     await tool.execute({ content: "Remember this" }, ctx);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(2);
-
-    const calls = client.addEpisode.mock.calls;
-    const groupIds = calls.map((c: unknown[]) => (c[0] as { group_id: string }).group_id);
-    expect(groupIds).toContain("agent-42");
-    expect(groupIds).toContain("agent-family");
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ group_id: "agent-42" }),
+    );
   });
 
   it("uses manual source description by default", async () => {

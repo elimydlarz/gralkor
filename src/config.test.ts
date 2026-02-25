@@ -1,9 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveConfig,
-  resolveGroupIds,
+  resolveGroupId,
   defaultConfig,
-  SHARED_GROUP_ID,
 } from "./config.js";
 
 describe("resolveConfig()", () => {
@@ -41,27 +40,16 @@ describe("resolveConfig()", () => {
   });
 });
 
-describe("resolveGroupIds()", () => {
-  it("returns agentId and shared group", () => {
-    const ids = resolveGroupIds({ agentId: "agent-42" });
-    expect(ids.agent).toBe("agent-42");
-    expect(ids.shared).toBe(SHARED_GROUP_ID);
+describe("resolveGroupId()", () => {
+  it("returns agentId when provided", () => {
+    expect(resolveGroupId({ agentId: "agent-42" })).toBe("agent-42");
   });
 
   it("falls back to 'default' when agentId is missing", () => {
-    const ids = resolveGroupIds({});
-    expect(ids.agent).toBe("default");
-    expect(ids.shared).toBe(SHARED_GROUP_ID);
+    expect(resolveGroupId({})).toBe("default");
   });
 
   it("falls back to 'default' when agentId is undefined", () => {
-    const ids = resolveGroupIds({ agentId: undefined });
-    expect(ids.agent).toBe("default");
-  });
-});
-
-describe("SHARED_GROUP_ID", () => {
-  it("is 'agent-family'", () => {
-    expect(SHARED_GROUP_ID).toBe("agent-family");
+    expect(resolveGroupId({ agentId: undefined })).toBe("default");
   });
 });

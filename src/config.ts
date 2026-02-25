@@ -35,13 +35,6 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   };
 }
 
-export const SHARED_GROUP_ID = "agent-family";
-
-export function resolveGroupIds(
-  ctx: { agentId?: string },
-): { agent: string; shared: string } {
-  return {
-    agent: ctx.agentId ?? "default",
-    shared: SHARED_GROUP_ID,
-  };
+export function resolveGroupId(ctx: { agentId?: string }): string {
+  return ctx.agentId ?? "default";
 }
