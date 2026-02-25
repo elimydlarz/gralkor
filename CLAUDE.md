@@ -232,7 +232,7 @@ The `files` field in `resources/{memory,tool}/package.json` controls what goes i
 - `make up` / `make down` / `make logs` — Docker services
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
 - `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
-- `make version/patch` / `make version/minor` / `make version/major` — bump version in root + both `resources/` package.json files
+- `make version-patch` / `make version-minor` / `make version-major` — bump version in root + both `resources/` package.json files, then commit all three and tag `vX.Y.Z`
 
 ## Server Tests
 
