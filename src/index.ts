@@ -1,5 +1,5 @@
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, probeGraphitiUrl, type GralkorConfig } from "./config.js";
+import { resolveConfig, type GralkorConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
@@ -121,26 +121,17 @@ export const configSchema = {
   },
 };
 
-export async function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
+export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
-  const explicitUrl = rawConfig?.graphitiUrl;
 
-  if (explicitUrl) {
+  if (rawConfig?.graphitiUrl) {
     const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
     registerFullPlugin(api, client, config);
     return;
   }
 
-  // No explicit URL — probe for a running Graphiti instance
-  const discoveredUrl = await probeGraphitiUrl();
-  if (discoveredUrl) {
-    config.graphitiUrl = discoveredUrl;
-    const client = new GraphitiClient({ baseUrl: discoveredUrl });
-    registerFullPlugin(api, client, config);
-    return;
-  }
-
-  // Graphiti not found — register CLI only so the user can diagnose
+  // No explicit URL — register CLI only so the user can diagnose.
+  // (Async probe is not possible: OpenClaw ignores async register() returns.)
   const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
   registerCli(api, client, config);
 }
