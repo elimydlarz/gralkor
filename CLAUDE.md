@@ -101,10 +101,10 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 ## Architecture
 
 ```
-One repo — two published packages
-  ├── packages/memory/   (@openclaw/memory-gralkor, kind: memory)
-  └── packages/tool/     (@openclaw/tool-gralkor,   kind: tool)
-        shared src/ compiled into each package
+One repo — two published packages (produced by scripts/pack.sh)
+  resources/memory/  — package.json + openclaw.plugin.json for memory tarball
+  resources/tool/    — package.json + openclaw.plugin.json for tool tarball
+  src/               — shared TypeScript compiled into both
 
 OpenClaw Gateway (Node.js)
   └── gralkor plugin (one of the two packages, not both)
@@ -123,8 +123,13 @@ OpenClaw Gateway (Node.js)
 
 ## File Structure
 
-- `src/index.ts` — Memory-mode entry point (`memory-gralkor`, `kind: "memory"`). Registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`). Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
-- `src/tool-entry.ts` — Tool-mode entry point (`tool-gralkor`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
+- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`). Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
+- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
+- `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/memory-gralkor`, single extension `./dist/index.js`).
+- `resources/memory/openclaw.plugin.json` — Memory-mode manifest (`kind: "memory"`). Canonical source of truth for the active `openclaw.plugin.json`.
+- `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/tool-gralkor`, single extension `./dist/tool-entry.js`).
+- `resources/tool/openclaw.plugin.json` — Tool-mode manifest (`kind: "tool"`). Canonical source of truth for `openclaw.tool-plugin.json`.
+- `scripts/pack.sh` — Build script. Builds once, then loops over `resources/{memory,tool}/`, copies the two files, runs `npm pack` each time, restores to memory state.
 - `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
 - `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names).
@@ -205,9 +210,9 @@ make setup-server
 ## Building & Deploying
 
 ```bash
-# Build tarballs for deployment (one per package)
-npm pack --workspace packages/memory   # produces: openclaw-memory-gralkor-x.y.z.tgz
-npm pack --workspace packages/tool     # produces: openclaw-tool-gralkor-x.y.z.tgz
+make pack
+# produces: openclaw-memory-gralkor-x.y.z.tgz  (memory mode)
+#           openclaw-tool-gralkor-x.y.z.tgz     (tool mode)
 
 # Install from tarball on the remote host
 openclaw plugins install ~/openclaw-memory-gralkor-x.y.z.tgz   # memory mode
@@ -226,7 +231,7 @@ The `files` field in `package.json` controls what goes into the tarball: `dist/`
 - `make typecheck` — type-check TypeScript
 - `make up` / `make down` / `make logs` — Docker services
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
-- `npm pack` — build deployment tarball
+- `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
 
 ## Server Tests
 
