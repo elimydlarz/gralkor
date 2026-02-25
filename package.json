@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "pack": "npm pack",
-    "publish": "pnpm prepack && pnpm pack"
+    "pp": "pnpm prepack && pnpm pack"
   },
   "files": [
     "dist",
