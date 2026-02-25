@@ -14,7 +14,8 @@
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "pack": "npm pack"
+    "pack": "npm pack",
+    "publish": "pnpm prepack && pnpm pack"
   },
   "files": [
     "dist",
