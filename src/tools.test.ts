@@ -5,7 +5,6 @@ import { defaultConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
-  createMemoryForgetTool,
 } from "./tools.js";
 
 function mockClient(): {
@@ -257,85 +256,3 @@ describe("memory_store", () => {
   });
 });
 
-describe("memory_forget", () => {
-  let client: ReturnType<typeof mockClient>;
-
-  beforeEach(() => {
-    client = mockClient();
-  });
-
-  it("has the correct tool shape", () => {
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    expect(tool.name).toBe("memory_forget");
-  });
-
-  it("deletes episode by uuid", async () => {
-    client.deleteEpisode.mockResolvedValue(undefined);
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ uuid: "ep-123" }, ctx);
-
-    expect(client.deleteEpisode).toHaveBeenCalledWith("ep-123");
-    expect(result).toContain("Deleted episode ep-123");
-  });
-
-  it("falls back to deleting edge if episode delete fails", async () => {
-    client.deleteEpisode.mockRejectedValue(new Error("not found"));
-    client.deleteEdge.mockResolvedValue(undefined);
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ uuid: "edge-456" }, ctx);
-
-    expect(client.deleteEdge).toHaveBeenCalledWith("edge-456");
-    expect(result).toContain("Deleted edge edge-456");
-  });
-
-  it("reports not found when both deletes fail", async () => {
-    client.deleteEpisode.mockRejectedValue(new Error("not found"));
-    client.deleteEdge.mockRejectedValue(new Error("not found"));
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ uuid: "bad-uuid" }, ctx);
-
-    expect(result).toContain("Could not find item");
-  });
-
-  it("searches and lists matching facts when given a query", async () => {
-    client.searchFacts.mockResolvedValue([
-      makeFact({ uuid: "f-1", fact: "something" }),
-    ]);
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "something" }, ctx);
-
-    expect(result).toContain("[f-1]");
-    expect(result).toContain("something");
-  });
-
-  it("reports no matches when query finds nothing", async () => {
-    client.searchFacts.mockResolvedValue([]);
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "nonexistent" }, ctx);
-
-    expect(result).toContain("No matching items found");
-  });
-
-  it("asks for query or uuid when neither is provided", async () => {
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({}, ctx);
-
-    expect(result).toContain("provide either a query or a uuid");
-  });
-
-  it("prefers uuid over query when both are provided", async () => {
-    client.deleteEpisode.mockResolvedValue(undefined);
-
-    const tool = createMemoryForgetTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ uuid: "ep-123", query: "something" }, ctx);
-
-    expect(client.deleteEpisode).toHaveBeenCalledWith("ep-123");
-    expect(client.searchFacts).not.toHaveBeenCalled();
-    expect(result).toContain("Deleted episode ep-123");
-  });
-});

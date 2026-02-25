@@ -6,8 +6,8 @@
   "main": "./dist/index.js",
   "openclaw": {
     "extensions": [
-      "./dist/index.js",
-      "./dist/tool-entry.js"
+      { "entry": "./dist/index.js", "manifest": "./openclaw.plugin.json" },
+      { "entry": "./dist/tool-entry.js", "manifest": "./openclaw.tool-plugin.json" }
     ]
   },
   "scripts": {

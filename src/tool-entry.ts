@@ -19,10 +19,7 @@ interface PluginApi {
     execute: (args: any, ctx: any) => Promise<any>;
   }): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(hook: {
-    name: string;
-    execute: (ctx: any) => Promise<any>;
-  }): void;
+  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
   registerService(service: {
     name: string;
     interval: number;

@@ -3,7 +3,6 @@ import { resolveConfig, probeGraphitiUrl, type GralkorConfig } from "./config.js
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
-  createMemoryForgetTool,
 } from "./tools.js";
 import {
   registerHooks,
@@ -12,18 +11,25 @@ import {
 } from "./register.js";
 
 interface PluginApi {
+  runtime: {
+    tools: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createMemorySearchTool(opts: { config?: any; agentSessionKey?: string }): any | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createMemoryGetTool(opts: { config?: any; agentSessionKey?: string }): any | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      registerMemoryCli(program: any): void;
+    };
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerTool(tool: {
-    name: string;
-    description: string;
-    parameters: unknown;
-    execute: (args: any, ctx: any) => Promise<any>;
-  }): void;
+  registerTool(
+    toolOrFactory:
+      | { name: string; description: string; parameters: unknown; execute: (args: any, ctx: any) => Promise<any> }
+      | ((ctx: { config?: any; agentId?: string; sessionKey?: string }) => any),
+    opts?: { names?: string[] },
+  ): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(hook: {
-    name: string;
-    execute: (ctx: any) => Promise<any>;
-  }): void;
+  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
   registerService(service: {
     name: string;
     interval: number;
@@ -45,14 +51,31 @@ function registerFullPlugin(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  // Tools
-  const recallTool = createMemoryRecallTool(client, config);
-  const storeTool = createMemoryStoreTool(client, config);
-  const forgetTool = createMemoryForgetTool(client, config);
+  // Tools — graph_memory_* prefix distinguishes these from native file-based memory_search/get
+  const recallTool = createMemoryRecallTool(client, config, { name: "graph_memory_recall" });
+  const storeTool = createMemoryStoreTool(client, config, { name: "graph_memory_store" });
 
   api.registerTool(recallTool);
   api.registerTool(storeTool);
-  api.registerTool(forgetTool);
+
+  // Native memory_search + memory_get (re-register what memory-core would provide)
+  api.registerTool(
+    (ctx) => {
+      const memorySearchTool = api.runtime.tools.createMemorySearchTool({
+        config: ctx.config,
+        agentSessionKey: ctx.sessionKey,
+      });
+      const memoryGetTool = api.runtime.tools.createMemoryGetTool({
+        config: ctx.config,
+        agentSessionKey: ctx.sessionKey,
+      });
+      if (!memorySearchTool || !memoryGetTool) {
+        return null;
+      }
+      return [memorySearchTool, memoryGetTool];
+    },
+    { names: ["memory_search", "memory_get"] },
+  );
 
   // Hooks
   registerHooks(api, client, config);
@@ -62,6 +85,14 @@ function registerFullPlugin(
 
   // CLI
   registerCli(api, client, config);
+
+  // Native memory CLI (re-register what memory-core would provide)
+  api.registerCli(
+    ({ program }) => {
+      api.runtime.tools.registerMemoryCli(program);
+    },
+    { commands: ["memory"] },
+  );
 }
 
 export const id = "memory-gralkor";

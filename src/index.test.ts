@@ -38,6 +38,13 @@ describe("plugin export shape", () => {
 
 describe("register()", () => {
   let api: {
+    runtime: {
+      tools: {
+        createMemorySearchTool: ReturnType<typeof vi.fn>;
+        createMemoryGetTool: ReturnType<typeof vi.fn>;
+        registerMemoryCli: ReturnType<typeof vi.fn>;
+      };
+    };
     registerTool: ReturnType<typeof vi.fn>;
     registerHook: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
@@ -47,6 +54,13 @@ describe("register()", () => {
 
   beforeEach(() => {
     api = {
+      runtime: {
+        tools: {
+          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search" }),
+          createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
+          registerMemoryCli: vi.fn(),
+        },
+      },
       registerTool: vi.fn(),
       registerHook: vi.fn(),
       registerService: vi.fn(),
@@ -80,7 +94,7 @@ describe("register()", () => {
     expect(api.registerTool).toHaveBeenCalledTimes(3);
     expect(api.registerHook).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledOnce();
+    expect(api.registerCli).toHaveBeenCalledTimes(2);
   });
 
   it("registers full plugin when graphitiUrl is configured", async () => {
@@ -91,20 +105,26 @@ describe("register()", () => {
     expect(api.registerTool).toHaveBeenCalledTimes(3);
     expect(api.registerHook).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledOnce();
+    expect(api.registerCli).toHaveBeenCalledTimes(2);
     // Should not probe when URL is explicit
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("registers the three memory_* tools", async () => {
+  it("registers two graph tools and one factory for native memory tools", async () => {
     const { register } = await import("./index.js");
 
     await register(api, { graphitiUrl: "http://localhost:8001" });
 
-    const toolNames = api.registerTool.mock.calls.map(
+    // First 2 calls are direct tool objects
+    const directToolNames = api.registerTool.mock.calls.slice(0, 2).map(
       (call: unknown[]) => (call[0] as { name: string }).name,
     );
-    expect(toolNames).toEqual(["memory_recall", "memory_store", "memory_forget"]);
+    expect(directToolNames).toEqual(["graph_memory_recall", "graph_memory_store"]);
+
+    // 3rd call is a factory function with opts
+    const [factory, opts] = api.registerTool.mock.calls[2];
+    expect(typeof factory).toBe("function");
+    expect(opts).toEqual({ names: ["memory_search", "memory_get"] });
   });
 
   it("registers the two hooks", async () => {
@@ -113,7 +133,7 @@ describe("register()", () => {
     await register(api, { graphitiUrl: "http://localhost:8001" });
 
     const hookNames = api.registerHook.mock.calls.map(
-      (call: unknown[]) => (call[0] as { name: string }).name,
+      (call: unknown[]) => call[0] as string,
     );
     expect(hookNames).toEqual(["before_agent_start", "agent_end"]);
   });
@@ -123,7 +143,7 @@ describe("register()", () => {
 
     await register(api, { graphitiUrl: "http://localhost:8001" });
 
-    // First arg is a registrar function, second is opts with command names
+    // First CLI call is the gralkor registrar
     const [registrar, opts] = api.registerCli.mock.calls[0];
     expect(typeof registrar).toBe("function");
     expect(opts).toEqual({ commands: ["gralkor"] });
@@ -156,5 +176,56 @@ describe("register()", () => {
 
     const cmdNames = subcommands.map((c) => c.name);
     expect(cmdNames).toEqual(["status", "search <query...>", "clear [group_id]"]);
+  });
+
+  it("registers memory CLI that delegates to runtime helper", async () => {
+    const { register } = await import("./index.js");
+
+    await register(api, { graphitiUrl: "http://localhost:8001" });
+
+    // Second CLI call is the memory registrar
+    const [registrar, opts] = api.registerCli.mock.calls[1];
+    expect(typeof registrar).toBe("function");
+    expect(opts).toEqual({ commands: ["memory"] });
+
+    // Simulate OpenClaw calling the registrar
+    const mockProgram = { name: "mock-program" };
+    registrar({ program: mockProgram });
+
+    expect(api.runtime.tools.registerMemoryCli).toHaveBeenCalledWith(mockProgram);
+  });
+
+  it("factory invokes runtime helpers with correct args and returns both tools", async () => {
+    const { register } = await import("./index.js");
+
+    await register(api, { graphitiUrl: "http://localhost:8001" });
+
+    const [factory] = api.registerTool.mock.calls[2];
+    const ctx = { config: { some: "config" }, sessionKey: "sess-123", agentId: "agent-1" };
+
+    const result = factory(ctx);
+
+    expect(api.runtime.tools.createMemorySearchTool).toHaveBeenCalledWith({
+      config: ctx.config,
+      agentSessionKey: ctx.sessionKey,
+    });
+    expect(api.runtime.tools.createMemoryGetTool).toHaveBeenCalledWith({
+      config: ctx.config,
+      agentSessionKey: ctx.sessionKey,
+    });
+    expect(result).toEqual([{ name: "memory_search" }, { name: "memory_get" }]);
+  });
+
+  it("factory returns null when runtime helpers return null", async () => {
+    api.runtime.tools.createMemorySearchTool.mockReturnValue(null);
+    api.runtime.tools.createMemoryGetTool.mockReturnValue(null);
+    const { register } = await import("./index.js");
+
+    await register(api, { graphitiUrl: "http://localhost:8001" });
+
+    const [factory] = api.registerTool.mock.calls[2];
+    const result = factory({ config: {}, sessionKey: "s" });
+
+    expect(result).toBeNull();
   });
 });

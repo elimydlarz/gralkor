@@ -38,6 +38,12 @@
       }
     }
   },
+  "tools": [
+    "graph_memory_recall",
+    "graph_memory_store",
+    "memory_search",
+    "memory_get"
+  ],
   "uiHints": {
     "graphitiUrl": {
       "label": "Graphiti API URL",

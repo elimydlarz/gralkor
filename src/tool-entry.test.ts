@@ -110,7 +110,7 @@ describe("tool-entry register()", () => {
     await register(api, { graphitiUrl: "http://localhost:8001" });
 
     const hookNames = api.registerHook.mock.calls.map(
-      (call: unknown[]) => (call[0] as { name: string }).name,
+      (call: unknown[]) => call[0] as string,
     );
     expect(hookNames).toEqual(["before_agent_start", "agent_end"]);
   });
