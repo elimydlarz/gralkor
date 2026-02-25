@@ -9,6 +9,9 @@
       "./dist/tool-entry.js"
     ]
   },
+  "scripts": {
+    "build": "tsc"
+  },
   "files": [
     "dist",
     "server",

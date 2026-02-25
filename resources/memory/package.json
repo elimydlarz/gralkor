@@ -9,6 +9,9 @@
       "./dist/index.js"
     ]
   },
+  "scripts": {
+    "build": "tsc"
+  },
   "files": [
     "dist",
     "server",
