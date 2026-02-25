@@ -3,13 +3,13 @@
 test: test-plugin test-server
 
 test-plugin:
-	npx vitest run
+	pnpm exec vitest run
 
 test-server:
 	cd server && .venv/bin/python -m pytest tests/ -v
 
 typecheck:
-	npx tsc --noEmit
+	pnpm exec tsc --noEmit
 
 setup-server:
 	cd server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
