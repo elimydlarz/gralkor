@@ -73,11 +73,10 @@ describe("register()", () => {
     fetchSpy.mockRestore();
   });
 
-  it("registers only CLI when no graphitiUrl configured and probe fails", async () => {
-    fetchSpy.mockRejectedValue(new Error("unreachable"));
+  it("registers only CLI when no graphitiUrl configured", async () => {
     const { register } = await import("./index.js");
 
-    await register(api);
+    register(api);
 
     expect(api.registerCli).toHaveBeenCalledOnce();
     expect(api.registerTool).not.toHaveBeenCalled();
@@ -85,22 +84,10 @@ describe("register()", () => {
     expect(api.registerService).not.toHaveBeenCalled();
   });
 
-  it("auto-discovers Graphiti and registers full plugin when probe succeeds", async () => {
-    fetchSpy.mockResolvedValue(new Response("", { status: 200 }));
-    const { register } = await import("./index.js");
-
-    await register(api);
-
-    expect(api.registerTool).toHaveBeenCalledTimes(3);
-    expect(api.registerHook).toHaveBeenCalledTimes(2);
-    expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledTimes(2);
-  });
-
   it("registers full plugin when graphitiUrl is configured", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     expect(api.registerTool).toHaveBeenCalledTimes(3);
     expect(api.registerHook).toHaveBeenCalledTimes(2);
@@ -113,7 +100,7 @@ describe("register()", () => {
   it("registers two graph tools and one factory for native memory tools", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     // First 2 calls are direct tool objects
     const directToolNames = api.registerTool.mock.calls.slice(0, 2).map(
@@ -130,7 +117,7 @@ describe("register()", () => {
   it("registers the two hooks", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     const hookNames = api.registerHook.mock.calls.map(
       (call: unknown[]) => call[0] as string,
@@ -141,7 +128,7 @@ describe("register()", () => {
   it("registers gralkor CLI as a Commander registrar function", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     // First CLI call is the gralkor registrar
     const [registrar, opts] = api.registerCli.mock.calls[0];
@@ -181,7 +168,7 @@ describe("register()", () => {
   it("registers memory CLI that delegates to runtime helper", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     // Second CLI call is the memory registrar
     const [registrar, opts] = api.registerCli.mock.calls[1];
@@ -198,7 +185,7 @@ describe("register()", () => {
   it("factory invokes runtime helpers with correct args and returns both tools", async () => {
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     const [factory] = api.registerTool.mock.calls[2];
     const ctx = { config: { some: "config" }, sessionKey: "sess-123", agentId: "agent-1" };
@@ -221,7 +208,7 @@ describe("register()", () => {
     api.runtime.tools.createMemoryGetTool.mockReturnValue(null);
     const { register } = await import("./index.js");
 
-    await register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api, { graphitiUrl: "http://localhost:8001" });
 
     const [factory] = api.registerTool.mock.calls[2];
     const result = factory({ config: {}, sessionKey: "s" });
