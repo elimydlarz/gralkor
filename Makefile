@@ -1,4 +1,4 @@
-.PHONY: test test-plugin test-server typecheck pack up down logs setup-server \
+.PHONY: test test-plugin test-server typecheck pack build-server up down logs setup-server \
         version-major version-minor version-patch help
 
 SYNC_RESOURCES = node -e " \
@@ -33,6 +33,7 @@ help:
 	@echo "  version-major   Bump major version (X.y.z)"
 	@echo ""
 	@echo "Docker"
+	@echo "  build-server    Build gralkor-server Docker image"
 	@echo "  up              Start FalkorDB + Graphiti services"
 	@echo "  down            Stop services"
 	@echo "  logs            Tail Graphiti logs"
@@ -72,7 +73,10 @@ version-patch:
 	$(SYNC_RESOURCES)
 	$(TAG_VERSION)
 
-up:
+build-server:
+	docker build -t gralkor-server:latest server/
+
+up: build-server
 	docker compose up -d
 
 down:

@@ -11,7 +11,7 @@ services:
       - gralkor
 
   graphiti:
-    build: ./server
+    image: gralkor-server:latest
     restart: unless-stopped
     ports:
       - "8001:8000"

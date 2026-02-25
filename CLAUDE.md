@@ -125,9 +125,9 @@ OpenClaw Gateway (Node.js)
 
 - `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`). Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
 - `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
-- `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/memory-gralkor`, single extension `./dist/index.js`).
+- `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/gralkor`, single extension `./dist/index.js`).
 - `resources/memory/openclaw.plugin.json` — Memory-mode manifest (`kind: "memory"`). Canonical source of truth for the active `openclaw.plugin.json`.
-- `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/tool-gralkor`, single extension `./dist/tool-entry.js`).
+- `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/gralkor`, single extension `./dist/tool-entry.js`).
 - `resources/tool/openclaw.plugin.json` — Tool-mode manifest (`kind: "tool"`). Canonical source of truth for `openclaw.tool-plugin.json`.
 - `scripts/pack.sh` — Build script. Builds once, then loops over `resources/{memory,tool}/`, copies the two files, runs `npm pack` each time, restores to memory state.
 - `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
@@ -176,8 +176,8 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 ## Dev Workflow
 
 ```bash
-# Start backend services
-docker compose up -d
+# Build the gralkor-server image and start backend services
+make up
 
 # Verify Graphiti is running (port 8001 on host, 8000 inside container)
 curl http://localhost:8001/health
@@ -211,16 +211,23 @@ make setup-server
 
 ```bash
 make pack
-# produces: openclaw-memory-gralkor-x.y.z.tgz  (memory mode)
-#           openclaw-tool-gralkor-x.y.z.tgz     (tool mode)
+# produces: openclaw-gralkor-memory-x.y.z.tgz  (memory mode)
+#           openclaw-gralkor-tool-x.y.z.tgz    (tool mode)
 
 # Install from tarball on the remote host
-openclaw plugins install ~/openclaw-memory-gralkor-x.y.z.tgz   # memory mode
+openclaw plugins install ~/openclaw-gralkor-memory-x.y.z.tgz  # memory mode
 # OR
-openclaw plugins install ~/openclaw-tool-gralkor-x.y.z.tgz     # tool mode
+openclaw plugins install ~/openclaw-gralkor-tool-x.y.z.tgz    # tool mode
 ```
 
 The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
+
+The `docker-compose.yml` references `gralkor-server:latest` (a locally-built image, not a registry image). On the deployment host, build the image from the included `server/` source before starting services:
+
+```bash
+docker build -t gralkor-server:latest server/
+docker compose up -d
+```
 
 ## Key Commands
 
@@ -229,7 +236,8 @@ The `files` field in `resources/{memory,tool}/package.json` controls what goes i
 - `make test-plugin` — plugin tests only (vitest)
 - `make test-server` — server tests only (pytest via `server/.venv`, no Docker needed)
 - `make typecheck` — type-check TypeScript
-- `make up` / `make down` / `make logs` — Docker services
+- `make build-server` — build the `gralkor-server:latest` Docker image from `server/`
+- `make up` / `make down` / `make logs` — Docker services (`up` automatically builds the image)
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
 - `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
 - `make version-patch` / `make version-minor` / `make version-major` — bump version in root + both `resources/` package.json files, then commit all three and tag `vX.Y.Z`
