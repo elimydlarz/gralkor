@@ -220,7 +220,7 @@ openclaw plugins install ~/openclaw-memory-gralkor-x.y.z.tgz   # memory mode
 openclaw plugins install ~/openclaw-tool-gralkor-x.y.z.tgz     # tool mode
 ```
 
-The `files` field in `package.json` controls what goes into the tarball: `dist/`, `server/`, `openclaw.plugin.json`, `openclaw.tool-plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`.
+The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
 
 ## Key Commands
 
@@ -232,6 +232,7 @@ The `files` field in `package.json` controls what goes into the tarball: `dist/`
 - `make up` / `make down` / `make logs` — Docker services
 - Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
 - `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
+- `make version/patch` / `make version/minor` / `make version/major` — bump version in root + both `resources/` package.json files
 
 ## Server Tests
 

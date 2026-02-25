@@ -66,7 +66,7 @@ function registerFullPlugin(
   registerCli(api, client, config);
 }
 
-export const id = "tool-gralkor";
+export const id = "gralkor";
 export const name = "Gralkor Graph Tools";
 export const description =
   "Knowledge graph tools powered by Graphiti — complements native memory";

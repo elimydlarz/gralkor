@@ -95,7 +95,7 @@ function registerFullPlugin(
   );
 }
 
-export const id = "memory-gralkor";
+export const id = "gralkor";
 export const name = "Gralkor Memory";
 export const description =
   "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";

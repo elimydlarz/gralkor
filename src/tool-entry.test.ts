@@ -8,7 +8,7 @@ describe("tool-entry export shape", () => {
 
   it("exports required metadata fields", async () => {
     const mod = await import("./tool-entry.js");
-    expect(mod.id).toBe("tool-gralkor");
+    expect(mod.id).toBe("gralkor");
     expect(mod.name).toBe("Gralkor Graph Tools");
     expect(typeof mod.description).toBe("string");
     expect(mod.kind).toBe("tool");
@@ -26,7 +26,7 @@ describe("tool-entry export shape", () => {
   it("default export includes all metadata fields", async () => {
     const mod = await import("./tool-entry.js");
     const entry = mod.default;
-    expect(entry.id).toBe("tool-gralkor");
+    expect(entry.id).toBe("gralkor");
     expect(entry.name).toBe("Gralkor Graph Tools");
     expect(typeof entry.description).toBe("string");
     expect(entry.kind).toBe("tool");

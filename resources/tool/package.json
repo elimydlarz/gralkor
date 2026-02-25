@@ -1,19 +1,13 @@
 {
-  "name": "@openclaw/memory-gralkor",
+  "name": "@openclaw/tool-gralkor",
   "version": "3.0.1",
-  "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
+  "description": "OpenClaw tool plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/tool-entry.js",
   "openclaw": {
     "extensions": [
-      "./dist/index.js"
+      "./dist/tool-entry.js"
     ]
-  },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "pack": "bash scripts/pack.sh"
   },
   "files": [
     "dist",

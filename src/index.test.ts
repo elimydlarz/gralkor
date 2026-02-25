@@ -10,7 +10,7 @@ describe("plugin export shape", () => {
 
   it("exports required metadata fields", async () => {
     const mod = await import("./index.js");
-    expect(mod.id).toBe("memory-gralkor");
+    expect(mod.id).toBe("gralkor");
     expect(mod.name).toBe("Gralkor Memory");
     expect(typeof mod.description).toBe("string");
     expect(mod.kind).toBe("memory");
@@ -28,7 +28,7 @@ describe("plugin export shape", () => {
   it("default export includes all metadata fields", async () => {
     const mod = await import("./index.js");
     const entry = mod.default;
-    expect(entry.id).toBe("memory-gralkor");
+    expect(entry.id).toBe("gralkor");
     expect(entry.name).toBe("Gralkor Memory");
     expect(typeof entry.description).toBe("string");
     expect(entry.kind).toBe("memory");
