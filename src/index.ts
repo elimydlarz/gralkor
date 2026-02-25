@@ -1,7 +1,5 @@
-declare const process: { env: Record<string, string | undefined> };
-
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, type GralkorConfig } from "./config.js";
+import { resolveConfig, probeGraphitiUrl, type GralkorConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
@@ -92,18 +90,28 @@ export const configSchema = {
   },
 };
 
-export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
+export async function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
+  const explicitUrl = rawConfig?.graphitiUrl;
 
-  if (!rawConfig?.graphitiUrl && !process.env.GRAPHITI_URL) {
-    // No explicit URL configured — only register CLI so the user can set things up
+  if (explicitUrl) {
     const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-    registerCli(api, client, config);
+    registerFullPlugin(api, client, config);
     return;
   }
 
+  // No explicit URL — probe for a running Graphiti instance
+  const discoveredUrl = await probeGraphitiUrl();
+  if (discoveredUrl) {
+    config.graphitiUrl = discoveredUrl;
+    const client = new GraphitiClient({ baseUrl: discoveredUrl });
+    registerFullPlugin(api, client, config);
+    return;
+  }
+
+  // Graphiti not found — register CLI only so the user can diagnose
   const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-  registerFullPlugin(api, client, config);
+  registerCli(api, client, config);
 }
 
 export default { id, name, description, kind, configSchema, register };
