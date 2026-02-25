@@ -1,8 +1,2 @@
 onlyBuiltDependencies:
-  - '@discordjs/opus'
-  - '@whiskeysockets/baileys'
   - esbuild
-  - koffi
-  - node-llama-cpp
-  - protobufjs
-  - sharp
