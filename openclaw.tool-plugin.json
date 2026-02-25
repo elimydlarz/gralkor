@@ -1,0 +1,56 @@
+{
+  "id": "tool-gralkor",
+  "kind": "tool",
+  "name": "Gralkor Graph Tools",
+  "description": "Knowledge graph tools powered by Graphiti — complements native memory",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "graphitiUrl": {
+        "type": "string",
+        "default": "http://localhost:8000",
+        "description": "URL of the Graphiti REST API"
+      },
+      "autoCapture": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically capture conversations into the graph"
+          }
+        }
+      },
+      "autoRecall": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically recall relevant context before agent runs"
+          },
+          "maxResults": {
+            "type": "number",
+            "default": 5,
+            "description": "Maximum number of facts to inject as context"
+          }
+        }
+      }
+    }
+  },
+  "uiHints": {
+    "graphitiUrl": {
+      "label": "Graphiti API URL",
+      "placeholder": "http://localhost:8000"
+    },
+    "autoCapture.enabled": {
+      "label": "Auto-capture conversations"
+    },
+    "autoRecall.enabled": {
+      "label": "Auto-recall context"
+    },
+    "autoRecall.maxResults": {
+      "label": "Max auto-recall results"
+    }
+  }
+}

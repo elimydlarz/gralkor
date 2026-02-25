@@ -6,6 +6,11 @@ interface ToolContext {
   agentId?: string;
 }
 
+export interface ToolOverrides {
+  name?: string;
+  description?: string;
+}
+
 function formatFacts(facts: Fact[], agentGroupId: string): string {
   if (facts.length === 0) return "No facts found.";
   return facts
@@ -29,10 +34,12 @@ function formatNodes(nodes: EntityNode[]): string {
 export function createMemoryRecallTool(
   client: GraphitiClient,
   config: GralkorConfig,
+  overrides?: ToolOverrides,
 ) {
   return {
-    name: "memory_recall",
+    name: overrides?.name ?? "memory_recall",
     description:
+      overrides?.description ??
       "Search the knowledge graph for relevant facts and entities. Use this to recall information from previous conversations.",
     parameters: {
       type: "object" as const,
@@ -69,10 +76,12 @@ export function createMemoryRecallTool(
 export function createMemoryStoreTool(
   client: GraphitiClient,
   config: GralkorConfig,
+  overrides?: ToolOverrides,
 ) {
   return {
-    name: "memory_store",
+    name: overrides?.name ?? "memory_store",
     description:
+      overrides?.description ??
       "Store information in the knowledge graph. The system will extract entities and relationships automatically.",
     parameters: {
       type: "object" as const,

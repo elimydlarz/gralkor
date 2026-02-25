@@ -2,9 +2,31 @@
 
 **Persistent memory for OpenClaw agents, powered by knowledge graphs.**
 
-Gralkor is an OpenClaw memory plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run locally via Docker.
+Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run locally via Docker.
 
 When an agent converses with a user, Gralkor automatically extracts entities and relationships into a knowledge graph, and recalls relevant facts in future conversations — no manual prompt engineering required.
+
+## Two Modes
+
+Gralkor can run in two modes. Choose one — they should not be active at the same time.
+
+### Memory mode (`memory-gralkor`)
+
+Replaces the native memory plugin entirely. Gralkor becomes the agent's sole memory backend.
+
+- Tools: `memory_recall`, `memory_store`, `memory_forget`
+- Set up: `plugins.slots.memory = "memory-gralkor"` in `openclaw.json`
+
+Use this if you want Graphiti to handle all memory and don't need the native Markdown-based memory.
+
+### Tool mode (`tool-gralkor`)
+
+Runs alongside the native `memory-core` plugin. The agent keeps its native `memory_search`/`memory_get` tools for Markdown files AND gets Graphiti-powered tools for structured knowledge retrieval.
+
+- Tools: `graph_search`, `graph_add`
+- Set up: add `"tool-gralkor"` to `plugins.enabled` in `openclaw.json`
+
+Use this if you want the best of both worlds — Markdown notes plus a knowledge graph.
 
 ## Quick Start
 
@@ -38,9 +60,19 @@ Ask your OpenClaw agent:
 Install the Gralkor memory plugin from ~/openclaw-memory-gralkor-0.1.0.tgz
 ```
 
-The agent will:
-1. Run `openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz`
-2. Set `plugins.slots.memory = "memory-gralkor"` in your `openclaw.json`
+The agent will run `openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz`.
+
+Then choose your mode in `openclaw.json`:
+
+**Memory mode** (replaces native memory):
+```json
+{ "plugins": { "slots": { "memory": "memory-gralkor" } } }
+```
+
+**Tool mode** (alongside native memory):
+```json
+{ "plugins": { "enabled": ["tool-gralkor"] } }
+```
 
 ### 3. Set up environment
 
@@ -86,13 +118,24 @@ Send messages to your agent as usual. Gralkor works in the background:
 
 ## Tools
 
-Agents (and users) can also interact with memory explicitly:
+Agents (and users) can interact with the knowledge graph explicitly. Which tools are available depends on the mode:
+
+### Memory mode tools
 
 | Tool | Description |
 |---|---|
 | `memory_recall` | Search the knowledge graph for facts and entities |
 | `memory_store` | Manually store information in the graph |
 | `memory_forget` | Remove information by UUID, or search for items to delete |
+
+### Tool mode tools
+
+| Tool | Description |
+|---|---|
+| `graph_search` | Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning |
+| `graph_add` | Store a fact, relationship, or decision in the knowledge graph |
+
+In tool mode, native `memory_search` and `memory_get` remain available from `memory-core`.
 
 ## CLI
 

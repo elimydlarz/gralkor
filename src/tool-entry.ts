@@ -5,7 +5,6 @@ import { resolveConfig, type GralkorConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
-  createMemoryForgetTool,
 } from "./tools.js";
 import {
   registerHooks,
@@ -47,14 +46,20 @@ function registerFullPlugin(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  // Tools
-  const recallTool = createMemoryRecallTool(client, config);
-  const storeTool = createMemoryStoreTool(client, config);
-  const forgetTool = createMemoryForgetTool(client, config);
+  // Tools — graph_* names to coexist with native memory_* tools
+  const searchTool = createMemoryRecallTool(client, config, {
+    name: "graph_search",
+    description:
+      "Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning. Complements memory_search for structured knowledge retrieval.",
+  });
+  const addTool = createMemoryStoreTool(client, config, {
+    name: "graph_add",
+    description:
+      "Store a fact, relationship, or decision in the Graphiti knowledge graph. The system extracts entities and relationships automatically.",
+  });
 
-  api.registerTool(recallTool);
-  api.registerTool(storeTool);
-  api.registerTool(forgetTool);
+  api.registerTool(searchTool);
+  api.registerTool(addTool);
 
   // Hooks
   registerHooks(api, client, config);
@@ -66,11 +71,11 @@ function registerFullPlugin(
   registerCli(api, client, config);
 }
 
-export const id = "memory-gralkor";
-export const name = "Gralkor Memory";
+export const id = "tool-gralkor";
+export const name = "Gralkor Graph Tools";
 export const description =
-  "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
-export const kind = "memory" as const;
+  "Knowledge graph tools powered by Graphiti — complements native memory";
+export const kind = "tool" as const;
 
 export const configSchema = {
   type: "object" as const,
