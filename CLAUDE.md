@@ -36,13 +36,11 @@ Both modes register the same auto-capture (`agent_end`) and auto-recall (`before
 
 ### Plugin Registration
 
-Both entry points follow the same sequence in their `register()` function:
+Both entry points follow the same sequence in their synchronous `register()` function:
 
 1. `resolveConfig()` merges plugin config → `GRAPHITI_URL` env var → defaults.
-2. If an explicit URL is found (config or env): create client, call `registerFullPlugin()` (tools + hooks + health service + CLI).
-3. If no explicit URL: `probeGraphitiUrl()` tries `graphiti:8000`, `localhost:8001`, `localhost:8000` in parallel (2s timeout). First responder wins.
-4. If probe succeeds: `registerFullPlugin()` with discovered URL.
-5. If probe fails: register **CLI only** (`registerCli`) — no tools, no hooks.
+2. If `graphitiUrl` is explicitly provided in config: create client, call `registerFullPlugin()` (tools + hooks + health service + CLI).
+3. If no explicit URL: register **CLI only** (`registerCli`) — no tools, no hooks. (OpenClaw ignores async `register()` returns, so runtime probing is not possible.)
 
 Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
 
@@ -89,13 +87,12 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Graceful degradation (unconfigured) | No explicit URL + probe fails → CLI-only mode, no errors, no broken tools |
+| Graceful degradation (unconfigured) | No explicit URL → CLI-only mode, no errors, no broken tools |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix to distinguish from native file tools; `memory_search`/`memory_get` match memory-core exactly |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
-| Auto-probe discovery | On startup, probes `graphiti:8000`, `localhost:8001`, `localhost:8000` in parallel; uses first responder |
 | Message filtering | Auto-capture skips messages <10 chars and messages starting with `/` |
 
 ## Architecture
@@ -134,7 +131,7 @@ OpenClaw Gateway (Node.js)
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
 - `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names).
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
-- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupId()`.
+- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
 - `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
@@ -284,6 +281,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ## Gotchas
 
+- `register()` must be synchronous. OpenClaw's gateway discards the return value of async `register()` functions — the plugin appears loaded but registers zero tools, hooks, or CLI commands. No async work (network probing, etc.) can happen inside `register()`.
 - Do not try to ship both entry points in one package. OpenClaw ≤ 2026.2.24 only supports flat string arrays in `openclaw.extensions`, so all entries inherit the same ID and `kind` from the single manifest — tool mode can never be properly activated this way. The solution is two packages from one repo (see architecture below), each with one entry point and one tailored manifest.
 - Graphiti requires an LLM provider API key — without one the container starts but all operations fail
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
