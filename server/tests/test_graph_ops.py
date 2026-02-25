@@ -54,3 +54,48 @@ async def test_build_communities_returns_counts(client, mock_graphiti):
     assert resp.json() == {"communities": 3, "edges": 2}
     call_kwargs = mock_graphiti.build_communities.call_args.kwargs
     assert call_kwargs["group_ids"] == ["g1"]
+
+
+@pytest.mark.asyncio
+async def test_clear_missing_group_id_returns_422(client):
+    resp = await client.post("/clear", json={})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_build_communities_missing_group_id_returns_422(client):
+    resp = await client.post("/build-communities", json={})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_delete_edge_backend_error_propagates(client, mock_graphiti):
+    """Backend errors propagate (ASGITransport raises instead of returning 500)."""
+    with patch("main.EntityEdge") as MockEntityEdge:
+        MockEntityEdge.get_by_uuid = AsyncMock(side_effect=RuntimeError("DB down"))
+        with pytest.raises(RuntimeError, match="DB down"):
+            await client.delete("/edges/edge-42")
+
+
+@pytest.mark.asyncio
+async def test_clear_graph_backend_error_propagates(client, mock_graphiti):
+    with patch("main.Node") as MockNode:
+        MockNode.delete_by_group_id = AsyncMock(side_effect=RuntimeError("DB down"))
+        with pytest.raises(RuntimeError, match="DB down"):
+            await client.post("/clear", json={"group_id": "g1"})
+
+
+@pytest.mark.asyncio
+async def test_build_indices_backend_error_propagates(client, mock_graphiti):
+    mock_graphiti.build_indices_and_constraints.side_effect = RuntimeError("DB down")
+
+    with pytest.raises(RuntimeError, match="DB down"):
+        await client.post("/build-indices")
+
+
+@pytest.mark.asyncio
+async def test_build_communities_backend_error_propagates(client, mock_graphiti):
+    mock_graphiti.build_communities.side_effect = RuntimeError("DB down")
+
+    with pytest.raises(RuntimeError, match="DB down"):
+        await client.post("/build-communities", json={"group_id": "g1"})

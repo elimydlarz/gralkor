@@ -117,6 +117,69 @@ describe("before_agent_start hook", () => {
       3,
     );
   });
+
+  it("strips stop words from user message for search query", async () => {
+    client.searchFacts.mockResolvedValue([]);
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({ agentId: "agent-42", userMessage: "Tell me about the project architecture" });
+
+    const query = client.searchFacts.mock.calls[0][0] as string;
+    expect(query).not.toContain("the");
+    expect(query).not.toContain("about");
+    expect(query).toContain("tell");
+    expect(query).toContain("project");
+    expect(query).toContain("architecture");
+  });
+
+  it("filters words shorter than 3 characters", async () => {
+    client.searchFacts.mockResolvedValue([]);
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({ agentId: "agent-42", userMessage: "Go do it now please" });
+
+    const query = client.searchFacts.mock.calls[0]?.[0] as string | undefined;
+    // "go" (2 chars), "do" (stop word + 2 chars), "it" (stop word), "now" (stop word), "please" (3+ chars)
+    // Only "please" should survive
+    if (query) {
+      expect(query).not.toMatch(/\bgo\b/);
+      expect(query).toContain("please");
+    }
+  });
+
+  it("strips punctuation from user message", async () => {
+    client.searchFacts.mockResolvedValue([]);
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({ agentId: "agent-42", userMessage: "What's the project's architecture?" });
+
+    const query = client.searchFacts.mock.calls[0][0] as string;
+    expect(query).not.toContain("?");
+    expect(query).not.toContain("'");
+  });
+
+  it("limits extracted terms to 8 words", async () => {
+    client.searchFacts.mockResolvedValue([]);
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      agentId: "agent-42",
+      userMessage: "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima",
+    });
+
+    const query = client.searchFacts.mock.calls[0][0] as string;
+    const words = query.split(" ");
+    expect(words.length).toBeLessThanOrEqual(8);
+  });
+
+  it("skips search when user message yields empty query after stop-word removal", async () => {
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig);
+    // All words are stop words or <= 2 chars: "is" (stop), "it" (stop), "by" (stop), "us" (stop)
+    const result = await hook.execute({ agentId: "agent-42", userMessage: "is it by us" });
+
+    expect(result).toBeUndefined();
+    expect(client.searchFacts).not.toHaveBeenCalled();
+  });
 });
 
 describe("agent_end hook", () => {
@@ -196,5 +259,71 @@ describe("agent_end hook", () => {
       userMessage: "What is the weather?",
       agentResponse: "I don't have access to weather data.",
     });
+  });
+
+  it("formats episode body as User/Assistant format", async () => {
+    const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      agentId: "agent-42",
+      userMessage: "What is the weather?",
+      agentResponse: "It's sunny today.",
+    });
+
+    const call = client.addEpisode.mock.calls[0][0] as {
+      episode_body: string;
+      source_description: string;
+      name: string;
+    };
+    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny today.");
+    expect(call.source_description).toBe("auto-capture");
+    expect(call.name).toMatch(/^conversation-\d+$/);
+  });
+
+  it("captures when userMessage is short but agentResponse is long", async () => {
+    const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      agentId: "agent-42",
+      userMessage: "hi",
+      agentResponse: "Hello! How can I help you today?",
+    });
+
+    // userMsg.length < 10 but agentMsg.length >= 10 → should capture (AND condition)
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("captures when agentResponse is short but userMessage is long", async () => {
+    const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      agentId: "agent-42",
+      userMessage: "Can you explain the architecture of this project?",
+      agentResponse: "Sure.",
+    });
+
+    // agentMsg.length < 10 but userMsg.length >= 10 → should capture (AND condition)
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults missing agentResponse to empty string", async () => {
+    const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      agentId: "agent-42",
+      userMessage: "This is a long enough message to pass the filter",
+    });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("Assistant: ");
+  });
+
+  it("falls back to 'default' group when agentId is missing", async () => {
+    const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
+    await hook.execute({
+      userMessage: "This is a long enough message to pass the filter",
+      agentResponse: "Here is a response that is also long enough",
+    });
+
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ group_id: "default" }),
+    );
   });
 });

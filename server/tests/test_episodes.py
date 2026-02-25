@@ -125,8 +125,62 @@ async def test_get_episodes_default_limit(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_get_episodes_missing_group_id_returns_422(client):
+    resp = await client.get("/episodes")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_add_episode_passes_episode_type_message_as_source(client, mock_graphiti):
+    ep = make_episode()
+    mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
+
+    resp = await client.post("/episodes", json={
+        "name": "chat",
+        "episode_body": "body",
+        "source_description": "src",
+        "group_id": "g1",
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+    # EpisodeType.message is the enum value used by the server
+    assert call_kwargs["source"].value == "message" or str(call_kwargs["source"]) == "EpisodeType.message"
+
+
+@pytest.mark.asyncio
+async def test_add_episode_backend_error_propagates(client, mock_graphiti):
+    """Backend errors propagate (ASGITransport raises instead of returning 500)."""
+    mock_graphiti.add_episode.side_effect = RuntimeError("FalkorDB connection lost")
+
+    with pytest.raises(RuntimeError, match="FalkorDB connection lost"):
+        await client.post("/episodes", json={
+            "name": "chat",
+            "episode_body": "body",
+            "source_description": "src",
+            "group_id": "g1",
+        })
+
+
+@pytest.mark.asyncio
+async def test_get_episodes_backend_error_propagates(client, mock_graphiti):
+    mock_graphiti.retrieve_episodes.side_effect = RuntimeError("timeout")
+
+    with pytest.raises(RuntimeError, match="timeout"):
+        await client.get("/episodes", params={"group_id": "g1"})
+
+
+@pytest.mark.asyncio
 async def test_delete_episode_returns_204(client, mock_graphiti):
     resp = await client.delete("/episodes/ep-99")
 
     assert resp.status_code == 204
     mock_graphiti.remove_episode.assert_called_once_with("ep-99")
+
+
+@pytest.mark.asyncio
+async def test_delete_episode_backend_error_propagates(client, mock_graphiti):
+    mock_graphiti.remove_episode.side_effect = RuntimeError("not found")
+
+    with pytest.raises(RuntimeError, match="not found"):
+        await client.delete("/episodes/ep-99")

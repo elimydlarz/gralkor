@@ -106,3 +106,98 @@ async def test_search_missing_query_returns_422(client):
         "group_ids": ["g1"],
     })
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_search_nodes_missing_query_returns_422(client):
+    resp = await client.post("/search/nodes", json={
+        "group_ids": ["g1"],
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_search_facts_backend_error_propagates(client, mock_graphiti):
+    """Backend errors propagate (ASGITransport raises instead of returning 500)."""
+    mock_graphiti.search.side_effect = RuntimeError("LLM timeout")
+
+    with pytest.raises(RuntimeError, match="LLM timeout"):
+        await client.post("/search", json={
+            "query": "test",
+            "group_ids": ["g1"],
+        })
+
+
+@pytest.mark.asyncio
+async def test_search_nodes_backend_error_propagates(client, mock_graphiti):
+    mock_graphiti.search_.side_effect = RuntimeError("LLM timeout")
+
+    with pytest.raises(RuntimeError, match="LLM timeout"):
+        await client.post("/search/nodes", json={
+            "query": "test",
+            "group_ids": ["g1"],
+        })
+
+
+@pytest.mark.asyncio
+async def test_search_nodes_returns_empty_list(client, mock_graphiti):
+    mock_graphiti.search_.return_value = SimpleNamespace(nodes=[])
+
+    resp = await client.post("/search/nodes", json={
+        "query": "nobody",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_search_facts_with_invalid_at_serializes_correctly(client, mock_graphiti):
+    from datetime import datetime, timezone
+    edge = make_edge(
+        uuid="e-dated",
+        invalid_at=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
+    )
+    mock_graphiti.search.return_value = [edge]
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["invalid_at"] == "2025-06-01T12:00:00+00:00"
+
+
+@pytest.mark.asyncio
+async def test_search_facts_with_null_invalid_at(client, mock_graphiti):
+    edge = make_edge(uuid="e-valid", invalid_at=None)
+    mock_graphiti.search.return_value = [edge]
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["invalid_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_search_nodes_asserts_values(client, mock_graphiti):
+    nodes = [make_entity(uuid="n1", name="Alice", summary="A person", group_id="grp-1")]
+    mock_graphiti.search_.return_value = SimpleNamespace(nodes=nodes)
+
+    resp = await client.post("/search/nodes", json={
+        "query": "people",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["summary"] == "A person"
+    assert body[0]["group_id"] == "grp-1"
+    assert body[0]["name"] == "Alice"
