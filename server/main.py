@@ -12,6 +12,7 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from graphiti_core import Graphiti
+from graphiti_core.driver.falkordb_driver import FalkorDriver
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EntityNode, EpisodicNode, EpisodeType, Node
 from graphiti_core.llm_client import LLMConfig
@@ -79,13 +80,17 @@ async def lifespan(_app: FastAPI):
     global graphiti
     cfg = _load_config()
 
-    uri = os.getenv("FALKORDB_URI", "falkor://falkordb:6379")
-    # graphiti-core expects falkor:// scheme for FalkorDB
-    if uri.startswith("redis://"):
-        uri = "falkor://" + uri[len("redis://"):]
+    uri = os.getenv("FALKORDB_URI", "redis://falkordb:6379")
+    # Parse host:port from redis:// URI (e.g. "redis://falkordb:6379")
+    stripped = uri.split("://", 1)[-1]  # "falkordb:6379"
+    if ":" in stripped:
+        host, port_str = stripped.rsplit(":", 1)
+        port = int(port_str)
+    else:
+        host, port = stripped, 6379
 
     graphiti = Graphiti(
-        uri=uri,
+        graph_driver=FalkorDriver(host=host, port=port),
         llm_client=_build_llm_client(cfg),
         embedder=_build_embedder(cfg),
     )
