@@ -57,7 +57,7 @@ describe("before_agent_start hook", () => {
     const result = await hook.execute(ctx);
 
     expect(result).toHaveProperty("context");
-    expect(result!.context).toContain("[own] Project uses microservices");
+    expect(result!.context).toContain("Project uses microservices");
     expect(result!.context).toContain("gralkor-memory");
     expect(result!.context).toContain('trust="untrusted"');
   });
@@ -133,7 +133,7 @@ describe("agent_end hook", () => {
     expect(typeof hook.execute).toBe("function");
   });
 
-  it("captures conversation to both partitions", async () => {
+  it("captures conversation to agent partition", async () => {
     const hook = createAgentEndHook(client as unknown as GraphitiClient, defaultConfig);
     await hook.execute({
       agentId: "agent-42",
@@ -141,13 +141,10 @@ describe("agent_end hook", () => {
       agentResponse: "I don't have access to weather data.",
     });
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(2);
-
-    const groupIds = client.addEpisode.mock.calls.map(
-      (c: unknown[]) => (c[0] as { group_id: string }).group_id,
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ group_id: "agent-42" }),
     );
-    expect(groupIds).toContain("agent-42");
-    expect(groupIds).toContain("agent-family");
   });
 
   it("skips when autoCapture is disabled", async () => {

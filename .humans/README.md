@@ -15,6 +15,7 @@ Gralkor can run in two modes. Choose one — they should not be active at the sa
 Replaces the native memory plugin entirely. Gralkor becomes the agent's sole memory backend.
 
 - Tools: `memory_recall`, `memory_store`, `memory_forget`
+- Hooks: auto-capture (stores conversations after each exchange), auto-recall (injects relevant facts before the agent responds)
 - Set up: `plugins.slots.memory = "memory-gralkor"` in `openclaw.json`
 
 Use this if you want Graphiti to handle all memory and don't need the native Markdown-based memory.
@@ -24,9 +25,12 @@ Use this if you want Graphiti to handle all memory and don't need the native Mar
 Runs alongside the native `memory-core` plugin. The agent keeps its native `memory_search`/`memory_get` tools for Markdown files AND gets Graphiti-powered tools for structured knowledge retrieval.
 
 - Tools: `graph_search`, `graph_add`
+- Hooks: same auto-capture and auto-recall as memory mode
 - Set up: add `"tool-gralkor"` to `plugins.enabled` in `openclaw.json`
 
 Use this if you want the best of both worlds — Markdown notes plus a knowledge graph.
+
+Both modes register the same hooks, so conversations are automatically captured into the graph and relevant facts are automatically recalled regardless of which mode you choose.
 
 ## Quick Start
 
@@ -118,22 +122,24 @@ Send messages to your agent as usual. Gralkor works in the background:
 
 ## Tools
 
-Agents (and users) can interact with the knowledge graph explicitly. Which tools are available depends on the mode:
+Agents (and users) can interact with the knowledge graph explicitly. Which tools are available depends on the mode.
+
+Since conversations are **automatically captured** by hooks, agents don't need to store what was said. The explicit store tools (`memory_store` / `graph_add`) are for higher-level content: insights, reflections, decisions, and connections the agent wants to preserve beyond the raw conversation.
 
 ### Memory mode tools
 
 | Tool | Description |
 |---|---|
-| `memory_recall` | Search the knowledge graph for facts and entities |
-| `memory_store` | Manually store information in the graph |
+| `memory_recall` | Search the knowledge graph for deeper queries, older context, or specific entity lookups (recent context is auto-injected) |
+| `memory_store` | Store a thought, insight, reflection, or decision — not conversation content (that's auto-captured) |
 | `memory_forget` | Remove information by UUID, or search for items to delete |
 
 ### Tool mode tools
 
 | Tool | Description |
 |---|---|
-| `graph_search` | Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning |
-| `graph_add` | Store a fact, relationship, or decision in the knowledge graph |
+| `graph_search` | Search the knowledge graph for deeper queries, older context, or specific entity lookups (recent context is auto-injected) |
+| `graph_add` | Store a thought, insight, reflection, or decision — not conversation content (that's auto-captured) |
 
 In tool mode, native `memory_search` and `memory_get` remain available from `memory-core`.
 
@@ -152,18 +158,13 @@ Configure in your OpenClaw plugin settings:
 | Setting | Default | Description |
 |---|---|---|
 | `graphitiUrl` | `http://localhost:8000` | Graphiti API endpoint |
-| `groupIdStrategy` | `per-user` | Graph partitioning — see below |
 | `autoCapture.enabled` | `true` | Automatically store conversations |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context |
 | `autoRecall.maxResults` | `5` | How many facts to inject per turn |
 
 ### Graph partitioning
 
-The `groupIdStrategy` controls how memory is isolated:
-
-- **`per-user`** (default) — Each user has their own memory. Agent remembers things about Alice separately from Bob.
-- **`per-conversation`** — Memory is scoped to a session. Starting a new conversation starts with a blank slate.
-- **`global`** — All users share one memory pool. Useful for team knowledge bases.
+Each agent gets its own graph partition automatically (based on `agentId`, falling back to `"default"`). No configuration needed.
 
 ## How It Works
 

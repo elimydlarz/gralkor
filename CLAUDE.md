@@ -21,6 +21,8 @@ Gralkor ships **two entry points** in the same package. Only one should be activ
 
 **Tool mode** (`tool-gralkor`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
+Both modes register the same auto-capture (`agent_end`) and auto-recall (`before_agent_start`) hooks — conversations are automatically stored and relevant facts are automatically injected regardless of which mode is active.
+
 ## Architecture
 
 ```
@@ -48,7 +50,7 @@ OpenClaw Gateway (Node.js)
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
 - `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`, `createMemoryForgetTool`. Accept optional `ToolOverrides` to customize name/description (used by tool-entry for `graph_*` names).
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
-- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupIds()`.
+- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
 - `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
@@ -66,17 +68,11 @@ OpenClaw Gateway (Node.js)
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
 
-### Dual-Partition Group IDs
+### Graph Partitioning
 
-Every agent gets two graph partitions automatically — no configuration needed:
+Each agent gets its own graph partition automatically — no configuration needed. The partition uses `ctx.agentId` (falls back to `"default"`).
 
-- **Agent partition** (`ctx.agentId`, falls back to `"default"`) — private to this agent
-- **Shared partition** (`"agent-family"`) — visible to all agents on the installation
-
-**Ingest** (store/auto-capture): writes to both partitions in parallel (two `addEpisode` calls).
-**Search** (recall/auto-recall): single API call with `group_ids: [agentId, "agent-family"]`. Results are tagged `[own]` or `[family]` so the agent can distinguish its own memories from shared ones.
-
-The `resolveGroupIds(ctx)` function in `src/config.ts` returns `{ agent, shared }` for any context with an optional `agentId`.
+The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID string for any context with an optional `agentId`.
 
 ### Graceful Degradation
 

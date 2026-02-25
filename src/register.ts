@@ -1,6 +1,6 @@
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { SHARED_GROUP_ID } from "./config.js";
+import { resolveGroupId } from "./config.js";
 import {
   createBeforeAgentStartHook,
   createAgentEndHook,
@@ -86,11 +86,12 @@ export function registerCli(
 
       gralkor
         .command("search <query...>")
-        .description("Search the shared knowledge graph")
+        .description("Search the knowledge graph")
         .action(async (query: string[]) => {
           const q = query.join(" ");
           try {
-            const facts = await client.searchFacts(q, [SHARED_GROUP_ID], 10);
+            const groupId = resolveGroupId({});
+            const facts = await client.searchFacts(q, [groupId], 10);
             if (facts.length === 0) {
               console.log("No results found.");
               return;
@@ -107,7 +108,7 @@ export function registerCli(
         .command("clear [group_id]")
         .description("Clear the knowledge graph for a group")
         .action(async (groupId?: string) => {
-          const id = groupId ?? SHARED_GROUP_ID;
+          const id = groupId ?? resolveGroupId({});
           try {
             await client.clearGraph(id);
             console.log(`Cleared graph for group "${id}".`);
