@@ -1,5 +1,5 @@
 {
-  "id": "tool-gralkor",
+  "id": "gralkor",
   "kind": "tool",
   "name": "Gralkor Graph Tools",
   "description": "Knowledge graph tools powered by Graphiti — complements native memory",

@@ -5,21 +5,21 @@
 An OpenClaw plugin that gives AI agents persistent, temporally-aware memory via knowledge graphs.
 Uses Graphiti (knowledge graph framework by Zep) backed by FalkorDB (in-memory graph database).
 
-Gralkor ships **two entry points** in the same package. Only one should be active at a time:
+Gralkor ships **two packages from one repo**. Each is published independently with its own tailored manifest; the source is shared. Only one should be active at a time:
 
 | | Memory mode | Tool mode |
 |---|---|---|
 | Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
-| Plugin ID | `memory-gralkor` | `tool-gralkor` |
+| Plugin ID | `gralkor` | `gralkor` |
 | Kind | `"memory"` | `"tool"` |
 | Tool names | `graph_memory_recall`, `graph_memory_store`, `memory_search`, `memory_get` | `graph_search`, `graph_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
 | Hooks | `before_agent_start`, `agent_end` | Same |
 | CLI | `gralkor`, `memory` | `gralkor` |
 
-**Memory mode** (`memory-gralkor`): Replaces the native memory plugin. The agent gets Graphiti-powered graph tools AND native `memory_search`/`memory_get` for file-based memory (re-registered via `api.runtime.tools`).
+**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin. The agent gets Graphiti-powered graph tools AND native `memory_search`/`memory_get` for file-based memory (re-registered via `api.runtime.tools`).
 
-**Tool mode** (`tool-gralkor`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
+**Tool mode** (`gralkor`, `kind: "tool"`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
 Both modes register the same auto-capture (`agent_end`) and auto-recall (`before_agent_start`) hooks — conversations are automatically stored and relevant facts are automatically injected regardless of which mode is active.
 
@@ -101,9 +101,13 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 ## Architecture
 
 ```
+One repo — two published packages
+  ├── packages/memory/   (@openclaw/memory-gralkor, kind: memory)
+  └── packages/tool/     (@openclaw/tool-gralkor,   kind: tool)
+        shared src/ compiled into each package
+
 OpenClaw Gateway (Node.js)
-  └── gralkor plugin (TypeScript)
-        ├── Entry: memory-gralkor (kind: memory) OR tool-gralkor (kind: tool)
+  └── gralkor plugin (one of the two packages, not both)
         ├── Tools: graph_memory_recall/store + memory_search/get (memory mode)
         │      OR: graph_search/graph_add (tool mode)
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
@@ -177,10 +181,10 @@ curl http://localhost:8001/health
 openclaw plugins install -l .
 
 # For memory mode — set memory slot in openclaw.json:
-#   plugins.slots.memory = "memory-gralkor"
+#   plugins.slots.memory = "gralkor"
 #
 # For tool mode — enable in openclaw.json plugins list:
-#   plugins.enabled = ["tool-gralkor"]
+#   plugins.enabled = ["gralkor"]
 
 # Type-check
 make typecheck
@@ -201,12 +205,14 @@ make setup-server
 ## Building & Deploying
 
 ```bash
-# Build a tarball for deployment
-npm pack
-# produces: openclaw-memory-gralkor-0.1.0.tgz
+# Build tarballs for deployment (one per package)
+npm pack --workspace packages/memory   # produces: openclaw-memory-gralkor-x.y.z.tgz
+npm pack --workspace packages/tool     # produces: openclaw-tool-gralkor-x.y.z.tgz
 
 # Install from tarball on the remote host
-openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz
+openclaw plugins install ~/openclaw-memory-gralkor-x.y.z.tgz   # memory mode
+# OR
+openclaw plugins install ~/openclaw-tool-gralkor-x.y.z.tgz     # tool mode
 ```
 
 The `files` field in `package.json` controls what goes into the tarball: `dist/`, `server/`, `openclaw.plugin.json`, `openclaw.tool-plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`.
@@ -264,7 +270,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ## Gotchas
 
-- Each entry in `package.json` `openclaw.extensions` must use `{ "entry": "...", "manifest": "..." }` object form — if you use plain strings, both extensions inherit the package-level ID from `openclaw.plugin.json` and `tool-gralkor` can never be activated
+- Do not try to ship both entry points in one package. OpenClaw ≤ 2026.2.24 only supports flat string arrays in `openclaw.extensions`, so all entries inherit the same ID and `kind` from the single manifest — tool mode can never be properly activated this way. The solution is two packages from one repo (see architecture below), each with one entry point and one tailored manifest.
 - Graphiti requires an LLM provider API key — without one the container starts but all operations fail
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
