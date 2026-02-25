@@ -114,17 +114,43 @@ describe("register()", () => {
     expect(hookNames).toEqual(["before_agent_start", "agent_end"]);
   });
 
-  it("registers gralkor CLI with status, search, and clear commands", async () => {
+  it("registers gralkor CLI as a Commander registrar function", async () => {
     const { register } = await import("./index.js");
 
     register(api, { graphitiUrl: "http://localhost:8001" });
 
-    const cli = api.registerCli.mock.calls[0][0] as {
-      name: string;
-      commands: Array<{ name: string }>;
+    // First arg is a registrar function, second is opts with command names
+    const [registrar, opts] = api.registerCli.mock.calls[0];
+    expect(typeof registrar).toBe("function");
+    expect(opts).toEqual({ commands: ["gralkor"] });
+
+    // Simulate OpenClaw calling the registrar with a mock Commander program
+    const subcommands: Array<{ name: string; description: string }> = [];
+    const mockSubcommand = {
+      description(desc: string) {
+        subcommands[subcommands.length - 1].description = desc;
+        return this;
+      },
+      action() { return this; },
     };
-    expect(cli.name).toBe("gralkor");
-    const cmdNames = cli.commands.map((c) => c.name);
-    expect(cmdNames).toEqual(["status", "search", "clear"]);
+    const mockGralkorCmd = {
+      command(name: string) {
+        subcommands.push({ name, description: "" });
+        return mockSubcommand;
+      },
+    };
+    const mockProgram = {
+      command(name: string) {
+        expect(name).toBe("gralkor");
+        return {
+          description() { return mockGralkorCmd; },
+        };
+      },
+    };
+
+    registrar({ program: mockProgram });
+
+    const cmdNames = subcommands.map((c) => c.name);
+    expect(cmdNames).toEqual(["status", "search <query...>", "clear [group_id]"]);
   });
 });
