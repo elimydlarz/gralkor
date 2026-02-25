@@ -1,17 +1,34 @@
-# Gralkor — OpenClaw Memory Plugin (Graphiti + FalkorDB)
+# Gralkor — OpenClaw Memory/Tool Plugin (Graphiti + FalkorDB)
 
 ## What is this?
 
-An OpenClaw memory plugin that gives AI agents persistent, temporally-aware memory.
+An OpenClaw plugin that gives AI agents persistent, temporally-aware memory via knowledge graphs.
 Uses Graphiti (knowledge graph framework by Zep) backed by FalkorDB (in-memory graph database).
-Drop-in replacement for `memory-lancedb` in the OpenClaw memory slot.
+
+Gralkor ships **two entry points** in the same package. Only one should be active at a time:
+
+| | Memory mode | Tool mode |
+|---|---|---|
+| Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
+| Plugin ID | `memory-gralkor` | `tool-gralkor` |
+| Kind | `"memory"` | `"tool"` |
+| Tool names | `memory_recall`, `memory_store`, `memory_forget` | `graph_search`, `graph_add` |
+| Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
+| Hooks | `before_agent_start`, `agent_end` | Same |
+| CLI | `gralkor` | `gralkor` |
+
+**Memory mode** (`memory-gralkor`): Replaces the native memory plugin. The agent uses Graphiti as its sole memory backend.
+
+**Tool mode** (`tool-gralkor`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
 ## Architecture
 
 ```
 OpenClaw Gateway (Node.js)
-  └── memory-gralkor plugin (TypeScript)
-        ├── Tools: memory_recall, memory_store, memory_forget
+  └── gralkor plugin (TypeScript)
+        ├── Entry: memory-gralkor (kind: memory) OR tool-gralkor (kind: tool)
+        ├── Tools: memory_recall/store/forget (memory mode)
+        │      OR: graph_search/graph_add (tool mode)
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: health monitor (60s interval)
         └── CLI: gralkor status, gralkor search, gralkor clear
@@ -25,12 +42,15 @@ OpenClaw Gateway (Node.js)
 
 ## File Structure
 
-- `src/index.ts` — Plugin entry point. Default export with `register(api, config)`. Wires up tools, hooks, service, and CLI. Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
+- `src/index.ts` — Memory-mode entry point (`memory-gralkor`, `kind: "memory"`). Registers `memory_recall`, `memory_store`, `memory_forget`. Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
+- `src/tool-entry.ts` — Tool-mode entry point (`tool-gralkor`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
+- `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
-- `src/tools.ts` — Tool factories: `memory_recall`, `memory_store`, `memory_forget`. Each takes `(client, config)` and returns a tool object.
+- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`, `createMemoryForgetTool`. Accept optional `ToolOverrides` to customize name/description (used by tool-entry for `graph_*` names).
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
 - `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, and `resolveGroupIds()`.
-- `openclaw.plugin.json` — Plugin manifest with config schema and UI hints.
+- `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
+- `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
 - `server/main.py` — Graphiti REST API server (FastAPI). Thin wrapper around `graphiti-core`.
 - `server/requirements.txt` — Python runtime dependencies.
@@ -85,8 +105,11 @@ curl http://localhost:8001/health
 # Install plugin locally in OpenClaw (for development)
 openclaw plugins install -l .
 
-# Set memory slot in openclaw.json:
+# For memory mode — set memory slot in openclaw.json:
 #   plugins.slots.memory = "memory-gralkor"
+#
+# For tool mode — enable in openclaw.json plugins list:
+#   plugins.enabled = ["tool-gralkor"]
 
 # Type-check
 make typecheck
@@ -115,7 +138,7 @@ npm pack
 openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz
 ```
 
-The `files` field in `package.json` controls what goes into the tarball: `src/`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`.
+The `files` field in `package.json` controls what goes into the tarball: `dist/`, `server/`, `openclaw.plugin.json`, `openclaw.tool-plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`.
 
 ## Key Commands
 
@@ -164,7 +187,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - TypeScript, ES modules (`"type": "module"`)
 - Target: ES2022, module resolution: bundler
 - All Graphiti communication is HTTP via `src/client.ts` — no direct FalkorDB access
-- Tool names follow the `memory_*` pattern (matches `memory-lancedb` for slot compatibility)
+- Memory-mode tool names follow the `memory_*` pattern (matches `memory-lancedb` for slot compatibility). Tool-mode uses `graph_*` names to coexist with native `memory_*` tools.
 - Config types are plain TypeScript interfaces in `src/config.ts`
 - Imports use `.js` extensions (required for ESM with TypeScript)
 

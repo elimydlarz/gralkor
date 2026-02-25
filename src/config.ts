@@ -1,3 +1,5 @@
+declare const process: { env: Record<string, string | undefined> };
+
 export interface AutoCaptureConfig {
   enabled: boolean;
 }
@@ -21,7 +23,7 @@ export const defaultConfig: GralkorConfig = {
 
 export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   return {
-    graphitiUrl: raw.graphitiUrl ?? defaultConfig.graphitiUrl,
+    graphitiUrl: raw.graphitiUrl ?? process.env.GRAPHITI_URL ?? defaultConfig.graphitiUrl,
     autoCapture: {
       enabled: raw.autoCapture?.enabled ?? defaultConfig.autoCapture.enabled,
     },
