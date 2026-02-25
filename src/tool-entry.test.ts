@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 describe("tool-entry export shape", () => {
   it("exports register as a named function", async () => {
@@ -41,6 +41,7 @@ describe("tool-entry register()", () => {
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
   };
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     api = {
@@ -49,13 +50,18 @@ describe("tool-entry register()", () => {
       registerService: vi.fn(),
       registerCli: vi.fn(),
     };
+    fetchSpy = vi.spyOn(globalThis, "fetch");
   });
 
-  it("registers only CLI when no graphitiUrl configured and no env var", async () => {
-    delete process.env.GRAPHITI_URL;
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("registers only CLI when no graphitiUrl configured and probe fails", async () => {
+    fetchSpy.mockRejectedValue(new Error("unreachable"));
     const { register } = await import("./tool-entry.js");
 
-    register(api);
+    await register(api);
 
     expect(api.registerCli).toHaveBeenCalledOnce();
     expect(api.registerTool).not.toHaveBeenCalled();
@@ -63,10 +69,11 @@ describe("tool-entry register()", () => {
     expect(api.registerService).not.toHaveBeenCalled();
   });
 
-  it("registers full plugin when graphitiUrl is configured", async () => {
+  it("auto-discovers Graphiti and registers full plugin when probe succeeds", async () => {
+    fetchSpy.mockResolvedValue(new Response("", { status: 200 }));
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    await register(api);
 
     expect(api.registerTool).toHaveBeenCalledTimes(2);
     expect(api.registerHook).toHaveBeenCalledTimes(2);
@@ -74,26 +81,22 @@ describe("tool-entry register()", () => {
     expect(api.registerCli).toHaveBeenCalledOnce();
   });
 
-  it("registers full plugin when GRAPHITI_URL env var is set", async () => {
-    process.env.GRAPHITI_URL = "http://localhost:8001";
+  it("registers full plugin when graphitiUrl is configured", async () => {
     const { register } = await import("./tool-entry.js");
 
-    try {
-      register(api);
+    await register(api, { graphitiUrl: "http://localhost:8001" });
 
-      expect(api.registerTool).toHaveBeenCalledTimes(2);
-      expect(api.registerHook).toHaveBeenCalledTimes(2);
-      expect(api.registerService).toHaveBeenCalledOnce();
-      expect(api.registerCli).toHaveBeenCalledOnce();
-    } finally {
-      delete process.env.GRAPHITI_URL;
-    }
+    expect(api.registerTool).toHaveBeenCalledTimes(2);
+    expect(api.registerHook).toHaveBeenCalledTimes(2);
+    expect(api.registerService).toHaveBeenCalledOnce();
+    expect(api.registerCli).toHaveBeenCalledOnce();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("registers graph_search and graph_add tools (not memory_*)", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    await register(api, { graphitiUrl: "http://localhost:8001" });
 
     const toolNames = api.registerTool.mock.calls.map(
       (call: unknown[]) => (call[0] as { name: string }).name,
@@ -104,7 +107,7 @@ describe("tool-entry register()", () => {
   it("registers the two hooks", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    await register(api, { graphitiUrl: "http://localhost:8001" });
 
     const hookNames = api.registerHook.mock.calls.map(
       (call: unknown[]) => (call[0] as { name: string }).name,
@@ -115,7 +118,7 @@ describe("tool-entry register()", () => {
   it("registers gralkor CLI as a Commander registrar function", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    await register(api, { graphitiUrl: "http://localhost:8001" });
 
     const [registrar, opts] = api.registerCli.mock.calls[0];
     expect(typeof registrar).toBe("function");
