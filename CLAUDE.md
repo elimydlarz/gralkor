@@ -23,6 +23,79 @@ Gralkor ships **two entry points** in the same package. Only one should be activ
 
 Both modes register the same auto-capture (`agent_end`) and auto-recall (`before_agent_start`) hooks — conversations are automatically stored and relevant facts are automatically injected regardless of which mode is active.
 
+## Mental Model
+
+### Domain Objects
+
+| Object | TypeScript type | Description |
+|---|---|---|
+| Episode | `Episode` | A captured conversation turn or manual store. Raw text input to the graph. |
+| Fact (edge) | `Fact` | An extracted relationship between two entities. Has temporal validity (`valid_at`, `invalid_at`). |
+| Entity (node) | `EntityNode` | A person, concept, project, or thing extracted from episodes. Has a `summary`. |
+| Group | `string` (group_id) | Partition key. One graph per agent — `ctx.agentId`, falls back to `"default"`. |
+
+### Plugin Registration
+
+Both entry points follow the same sequence in their `register()` function:
+
+1. `resolveConfig()` merges plugin config → `GRAPHITI_URL` env var → defaults.
+2. If an explicit URL is found (config or env): create client, call `registerFullPlugin()` (tools + hooks + health service + CLI).
+3. If no explicit URL: `probeGraphitiUrl()` tries `graphiti:8000`, `localhost:8001`, `localhost:8000` in parallel (2s timeout). First responder wins.
+4. If probe succeeds: `registerFullPlugin()` with discovered URL.
+5. If probe fails: register **CLI only** (`registerCli`) — no tools, no hooks.
+
+Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
+
+### Data Lifecycle
+
+**Auto-capture** (`agent_end` hook):
+1. Skip if disabled, both messages <10 chars, or user message starts with `/`.
+2. Format as `User: ...\nAssistant: ...`.
+3. POST to `/episodes` with timestamp and agent's `group_id`.
+4. Graphiti server-side extracts entities and facts from the episode.
+5. On failure: swallow silently.
+
+**Auto-recall** (`before_agent_start` hook):
+1. Skip if disabled or no user message.
+2. Extract up to 8 key terms (stop-word filtered) from user message.
+3. POST to `/search` with terms and `group_id`.
+4. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
+5. Return as injected context. On failure: return nothing.
+
+### Communication Path
+
+All plugin → Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The client never touches FalkorDB directly. The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection.
+
+## Requirements
+
+### Functional
+
+| Requirement | Implementation |
+|---|---|
+| Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
+| Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode |
+| Automatic context recall | `before_agent_start` hook injects relevant facts before each turn |
+| Manual search | `memory_recall` / `graph_search` queries facts and entity nodes in parallel |
+| Manual store | `memory_store` / `graph_add` creates episodes; Graphiti extracts structure |
+| Manual forget | `memory_forget` deletes episodes or edges by UUID |
+| Per-agent graph partitioning | `group_id` derived from `ctx.agentId` isolates each agent's knowledge |
+| CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` work even in CLI-only mode |
+| Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
+| Dual operating modes | Memory mode (replaces native memory) or tool mode (coexists with it) |
+
+### Cross-functional
+
+| Requirement | Implementation |
+|---|---|
+| Graceful degradation (unconfigured) | No explicit URL + probe fails → CLI-only mode, no errors, no broken tools |
+| Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
+| Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
+| Slot compatibility | Memory-mode tool names (`memory_*`) match `memory-lancedb` for drop-in slot replacement |
+| Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
+| Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
+| Auto-probe discovery | On startup, probes `graphiti:8000`, `localhost:8001`, `localhost:8000` in parallel; uses first responder |
+| Message filtering | Auto-capture skips messages <10 chars and messages starting with `/` |
+
 ## Architecture
 
 ```
