@@ -1,5 +1,45 @@
 .PHONY: test test-plugin test-server typecheck pack up down logs setup-server \
-        version/major version/minor version/patch
+        version-major version-minor version-patch help
+
+SYNC_RESOURCES = node -e " \
+  const fs = require('fs'); \
+  const v = require('./package.json').version; \
+  ['resources/memory/package.json', 'resources/tool/package.json'].forEach(f => { \
+    const p = JSON.parse(fs.readFileSync(f)); \
+    p.version = v; \
+    fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n'); \
+  });"
+
+TAG_VERSION = \
+  V=$$(node -p "require('./package.json').version"); \
+  git add package.json resources/memory/package.json resources/tool/package.json; \
+  git commit -m "$$V"; \
+  git tag "v$$V"
+
+help:
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Testing"
+	@echo "  test            Run all tests (plugin + server)"
+	@echo "  test-plugin     TypeScript tests only (vitest)"
+	@echo "  test-server     Python server tests only (no Docker needed)"
+	@echo "  typecheck       TypeScript type-check"
+	@echo ""
+	@echo "Build"
+	@echo "  pack            Build both deployment tarballs (memory + tool)"
+	@echo ""
+	@echo "Versioning"
+	@echo "  version-patch   Bump patch version (x.y.Z)"
+	@echo "  version-minor   Bump minor version (x.Y.z)"
+	@echo "  version-major   Bump major version (X.y.z)"
+	@echo ""
+	@echo "Docker"
+	@echo "  up              Start FalkorDB + Graphiti services"
+	@echo "  down            Stop services"
+	@echo "  logs            Tail Graphiti logs"
+	@echo ""
+	@echo "Setup"
+	@echo "  setup-server    Create server venv and install Python deps (first time only)"
 
 test: test-plugin test-server
 
@@ -18,16 +58,20 @@ setup-server:
 pack:
 	bash scripts/pack.sh
 
-version/%:
-	npm version $* --no-git-tag-version
-	node -e " \
-	  const fs = require('fs'); \
-	  const v = require('./package.json').version; \
-	  ['resources/memory/package.json', 'resources/tool/package.json'].forEach(f => { \
-	    const p = JSON.parse(fs.readFileSync(f)); \
-	    p.version = v; \
-	    fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n'); \
-	  });"
+version-major:
+	pnpm version major --no-git-tag-version
+	$(SYNC_RESOURCES)
+	$(TAG_VERSION)
+
+version-minor:
+	pnpm version minor --no-git-tag-version
+	$(SYNC_RESOURCES)
+	$(TAG_VERSION)
+
+version-patch:
+	pnpm version patch --no-git-tag-version
+	$(SYNC_RESOURCES)
+	$(TAG_VERSION)
 
 up:
 	docker compose up -d
