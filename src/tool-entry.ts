@@ -12,18 +12,20 @@ import {
 
 interface PluginApi {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerTool(tool: {
-    name: string;
-    description: string;
-    parameters: unknown;
-    execute: (args: any, ctx: any) => Promise<any>;
-  }): void;
+  registerTool(
+    tool: { name: string; description: string; parameters: unknown; execute: (...args: any[]) => Promise<any> },
+    opts?: { optional?: boolean },
+  ): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
+  registerHook(
+    event: string,
+    handler: (ctx: any) => Promise<any>,
+    metadata: { name: string; description?: string },
+  ): void;
   registerService(service: {
-    name: string;
-    interval: number;
-    execute: () => Promise<void>;
+    id: string;
+    start: () => void;
+    stop: () => void;
   }): void;
   registerCli(
     registrar: (ctx: {
