@@ -1,6 +1,6 @@
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId } from "./config.js";
+import { resolveGroupId, GRAPHITI_URL } from "./config.js";
 import {
   createBeforeAgentStartHook,
   createAgentEndHook,
@@ -74,11 +74,11 @@ export function registerCli(
           try {
             const result = await client.health();
             console.log(
-              `Graphiti is ${result.status ?? "reachable"} at ${config.graphitiUrl}`,
+              `Graphiti is ${result.status ?? "reachable"} at ${GRAPHITI_URL}`,
             );
           } catch (err) {
             console.log(
-              `Graphiti is unreachable at ${config.graphitiUrl}: ${err instanceof Error ? err.message : err}`,
+              `Graphiti is unreachable at ${GRAPHITI_URL}: ${err instanceof Error ? err.message : err}`,
             );
           }
         });

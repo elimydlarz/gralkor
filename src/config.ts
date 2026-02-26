@@ -7,21 +7,20 @@ export interface AutoRecallConfig {
   maxResults: number;
 }
 
+export const GRAPHITI_URL = "http://graphiti:8001";
+
 export interface GralkorConfig {
-  graphitiUrl: string;
   autoCapture: AutoCaptureConfig;
   autoRecall: AutoRecallConfig;
 }
 
 export const defaultConfig: GralkorConfig = {
-  graphitiUrl: "http://graphiti:8001",
   autoCapture: { enabled: true },
   autoRecall: { enabled: true, maxResults: 5 },
 };
 
 export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   return {
-    graphitiUrl: raw.graphitiUrl ?? defaultConfig.graphitiUrl,
     autoCapture: {
       enabled: raw.autoCapture?.enabled ?? defaultConfig.autoCapture.enabled,
     },

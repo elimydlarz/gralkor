@@ -38,7 +38,7 @@ Both modes register the same auto-capture (`agent_end`) and auto-recall (`before
 
 Both entry points follow the same sequence in their synchronous `register()` function:
 
-1. `resolveConfig()` merges plugin config with defaults (default URL: `http://graphiti:8001` — the Docker service name).
+1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://graphiti:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
 3. Call `registerFullPlugin()` (tools + hooks + health service + CLI).
 
@@ -87,7 +87,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Graceful degradation (unconfigured) | Default URL is `http://graphiti:8001` (Docker service name); always registers full plugin |
+| Graceful degradation (unconfigured) | Graphiti URL is hardcoded to `http://graphiti:8001`; always registers full plugin |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix to distinguish from native file tools; `memory_search`/`memory_get` match memory-core exactly |
@@ -131,7 +131,7 @@ OpenClaw Gateway (Node.js)
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
 - `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names).
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
-- `src/config.ts` — `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
+- `src/config.ts` — `GRAPHITI_URL` constant, `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
 - `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
 - `docker-compose.yml` — FalkorDB + Graphiti backend services.
@@ -144,7 +144,6 @@ OpenClaw Gateway (Node.js)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `graphitiUrl` | string | `http://graphiti:8001` | Graphiti REST API URL (Docker service name) |
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
@@ -157,7 +156,7 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 
 ### Graceful Degradation
 
-- The plugin always registers the full set of tools, hooks, and services using the default URL (`http://graphiti:8001`) if none is configured.
+- The Graphiti URL (`http://graphiti:8001`) is a hardcoded constant, not user-configurable. The plugin always registers the full set of tools, hooks, and services.
 - If Graphiti is **unreachable at runtime**, hooks silently skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
 
 ## Environment Variables
