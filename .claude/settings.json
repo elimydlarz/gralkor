@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "INPUT=$(cat); if printf '%s' \"$INPUT\" | jq -e '.stop_hook_active' 2>/dev/null | grep -q true; then exit 0; fi; echo 'Before ending, check three things: (1) Does the Mental Model section of CLAUDE.md need updating? (how the system works — key concepts, domain objects, architecture, relationships, lifecycle) (2) Does the rest of CLAUDE.md need updating? (how to work in this system — procedures, rules, conventions) (3) Do the Requirements in CLAUDE.md need updating? (functional and cross-functional requirements that document what the system does and how it behaves). Update whichever need it. If none, reply only with 0.' >&2; exit 2"
+            "command": "INPUT=$(cat); if printf '%s' \"$INPUT\" | jq -e '.stop_hook_active' 2>/dev/null | grep -q true; then exit 0; fi; echo 'Check: (1) Does ## Requirements in CLAUDE.md need updating or creating? (functional and cross-functional requirements that document what the system does and how it behaves) (2) Does ## Mental Model in CLAUDE.md need updating or creating? (how the system works — key concepts, domain objects, architecture, relationships, lifecycle) (3) Does the rest of CLAUDE.md need updating? (how to work in this system — procedures, rules, conventions). Update whichever need it. If none, reply only with 0.' >&2; exit 2"
           }
         ]
       }
