@@ -12,12 +12,12 @@ Gralkor ships **two packages from one repo**. Each is published independently wi
 | Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
 | Plugin ID | `gralkor` | `gralkor` |
 | Kind | `"memory"` | `"tool"` |
-| Tool names | `graph_memory_recall`, `graph_memory_store` | `graph_search`, `graph_add` |
+| Tool names | `graph_search`, `graph_add` | `graph_search`, `graph_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
 | Hooks | `before_agent_start`, `agent_end` | Same |
 | CLI | `gralkor` | `gralkor` |
 
-**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin. The agent gets Graphiti-powered `graph_memory_recall` and `graph_memory_store` tools for knowledge graph access.
+**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin. The agent gets Graphiti-powered `graph_search` and `graph_add` tools for knowledge graph access.
 
 **Tool mode** (`gralkor`, `kind: "tool"`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
@@ -42,7 +42,7 @@ Both entry points follow the same sequence in their synchronous `register()` fun
 2. Create a `GraphitiClient` with the resolved URL.
 3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI.
 
-Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
+Both entry points reuse the same tool factories and the same shared helpers from `src/register.ts`.
 
 ### OpenClaw Plugin API Contract
 
@@ -83,12 +83,12 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
 | Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode |
 | Automatic context recall | `before_agent_start` hook injects relevant facts before each turn |
-| Manual search | `graph_memory_recall` (memory mode) / `graph_search` (tool mode) queries facts and entity nodes in parallel |
-| Manual store | `graph_memory_store` (memory mode) / `graph_add` (tool mode) creates episodes; Graphiti extracts structure |
+| Manual search | `graph_search` queries facts and entity nodes in parallel |
+| Manual store | `graph_add` creates episodes; Graphiti extracts structure |
 | Per-agent graph partitioning | `group_id` derived from `agentId` isolates each agent's knowledge; hooks capture it from `ctx`, tools read it via shared closure |
 | CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` available for troubleshooting |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
-| Graph-based memory tools | `graph_memory_recall` and `graph_memory_store` provide knowledge graph access in memory mode |
+| Graph-based memory tools | `graph_search` and `graph_add` provide knowledge graph access |
 | Dual operating modes | Memory mode (replaces native memory) or tool mode (coexists with it) |
 
 ### Cross-functional
@@ -98,7 +98,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Graceful degradation (unconfigured) | Graphiti URL is hardcoded to `http://graphiti:8001`; always registers full plugin |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
-| Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix; tool-mode uses `graph_*` prefix to coexist with native `memory_*` tools |
+| Slot compatibility | Both modes use `graph_search`/`graph_add` names — no collision with native `memory_*` tools |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
 | Message filtering | Auto-capture skips messages <10 chars and messages starting with `/` |
@@ -113,8 +113,7 @@ One repo — two published packages (produced by scripts/pack.sh)
 
 OpenClaw Gateway (Node.js)
   └── gralkor plugin (one of the two packages, not both)
-        ├── Tools: graph_memory_recall/store (memory mode)
-        │      OR: graph_search/graph_add (tool mode)
+        ├── Tools: graph_search, graph_add
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: health monitor (60s interval)
         └── CLI: gralkor status, gralkor search, gralkor clear
@@ -128,8 +127,8 @@ OpenClaw Gateway (Node.js)
 
 ## File Structure
 
-- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_memory_recall` and `graph_memory_store` (graph tools via `ToolOverrides`).
-- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Always registers `graph_search`, `graph_add`.
+- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_search` and `graph_add`.
+- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Registers `graph_search` and `graph_add`.
 - `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/gralkor`, single extension `./dist/index.js`).
 - `resources/memory/openclaw.plugin.json` — Memory-mode manifest (`kind: "memory"`). Canonical source of truth for the active `openclaw.plugin.json`.
 - `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/gralkor`, single extension `./dist/tool-entry.js`).
@@ -137,7 +136,7 @@ OpenClaw Gateway (Node.js)
 - `scripts/pack.sh` — Build script. Builds once, then loops over `resources/{memory,tool}/`, copies the two files, runs `npm pack` each time, restores to memory state.
 - `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
-- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names) and an optional `getGroupId` closure for agent partitioning. Execute signature matches OpenClaw convention: `(toolCallId, params)`.
+- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Default names are `graph_search` and `graph_add`. Accept optional `ToolOverrides` and an optional `getGroupId` closure for agent partitioning. Execute signature matches OpenClaw convention: `(toolCallId, params)`.
 - `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable. `before_agent_start` accepts an optional `setGroupId` callback to share the agent's group ID with tools.
 - `src/config.ts` — `GRAPHITI_URL` constant, `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
@@ -280,7 +279,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - TypeScript, ES modules (`"type": "module"`)
 - Target: ES2022, module resolution: bundler
 - All Graphiti communication is HTTP via `src/client.ts` — no direct FalkorDB access
-- Memory-mode graph tools use `graph_memory_*` names (via `ToolOverrides`). Tool-mode uses `graph_*` names to coexist with native `memory_*` tools.
+- Both modes use the same tool names: `graph_search` and `graph_add`.
 - Config types are plain TypeScript interfaces in `src/config.ts`
 - Imports use `.js` extensions (required for ESM with TypeScript)
 

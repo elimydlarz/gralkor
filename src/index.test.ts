@@ -20,7 +20,7 @@ describe("plugin export shape", () => {
 
   it("exports tools list", async () => {
     const mod = await import("./index.js");
-    expect(mod.tools).toEqual(["graph_memory_recall", "graph_memory_store"]);
+    expect(mod.tools).toEqual(["graph_search", "graph_add"]);
   });
 
   it("default export has register as a function (OpenClaw CLI loader)", async () => {
@@ -77,7 +77,7 @@ describe("register()", () => {
     const toolNames = api.registerTool.mock.calls.map(
       (call: unknown[]) => (call[0] as { name: string }).name,
     );
-    expect(toolNames).toEqual(["graph_memory_recall", "graph_memory_store"]);
+    expect(toolNames).toEqual(["graph_search", "graph_add"]);
   });
 
   it("registers the two hooks with metadata", async () => {

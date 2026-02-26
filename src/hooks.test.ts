@@ -48,7 +48,7 @@ describe("before_agent_start hook", () => {
     expect(typeof hook.execute).toBe("function");
   });
 
-  it("returns context with matching facts", async () => {
+  it("returns context with matching facts and graph label", async () => {
     client.searchFacts.mockResolvedValue([
       makeFact({ group_id: "agent-42", fact: "Project uses microservices" }),
     ]);
@@ -60,6 +60,7 @@ describe("before_agent_start hook", () => {
     expect(result!.context).toContain("Project uses microservices");
     expect(result!.context).toContain("gralkor-memory");
     expect(result!.context).toContain('trust="untrusted"');
+    expect(result!.context).toContain("Relevant facts from knowledge graph:");
   });
 
   it("skips when autoRecall is disabled", async () => {

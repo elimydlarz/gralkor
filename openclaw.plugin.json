@@ -34,8 +34,8 @@
     }
   },
   "tools": [
-    "graph_memory_recall",
-    "graph_memory_store"
+    "graph_search",
+    "graph_add"
   ],
   "uiHints": {
     "autoCapture.enabled": {
