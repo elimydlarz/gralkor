@@ -38,9 +38,9 @@ Both modes register the same auto-capture (`agent_end`) and auto-recall (`before
 
 Both entry points follow the same sequence in their synchronous `register()` function:
 
-1. `resolveConfig()` merges plugin config → `GRAPHITI_URL` env var → defaults.
-2. If `graphitiUrl` is explicitly provided in config: create client, call `registerFullPlugin()` (tools + hooks + health service + CLI).
-3. If no explicit URL: register **CLI only** (`registerCli`) — no tools, no hooks. (OpenClaw ignores async `register()` returns, so runtime probing is not possible.)
+1. `resolveConfig()` merges plugin config with defaults (default URL: `http://graphiti:8000` — the Docker service name).
+2. Create a `GraphitiClient` with the resolved URL.
+3. Call `registerFullPlugin()` (tools + hooks + health service + CLI).
 
 Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
 
@@ -78,7 +78,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Manual search | `graph_memory_recall` (memory mode) / `graph_search` (tool mode) queries facts and entity nodes in parallel |
 | Manual store | `graph_memory_store` (memory mode) / `graph_add` (tool mode) creates episodes; Graphiti extracts structure |
 | Per-agent graph partitioning | `group_id` derived from `ctx.agentId` isolates each agent's knowledge |
-| CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` work even in CLI-only mode |
+| CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` available for troubleshooting |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
 | Native memory file access in memory mode | `memory_search` and `memory_get` re-registered via `api.runtime.tools`; `graph_memory_recall/store` prefix makes graph vs. file tools unambiguous |
 | Dual operating modes | Memory mode (replaces native memory) or tool mode (coexists with it) |
@@ -87,7 +87,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Graceful degradation (unconfigured) | No explicit URL → CLI-only mode, no errors, no broken tools |
+| Graceful degradation (unconfigured) | Default URL is `http://graphiti:8000` (Docker service name); always registers full plugin |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix to distinguish from native file tools; `memory_search`/`memory_get` match memory-core exactly |
@@ -120,8 +120,8 @@ OpenClaw Gateway (Node.js)
 
 ## File Structure
 
-- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`). Falls back to CLI-only mode if no `graphitiUrl` is explicitly configured.
-- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Registers `graph_search`, `graph_add`. Same fallback behavior.
+- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Always registers `graph_memory_recall`, `graph_memory_store` (graph tools via `ToolOverrides`) and `memory_search`, `memory_get` (native file-based tools via `api.runtime.tools`).
+- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Always registers `graph_search`, `graph_add`.
 - `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/gralkor`, single extension `./dist/index.js`).
 - `resources/memory/openclaw.plugin.json` — Memory-mode manifest (`kind: "memory"`). Canonical source of truth for the active `openclaw.plugin.json`.
 - `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/gralkor`, single extension `./dist/tool-entry.js`).
@@ -144,7 +144,7 @@ OpenClaw Gateway (Node.js)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `graphitiUrl` | string | `http://localhost:8000` | Graphiti REST API URL |
+| `graphitiUrl` | string | `http://graphiti:8000` | Graphiti REST API URL (Docker service name) |
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
@@ -157,8 +157,8 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 
 ### Graceful Degradation
 
-- If `graphitiUrl` is **not explicitly configured** (no config value, no `GRAPHITI_URL` env var), only the CLI is registered — no tools or hooks. This lets users run `gralkor status` to diagnose setup.
-- If Graphiti is configured but **unreachable at runtime**, hooks silently skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
+- The plugin always registers the full set of tools, hooks, and services using the default URL (`http://graphiti:8000`) if none is configured.
+- If Graphiti is **unreachable at runtime**, hooks silently skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
 
 ## Environment Variables
 
@@ -166,8 +166,6 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 - `ANTHROPIC_API_KEY` — API key for Anthropic (still needs `OPENAI_API_KEY` for embeddings).
 - `GOOGLE_API_KEY` — API key for Gemini (fully self-contained: LLM + embeddings + reranking).
 - `GROQ_API_KEY` — API key for Groq (still needs `OPENAI_API_KEY` for embeddings).
-- `GRAPHITI_URL` — Optional. Checked by the plugin as a fallback if `graphitiUrl` isn't in the plugin config.
-
 LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provider`). See `.env.example` for details.
 
 ## Dev Workflow

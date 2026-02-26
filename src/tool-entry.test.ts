@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 describe("tool-entry export shape", () => {
   it("exports register as a named function", async () => {
@@ -41,8 +41,6 @@ describe("tool-entry register()", () => {
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
   };
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
     api = {
       registerTool: vi.fn(),
@@ -50,25 +48,20 @@ describe("tool-entry register()", () => {
       registerService: vi.fn(),
       registerCli: vi.fn(),
     };
-    fetchSpy = vi.spyOn(globalThis, "fetch");
   });
 
-  afterEach(() => {
-    fetchSpy.mockRestore();
-  });
-
-  it("registers only CLI when no graphitiUrl configured", async () => {
+  it("registers full plugin with default URL when no graphitiUrl configured", async () => {
     const { register } = await import("./tool-entry.js");
 
     register(api);
 
+    expect(api.registerTool).toHaveBeenCalledTimes(2);
+    expect(api.registerHook).toHaveBeenCalledTimes(2);
+    expect(api.registerService).toHaveBeenCalledOnce();
     expect(api.registerCli).toHaveBeenCalledOnce();
-    expect(api.registerTool).not.toHaveBeenCalled();
-    expect(api.registerHook).not.toHaveBeenCalled();
-    expect(api.registerService).not.toHaveBeenCalled();
   });
 
-  it("registers full plugin when graphitiUrl is configured", async () => {
+  it("registers full plugin with explicit graphitiUrl", async () => {
     const { register } = await import("./tool-entry.js");
 
     register(api, { graphitiUrl: "http://localhost:8001" });
@@ -77,7 +70,6 @@ describe("tool-entry register()", () => {
     expect(api.registerHook).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
     expect(api.registerCli).toHaveBeenCalledOnce();
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("registers graph_search and graph_add tools (not memory_*)", async () => {
