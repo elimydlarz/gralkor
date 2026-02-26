@@ -38,6 +38,10 @@
       }
     }
   },
+  "tools": [
+    "graph_search",
+    "graph_add"
+  ],
   "uiHints": {
     "graphitiUrl": {
       "label": "Graphiti API URL",
