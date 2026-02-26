@@ -10,23 +10,24 @@ When an agent converses with a user, Gralkor automatically extracts entities and
 
 Gralkor can run in two modes. Choose one — they should not be active at the same time.
 
-### Memory mode (`memory-gralkor`)
+### Memory mode
 
-Replaces the native memory plugin entirely. Gralkor becomes the agent's sole memory backend.
+Replaces the native memory plugin entirely. Gralkor takes the memory slot.
 
-- Tools: `memory_recall`, `memory_store`, `memory_forget`
+- Graph tools: `graph_memory_recall`, `graph_memory_store`
+- Native file tools (re-registered): `memory_search`, `memory_get`
 - Hooks: auto-capture (stores conversations after each exchange), auto-recall (injects relevant facts before the agent responds)
-- Set up: `plugins.slots.memory = "memory-gralkor"` in `openclaw.json`
+- Set up: `plugins.slots.memory = "gralkor"` in `openclaw.json`
 
-Use this if you want Graphiti to handle all memory and don't need the native Markdown-based memory.
+Use this if you want Graphiti to handle all memory. Native file-based memory tools are still available alongside the graph tools.
 
-### Tool mode (`tool-gralkor`)
+### Tool mode
 
 Runs alongside the native `memory-core` plugin. The agent keeps its native `memory_search`/`memory_get` tools for Markdown files AND gets Graphiti-powered tools for structured knowledge retrieval.
 
 - Tools: `graph_search`, `graph_add`
 - Hooks: same auto-capture and auto-recall as memory mode
-- Set up: add `"tool-gralkor"` to `plugins.enabled` in `openclaw.json`
+- Set up: add `"gralkor"` to `plugins.enabled` in `openclaw.json`
 
 Use this if you want the best of both worlds — Markdown notes plus a knowledge graph.
 
@@ -44,8 +45,9 @@ Both modes register the same hooks, so conversations are automatically captured 
 #### Build the tarball (on your local machine)
 
 ```bash
-npm pack
-# produces: openclaw-memory-gralkor-0.1.0.tgz
+make pack
+# produces: openclaw-gralkor-memory-<version>.tgz  (memory mode)
+#           openclaw-gralkor-tool-<version>.tgz    (tool mode)
 ```
 
 #### Deploy to your agent's server
@@ -53,7 +55,7 @@ npm pack
 Copy the tarball to your agent's host (e.g. via scp, CI artifact, or include it in your deployment):
 
 ```bash
-scp openclaw-memory-gralkor-0.1.0.tgz user@your-hetzner-host:~/
+scp openclaw-gralkor-memory-*.tgz user@your-hetzner-host:~/
 ```
 
 #### Tell your agent to install it
@@ -61,21 +63,21 @@ scp openclaw-memory-gralkor-0.1.0.tgz user@your-hetzner-host:~/
 Ask your OpenClaw agent:
 
 ```
-Install the Gralkor memory plugin from ~/openclaw-memory-gralkor-0.1.0.tgz
+Install the Gralkor memory plugin from ~/openclaw-gralkor-memory-<version>.tgz
 ```
 
-The agent will run `openclaw plugins install ~/openclaw-memory-gralkor-0.1.0.tgz`.
+The agent will run `openclaw plugins install ~/openclaw-gralkor-memory-<version>.tgz`.
 
 Then choose your mode in `openclaw.json`:
 
 **Memory mode** (replaces native memory):
 ```json
-{ "plugins": { "slots": { "memory": "memory-gralkor" } } }
+{ "plugins": { "slots": { "memory": "gralkor" } } }
 ```
 
 **Tool mode** (alongside native memory):
 ```json
-{ "plugins": { "enabled": ["tool-gralkor"] } }
+{ "plugins": { "enabled": ["gralkor"] } }
 ```
 
 ### 3. Set up environment
@@ -106,12 +108,12 @@ docker compose up -d
 
 This starts:
 - **FalkorDB** on port 6379 (Redis protocol) with a browser UI at [localhost:3000](http://localhost:3000)
-- **Graphiti REST API** on port 8000
+- **Graphiti REST API** on port 8001 (mapped from container port 8000)
 
 Verify it's running:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 ### 5. Start chatting
@@ -124,15 +126,16 @@ Send messages to your agent as usual. Gralkor works in the background:
 
 Agents (and users) can interact with the knowledge graph explicitly. Which tools are available depends on the mode.
 
-Since conversations are **automatically captured** by hooks, agents don't need to store what was said. The explicit store tools (`memory_store` / `graph_add`) are for higher-level content: insights, reflections, decisions, and connections the agent wants to preserve beyond the raw conversation.
+Since conversations are **automatically captured** by hooks, agents don't need to store what was said. The explicit store tools (`graph_memory_store` / `graph_add`) are for higher-level content: insights, reflections, decisions, and connections the agent wants to preserve beyond the raw conversation.
 
 ### Memory mode tools
 
 | Tool | Description |
 |---|---|
-| `memory_recall` | Search the knowledge graph for deeper queries, older context, or specific entity lookups (recent context is auto-injected) |
-| `memory_store` | Store a thought, insight, reflection, or decision — not conversation content (that's auto-captured) |
-| `memory_forget` | Remove information by UUID, or search for items to delete |
+| `graph_memory_recall` | Search the knowledge graph for deeper queries, older context, or specific entity lookups (recent context is auto-injected) |
+| `graph_memory_store` | Store a thought, insight, reflection, or decision — not conversation content (that's auto-captured) |
+| `memory_search` | Search native file-based memory (re-registered from `memory-core`) |
+| `memory_get` | Get a specific memory file by path (re-registered from `memory-core`) |
 
 ### Tool mode tools
 
@@ -157,7 +160,7 @@ Configure in your OpenClaw plugin settings:
 
 | Setting | Default | Description |
 |---|---|---|
-| `graphitiUrl` | `http://localhost:8000` | Graphiti API endpoint |
+| `graphitiUrl` | `http://graphiti:8000` | Graphiti API endpoint (Docker service name; host access on port 8001) |
 | `autoCapture.enabled` | `true` | Automatically store conversations |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context |
 | `autoRecall.maxResults` | `5` | How many facts to inject per turn |
