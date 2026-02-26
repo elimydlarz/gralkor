@@ -1,5 +1,5 @@
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, type GralkorConfig } from "./config.js";
+import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
@@ -75,7 +75,6 @@ export const kind = "tool" as const;
 export const configSchema = {
   type: "object" as const,
   properties: {
-    graphitiUrl: { type: "string" as const, default: "http://graphiti:8001" },
     autoCapture: {
       type: "object" as const,
       properties: {
@@ -94,7 +93,7 @@ export const configSchema = {
 
 export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
-  const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
+  const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config);
 }
 

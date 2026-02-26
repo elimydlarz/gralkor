@@ -50,7 +50,7 @@ describe("tool-entry register()", () => {
     };
   });
 
-  it("registers full plugin with default URL when no graphitiUrl configured", async () => {
+  it("registers full plugin", async () => {
     const { register } = await import("./tool-entry.js");
 
     register(api);
@@ -61,21 +61,10 @@ describe("tool-entry register()", () => {
     expect(api.registerCli).toHaveBeenCalledOnce();
   });
 
-  it("registers full plugin with explicit graphitiUrl", async () => {
-    const { register } = await import("./tool-entry.js");
-
-    register(api, { graphitiUrl: "http://localhost:8001" });
-
-    expect(api.registerTool).toHaveBeenCalledTimes(2);
-    expect(api.registerHook).toHaveBeenCalledTimes(2);
-    expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledOnce();
-  });
-
   it("registers graph_search and graph_add tools (not memory_*)", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api);
 
     const toolNames = api.registerTool.mock.calls.map(
       (call: unknown[]) => (call[0] as { name: string }).name,
@@ -86,7 +75,7 @@ describe("tool-entry register()", () => {
   it("registers the two hooks", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api);
 
     const hookNames = api.registerHook.mock.calls.map(
       (call: unknown[]) => call[0] as string,
@@ -97,7 +86,7 @@ describe("tool-entry register()", () => {
   it("registers gralkor CLI as a Commander registrar function", async () => {
     const { register } = await import("./tool-entry.js");
 
-    register(api, { graphitiUrl: "http://localhost:8001" });
+    register(api);
 
     const [registrar, opts] = api.registerCli.mock.calls[0];
     expect(typeof registrar).toBe("function");

@@ -3,6 +3,7 @@ import {
   resolveConfig,
   resolveGroupId,
   defaultConfig,
+  GRAPHITI_URL,
 } from "./config.js";
 
 describe("resolveConfig()", () => {
@@ -16,11 +17,8 @@ describe("resolveConfig()", () => {
     expect(config).toEqual(defaultConfig);
   });
 
-  it("overrides graphitiUrl", () => {
-    const config = resolveConfig({ graphitiUrl: "http://custom:9000" });
-    expect(config.graphitiUrl).toBe("http://custom:9000");
-    expect(config.autoCapture).toEqual(defaultConfig.autoCapture);
-    expect(config.autoRecall).toEqual(defaultConfig.autoRecall);
+  it("exports GRAPHITI_URL constant", () => {
+    expect(GRAPHITI_URL).toBe("http://graphiti:8001");
   });
 
   it("overrides autoCapture.enabled", () => {

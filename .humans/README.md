@@ -160,7 +160,6 @@ Configure in your OpenClaw plugin settings:
 
 | Setting | Default | Description |
 |---|---|---|
-| `graphitiUrl` | `http://graphiti:8001` | Graphiti API endpoint (Docker service name) |
 | `autoCapture.enabled` | `true` | Automatically store conversations |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context |
 | `autoRecall.maxResults` | `5` | How many facts to inject per turn |
