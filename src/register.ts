@@ -33,8 +33,9 @@ export function registerHooks(
   api: PluginApi,
   client: GraphitiClient,
   config: GralkorConfig,
+  setGroupId?: (id: string) => void,
 ) {
-  const beforeHook = createBeforeAgentStartHook(client, config);
+  const beforeHook = createBeforeAgentStartHook(client, config, setGroupId);
   const agentEndHook = createAgentEndHook(client, config);
   api.registerHook(beforeHook.name, beforeHook.execute, {
     name: "gralkor.auto-recall",

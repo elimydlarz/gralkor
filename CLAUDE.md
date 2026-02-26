@@ -32,7 +32,7 @@ Both modes register the same auto-capture (`agent_end`) and auto-recall (`before
 | Episode | `Episode` | A captured conversation turn or manual store. Raw text input to the graph. |
 | Fact (edge) | `Fact` | An extracted relationship between two entities. Has temporal validity (`valid_at`, `invalid_at`). |
 | Entity (node) | `EntityNode` | A person, concept, project, or thing extracted from episodes. Has a `summary`. |
-| Group | `string` (group_id) | Partition key. One graph per agent — `ctx.agentId`, falls back to `"default"`. |
+| Group | `string` (group_id) | Partition key. One graph per agent — derived from `agentId`, falls back to `"default"`. Hooks get it from `ctx`; tools read it via shared `getGroupId` closure. |
 
 ### Plugin Registration
 
@@ -40,7 +40,7 @@ Both entry points follow the same sequence in their synchronous `register()` fun
 
 1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://graphiti:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
-3. Call `registerFullPlugin()` (tools + hooks + health service + CLI).
+3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI.
 
 Both entry points reuse the same tool factories (with `ToolOverrides` for name/description) and the same shared helpers from `src/register.ts`.
 
@@ -48,8 +48,8 @@ Both entry points reuse the same tool factories (with `ToolOverrides` for name/d
 
 The plugin API methods must match these signatures exactly — the gateway validates arguments at registration time:
 
-- **`registerTool(tool, opts?)`** — `tool` must be a plain object `{ name, description, parameters, execute }`. Factory functions are not supported; passing a function causes a crash (the gateway reads `tool.description.trim()`).
-- **`registerHook(event, handler, metadata)`** — Three arguments required. `metadata` must include `{ name: string }` (e.g. `"gralkor.auto-recall"`). The gateway does `metadata.name.trim()` — omitting the third arg crashes registration.
+- **`registerTool(tool, opts?)`** — `tool` must be a plain object `{ name, description, parameters, execute }`. Factory functions are not supported; passing a function causes a crash (the gateway reads `tool.description.trim()`). The gateway calls `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. Tools do not receive agent context; see "Graph Partitioning" for how tools resolve `group_id`.
+- **`registerHook(event, handler, metadata)`** — Three arguments required. `metadata` must include `{ name: string }` (e.g. `"gralkor.auto-recall"`). The gateway does `metadata.name.trim()` — omitting the third arg crashes registration. Hook handlers receive a single `ctx` object with `{ agentId?, userMessage?, agentResponse? }`.
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
@@ -63,11 +63,12 @@ The plugin API methods must match these signatures exactly — the gateway valid
 5. On failure: swallow silently.
 
 **Auto-recall** (`before_agent_start` hook):
-1. Skip if disabled or no user message.
-2. Extract up to 8 key terms (stop-word filtered) from user message.
-3. POST to `/search` with terms and `group_id`.
-4. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
-5. Return as injected context. On failure: return nothing.
+1. Capture `ctx.agentId` into shared group ID state (so tools can use it).
+2. Skip if disabled or no user message.
+3. Extract up to 8 key terms (stop-word filtered) from user message.
+4. POST to `/search` with terms and `group_id`.
+5. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
+6. Return as injected context. On failure: return nothing.
 
 ### Communication Path
 
@@ -84,7 +85,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Automatic context recall | `before_agent_start` hook injects relevant facts before each turn |
 | Manual search | `graph_memory_recall` (memory mode) / `graph_search` (tool mode) queries facts and entity nodes in parallel |
 | Manual store | `graph_memory_store` (memory mode) / `graph_add` (tool mode) creates episodes; Graphiti extracts structure |
-| Per-agent graph partitioning | `group_id` derived from `ctx.agentId` isolates each agent's knowledge |
+| Per-agent graph partitioning | `group_id` derived from `agentId` isolates each agent's knowledge; hooks capture it from `ctx`, tools read it via shared closure |
 | CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` available for troubleshooting |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
 | Graph-based memory tools | `graph_memory_recall` and `graph_memory_store` provide knowledge graph access in memory mode |
@@ -136,8 +137,8 @@ OpenClaw Gateway (Node.js)
 - `scripts/pack.sh` — Build script. Builds once, then loops over `resources/{memory,tool}/`, copies the two files, runs `npm pack` each time, restores to memory state.
 - `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
 - `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
-- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names).
-- `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable.
+- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Accept optional `ToolOverrides` to customize name/description (memory mode uses `graph_memory_*` names; tool mode uses `graph_*` names) and an optional `getGroupId` closure for agent partitioning. Execute signature matches OpenClaw convention: `(toolCallId, params)`.
+- `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable. `before_agent_start` accepts an optional `setGroupId` callback to share the agent's group ID with tools.
 - `src/config.ts` — `GRAPHITI_URL` constant, `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
 - `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
 - `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
@@ -157,9 +158,9 @@ OpenClaw Gateway (Node.js)
 
 ### Graph Partitioning
 
-Each agent gets its own graph partition automatically — no configuration needed. The partition uses `ctx.agentId` (falls back to `"default"`).
+Each agent gets its own graph partition automatically — no configuration needed. Hooks receive `ctx.agentId` directly from OpenClaw. Tools don't receive agent context (OpenClaw calls `execute(toolCallId, params)` — no ctx), so each entry point creates a shared group ID: the `before_agent_start` hook captures `ctx.agentId` via a `setGroupId` callback, and tools read it via a `getGroupId` closure. Falls back to `"default"`.
 
-The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID string for any context with an optional `agentId`.
+The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID string for any context with an optional `agentId` (used by hooks and CLI).
 
 ### Graceful Degradation
 
@@ -289,6 +290,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - `registerHook` requires a third `metadata` argument with `{ name }`. The gateway calls `metadata.name.trim()` — omitting it causes `TypeError: Cannot read properties of undefined (reading 'trim')`.
 - `registerTool` only accepts plain tool objects. Do not pass factory functions — the gateway reads `tool.description` which is `undefined` on functions.
 - `registerService` uses `{ id, start, stop }`, not `{ name, interval, execute }`.
+- Tool `execute` is called as `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. The first arg is a string tool-call ID, not the parsed parameters. Tools do not receive agent context; use the shared `getGroupId`/`setGroupId` pattern (see Graph Partitioning) for `group_id`.
 - Do not try to ship both entry points in one package. OpenClaw ≤ 2026.2.24 only supports flat string arrays in `openclaw.extensions`, so all entries inherit the same ID and `kind` from the single manifest — tool mode can never be properly activated this way. The solution is two packages from one repo (see architecture below), each with one entry point and one tailored manifest.
 - Graphiti requires an LLM provider API key — without one the container starts but all operations fail
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)

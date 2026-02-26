@@ -43,15 +43,20 @@ function registerFullPlugin(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
+  // Shared group ID: hooks capture agentId, tools read it
+  let currentGroupId = "default";
+  const getGroupId = () => currentGroupId;
+  const setGroupId = (id: string) => { currentGroupId = id; };
+
   // Tools — graph_memory_* prefix distinguishes these from native file-based memory_search/get
-  const recallTool = createMemoryRecallTool(client, config, { name: "graph_memory_recall" });
-  const storeTool = createMemoryStoreTool(client, config, { name: "graph_memory_store" });
+  const recallTool = createMemoryRecallTool(client, config, { name: "graph_memory_recall" }, getGroupId);
+  const storeTool = createMemoryStoreTool(client, config, { name: "graph_memory_store" }, getGroupId);
 
   api.registerTool(recallTool);
   api.registerTool(storeTool);
 
   // Hooks
-  registerHooks(api, client, config);
+  registerHooks(api, client, config, setGroupId);
 
   // Health monitor service
   registerHealthService(api, client);

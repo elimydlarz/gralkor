@@ -180,6 +180,26 @@ describe("before_agent_start hook", () => {
     expect(result).toBeUndefined();
     expect(client.searchFacts).not.toHaveBeenCalled();
   });
+
+  it("calls setGroupId with agentId when provided", async () => {
+    client.searchFacts.mockResolvedValue([]);
+    const setGroupId = vi.fn();
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig, setGroupId);
+    await hook.execute({ agentId: "agent-42", userMessage: "Tell me about the project" });
+
+    expect(setGroupId).toHaveBeenCalledWith("agent-42");
+  });
+
+  it("does not call setGroupId when agentId is missing", async () => {
+    client.searchFacts.mockResolvedValue([]);
+    const setGroupId = vi.fn();
+
+    const hook = createBeforeAgentStartHook(client as unknown as GraphitiClient, defaultConfig, setGroupId);
+    await hook.execute({ userMessage: "Tell me about the project" });
+
+    expect(setGroupId).not.toHaveBeenCalled();
+  });
 });
 
 describe("agent_end hook", () => {
