@@ -70,7 +70,7 @@ export function createBeforeAgentStartHook(
           .join("\n");
 
         return {
-          context: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant memories:\n${formatted}\n</gralkor-memory>`,
+          context: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
         };
       } catch {
         // Graphiti unavailable — degrade silently

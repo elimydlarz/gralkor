@@ -48,17 +48,9 @@ function registerFullPlugin(
   const getGroupId = () => currentGroupId;
   const setGroupId = (id: string) => { currentGroupId = id; };
 
-  // Tools — graph_* names to coexist with native memory_* tools
-  const searchTool = createMemoryRecallTool(client, config, {
-    name: "graph_search",
-    description:
-      "Search the Graphiti knowledge graph for relational facts, entity connections, and cross-conversation reasoning. Recent conversation context is automatically injected — use this for deeper queries, older context, or specific entity lookups.",
-  }, getGroupId);
-  const addTool = createMemoryStoreTool(client, config, {
-    name: "graph_add",
-    description:
-      "Store a thought, insight, reflection, or decision in the Graphiti knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
-  }, getGroupId);
+  // Tools
+  const searchTool = createMemoryRecallTool(client, config, undefined, getGroupId);
+  const addTool = createMemoryStoreTool(client, config, undefined, getGroupId);
 
   api.registerTool(searchTool);
   api.registerTool(addTool);

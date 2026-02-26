@@ -59,7 +59,7 @@ describe("memory_recall", () => {
 
   it("has the correct tool shape", () => {
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    expect(tool.name).toBe("memory_recall");
+    expect(tool.name).toBe("graph_search");
     expect(tool.parameters.required).toContain("query");
     expect(typeof tool.execute).toBe("function");
   });
@@ -97,7 +97,7 @@ describe("memory_recall", () => {
     );
   });
 
-  it("formats facts without source tags", async () => {
+  it("formats facts with knowledge graph header", async () => {
     client.searchFacts.mockResolvedValue([
       makeFact({ group_id: "agent-42", fact: "remembered fact" }),
     ]);
@@ -106,9 +106,8 @@ describe("memory_recall", () => {
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
     const result = await tool.execute("call-1", { query: "test" });
 
+    expect(result).toContain("Facts (knowledge graph):");
     expect(result).toContain("- remembered fact");
-    expect(result).not.toContain("[own]");
-    expect(result).not.toContain("[family]");
   });
 
   it("shows invalidation date for expired facts", async () => {
@@ -123,25 +122,26 @@ describe("memory_recall", () => {
     expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
   });
 
-  it("includes entity nodes in output", async () => {
+  it("includes entity nodes with knowledge graph header", async () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([makeNode()]);
 
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
     const result = await tool.execute("call-1", { query: "test" });
 
+    expect(result).toContain("Entities (knowledge graph):");
     expect(result).toContain("**Sky**");
     expect(result).toContain("The atmosphere above the Earth");
   });
 
-  it("returns 'No facts found.' when empty", async () => {
+  it("returns 'No graph facts found.' when empty", async () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
     const result = await tool.execute("call-1", { query: "test" });
 
-    expect(result).toContain("No facts found.");
+    expect(result).toContain("No graph facts found.");
   });
 
   it("accepts ToolOverrides for name and description", () => {
@@ -190,7 +190,7 @@ describe("memory_store", () => {
 
   it("has the correct tool shape", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    expect(tool.name).toBe("memory_store");
+    expect(tool.name).toBe("graph_add");
     expect(tool.parameters.required).toContain("content");
   });
 

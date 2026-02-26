@@ -48,9 +48,9 @@ function registerFullPlugin(
   const getGroupId = () => currentGroupId;
   const setGroupId = (id: string) => { currentGroupId = id; };
 
-  // Tools — graph_memory_* prefix distinguishes these from native file-based memory_search/get
-  const recallTool = createMemoryRecallTool(client, config, { name: "graph_memory_recall" }, getGroupId);
-  const storeTool = createMemoryStoreTool(client, config, { name: "graph_memory_store" }, getGroupId);
+  // Tools
+  const recallTool = createMemoryRecallTool(client, config, undefined, getGroupId);
+  const storeTool = createMemoryStoreTool(client, config, undefined, getGroupId);
 
   api.registerTool(recallTool);
   api.registerTool(storeTool);
@@ -71,7 +71,7 @@ export const description =
   "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
 export const kind = "memory" as const;
 
-export const tools = ["graph_memory_recall", "graph_memory_store"];
+export const tools = ["graph_search", "graph_add"];
 
 export const configSchema = {
   type: "object" as const,

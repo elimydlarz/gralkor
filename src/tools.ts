@@ -7,20 +7,21 @@ export interface ToolOverrides {
 }
 
 function formatFacts(facts: Fact[]): string {
-  if (facts.length === 0) return "No facts found.";
-  return facts
+  if (facts.length === 0) return "No graph facts found.";
+  const lines = facts
     .map((f) => {
       const validity =
         f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
       return `- ${f.fact}${validity}`;
     })
     .join("\n");
+  return `Facts (knowledge graph):\n${lines}`;
 }
 
 function formatNodes(nodes: EntityNode[]): string {
   if (nodes.length === 0) return "";
   return (
-    "\n\nEntities:\n" +
+    "\n\nEntities (knowledge graph):\n" +
     nodes.map((n) => `- **${n.name}**: ${n.summary}`).join("\n")
   );
 }
@@ -32,7 +33,7 @@ export function createMemoryRecallTool(
   getGroupId?: () => string,
 ) {
   return {
-    name: overrides?.name ?? "memory_recall",
+    name: overrides?.name ?? "graph_search",
     description:
       overrides?.description ??
       "Search the knowledge graph for relevant facts and entities. Recent conversation context is automatically injected — use this for deeper queries, older context, or specific entity lookups.",
@@ -75,7 +76,7 @@ export function createMemoryStoreTool(
   getGroupId?: () => string,
 ) {
   return {
-    name: overrides?.name ?? "memory_store",
+    name: overrides?.name ?? "graph_add",
     description:
       overrides?.description ??
       "Store a thought, insight, reflection, or decision in the knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
