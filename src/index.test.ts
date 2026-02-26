@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Verify the module's export shape — this is the test that would have
 // caught the "entry.register is not a function" bug.
@@ -16,6 +16,11 @@ describe("plugin export shape", () => {
     expect(mod.kind).toBe("memory");
     expect(mod.configSchema).toBeDefined();
     expect(mod.configSchema.type).toBe("object");
+  });
+
+  it("exports tools list", async () => {
+    const mod = await import("./index.js");
+    expect(mod.tools).toEqual(["graph_memory_recall", "graph_memory_store"]);
   });
 
   it("default export has register as a function (OpenClaw CLI loader)", async () => {
@@ -38,13 +43,6 @@ describe("plugin export shape", () => {
 
 describe("register()", () => {
   let api: {
-    runtime: {
-      tools: {
-        createMemorySearchTool: ReturnType<typeof vi.fn>;
-        createMemoryGetTool: ReturnType<typeof vi.fn>;
-        registerMemoryCli: ReturnType<typeof vi.fn>;
-      };
-    };
     registerTool: ReturnType<typeof vi.fn>;
     registerHook: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
@@ -53,13 +51,6 @@ describe("register()", () => {
 
   beforeEach(() => {
     api = {
-      runtime: {
-        tools: {
-          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search" }),
-          createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
-          registerMemoryCli: vi.fn(),
-        },
-      },
       registerTool: vi.fn(),
       registerHook: vi.fn(),
       registerService: vi.fn(),
@@ -72,38 +63,54 @@ describe("register()", () => {
 
     register(api);
 
-    expect(api.registerTool).toHaveBeenCalledTimes(3);
+    expect(api.registerTool).toHaveBeenCalledTimes(2);
     expect(api.registerHook).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledTimes(2);
+    expect(api.registerCli).toHaveBeenCalledOnce();
   });
 
-  it("registers two graph tools and one factory for native memory tools", async () => {
+  it("registers two graph tools", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    // First 2 calls are direct tool objects
-    const directToolNames = api.registerTool.mock.calls.slice(0, 2).map(
+    const toolNames = api.registerTool.mock.calls.map(
       (call: unknown[]) => (call[0] as { name: string }).name,
     );
-    expect(directToolNames).toEqual(["graph_memory_recall", "graph_memory_store"]);
-
-    // 3rd call is a factory function with opts
-    const [factory, opts] = api.registerTool.mock.calls[2];
-    expect(typeof factory).toBe("function");
-    expect(opts).toEqual({ names: ["memory_search", "memory_get"] });
+    expect(toolNames).toEqual(["graph_memory_recall", "graph_memory_store"]);
   });
 
-  it("registers the two hooks", async () => {
+  it("registers the two hooks with metadata", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    const hookNames = api.registerHook.mock.calls.map(
+    const hookEvents = api.registerHook.mock.calls.map(
       (call: unknown[]) => call[0] as string,
     );
-    expect(hookNames).toEqual(["before_agent_start", "agent_end"]);
+    expect(hookEvents).toEqual(["before_agent_start", "agent_end"]);
+
+    // Verify metadata (third argument) includes name
+    const hookMetadata = api.registerHook.mock.calls.map(
+      (call: unknown[]) => call[2] as { name: string },
+    );
+    expect(hookMetadata[0].name).toBe("gralkor.auto-recall");
+    expect(hookMetadata[1].name).toBe("gralkor.auto-capture");
+  });
+
+  it("registers health service with id, start, stop", async () => {
+    const { register } = await import("./index.js");
+
+    register(api);
+
+    const service = api.registerService.mock.calls[0][0] as {
+      id: string;
+      start: () => void;
+      stop: () => void;
+    };
+    expect(service.id).toBe("gralkor-health");
+    expect(typeof service.start).toBe("function");
+    expect(typeof service.stop).toBe("function");
   });
 
   it("registers gralkor CLI as a Commander registrar function", async () => {
@@ -111,7 +118,6 @@ describe("register()", () => {
 
     register(api);
 
-    // First CLI call is the gralkor registrar
     const [registrar, opts] = api.registerCli.mock.calls[0];
     expect(typeof registrar).toBe("function");
     expect(opts).toEqual({ commands: ["gralkor"] });
@@ -144,56 +150,5 @@ describe("register()", () => {
 
     const cmdNames = subcommands.map((c) => c.name);
     expect(cmdNames).toEqual(["status", "search <query...>", "clear [group_id]"]);
-  });
-
-  it("registers memory CLI that delegates to runtime helper", async () => {
-    const { register } = await import("./index.js");
-
-    register(api);
-
-    // Second CLI call is the memory registrar
-    const [registrar, opts] = api.registerCli.mock.calls[1];
-    expect(typeof registrar).toBe("function");
-    expect(opts).toEqual({ commands: ["memory"] });
-
-    // Simulate OpenClaw calling the registrar
-    const mockProgram = { name: "mock-program" };
-    registrar({ program: mockProgram });
-
-    expect(api.runtime.tools.registerMemoryCli).toHaveBeenCalledWith(mockProgram);
-  });
-
-  it("factory invokes runtime helpers with correct args and returns both tools", async () => {
-    const { register } = await import("./index.js");
-
-    register(api);
-
-    const [factory] = api.registerTool.mock.calls[2];
-    const ctx = { config: { some: "config" }, sessionKey: "sess-123", agentId: "agent-1" };
-
-    const result = factory(ctx);
-
-    expect(api.runtime.tools.createMemorySearchTool).toHaveBeenCalledWith({
-      config: ctx.config,
-      agentSessionKey: ctx.sessionKey,
-    });
-    expect(api.runtime.tools.createMemoryGetTool).toHaveBeenCalledWith({
-      config: ctx.config,
-      agentSessionKey: ctx.sessionKey,
-    });
-    expect(result).toEqual([{ name: "memory_search" }, { name: "memory_get" }]);
-  });
-
-  it("factory returns null when runtime helpers return null", async () => {
-    api.runtime.tools.createMemorySearchTool.mockReturnValue(null);
-    api.runtime.tools.createMemoryGetTool.mockReturnValue(null);
-    const { register } = await import("./index.js");
-
-    register(api);
-
-    const [factory] = api.registerTool.mock.calls[2];
-    const result = factory({ config: {}, sessionKey: "s" });
-
-    expect(result).toBeNull();
   });
 });

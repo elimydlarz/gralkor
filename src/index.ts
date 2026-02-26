@@ -11,29 +11,21 @@ import {
 } from "./register.js";
 
 interface PluginApi {
-  runtime: {
-    tools: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createMemorySearchTool(opts: { config?: any; agentSessionKey?: string }): any | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createMemoryGetTool(opts: { config?: any; agentSessionKey?: string }): any | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      registerMemoryCli(program: any): void;
-    };
-  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerTool(
-    toolOrFactory:
-      | { name: string; description: string; parameters: unknown; execute: (args: any, ctx: any) => Promise<any> }
-      | ((ctx: { config?: any; agentId?: string; sessionKey?: string }) => any),
-    opts?: { names?: string[] },
+    tool: { name: string; description: string; parameters: unknown; execute: (...args: any[]) => Promise<any> },
+    opts?: { optional?: boolean },
   ): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
+  registerHook(
+    event: string,
+    handler: (ctx: any) => Promise<any>,
+    metadata: { name: string; description?: string },
+  ): void;
   registerService(service: {
-    name: string;
-    interval: number;
-    execute: () => Promise<void>;
+    id: string;
+    start: () => void;
+    stop: () => void;
   }): void;
   registerCli(
     registrar: (ctx: {
@@ -58,25 +50,6 @@ function registerFullPlugin(
   api.registerTool(recallTool);
   api.registerTool(storeTool);
 
-  // Native memory_search + memory_get (re-register what memory-core would provide)
-  api.registerTool(
-    (ctx) => {
-      const memorySearchTool = api.runtime.tools.createMemorySearchTool({
-        config: ctx.config,
-        agentSessionKey: ctx.sessionKey,
-      });
-      const memoryGetTool = api.runtime.tools.createMemoryGetTool({
-        config: ctx.config,
-        agentSessionKey: ctx.sessionKey,
-      });
-      if (!memorySearchTool || !memoryGetTool) {
-        return null;
-      }
-      return [memorySearchTool, memoryGetTool];
-    },
-    { names: ["memory_search", "memory_get"] },
-  );
-
   // Hooks
   registerHooks(api, client, config);
 
@@ -85,14 +58,6 @@ function registerFullPlugin(
 
   // CLI
   registerCli(api, client, config);
-
-  // Native memory CLI (re-register what memory-core would provide)
-  api.registerCli(
-    ({ program }) => {
-      api.runtime.tools.registerMemoryCli(program);
-    },
-    { commands: ["memory"] },
-  );
 }
 
 export const id = "gralkor";
@@ -100,6 +65,8 @@ export const name = "Gralkor Memory";
 export const description =
   "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
 export const kind = "memory" as const;
+
+export const tools = ["graph_memory_recall", "graph_memory_store"];
 
 export const configSchema = {
   type: "object" as const,

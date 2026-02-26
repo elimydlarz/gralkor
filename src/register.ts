@@ -8,11 +8,15 @@ import {
 
 interface PluginApi {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(event: string, handler: (ctx: any) => Promise<any>): void;
+  registerHook(
+    event: string,
+    handler: (ctx: any) => Promise<any>,
+    metadata: { name: string; description?: string },
+  ): void;
   registerService(service: {
-    name: string;
-    interval: number;
-    execute: () => Promise<void>;
+    id: string;
+    start: () => void;
+    stop: () => void;
   }): void;
   registerCli(
     registrar: (ctx: {
@@ -32,25 +36,40 @@ export function registerHooks(
 ) {
   const beforeHook = createBeforeAgentStartHook(client, config);
   const agentEndHook = createAgentEndHook(client, config);
-  api.registerHook(beforeHook.name, beforeHook.execute);
-  api.registerHook(agentEndHook.name, agentEndHook.execute);
+  api.registerHook(beforeHook.name, beforeHook.execute, {
+    name: "gralkor.auto-recall",
+    description: "Inject relevant memories before agent starts",
+  });
+  api.registerHook(agentEndHook.name, agentEndHook.execute, {
+    name: "gralkor.auto-capture",
+    description: "Capture conversation into knowledge graph",
+  });
 }
 
 export function registerHealthService(
   api: PluginApi,
   client: GraphitiClient,
 ) {
+  let timer: ReturnType<typeof setInterval> | undefined;
+
   api.registerService({
-    name: "gralkor-health",
-    interval: 60_000,
-    async execute() {
-      try {
-        await client.health();
-      } catch (err) {
-        console.warn(
-          "[gralkor] Graphiti health check failed:",
-          err instanceof Error ? err.message : err,
-        );
+    id: "gralkor-health",
+    start() {
+      timer = setInterval(async () => {
+        try {
+          await client.health();
+        } catch (err) {
+          console.warn(
+            "[gralkor] Graphiti health check failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }, 60_000);
+    },
+    stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = undefined;
       }
     },
   });
