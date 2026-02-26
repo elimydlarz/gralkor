@@ -38,7 +38,7 @@ Both modes register the same auto-capture (`agent_end`) and auto-recall (`before
 
 Both entry points follow the same sequence in their synchronous `register()` function:
 
-1. `resolveConfig()` merges plugin config with defaults (default URL: `http://graphiti:8000` — the Docker service name).
+1. `resolveConfig()` merges plugin config with defaults (default URL: `http://graphiti:8001` — the Docker service name).
 2. Create a `GraphitiClient` with the resolved URL.
 3. Call `registerFullPlugin()` (tools + hooks + health service + CLI).
 
@@ -87,7 +87,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Graceful degradation (unconfigured) | Default URL is `http://graphiti:8000` (Docker service name); always registers full plugin |
+| Graceful degradation (unconfigured) | Default URL is `http://graphiti:8001` (Docker service name); always registers full plugin |
 | Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory-mode graph tools use `graph_memory_*` prefix to distinguish from native file tools; `memory_search`/`memory_get` match memory-core exactly |
@@ -112,7 +112,7 @@ OpenClaw Gateway (Node.js)
         └── CLI: gralkor status, gralkor search, gralkor clear
               │
               ▼  HTTP (fetch)
-        Graphiti REST API (FastAPI, port 8000)
+        Graphiti REST API (FastAPI, port 8001)
               │
               ▼  Redis protocol
         FalkorDB (port 6379, browser UI port 3000)
@@ -144,7 +144,7 @@ OpenClaw Gateway (Node.js)
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `graphitiUrl` | string | `http://graphiti:8000` | Graphiti REST API URL (Docker service name) |
+| `graphitiUrl` | string | `http://graphiti:8001` | Graphiti REST API URL (Docker service name) |
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
@@ -157,7 +157,7 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 
 ### Graceful Degradation
 
-- The plugin always registers the full set of tools, hooks, and services using the default URL (`http://graphiti:8000`) if none is configured.
+- The plugin always registers the full set of tools, hooks, and services using the default URL (`http://graphiti:8001`) if none is configured.
 - If Graphiti is **unreachable at runtime**, hooks silently skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
 
 ## Environment Variables
@@ -174,7 +174,7 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 # Build the gralkor-server image and start backend services
 make up
 
-# Verify Graphiti is running (port 8001 on host, 8000 inside container)
+# Verify Graphiti is running
 curl http://localhost:8001/health
 
 # Install plugin locally in OpenClaw (for development)
@@ -233,7 +233,7 @@ docker compose up -d
 - `make typecheck` — type-check TypeScript
 - `make build-server` — build the `gralkor-server:latest` Docker image from `server/`
 - `make up` / `make down` / `make logs` — Docker services (`up` automatically builds the image)
-- Graphiti host port: **8001** (avoids Coolify's 8000). Container-internal port is still 8000.
+- Graphiti port: **8001** (both container-internal and host-mapped).
 - `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
 - `make version-patch` / `make version-minor` / `make version-major` — bump version in root + both `resources/` package.json files, then commit all three and tag `vX.Y.Z`
 
@@ -289,7 +289,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ## Deployment
 
-When deployed alongside OpenClaw on a VPS, set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. This way existing backup/restore scripts capture graph data automatically. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8000` (container-internal port).
+When deployed alongside OpenClaw on a VPS, set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. This way existing backup/restore scripts capture graph data automatically. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8001`.
 
 ## Recommended Reading
 

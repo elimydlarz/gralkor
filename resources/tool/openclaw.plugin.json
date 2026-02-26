@@ -8,7 +8,7 @@
     "properties": {
       "graphitiUrl": {
         "type": "string",
-        "default": "http://graphiti:8000",
+        "default": "http://graphiti:8001",
         "description": "URL of the Graphiti REST API"
       },
       "autoCapture": {
@@ -45,7 +45,7 @@
   "uiHints": {
     "graphitiUrl": {
       "label": "Graphiti API URL",
-      "placeholder": "http://graphiti:8000"
+      "placeholder": "http://graphiti:8001"
     },
     "autoCapture.enabled": {
       "label": "Auto-capture conversations"

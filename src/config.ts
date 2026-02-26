@@ -14,7 +14,7 @@ export interface GralkorConfig {
 }
 
 export const defaultConfig: GralkorConfig = {
-  graphitiUrl: "http://graphiti:8000",
+  graphitiUrl: "http://graphiti:8001",
   autoCapture: { enabled: true },
   autoRecall: { enabled: true, maxResults: 5 },
 };
