@@ -75,7 +75,7 @@ export const kind = "tool" as const;
 export const configSchema = {
   type: "object" as const,
   properties: {
-    graphitiUrl: { type: "string" as const, default: "http://graphiti:8000" },
+    graphitiUrl: { type: "string" as const, default: "http://graphiti:8001" },
     autoCapture: {
       type: "object" as const,
       properties: {

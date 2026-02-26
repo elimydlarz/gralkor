@@ -108,7 +108,7 @@ docker compose up -d
 
 This starts:
 - **FalkorDB** on port 6379 (Redis protocol) with a browser UI at [localhost:3000](http://localhost:3000)
-- **Graphiti REST API** on port 8001 (mapped from container port 8000)
+- **Graphiti REST API** on port 8001
 
 Verify it's running:
 
@@ -160,7 +160,7 @@ Configure in your OpenClaw plugin settings:
 
 | Setting | Default | Description |
 |---|---|---|
-| `graphitiUrl` | `http://graphiti:8000` | Graphiti API endpoint (Docker service name; host access on port 8001) |
+| `graphitiUrl` | `http://graphiti:8001` | Graphiti API endpoint (Docker service name) |
 | `autoCapture.enabled` | `true` | Automatically store conversations |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context |
 | `autoRecall.maxResults` | `5` | How many facts to inject per turn |
