@@ -50,7 +50,6 @@ describe("register()", () => {
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
   };
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     api = {
@@ -66,25 +65,20 @@ describe("register()", () => {
       registerService: vi.fn(),
       registerCli: vi.fn(),
     };
-    fetchSpy = vi.spyOn(globalThis, "fetch");
   });
 
-  afterEach(() => {
-    fetchSpy.mockRestore();
-  });
-
-  it("registers only CLI when no graphitiUrl configured", async () => {
+  it("registers full plugin with default URL when no graphitiUrl configured", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    expect(api.registerCli).toHaveBeenCalledOnce();
-    expect(api.registerTool).not.toHaveBeenCalled();
-    expect(api.registerHook).not.toHaveBeenCalled();
-    expect(api.registerService).not.toHaveBeenCalled();
+    expect(api.registerTool).toHaveBeenCalledTimes(3);
+    expect(api.registerHook).toHaveBeenCalledTimes(2);
+    expect(api.registerService).toHaveBeenCalledOnce();
+    expect(api.registerCli).toHaveBeenCalledTimes(2);
   });
 
-  it("registers full plugin when graphitiUrl is configured", async () => {
+  it("registers full plugin with explicit graphitiUrl", async () => {
     const { register } = await import("./index.js");
 
     register(api, { graphitiUrl: "http://localhost:8001" });
@@ -93,8 +87,6 @@ describe("register()", () => {
     expect(api.registerHook).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
     expect(api.registerCli).toHaveBeenCalledTimes(2);
-    // Should not probe when URL is explicit
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("registers two graph tools and one factory for native memory tools", async () => {

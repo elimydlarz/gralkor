@@ -104,7 +104,7 @@ export const kind = "memory" as const;
 export const configSchema = {
   type: "object" as const,
   properties: {
-    graphitiUrl: { type: "string" as const, default: "http://localhost:8000" },
+    graphitiUrl: { type: "string" as const, default: "http://graphiti:8000" },
     autoCapture: {
       type: "object" as const,
       properties: {
@@ -123,17 +123,8 @@ export const configSchema = {
 
 export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
-
-  if (rawConfig?.graphitiUrl) {
-    const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-    registerFullPlugin(api, client, config);
-    return;
-  }
-
-  // No explicit URL — register CLI only so the user can diagnose.
-  // (Async probe is not possible: OpenClaw ignores async register() returns.)
   const client = new GraphitiClient({ baseUrl: config.graphitiUrl });
-  registerCli(api, client, config);
+  registerFullPlugin(api, client, config);
 }
 
 export default { id, name, description, kind, configSchema, register };
