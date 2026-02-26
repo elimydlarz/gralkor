@@ -44,6 +44,8 @@ export function createBeforeAgentStartHook(
   return {
     name: "before_agent_start",
     async execute(ctx: HookContext): Promise<{ context?: string } | void> {
+      console.log("[gralkor] before_agent_start fired, ctx keys:", Object.keys(ctx ?? {}), "ctx:", JSON.stringify(ctx, null, 2));
+
       if (setGroupId && ctx.agentId) {
         setGroupId(ctx.agentId);
       }
@@ -87,6 +89,8 @@ export function createAgentEndHook(
   return {
     name: "agent_end",
     async execute(ctx: HookContext): Promise<void> {
+      console.log("[gralkor] agent_end fired, ctx keys:", Object.keys(ctx ?? {}), "ctx:", JSON.stringify(ctx, null, 2));
+
       if (!config.autoCapture.enabled) return;
 
       const userMsg = ctx.userMessage ?? "";
