@@ -39,10 +39,15 @@ function extractKeyTerms(text: string): string {
 export function createBeforeAgentStartHook(
   client: GraphitiClient,
   config: GralkorConfig,
+  setGroupId?: (id: string) => void,
 ) {
   return {
     name: "before_agent_start",
     async execute(ctx: HookContext): Promise<{ context?: string } | void> {
+      if (setGroupId && ctx.agentId) {
+        setGroupId(ctx.agentId);
+      }
+
       if (!config.autoRecall.enabled) return;
       if (!ctx.userMessage) return;
 

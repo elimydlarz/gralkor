@@ -1,10 +1,5 @@
 import type { GraphitiClient, Fact, EntityNode } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId } from "./config.js";
-
-interface ToolContext {
-  agentId?: string;
-}
 
 export interface ToolOverrides {
   name?: string;
@@ -34,6 +29,7 @@ export function createMemoryRecallTool(
   client: GraphitiClient,
   config: GralkorConfig,
   overrides?: ToolOverrides,
+  getGroupId?: () => string,
 ) {
   return {
     name: overrides?.name ?? "memory_recall",
@@ -56,10 +52,10 @@ export function createMemoryRecallTool(
       required: ["query"] as const,
     },
     async execute(
+      _toolCallId: string,
       args: { query: string; limit?: number },
-      ctx: ToolContext,
     ): Promise<string> {
-      const groupId = resolveGroupId(ctx);
+      const groupId = getGroupId?.() ?? "default";
       const limit = args.limit ?? 10;
 
       const [facts, nodes] = await Promise.all([
@@ -76,6 +72,7 @@ export function createMemoryStoreTool(
   client: GraphitiClient,
   config: GralkorConfig,
   overrides?: ToolOverrides,
+  getGroupId?: () => string,
 ) {
   return {
     name: overrides?.name ?? "memory_store",
@@ -97,10 +94,10 @@ export function createMemoryStoreTool(
       required: ["content"] as const,
     },
     async execute(
+      _toolCallId: string,
       args: { content: string; source?: string },
-      ctx: ToolContext,
     ): Promise<string> {
-      const groupId = resolveGroupId(ctx);
+      const groupId = getGroupId?.() ?? "default";
 
       await client.addEpisode({
         name: `memory-store-${Date.now()}`,

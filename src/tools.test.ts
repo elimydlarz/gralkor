@@ -48,7 +48,7 @@ function makeNode(overrides: Partial<EntityNode> = {}): EntityNode {
 }
 
 const config: GralkorConfig = defaultConfig;
-const ctx = { agentId: "agent-42" };
+const getGroupId = () => "agent-42";
 
 describe("memory_recall", () => {
   let client: ReturnType<typeof mockClient>;
@@ -68,8 +68,8 @@ describe("memory_recall", () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ query: "test" }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { query: "test" });
 
     expect(client.searchFacts).toHaveBeenCalledWith(
       "test",
@@ -87,8 +87,8 @@ describe("memory_recall", () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ query: "test", limit: 3 }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { query: "test", limit: 3 });
 
     expect(client.searchFacts).toHaveBeenCalledWith(
       "test",
@@ -103,8 +103,8 @@ describe("memory_recall", () => {
     ]);
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "test" }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const result = await tool.execute("call-1", { query: "test" });
 
     expect(result).toContain("- remembered fact");
     expect(result).not.toContain("[own]");
@@ -117,8 +117,8 @@ describe("memory_recall", () => {
     ]);
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "test" }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const result = await tool.execute("call-1", { query: "test" });
 
     expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
   });
@@ -127,8 +127,8 @@ describe("memory_recall", () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([makeNode()]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "test" }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const result = await tool.execute("call-1", { query: "test" });
 
     expect(result).toContain("**Sky**");
     expect(result).toContain("The atmosphere above the Earth");
@@ -138,8 +138,8 @@ describe("memory_recall", () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ query: "test" }, ctx);
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const result = await tool.execute("call-1", { query: "test" });
 
     expect(result).toContain("No facts found.");
   });
@@ -157,24 +157,24 @@ describe("memory_recall", () => {
     client.searchFacts.mockRejectedValue(new Error("connection refused"));
     client.searchNodes.mockResolvedValue([]);
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    await expect(tool.execute({ query: "test" }, ctx)).rejects.toThrow("connection refused");
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await expect(tool.execute("call-1", { query: "test" })).rejects.toThrow("connection refused");
   });
 
   it("propagates errors when searchNodes throws", async () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockRejectedValue(new Error("timeout"));
 
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    await expect(tool.execute({ query: "test" }, ctx)).rejects.toThrow("timeout");
+    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await expect(tool.execute("call-1", { query: "test" })).rejects.toThrow("timeout");
   });
 
-  it("falls back to 'default' group when agentId is missing", async () => {
+  it("falls back to 'default' group when no getGroupId provided", async () => {
     client.searchFacts.mockResolvedValue([]);
     client.searchNodes.mockResolvedValue([]);
 
     const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ query: "test" }, {});
+    await tool.execute("call-1", { query: "test" });
 
     expect(client.searchFacts).toHaveBeenCalledWith("test", ["default"], 10);
   });
@@ -195,8 +195,8 @@ describe("memory_store", () => {
   });
 
   it("writes to the agent partition", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ content: "Remember this" }, ctx);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Remember this" });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     expect(client.addEpisode).toHaveBeenCalledWith(
@@ -205,31 +205,31 @@ describe("memory_store", () => {
   });
 
   it("uses manual source description by default", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ content: "Remember this" }, ctx);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Remember this" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
     expect(call.source_description).toBe("manual memory_store");
   });
 
   it("uses provided source description", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ content: "Remember this", source: "user request" }, ctx);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Remember this", source: "user request" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
     expect(call.source_description).toBe("user request");
   });
 
   it("returns success message", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    const result = await tool.execute({ content: "x" }, ctx);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const result = await tool.execute("call-1", { content: "x" });
 
     expect(result).toContain("Stored successfully");
   });
 
   it("passes content as episode_body and generates name", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    await tool.execute({ content: "Important insight" }, ctx);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Important insight" });
 
     const call = client.addEpisode.mock.calls[0][0] as {
       name: string;
@@ -251,8 +251,8 @@ describe("memory_store", () => {
   it("propagates errors when addEpisode throws", async () => {
     client.addEpisode.mockRejectedValue(new Error("server down"));
 
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    await expect(tool.execute({ content: "x" }, ctx)).rejects.toThrow("server down");
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await expect(tool.execute("call-1", { content: "x" })).rejects.toThrow("server down");
   });
 });
 
