@@ -3,9 +3,7 @@ import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EventPayload = Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EventContext = Record<string, any>;
+type HookArg = Record<string, any>;
 
 function extractKeyTerms(text: string): string {
   // Strip very short/common words to build a search query from the user message
@@ -36,33 +34,57 @@ function extractKeyTerms(text: string): string {
 }
 
 /**
- * Extract the last user message text from an event payload.
- * The gateway may provide it as `event.prompt` (string) or inside
- * `event.messages` (array of {role, content} objects).
+ * Extract the user message from hook arguments.
+ *
+ * The gateway may call hooks with a single ctx object or (event, ctx).
+ * We search all provided objects for the message in multiple possible locations:
+ *   - ctx.userMessage  (OpenClaw hook ctx convention)
+ *   - event.prompt     (alternative event payload)
+ *   - event.messages   (array of {role, content} objects)
  */
-function extractUserMessage(event: EventPayload): string {
-  if (typeof event.prompt === "string") return event.prompt;
-  if (Array.isArray(event.messages)) {
-    for (let i = event.messages.length - 1; i >= 0; i--) {
-      const m = event.messages[i];
-      if (m?.role === "user" && typeof m.content === "string") return m.content;
+function extractUserMessage(...args: HookArg[]): string {
+  for (const obj of args) {
+    if (!obj || typeof obj !== "object") continue;
+    if (typeof obj.userMessage === "string") return obj.userMessage;
+    if (typeof obj.prompt === "string") return obj.prompt;
+    if (Array.isArray(obj.messages)) {
+      for (let i = obj.messages.length - 1; i >= 0; i--) {
+        const m = obj.messages[i];
+        if (m?.role === "user" && typeof m.content === "string") return m.content;
+      }
     }
   }
   return "";
 }
 
 /**
- * Extract the last assistant message text from an event payload.
+ * Extract the assistant message from hook arguments.
+ * Same multi-field strategy as extractUserMessage.
  */
-function extractAssistantMessage(event: EventPayload): string {
-  if (typeof event.response === "string") return event.response;
-  if (Array.isArray(event.messages)) {
-    for (let i = event.messages.length - 1; i >= 0; i--) {
-      const m = event.messages[i];
-      if (m?.role === "assistant" && typeof m.content === "string") return m.content;
+function extractAssistantMessage(...args: HookArg[]): string {
+  for (const obj of args) {
+    if (!obj || typeof obj !== "object") continue;
+    if (typeof obj.agentResponse === "string") return obj.agentResponse;
+    if (typeof obj.response === "string") return obj.response;
+    if (Array.isArray(obj.messages)) {
+      for (let i = obj.messages.length - 1; i >= 0; i--) {
+        const m = obj.messages[i];
+        if (m?.role === "assistant" && typeof m.content === "string") return m.content;
+      }
     }
   }
   return "";
+}
+
+/**
+ * Extract agentId from hook arguments (may be in any of the provided objects).
+ */
+function extractAgentId(...args: HookArg[]): string | undefined {
+  for (const obj of args) {
+    if (!obj || typeof obj !== "object") continue;
+    if (typeof obj.agentId === "string") return obj.agentId;
+  }
+  return undefined;
 }
 
 export function createBeforeAgentStartHandler(
@@ -70,21 +92,33 @@ export function createBeforeAgentStartHandler(
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
 ) {
-  return async (event: EventPayload, ctx: EventContext): Promise<{ prependContext?: string } | void> => {
-    const agentId = ctx.agentId as string | undefined;
+  // Gateway may call with (ctx) or (event, ctx) — accept either
+  return async (...args: HookArg[]): Promise<{ prependContext?: string } | void> => {
+    const agentId = extractAgentId(...args);
     if (setGroupId && agentId) {
       setGroupId(agentId);
     }
 
-    if (!config.autoRecall.enabled) return;
+    if (!config.autoRecall.enabled) {
+      console.log("[gralkor] auto-recall: disabled by config");
+      return;
+    }
 
-    const userMessage = extractUserMessage(event);
-    if (!userMessage) return;
+    const userMessage = extractUserMessage(...args);
+    if (!userMessage) {
+      console.log("[gralkor] auto-recall: no user message found in hook args (keys: %s)",
+        args.map(a => a ? Object.keys(a).join(",") : "undefined").join(" | "));
+      return;
+    }
 
     const query = extractKeyTerms(userMessage);
-    if (!query) return;
+    if (!query) {
+      console.log("[gralkor] auto-recall: user message yielded empty query after stop-word removal");
+      return;
+    }
 
     const groupId = resolveGroupId({ agentId });
+    console.log("[gralkor] auto-recall: searching query=%j group=%s", query, groupId);
 
     try {
       const facts = await client.searchFacts(
@@ -93,8 +127,12 @@ export function createBeforeAgentStartHandler(
         config.autoRecall.maxResults,
       );
 
-      if (facts.length === 0) return;
+      if (facts.length === 0) {
+        console.log("[gralkor] auto-recall: no facts matched");
+        return;
+      }
 
+      console.log("[gralkor] auto-recall: injecting %d facts", facts.length);
       const formatted = facts
         .map((f) => `- ${f.fact}`)
         .join("\n");
@@ -102,8 +140,8 @@ export function createBeforeAgentStartHandler(
       return {
         prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
       };
-    } catch {
-      // Graphiti unavailable — degrade silently
+    } catch (err) {
+      console.warn("[gralkor] auto-recall: search failed:", err instanceof Error ? err.message : err);
       return;
     }
   };
@@ -113,19 +151,32 @@ export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  return async (event: EventPayload, ctx: EventContext): Promise<void> => {
-    if (!config.autoCapture.enabled) return;
+  // Gateway may call with (ctx) or (event, ctx) — accept either
+  return async (...args: HookArg[]): Promise<void> => {
+    if (!config.autoCapture.enabled) {
+      console.log("[gralkor] auto-capture: disabled by config");
+      return;
+    }
 
-    const userMsg = extractUserMessage(event);
-    const agentMsg = extractAssistantMessage(event);
+    const userMsg = extractUserMessage(...args);
+    const agentMsg = extractAssistantMessage(...args);
 
     // Skip trivially short exchanges or system commands
-    if (userMsg.length < 10 && agentMsg.length < 10) return;
-    if (userMsg.startsWith("/")) return;
+    if (userMsg.length < 10 && agentMsg.length < 10) {
+      console.log("[gralkor] auto-capture: skipped (messages too short: user=%d, agent=%d)",
+        userMsg.length, agentMsg.length);
+      return;
+    }
+    if (userMsg.startsWith("/")) {
+      console.log("[gralkor] auto-capture: skipped (/ command)");
+      return;
+    }
 
-    const agentId = ctx.agentId as string | undefined;
+    const agentId = extractAgentId(...args);
     const groupId = resolveGroupId({ agentId });
     const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
+
+    console.log("[gralkor] auto-capture: storing episode (group=%s, bodyLen=%d)", groupId, body.length);
 
     try {
       await client.addEpisode({
@@ -134,8 +185,9 @@ export function createAgentEndHandler(
         source_description: "auto-capture",
         group_id: groupId,
       });
-    } catch {
-      // Graphiti unavailable — degrade silently
+      console.log("[gralkor] auto-capture: episode stored successfully");
+    } catch (err) {
+      console.warn("[gralkor] auto-capture: store failed:", err instanceof Error ? err.message : err);
     }
   };
 }
