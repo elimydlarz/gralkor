@@ -49,7 +49,7 @@ Both entry points reuse the same tool factories and the same shared helpers from
 The plugin API methods must match these signatures exactly — the gateway validates arguments at registration time:
 
 - **`registerTool(tool, opts?)`** — `tool` must be a plain object `{ name, description, parameters, execute }`. Factory functions are not supported; passing a function causes a crash (the gateway reads `tool.description.trim()`). The gateway calls `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. Tools do not receive agent context; see "Graph Partitioning" for how tools resolve `group_id`.
-- **`api.on(event, handler)`** — Registers a hook handler for an event. The gateway's calling convention for handlers is uncertain — it may pass a single `ctx` object `{ agentId?, userMessage?, agentResponse? }` or two args `(event, ctx)`. Our handlers use variadic signatures (`...args`) and search all provided objects for fields, making them resilient to either convention. (Note: `registerHook(event, handler, metadata)` is a separate 3-arg API that requires `metadata.name` — we use `api.on` instead.)
+- **`api.on(event, handler)`** — Registers a hook handler for an event. The gateway calls handlers with a single `ctx` object: `{ agentId?, userMessage?, agentResponse? }`. (Note: `registerHook(event, handler, metadata)` is a separate 3-arg API — we use `api.on` instead.)
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
