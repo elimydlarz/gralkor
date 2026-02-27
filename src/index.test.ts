@@ -44,7 +44,7 @@ describe("plugin export shape", () => {
 describe("register()", () => {
   let api: {
     registerTool: ReturnType<typeof vi.fn>;
-    registerHook: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
   };
@@ -52,7 +52,7 @@ describe("register()", () => {
   beforeEach(() => {
     api = {
       registerTool: vi.fn(),
-      registerHook: vi.fn(),
+      on: vi.fn(),
       registerService: vi.fn(),
       registerCli: vi.fn(),
     };
@@ -64,7 +64,7 @@ describe("register()", () => {
     register(api);
 
     expect(api.registerTool).toHaveBeenCalledTimes(2);
-    expect(api.registerHook).toHaveBeenCalledTimes(2);
+    expect(api.on).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
     expect(api.registerCli).toHaveBeenCalledOnce();
   });
@@ -80,22 +80,20 @@ describe("register()", () => {
     expect(toolNames).toEqual(["graph_search", "graph_add"]);
   });
 
-  it("registers the two hooks with metadata", async () => {
+  it("registers the two lifecycle events via api.on()", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    const hookEvents = api.registerHook.mock.calls.map(
+    const eventNames = api.on.mock.calls.map(
       (call: unknown[]) => call[0] as string,
     );
-    expect(hookEvents).toEqual(["before_agent_start", "agent_end"]);
+    expect(eventNames).toEqual(["before_agent_start", "agent_end"]);
 
-    // Verify metadata (third argument) includes name
-    const hookMetadata = api.registerHook.mock.calls.map(
-      (call: unknown[]) => call[2] as { name: string },
-    );
-    expect(hookMetadata[0].name).toBe("gralkor.auto-recall");
-    expect(hookMetadata[1].name).toBe("gralkor.auto-capture");
+    // Handlers should be functions
+    for (const call of api.on.mock.calls) {
+      expect(typeof (call as unknown[])[1]).toBe("function");
+    }
   });
 
   it("registers health service with id, start, stop", async () => {

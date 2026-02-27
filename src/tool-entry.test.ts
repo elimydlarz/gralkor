@@ -37,14 +37,14 @@ describe("tool-entry export shape", () => {
 describe("tool-entry register()", () => {
   let api: {
     registerTool: ReturnType<typeof vi.fn>;
-    registerHook: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
   };
   beforeEach(() => {
     api = {
       registerTool: vi.fn(),
-      registerHook: vi.fn(),
+      on: vi.fn(),
       registerService: vi.fn(),
       registerCli: vi.fn(),
     };
@@ -56,7 +56,7 @@ describe("tool-entry register()", () => {
     register(api);
 
     expect(api.registerTool).toHaveBeenCalledTimes(2);
-    expect(api.registerHook).toHaveBeenCalledTimes(2);
+    expect(api.on).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
     expect(api.registerCli).toHaveBeenCalledOnce();
   });
@@ -72,15 +72,15 @@ describe("tool-entry register()", () => {
     expect(toolNames).toEqual(["graph_search", "graph_add"]);
   });
 
-  it("registers the two hooks", async () => {
+  it("registers the two lifecycle events via api.on()", async () => {
     const { register } = await import("./tool-entry.js");
 
     register(api);
 
-    const hookNames = api.registerHook.mock.calls.map(
+    const eventNames = api.on.mock.calls.map(
       (call: unknown[]) => call[0] as string,
     );
-    expect(hookNames).toEqual(["before_agent_start", "agent_end"]);
+    expect(eventNames).toEqual(["before_agent_start", "agent_end"]);
   });
 
   it("registers gralkor CLI as a Commander registrar function", async () => {
