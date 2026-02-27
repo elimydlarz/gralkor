@@ -3,7 +3,7 @@ import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HookArg = Record<string, any>;
+type HookContext = Record<string, any>;
 
 function extractKeyTerms(text: string): string {
   // Strip very short/common words to build a search query from the user message
@@ -33,68 +33,13 @@ function extractKeyTerms(text: string): string {
   return words.slice(0, 8).join(" ");
 }
 
-/**
- * Extract the user message from hook arguments.
- *
- * The gateway may call hooks with a single ctx object or (event, ctx).
- * We search all provided objects for the message in multiple possible locations:
- *   - ctx.userMessage  (OpenClaw hook ctx convention)
- *   - event.prompt     (alternative event payload)
- *   - event.messages   (array of {role, content} objects)
- */
-function extractUserMessage(...args: HookArg[]): string {
-  for (const obj of args) {
-    if (!obj || typeof obj !== "object") continue;
-    if (typeof obj.userMessage === "string") return obj.userMessage;
-    if (typeof obj.prompt === "string") return obj.prompt;
-    if (Array.isArray(obj.messages)) {
-      for (let i = obj.messages.length - 1; i >= 0; i--) {
-        const m = obj.messages[i];
-        if (m?.role === "user" && typeof m.content === "string") return m.content;
-      }
-    }
-  }
-  return "";
-}
-
-/**
- * Extract the assistant message from hook arguments.
- * Same multi-field strategy as extractUserMessage.
- */
-function extractAssistantMessage(...args: HookArg[]): string {
-  for (const obj of args) {
-    if (!obj || typeof obj !== "object") continue;
-    if (typeof obj.agentResponse === "string") return obj.agentResponse;
-    if (typeof obj.response === "string") return obj.response;
-    if (Array.isArray(obj.messages)) {
-      for (let i = obj.messages.length - 1; i >= 0; i--) {
-        const m = obj.messages[i];
-        if (m?.role === "assistant" && typeof m.content === "string") return m.content;
-      }
-    }
-  }
-  return "";
-}
-
-/**
- * Extract agentId from hook arguments (may be in any of the provided objects).
- */
-function extractAgentId(...args: HookArg[]): string | undefined {
-  for (const obj of args) {
-    if (!obj || typeof obj !== "object") continue;
-    if (typeof obj.agentId === "string") return obj.agentId;
-  }
-  return undefined;
-}
-
 export function createBeforeAgentStartHandler(
   client: GraphitiClient,
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
 ) {
-  // Gateway may call with (ctx) or (event, ctx) — accept either
-  return async (...args: HookArg[]): Promise<{ prependContext?: string } | void> => {
-    const agentId = extractAgentId(...args);
+  return async (ctx: HookContext): Promise<{ prependContext?: string } | void> => {
+    const agentId = ctx.agentId as string | undefined;
     if (setGroupId && agentId) {
       setGroupId(agentId);
     }
@@ -104,10 +49,9 @@ export function createBeforeAgentStartHandler(
       return;
     }
 
-    const userMessage = extractUserMessage(...args);
+    const userMessage = ctx.userMessage as string | undefined;
     if (!userMessage) {
-      console.log("[gralkor] auto-recall: no user message found in hook args (keys: %s)",
-        args.map(a => a ? Object.keys(a).join(",") : "undefined").join(" | "));
+      console.log("[gralkor] auto-recall: no user message in ctx (keys: %s)", Object.keys(ctx).join(","));
       return;
     }
 
@@ -151,15 +95,14 @@ export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  // Gateway may call with (ctx) or (event, ctx) — accept either
-  return async (...args: HookArg[]): Promise<void> => {
+  return async (ctx: HookContext): Promise<void> => {
     if (!config.autoCapture.enabled) {
       console.log("[gralkor] auto-capture: disabled by config");
       return;
     }
 
-    const userMsg = extractUserMessage(...args);
-    const agentMsg = extractAssistantMessage(...args);
+    const userMsg = (ctx.userMessage as string | undefined) ?? "";
+    const agentMsg = (ctx.agentResponse as string | undefined) ?? "";
 
     // Skip trivially short exchanges or system commands
     if (userMsg.length < 10 && agentMsg.length < 10) {
@@ -172,7 +115,7 @@ export function createAgentEndHandler(
       return;
     }
 
-    const agentId = extractAgentId(...args);
+    const agentId = ctx.agentId as string | undefined;
     const groupId = resolveGroupId({ agentId });
     const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
 
