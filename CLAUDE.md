@@ -56,7 +56,7 @@ The plugin API methods must match these signatures exactly — the gateway valid
 ### Data Lifecycle
 
 **Auto-capture** (`agent_end` hook):
-1. Extract user/assistant messages from hook args (searches for `userMessage`/`agentResponse`, `prompt`/`response`, or `messages[]` across all provided arguments).
+1. Read `ctx.userMessage` and `ctx.agentResponse`.
 2. Skip if disabled, both messages <10 chars, or user message starts with `/`.
 3. Format as `User: ...\nAssistant: ...`.
 4. POST to `/episodes` with timestamp and agent's `group_id`.
@@ -64,8 +64,8 @@ The plugin API methods must match these signatures exactly — the gateway valid
 6. On failure: log warning with `[gralkor]` prefix, do not surface to agent.
 
 **Auto-recall** (`before_agent_start` hook):
-1. Extract `agentId` from hook args and capture into shared group ID state (so tools can use it).
-2. Skip if disabled or no user message (extracts from `userMessage`, `prompt`, or `messages[]` across all hook args).
+1. Read `ctx.agentId` and capture into shared group ID state (so tools can use it).
+2. Skip if disabled or no `ctx.userMessage`.
 3. Extract up to 8 key terms (stop-word filtered) from user message.
 4. POST to `/search` with terms and `group_id`.
 5. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
