@@ -2,11 +2,10 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
-interface HookContext {
-  agentId?: string;
-  userMessage?: string;
-  agentResponse?: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EventPayload = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EventContext = Record<string, any>;
 
 function extractKeyTerms(text: string): string {
   // Strip very short/common words to build a search query from the user message
@@ -36,83 +35,107 @@ function extractKeyTerms(text: string): string {
   return words.slice(0, 8).join(" ");
 }
 
-export function createBeforeAgentStartHook(
+/**
+ * Extract the last user message text from an event payload.
+ * The gateway may provide it as `event.prompt` (string) or inside
+ * `event.messages` (array of {role, content} objects).
+ */
+function extractUserMessage(event: EventPayload): string {
+  if (typeof event.prompt === "string") return event.prompt;
+  if (Array.isArray(event.messages)) {
+    for (let i = event.messages.length - 1; i >= 0; i--) {
+      const m = event.messages[i];
+      if (m?.role === "user" && typeof m.content === "string") return m.content;
+    }
+  }
+  return "";
+}
+
+/**
+ * Extract the last assistant message text from an event payload.
+ */
+function extractAssistantMessage(event: EventPayload): string {
+  if (typeof event.response === "string") return event.response;
+  if (Array.isArray(event.messages)) {
+    for (let i = event.messages.length - 1; i >= 0; i--) {
+      const m = event.messages[i];
+      if (m?.role === "assistant" && typeof m.content === "string") return m.content;
+    }
+  }
+  return "";
+}
+
+export function createBeforeAgentStartHandler(
   client: GraphitiClient,
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
 ) {
-  return {
-    name: "before_agent_start",
-    async execute(ctx: HookContext): Promise<{ context?: string } | void> {
-      console.log("[gralkor] before_agent_start fired, ctx keys:", Object.keys(ctx ?? {}), "ctx:", JSON.stringify(ctx, null, 2));
+  return async (event: EventPayload, ctx: EventContext): Promise<{ context?: string } | void> => {
+    const agentId = ctx.agentId as string | undefined;
+    if (setGroupId && agentId) {
+      setGroupId(agentId);
+    }
 
-      if (setGroupId && ctx.agentId) {
-        setGroupId(ctx.agentId);
-      }
+    if (!config.autoRecall.enabled) return;
 
-      if (!config.autoRecall.enabled) return;
-      if (!ctx.userMessage) return;
+    const userMessage = extractUserMessage(event);
+    if (!userMessage) return;
 
-      const query = extractKeyTerms(ctx.userMessage);
-      if (!query) return;
+    const query = extractKeyTerms(userMessage);
+    if (!query) return;
 
-      const groupId = resolveGroupId(ctx);
+    const groupId = resolveGroupId({ agentId });
 
-      try {
-        const facts = await client.searchFacts(
-          query,
-          [groupId],
-          config.autoRecall.maxResults,
-        );
+    try {
+      const facts = await client.searchFacts(
+        query,
+        [groupId],
+        config.autoRecall.maxResults,
+      );
 
-        if (facts.length === 0) return;
+      if (facts.length === 0) return;
 
-        const formatted = facts
-          .map((f) => `- ${f.fact}`)
-          .join("\n");
+      const formatted = facts
+        .map((f) => `- ${f.fact}`)
+        .join("\n");
 
-        return {
-          context: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
-        };
-      } catch {
-        // Graphiti unavailable — degrade silently
-        return;
-      }
-    },
+      return {
+        context: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
+      };
+    } catch {
+      // Graphiti unavailable — degrade silently
+      return;
+    }
   };
 }
 
-export function createAgentEndHook(
+export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  return {
-    name: "agent_end",
-    async execute(ctx: HookContext): Promise<void> {
-      console.log("[gralkor] agent_end fired, ctx keys:", Object.keys(ctx ?? {}), "ctx:", JSON.stringify(ctx, null, 2));
+  return async (event: EventPayload, ctx: EventContext): Promise<void> => {
+    if (!config.autoCapture.enabled) return;
 
-      if (!config.autoCapture.enabled) return;
+    const userMsg = extractUserMessage(event);
+    const agentMsg = extractAssistantMessage(event);
 
-      const userMsg = ctx.userMessage ?? "";
-      const agentMsg = ctx.agentResponse ?? "";
+    // Skip trivially short exchanges or system commands
+    if (userMsg.length < 10 && agentMsg.length < 10) return;
+    if (userMsg.startsWith("/")) return;
 
-      // Skip trivially short exchanges or system commands
-      if (userMsg.length < 10 && agentMsg.length < 10) return;
-      if (userMsg.startsWith("/")) return;
+    const agentId = ctx.agentId as string | undefined;
+    const groupId = resolveGroupId({ agentId });
+    const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
 
-      const groupId = resolveGroupId(ctx);
-      const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
-
-      try {
-        await client.addEpisode({
-          name: `conversation-${Date.now()}`,
-          episode_body: body,
-          source_description: "auto-capture",
-          group_id: groupId,
-        });
-      } catch {
-        // Graphiti unavailable — degrade silently
-      }
-    },
+    try {
+      await client.addEpisode({
+        name: `conversation-${Date.now()}`,
+        episode_body: body,
+        source_description: "auto-capture",
+        group_id: groupId,
+      });
+    } catch {
+      // Graphiti unavailable — degrade silently
+    }
   };
 }

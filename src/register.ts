@@ -2,17 +2,13 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId, GRAPHITI_URL } from "./config.js";
 import {
-  createBeforeAgentStartHook,
-  createAgentEndHook,
+  createBeforeAgentStartHandler,
+  createAgentEndHandler,
 } from "./hooks.js";
 
 interface PluginApi {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(
-    event: string,
-    handler: (ctx: any) => Promise<any>,
-    metadata: { name: string; description?: string },
-  ): void;
+  on(event: string, handler: (...args: any[]) => any): void;
   registerService(service: {
     id: string;
     start: () => void;
@@ -35,16 +31,8 @@ export function registerHooks(
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
 ) {
-  const beforeHook = createBeforeAgentStartHook(client, config, setGroupId);
-  const agentEndHook = createAgentEndHook(client, config);
-  api.registerHook(beforeHook.name, beforeHook.execute, {
-    name: "gralkor.auto-recall",
-    description: "Inject relevant memories before agent starts",
-  });
-  api.registerHook(agentEndHook.name, agentEndHook.execute, {
-    name: "gralkor.auto-capture",
-    description: "Capture conversation into knowledge graph",
-  });
+  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId));
+  api.on("agent_end", createAgentEndHandler(client, config));
 }
 
 export function registerHealthService(

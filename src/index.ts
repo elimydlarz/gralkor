@@ -17,11 +17,7 @@ interface PluginApi {
     opts?: { optional?: boolean },
   ): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerHook(
-    event: string,
-    handler: (ctx: any) => Promise<any>,
-    metadata: { name: string; description?: string },
-  ): void;
+  on(event: string, handler: (...args: any[]) => any): void;
   registerService(service: {
     id: string;
     start: () => void;
