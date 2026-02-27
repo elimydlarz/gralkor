@@ -70,7 +70,7 @@ export function createBeforeAgentStartHandler(
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
 ) {
-  return async (event: EventPayload, ctx: EventContext): Promise<{ context?: string } | void> => {
+  return async (event: EventPayload, ctx: EventContext): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId as string | undefined;
     if (setGroupId && agentId) {
       setGroupId(agentId);
@@ -100,7 +100,7 @@ export function createBeforeAgentStartHandler(
         .join("\n");
 
       return {
-        context: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
+        prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
       };
     } catch {
       // Graphiti unavailable — degrade silently

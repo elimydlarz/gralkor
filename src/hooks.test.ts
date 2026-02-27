@@ -51,11 +51,12 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(event, ctx);
 
-    expect(result).toHaveProperty("context");
-    expect(result!.context).toContain("Project uses microservices");
-    expect(result!.context).toContain("gralkor-memory");
-    expect(result!.context).toContain('trust="untrusted"');
-    expect(result!.context).toContain("Relevant facts from knowledge graph:");
+    expect(result).toHaveProperty("prependContext");
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("Project uses microservices");
+    expect(ctx_result).toContain("gralkor-memory");
+    expect(ctx_result).toContain('trust="untrusted"');
+    expect(ctx_result).toContain("Relevant facts from knowledge graph:");
   });
 
   it("skips when autoRecall is disabled", async () => {
