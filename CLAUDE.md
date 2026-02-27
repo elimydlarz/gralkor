@@ -125,27 +125,62 @@ OpenClaw Gateway (Node.js)
         FalkorDB (port 6379, browser UI port 3000)
 ```
 
-## File Structure
+## Repo Map
 
-- `src/index.ts` — Memory-mode entry point (`id: "gralkor"`, `kind: "memory"`). Registers `graph_search` and `graph_add`.
-- `src/tool-entry.ts` — Tool-mode entry point (`id: "gralkor"`, `kind: "tool"`). Registers `graph_search` and `graph_add`.
-- `resources/memory/package.json` — Package descriptor for the memory tarball (`@openclaw/gralkor`, single extension `./dist/index.js`).
-- `resources/memory/openclaw.plugin.json` — Memory-mode manifest (`kind: "memory"`). Canonical source of truth for the active `openclaw.plugin.json`.
-- `resources/tool/package.json` — Package descriptor for the tool tarball (`@openclaw/gralkor`, single extension `./dist/tool-entry.js`).
-- `resources/tool/openclaw.plugin.json` — Tool-mode manifest (`kind: "tool"`). Canonical source of truth for `openclaw.tool-plugin.json`.
-- `scripts/pack.sh` — Build script. Builds once, then loops over `resources/{memory,tool}/`, copies the two files, runs `npm pack` each time, restores to memory state.
-- `src/register.ts` — Shared registration helpers (`registerCli`, `registerHooks`, `registerHealthService`) used by both entry points.
-- `src/client.ts` — `GraphitiClient` class. HTTP wrapper around the Graphiti REST API with retry logic (retries network errors and 5xx, not 4xx) and configurable timeout.
-- `src/tools.ts` — Tool factories: `createMemoryRecallTool`, `createMemoryStoreTool`. Default names are `graph_search` and `graph_add`. Accept optional `ToolOverrides` and an optional `getGroupId` closure for agent partitioning. Execute signature matches OpenClaw convention: `(toolCallId, params)`.
-- `src/hooks.ts` — Hook factories: `before_agent_start` (auto-recall), `agent_end` (auto-capture). Both degrade silently if Graphiti is unreachable. `before_agent_start` accepts an optional `setGroupId` callback to share the agent's group ID with tools.
-- `src/config.ts` — `GRAPHITI_URL` constant, `GralkorConfig` interface, defaults, `resolveConfig()`, `resolveGroupId()`.
-- `openclaw.plugin.json` — Memory-mode plugin manifest with config schema and UI hints.
-- `openclaw.tool-plugin.json` — Tool-mode plugin manifest with config schema and UI hints.
-- `docker-compose.yml` — FalkorDB + Graphiti backend services.
-- `server/main.py` — Graphiti REST API server (FastAPI). Thin wrapper around `graphiti-core`.
-- `server/requirements.txt` — Python runtime dependencies.
-- `server/requirements-dev.txt` — Python test dependencies (pytest, pytest-asyncio, httpx).
-- `server/tests/` — Functional tests for the REST API. Mock `graphiti-core` at the boundary; exercise real HTTP through FastAPI's ASGI stack.
+```
+├── CLAUDE.md
+├── Makefile                          # build/test/deploy commands
+├── package.json                      # root package (dev deps, scripts)
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── tsconfig.json
+├── config.yaml                       # LLM/embedder provider config
+├── docker-compose.yml                # FalkorDB + Graphiti backend services
+├── .env.example
+├── openclaw.plugin.json              # active memory-mode manifest (copied from resources/)
+├── openclaw.tool-plugin.json         # active tool-mode manifest (copied from resources/)
+│
+├── src/                              # TypeScript plugin source (shared by both modes)
+│   ├── index.ts                      # memory-mode entry point (kind: "memory")
+│   ├── index.test.ts
+│   ├── tool-entry.ts                 # tool-mode entry point (kind: "tool")
+│   ├── tool-entry.test.ts
+│   ├── register.ts                   # shared registration (tools, hooks, health, CLI)
+│   ├── tools.ts                      # tool factories: createMemoryRecallTool, createMemoryStoreTool
+│   ├── tools.test.ts
+│   ├── hooks.ts                      # hook factories: auto-recall, auto-capture
+│   ├── hooks.test.ts
+│   ├── client.ts                     # GraphitiClient — HTTP wrapper with retry
+│   ├── client.test.ts
+│   ├── config.ts                     # GRAPHITI_URL, GralkorConfig, resolveConfig(), resolveGroupId()
+│   └── config.test.ts
+│
+├── resources/                        # per-mode packaging manifests (used by pack.sh)
+│   ├── memory/
+│   │   ├── package.json              # @openclaw/gralkor — extension: ./dist/index.js
+│   │   └── openclaw.plugin.json      # canonical memory-mode manifest
+│   └── tool/
+│       ├── package.json              # @openclaw/gralkor — extension: ./dist/tool-entry.js
+│       └── openclaw.plugin.json      # canonical tool-mode manifest
+│
+├── scripts/
+│   └── pack.sh                       # builds both tarballs (memory + tool)
+│
+├── server/                           # Graphiti REST API (Python/FastAPI)
+│   ├── Dockerfile
+│   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core
+│   ├── requirements.txt              # runtime deps
+│   ├── requirements-dev.txt          # test deps (pytest, httpx)
+│   ├── pytest.ini
+│   └── tests/
+│       ├── conftest.py               # AsyncMock Graphiti + factory helpers
+│       ├── test_health.py            # GET /health
+│       ├── test_episodes.py          # POST/GET/DELETE /episodes
+│       ├── test_search.py            # POST /search, /search/nodes
+│       └── test_graph_ops.py         # DELETE /edges, POST /clear, /build-indices, /build-communities
+│
+└── dist/                             # compiled JS (git-ignored)
+```
 
 ## Configuration
 
