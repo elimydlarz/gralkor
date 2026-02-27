@@ -325,7 +325,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 - `register()` must be synchronous. OpenClaw's gateway discards the return value of async `register()` functions — the plugin appears loaded but registers zero tools, hooks, or CLI commands. No async work (network probing, etc.) can happen inside `register()`.
 - `registerHook(event, handler, metadata)` is a separate 3-arg API — we use `api.on(event, handler)` instead, which works without metadata.
-- Hook handlers must handle flexible calling conventions — the gateway may pass a single `ctx` object or `(event, ctx)`. Use variadic signatures and search all args for needed fields (`userMessage`, `agentId`, etc.).
+- Hook handlers receive a single `ctx` object with `{ agentId?, userMessage?, agentResponse? }` — **not** two args `(event, ctx)`. Using two args causes `ctx` to be `undefined`, crashing the handler silently.
 - `registerTool` only accepts plain tool objects. Do not pass factory functions — the gateway reads `tool.description` which is `undefined` on functions.
 - `registerService` uses `{ id, start, stop }`, not `{ name, interval, execute }`.
 - Tool `execute` is called as `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. The first arg is a string tool-call ID, not the parsed parameters. Tools do not receive agent context; use the shared `getGroupId`/`setGroupId` pattern (see Graph Partitioning) for `group_id`.
