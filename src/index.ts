@@ -1,14 +1,16 @@
 import { GraphitiClient } from "./client.js";
 import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
-  createMemoryRecallTool,
   createMemoryStoreTool,
+  formatFacts,
+  formatNodes,
 } from "./tools.js";
 import {
   registerHooks,
   registerHealthService,
   registerCli,
 } from "./register.js";
+import type { NativeSearchFn } from "./hooks.js";
 
 interface PluginApi {
   // Plain tool object registration
@@ -61,7 +63,12 @@ function registerFullPlugin(
   const getGroupId = () => currentGroupId;
   const setGroupId = (id: string) => { currentGroupId = id; };
 
+  // Shared native search function: factory sets it at agent start, hook reads it
+  let nativeSearchFn: NativeSearchFn | null = null;
+  const getNativeSearch = () => nativeSearchFn;
+
   // Native memory tools — delegate to OpenClaw's built-in memory infrastructure
+  // The factory wraps memory_search to also search the graph
   api.registerTool(
     (ctx: { config: unknown; sessionKey: string }) => {
       const memorySearchTool = api.runtime.tools.createMemorySearchTool({
@@ -73,20 +80,68 @@ function registerFullPlugin(
         agentSessionKey: ctx.sessionKey,
       });
       if (!memorySearchTool || !memoryGetTool) return null;
-      return [memorySearchTool, memoryGetTool];
+
+      // Capture native search function for the auto-recall hook
+      const originalExecute = memorySearchTool.execute.bind(memorySearchTool);
+      nativeSearchFn = async (query: string) => {
+        // Native tool execute signature: (toolCallId, params, signal, onUpdate)
+        return originalExecute("auto-recall", { query });
+      };
+
+      // Wrap memory_search to combine native + graph results
+      const wrappedSearchTool = {
+        ...memorySearchTool,
+        async execute(
+          toolCallId: string,
+          args: { query: string; limit?: number },
+          signal?: AbortSignal,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onUpdate?: any,
+        ): Promise<string> {
+          const groupId = getGroupId();
+          const limit = args.limit ?? 10;
+
+          console.log("[gralkor] [memory_search] execute — toolCallId:", toolCallId, "query:", JSON.stringify(args.query), "groupId:", groupId);
+
+          // Search native markdown and graph in parallel
+          const [nativeResult, facts, nodes] = await Promise.all([
+            originalExecute(toolCallId, args, signal, onUpdate),
+            client.searchFacts(args.query, [groupId], limit),
+            client.searchNodes(args.query, [groupId], limit),
+          ]);
+
+          console.log("[gralkor] [memory_search] results — native:", typeof nativeResult === "string" ? nativeResult.length : 0, "chars,", facts.length, "facts,", nodes.length, "nodes");
+
+          const sections: string[] = [];
+
+          if (nativeResult) {
+            sections.push(String(nativeResult));
+          }
+
+          if (facts.length > 0) {
+            sections.push(formatFacts(facts));
+          }
+
+          if (nodes.length > 0) {
+            // formatNodes has a leading "\n\n" — trim it when standalone
+            sections.push(formatNodes(nodes).trim());
+          }
+
+          return sections.join("\n\n") || "No memories found.";
+        },
+      };
+
+      return [wrappedSearchTool, memoryGetTool];
     },
     { names: ["memory_search", "memory_get"] },
   );
 
-  // Graph tools
-  const recallTool = createMemoryRecallTool(client, config, undefined, getGroupId);
+  // memory_add tool (stores to graph)
   const storeTool = createMemoryStoreTool(client, config, undefined, getGroupId);
-
-  api.registerTool(recallTool);
   api.registerTool(storeTool);
 
-  // Hooks
-  registerHooks(api, client, config, setGroupId);
+  // Hooks — pass getNativeSearch so auto-recall can search both backends
+  registerHooks(api, client, config, setGroupId, getNativeSearch);
 
   // Health monitor service
   registerHealthService(api, client);
@@ -107,7 +162,7 @@ export const description =
   "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
 export const kind = "memory" as const;
 
-export const tools = ["memory_search", "memory_get", "graph_search", "graph_add"];
+export const tools = ["memory_search", "memory_get", "memory_add"];
 
 export const configSchema = {
   type: "object" as const,
