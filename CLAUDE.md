@@ -126,7 +126,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Slot compatibility | Memory mode provides unified `memory_search` (native+graph), `memory_get` (native), and `memory_add` (graph); tool mode adds `graph_search`/`graph_add` alongside `memory-core` |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
-| Message filtering | Auto-capture skips messages <10 chars and messages starting with `/` |
+| Message filtering | Auto-capture skips empty conversations and conversations where the first user message starts with `/` |
 
 ## Architecture
 
