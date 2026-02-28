@@ -53,24 +53,38 @@ The plugin API methods must match these signatures exactly — the gateway valid
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
+### Hook Context Shape (UNDER INVESTIGATION)
+
+The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }` as originally documented. Observed ctx keys at runtime (OpenClaw ≥ 2026.2):
+
+| Hook | Observed ctx keys | Missing vs. docs |
+|---|---|---|
+| `before_agent_start` (1st call) | `{ prompt }` | No `agentId`, `userMessage`, `agentResponse` |
+| `before_agent_start` (2nd call) | `{ prompt, messages }` | Same |
+| `agent_end` | `{ messages, success, error, durationMs }` | No `agentId`, `userMessage`, `agentResponse` |
+
+**Status:** Debug logging has been added to dump the actual value shapes of `prompt` and `messages` (see `debugCtx()` in `hooks.ts`). After one more deploy+test cycle we will know the exact data format and can update the extraction logic. Current code still reads the legacy `ctx.userMessage`/`ctx.agentResponse` properties, which are `undefined` at runtime, causing hooks to silently skip.
+
 ### Data Lifecycle
 
 **Auto-capture** (`agent_end` hook):
-1. Handler receives single `ctx` with `{ agentId?, userMessage?, agentResponse? }`.
-2. Skip if disabled, both messages <10 chars, or user message starts with `/`.
-3. Format as `User: ...\nAssistant: ...`.
-4. POST to `/episodes` with timestamp and agent's `group_id`.
-5. Graphiti server-side extracts entities and facts from the episode.
-6. On failure: log warning, continue silently.
+1. Handler receives single `ctx` — see "Hook Context Shape" for actual properties.
+2. Extract user message and agent response from ctx (currently broken — needs migration to `ctx.messages`).
+3. Skip if disabled, both messages <10 chars, or user message starts with `/`.
+4. Format as `User: ...\nAssistant: ...`.
+5. POST to `/episodes` with timestamp and agent's `group_id`.
+6. Graphiti server-side extracts entities and facts from the episode.
+7. On failure: log warning, continue silently.
 
 **Auto-recall** (`before_agent_start` hook):
-1. Handler receives single `ctx` with `{ agentId?, userMessage? }`.
-2. Capture `ctx.agentId` into shared group ID state (so tools can use it).
-3. Skip if disabled or no `ctx.userMessage`.
-4. Extract up to 8 key terms (stop-word filtered) from user message.
-5. POST to `/search` with terms and `group_id`.
-6. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
-7. Return as `{ prependContext }`. On failure: log warning, return nothing.
+1. Handler receives single `ctx` — see "Hook Context Shape" for actual properties.
+2. Extract user message from ctx (currently broken — needs migration to `ctx.prompt`).
+3. Capture agent ID into shared group ID state (if available in ctx — currently `agentId` is absent).
+4. Skip if disabled or no user message.
+5. Extract up to 8 key terms (stop-word filtered) from user message.
+6. POST to `/search` with terms and `group_id`.
+7. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
+8. Return as `{ prependContext }`. On failure: log warning, return nothing.
 
 ### Communication Path
 
