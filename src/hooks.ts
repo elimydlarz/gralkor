@@ -136,12 +136,7 @@ export function createAgentEndHandler(
   config: GralkorConfig,
 ) {
   return async (ctx: HookContext): Promise<void> => {
-    console.log("[gralkor] [auto-capture] hook fired — ctx:", {
-      agentId: ctx.agentId,
-      userMessage: ctx.userMessage ? `${ctx.userMessage.length} chars` : undefined,
-      agentResponse: ctx.agentResponse ? `${ctx.agentResponse.length} chars` : undefined,
-      ctxKeys: Object.keys(ctx),
-    });
+    console.log("[gralkor] [auto-capture] hook fired — ctx:", debugCtx(ctx));
 
     if (!config.autoCapture.enabled) {
       console.log("[gralkor] [auto-capture] disabled, skipping");
