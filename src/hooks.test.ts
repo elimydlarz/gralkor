@@ -309,7 +309,7 @@ describe("before_agent_start handler", () => {
     );
   });
 
-  it("strips stop words from user message for search query", async () => {
+  it("passes full user message as search query", async () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
@@ -319,69 +319,7 @@ describe("before_agent_start handler", () => {
     });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
-    expect(query).not.toContain("the");
-    expect(query).not.toContain("about");
-    expect(query).toContain("tell");
-    expect(query).toContain("project");
-    expect(query).toContain("architecture");
-  });
-
-  it("filters words shorter than 3 characters", async () => {
-    client.searchFacts.mockResolvedValue([]);
-
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      agentId: "agent-42",
-      prompt: "Go do it now please",
-    });
-
-    const query = client.searchFacts.mock.calls[0]?.[0] as string | undefined;
-    // "go" (2 chars), "do" (stop word + 2 chars), "it" (stop word), "now" (stop word), "please" (3+ chars)
-    // Only "please" should survive
-    if (query) {
-      expect(query).not.toMatch(/\bgo\b/);
-      expect(query).toContain("please");
-    }
-  });
-
-  it("strips punctuation from user message", async () => {
-    client.searchFacts.mockResolvedValue([]);
-
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      agentId: "agent-42",
-      prompt: "What's the project's architecture?",
-    });
-
-    const query = client.searchFacts.mock.calls[0][0] as string;
-    expect(query).not.toContain("?");
-    expect(query).not.toContain("'");
-  });
-
-  it("limits extracted terms to 8 words", async () => {
-    client.searchFacts.mockResolvedValue([]);
-
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      agentId: "agent-42",
-      prompt: "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima",
-    });
-
-    const query = client.searchFacts.mock.calls[0][0] as string;
-    const words = query.split(" ");
-    expect(words.length).toBeLessThanOrEqual(8);
-  });
-
-  it("skips search when user message yields empty query after stop-word removal", async () => {
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    // All words are stop words or <= 2 chars: "is" (stop), "it" (stop), "by" (stop), "us" (stop)
-    const result = await handler({
-      agentId: "agent-42",
-      prompt: "is it by us",
-    });
-
-    expect(result).toBeUndefined();
-    expect(client.searchFacts).not.toHaveBeenCalled();
+    expect(query).toBe("Tell me about the project architecture");
   });
 
   it("calls setGroupId with agentId when provided", async () => {
