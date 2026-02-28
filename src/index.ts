@@ -132,7 +132,7 @@ function registerFullPlugin(
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          console.log("[gralkor] [memory_search] results — native:", nativeResult.length, "chars,", facts.length, "facts,", nodes.length, "nodes");
+          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars,", facts.length, "facts,", nodes.length, "nodes");
 
           const sections: string[] = [];
 
