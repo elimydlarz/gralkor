@@ -360,6 +360,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - Auto-recall injects context as XML-tagged content marked `trust="untrusted"`
 - Auto-capture skips empty conversations and conversations where the first user message starts with `/`
 - Auto-capture errors propagate to the gateway (not swallowed) — this is intentional so failures are visible
+- Native tool `execute()` returns `{ content: [{ type: "text", text: "..." }, ...] }` (content-block format), **not** a plain string. Any code that calls `originalExecute` on a native tool must unwrap the result — use `unwrapToolResult()` in `src/index.ts`. Passing the raw return value to string interpolation produces `[object Object]`.
 - In memory mode, `memory_search` wraps the native tool's `execute` to also search the graph — the native search function reference is captured in a closure at factory creation time and shared with the auto-recall hook via `getNativeSearch`
 
 ## Deployment
