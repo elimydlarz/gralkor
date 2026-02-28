@@ -98,10 +98,12 @@ export function registerCli(
           const q = query.join(" ");
           try {
             const groupId = resolveGroupId({});
+            console.log(`Searching group "${groupId}" for: ${q}`);
             const [facts, nodes] = await Promise.all([
               client.searchFacts(q, [groupId], 10),
               client.searchNodes(q, [groupId], 10),
             ]);
+            console.log(`Found ${facts.length} facts, ${nodes.length} entities in group "${groupId}".`);
             if (facts.length === 0 && nodes.length === 0) {
               console.log("No results found.");
               return;
