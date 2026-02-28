@@ -114,10 +114,17 @@ export function extractMessagesFromCtx(ctx: HookContext): string {
 
     if (!textParts) continue;
 
+    // Strip injected auto-recall XML from user messages to prevent feedback loop
+    const cleanText = msg.role === "user"
+      ? textParts.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "").trim()
+      : textParts;
+
+    if (!cleanText) continue;
+
     if (msg.role === "user") {
-      parts.push(`User: ${textParts}`);
+      parts.push(`User: ${cleanText}`);
     } else if (msg.role === "assistant") {
-      parts.push(`Assistant: ${textParts}`);
+      parts.push(`Assistant: ${cleanText}`);
     }
   }
 
