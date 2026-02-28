@@ -85,7 +85,7 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 
 **Auto-recall** (`before_agent_start` hook):
 1. Handler receives single `ctx` with `{ prompt, messages? }`.
-2. `extractUserMessageFromPrompt()` strips metadata wrapper from `ctx.prompt`, skips system prompts. **BUG:** Only checks `startsWith("A new session was started")` — if the gateway prepends queued events (e.g. `System: [timestamp] Telegram reaction added: ...`), the check fails and the entire prompt (system event + session instruction) is used as a search query.
+2. `extractUserMessageFromPrompt()` strips leading `System:` event lines, then strips metadata wrapper from `ctx.prompt`, skips system prompts.
 3. Capture agent ID into shared group ID state (if available in ctx — currently `agentId` is absent).
 4. Skip if disabled or no user message.
 5. Run searches in parallel: `client.searchFacts()` and `client.searchNodes()` (both modes), plus native `memory_search` if available via `getNativeSearch` closure (memory mode only).
