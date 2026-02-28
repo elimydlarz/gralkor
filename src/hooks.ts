@@ -85,7 +85,7 @@ export function createBeforeAgentStartHandler(
         config.autoRecall.maxResults,
       );
 
-      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts:", facts.map((f) => f.fact));
+      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts — groupId:", groupId, "—", facts.map((f) => f.fact));
 
       if (facts.length === 0) return;
 
