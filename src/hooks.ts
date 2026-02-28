@@ -12,6 +12,39 @@ interface HookContext {
   agentResponse?: string;
 }
 
+/* Debug helper: summarise any ctx for logging without dumping megabytes. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function debugCtx(ctx: any): Record<string, unknown> {
+  const out: Record<string, unknown> = { keys: Object.keys(ctx) };
+
+  // prompt — expected string
+  if (typeof ctx.prompt === "string") out.prompt = ctx.prompt.slice(0, 200);
+  else if (ctx.prompt !== undefined) out.promptType = typeof ctx.prompt;
+
+  // messages — expected array of {role, content, ...}
+  if (Array.isArray(ctx.messages)) {
+    out.messagesCount = ctx.messages.length;
+    out.tail = ctx.messages.slice(-3).map((m: any) => ({
+      role: m.role,
+      contentType: typeof m.content,
+      preview: typeof m.content === "string"
+        ? m.content.slice(0, 120)
+        : Array.isArray(m.content)
+          ? JSON.stringify(m.content.slice(0, 2)).slice(0, 200)
+          : String(m.content).slice(0, 80),
+    }));
+  }
+
+  // pass-through scalars (agentId, success, error, durationMs, etc.)
+  for (const k of Object.keys(ctx)) {
+    if (k === "prompt" || k === "messages") continue;
+    const v = ctx[k];
+    if (typeof v === "string") out[k] = v.slice(0, 120);
+    else out[k] = v;
+  }
+  return out;
+}
+
 export function extractKeyTerms(text: string): string {
   // Strip very short/common words to build a search query from the user message
   const stopWords = new Set([
