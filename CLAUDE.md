@@ -12,7 +12,7 @@ Gralkor ships **two packages from one repo**. Each is published independently wi
 | Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
 | Plugin ID | `gralkor` | `gralkor` |
 | Kind | `"memory"` | `"tool"` |
-| Tool names | `memory_search`, `memory_get` (native), `graph_search`, `graph_add` | `graph_search`, `graph_add` |
+| Tool names | `memory_search` (unified native+graph), `memory_get` (native), `memory_add` | `graph_search`, `graph_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
 | Hooks | `before_agent_start`, `agent_end` | Same |
 | CLI | `memory`, `gralkor` | `gralkor` |
