@@ -5,6 +5,8 @@ import { defaultConfig } from "./config.js";
 import {
   createMemoryRecallTool,
   createMemoryStoreTool,
+  formatFacts,
+  formatNodes,
 } from "./tools.js";
 
 function mockClient(): {
@@ -50,7 +52,37 @@ function makeNode(overrides: Partial<EntityNode> = {}): EntityNode {
 const config: GralkorConfig = defaultConfig;
 const getGroupId = () => "agent-42";
 
-describe("memory_recall", () => {
+describe("formatFacts", () => {
+  it("formats facts with header", () => {
+    const result = formatFacts([makeFact({ fact: "remembered fact" })]);
+    expect(result).toContain("Facts (knowledge graph):");
+    expect(result).toContain("- remembered fact");
+  });
+
+  it("shows invalidation date", () => {
+    const result = formatFacts([makeFact({ invalid_at: "2025-06-01T00:00:00Z", fact: "old fact" })]);
+    expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
+  });
+
+  it("returns 'No graph facts found.' when empty", () => {
+    expect(formatFacts([])).toBe("No graph facts found.");
+  });
+});
+
+describe("formatNodes", () => {
+  it("formats nodes with header", () => {
+    const result = formatNodes([makeNode()]);
+    expect(result).toContain("Entities (knowledge graph):");
+    expect(result).toContain("**Sky**");
+    expect(result).toContain("The atmosphere above the Earth");
+  });
+
+  it("returns empty string when empty", () => {
+    expect(formatNodes([])).toBe("");
+  });
+});
+
+describe("graph_search (createMemoryRecallTool)", () => {
   let client: ReturnType<typeof mockClient>;
 
   beforeEach(() => {
@@ -108,18 +140,6 @@ describe("memory_recall", () => {
 
     expect(result).toContain("Facts (knowledge graph):");
     expect(result).toContain("- remembered fact");
-  });
-
-  it("shows invalidation date for expired facts", async () => {
-    client.searchFacts.mockResolvedValue([
-      makeFact({ invalid_at: "2025-06-01T00:00:00Z", fact: "old fact" }),
-    ]);
-    client.searchNodes.mockResolvedValue([]);
-
-    const tool = createMemoryRecallTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
-    const result = await tool.execute("call-1", { query: "test" });
-
-    expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
   });
 
   it("includes entity nodes with knowledge graph header", async () => {
@@ -180,7 +200,7 @@ describe("memory_recall", () => {
   });
 });
 
-describe("memory_store", () => {
+describe("memory_store (createMemoryStoreTool)", () => {
   let client: ReturnType<typeof mockClient>;
 
   beforeEach(() => {
@@ -188,10 +208,15 @@ describe("memory_store", () => {
     client.addEpisode.mockResolvedValue({});
   });
 
-  it("has the correct tool shape", () => {
+  it("defaults to graph_add name", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
     expect(tool.name).toBe("graph_add");
     expect(tool.parameters.required).toContain("content");
+  });
+
+  it("accepts name override for memory_add", () => {
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { name: "memory_add" });
+    expect(tool.name).toBe("memory_add");
   });
 
   it("writes to the agent partition", async () => {
@@ -241,10 +266,10 @@ describe("memory_store", () => {
 
   it("accepts ToolOverrides for name and description", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, {
-      name: "graph_add",
+      name: "memory_add",
       description: "Custom store description",
     });
-    expect(tool.name).toBe("graph_add");
+    expect(tool.name).toBe("memory_add");
     expect(tool.description).toBe("Custom store description");
   });
 
@@ -255,4 +280,3 @@ describe("memory_store", () => {
     await expect(tool.execute("call-1", { content: "x" })).rejects.toThrow("server down");
   });
 });
-
