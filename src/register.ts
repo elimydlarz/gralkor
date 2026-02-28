@@ -4,6 +4,7 @@ import { resolveGroupId, GRAPHITI_URL } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
+  type NativeSearchFn,
 } from "./hooks.js";
 
 interface PluginApi {
