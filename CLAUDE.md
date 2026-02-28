@@ -40,7 +40,7 @@ Both entry points follow the same sequence in their synchronous `register()` fun
 
 1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://graphiti:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
-3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI.
+3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI. In memory mode, `registerFullPlugin` also registers native `memory_search`/`memory_get` via `api.runtime.tools` factory and the `memory` CLI.
 
 Both entry points reuse the same tool factories and the same shared helpers from `src/register.ts`.
 
