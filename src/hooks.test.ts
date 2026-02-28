@@ -6,6 +6,7 @@ import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
   extractMessagesFromCtx,
+  extractUserMessageFromPrompt,
 } from "./hooks.js";
 
 function mockClient(): {
