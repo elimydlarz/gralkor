@@ -88,7 +88,7 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 2. `extractUserMessageFromPrompt()` strips metadata wrapper from `ctx.prompt`, skips system prompts.
 3. Capture agent ID into shared group ID state (if available in ctx — currently `agentId` is absent).
 4. Skip if disabled or no user message.
-5. Run three searches in parallel: `client.searchFacts()`, `client.searchNodes()`, and native `memory_search` (if available via `getNativeSearch` closure, memory mode only).
+5. Run searches in parallel: `client.searchFacts()` and `client.searchNodes()` (both modes), plus native `memory_search` if available via `getNativeSearch` closure (memory mode only).
 6. Format results in sections (graph facts, graph entities, native memory) inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
 7. Return as `{ prependContext }`. On graph failure: log warning, return nothing. Native search failures are caught independently and logged.
 
