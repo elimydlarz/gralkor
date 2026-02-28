@@ -104,7 +104,8 @@ function registerFullPlugin(
       const originalExecute = memorySearchTool.execute.bind(memorySearchTool);
       nativeSearchFn = async (query: string) => {
         // Native tool execute signature: (toolCallId, params, signal, onUpdate)
-        return originalExecute("auto-recall", { query });
+        const result = await originalExecute("auto-recall", { query });
+        return unwrapToolResult(result);
       };
 
       // Wrap memory_search to combine native + graph results
