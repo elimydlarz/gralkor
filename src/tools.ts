@@ -56,13 +56,17 @@ export function createMemoryRecallTool(
       _toolCallId: string,
       args: { query: string; limit?: number },
     ): Promise<string> {
+      console.log("[gralkor] [graph_search] execute — toolCallId:", _toolCallId, "args:", JSON.stringify(args));
       const groupId = getGroupId?.() ?? "default";
       const limit = args.limit ?? 10;
+      console.log("[gralkor] [graph_search] searching — query:", JSON.stringify(args.query), "groupId:", groupId, "limit:", limit);
 
       const [facts, nodes] = await Promise.all([
         client.searchFacts(args.query, [groupId], limit),
         client.searchNodes(args.query, [groupId], limit),
       ]);
+
+      console.log("[gralkor] [graph_search] results —", facts.length, "facts,", nodes.length, "nodes");
 
       return formatFacts(facts) + formatNodes(nodes);
     },
