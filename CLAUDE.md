@@ -103,16 +103,17 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Requirement | Implementation |
 |---|---|
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
-| Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode |
-| Automatic context recall | `before_agent_start` hook injects relevant facts before each turn |
-| Manual search | `graph_search` queries facts and entity nodes in parallel |
-| Manual store | `graph_add` creates episodes; Graphiti extracts structure |
+| Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode; captures ALL messages in sequence (multi-turn), not just the last of each role |
+| Automatic context recall | `before_agent_start` hook searches graph facts, graph entities, and native Markdown in parallel; injects combined results before each turn (memory mode). Tool mode searches graph only. |
+| Unified memory search (memory mode) | `memory_search` combines native Markdown results with graph facts and entity nodes in a single response |
+| Manual store (memory mode) | `memory_add` creates episodes in the knowledge graph; Graphiti extracts structure |
+| Graph tools (tool mode) | `graph_search` queries facts and entity nodes in parallel; `graph_add` creates episodes |
 | Per-agent graph partitioning | `group_id` derived from `agentId` isolates each agent's knowledge; hooks capture it from `ctx`, tools read it via shared closure |
 | CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` available for troubleshooting |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
-| Native memory tools (memory mode) | `memory_search` and `memory_get` delegated to OpenClaw runtime via `api.runtime.tools` |
-| Graph-based memory tools | `graph_search` and `graph_add` provide knowledge graph access |
-| Dual operating modes | Memory mode (replaces native memory) or tool mode (coexists with it) |
+| Native memory tools (memory mode) | `memory_search` wraps native search with graph search; `memory_get` delegated to OpenClaw runtime via `api.runtime.tools` |
+| Error propagation (auto-capture) | `agent_end` hook lets Graphiti errors propagate to the gateway instead of swallowing them |
+| Dual operating modes | Memory mode (replaces native memory with unified interface) or tool mode (coexists with native memory) |
 
 ### Cross-functional
 
