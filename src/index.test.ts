@@ -64,7 +64,10 @@ describe("register()", () => {
       registerCli: vi.fn(),
       runtime: {
         tools: {
-          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search", execute: vi.fn() }),
+          createMemorySearchTool: vi.fn().mockReturnValue({
+            name: "memory_search",
+            execute: vi.fn().mockResolvedValue({ content: [{ type: "text", text: "native result" }] }),
+          }),
           createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
           registerMemoryCli: vi.fn(),
         },
