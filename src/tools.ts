@@ -66,7 +66,7 @@ export function createMemoryRecallTool(
         client.searchNodes(args.query, [groupId], limit),
       ]);
 
-      console.log("[gralkor] [graph_search] results —", facts.length, "facts,", nodes.length, "nodes");
+      console.log("[gralkor] [graph_search] results — groupId:", groupId, "—", facts.length, "facts,", nodes.length, "nodes");
 
       return formatFacts(facts) + formatNodes(nodes);
     },
