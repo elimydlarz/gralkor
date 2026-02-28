@@ -53,6 +53,25 @@ interface PluginApi {
   };
 }
 
+/**
+ * Unwrap native tool execute result to a plain string.
+ * Native tools return { content: [{ type: "text", text: "..." }, ...] }
+ * rather than a plain string.
+ */
+function unwrapToolResult(result: unknown): string {
+  if (typeof result === "string") return result;
+  if (result && typeof result === "object" && "content" in result) {
+    const { content } = result as { content: Array<{ type: string; text?: string }> };
+    if (Array.isArray(content)) {
+      return content
+        .filter((block) => block.type === "text" && block.text)
+        .map((block) => block.text!)
+        .join("\n");
+    }
+  }
+  return String(result);
+}
+
 function registerFullPlugin(
   api: PluginApi,
   client: GraphitiClient,
