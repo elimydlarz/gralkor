@@ -15,9 +15,9 @@ Gralkor ships **two packages from one repo**. Each is published independently wi
 | Tool names | `memory_search`, `memory_get` (native), `graph_search`, `graph_add` | `graph_search`, `graph_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
 | Hooks | `before_agent_start`, `agent_end` | Same |
-| CLI | `gralkor` | `gralkor` |
+| CLI | `memory`, `gralkor` | `gralkor` |
 
-**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin. The agent gets Graphiti-powered `graph_search` and `graph_add` tools for knowledge graph access.
+**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin. The agent gets native `memory_search`/`memory_get` tools (delegated to OpenClaw's runtime) plus Graphiti-powered `graph_search` and `graph_add` tools for knowledge graph access.
 
 **Tool mode** (`gralkor`, `kind: "tool"`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
 
