@@ -340,7 +340,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - TypeScript, ES modules (`"type": "module"`)
 - Target: ES2022, module resolution: bundler
 - All Graphiti communication is HTTP via `src/client.ts` — no direct FalkorDB access
-- Memory mode provides `memory_search`, `memory_get` (native), `graph_search`, `graph_add`. Tool mode provides only `graph_search`, `graph_add`.
+- Memory mode provides `memory_search` (unified native+graph), `memory_get` (native), `memory_add` (graph). Tool mode provides `graph_search`, `graph_add`.
 - Config types are plain TypeScript interfaces in `src/config.ts`
 - Imports use `.js` extensions (required for ESM with TypeScript)
 
