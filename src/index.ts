@@ -124,18 +124,20 @@ function registerFullPlugin(
           console.log("[gralkor] [memory_search] execute — toolCallId:", toolCallId, "query:", JSON.stringify(args.query), "groupId:", groupId);
 
           // Search native markdown and graph in parallel
-          const [nativeResult, facts, nodes] = await Promise.all([
+          const [nativeRaw, facts, nodes] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
             client.searchFacts(args.query, [groupId], limit),
             client.searchNodes(args.query, [groupId], limit),
           ]);
 
-          console.log("[gralkor] [memory_search] results — native:", typeof nativeResult === "string" ? nativeResult.length : 0, "chars,", facts.length, "facts,", nodes.length, "nodes");
+          const nativeResult = unwrapToolResult(nativeRaw);
+
+          console.log("[gralkor] [memory_search] results — native:", nativeResult.length, "chars,", facts.length, "facts,", nodes.length, "nodes");
 
           const sections: string[] = [];
 
           if (nativeResult) {
-            sections.push(String(nativeResult));
+            sections.push(nativeResult);
           }
 
           if (facts.length > 0) {
