@@ -358,7 +358,9 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
 - Auto-recall injects context as XML-tagged content marked `trust="untrusted"`
-- Auto-capture skips messages shorter than 10 chars and messages starting with `/`
+- Auto-capture skips empty conversations and conversations where the first user message starts with `/`
+- Auto-capture errors propagate to the gateway (not swallowed) — this is intentional so failures are visible
+- In memory mode, `memory_search` wraps the native tool's `execute` to also search the graph — the native search function reference is captured in a closure at factory creation time and shared with the auto-recall hook via `getNativeSearch`
 
 ## Deployment
 
