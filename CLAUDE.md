@@ -323,7 +323,8 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 ## Gotchas
 
 - `register()` must be synchronous. OpenClaw's gateway discards the return value of async `register()` functions — the plugin appears loaded but registers zero tools, hooks, or CLI commands. No async work (network probing, etc.) can happen inside `register()`.
-- `registerHook` requires a third `metadata` argument with `{ name }`. The gateway calls `metadata.name.trim()` — omitting it causes `TypeError: Cannot read properties of undefined (reading 'trim')`.
+- `registerHook` requires a third `metadata` argument with `{ name }`. The gateway calls `metadata.name.trim()` — omitting it causes `TypeError: Cannot read properties of undefined (reading 'trim')`. Use `api.on(event, handler)` instead to avoid this.
+- Hook handlers receive a **single `ctx` argument** `{ agentId?, userMessage?, agentResponse? }`. Do **not** use `(event, ctx)` — the gateway passes one arg, so `ctx` would be `undefined` and the handler silently breaks (no crash for `agent_end`, TypeError for `before_agent_start`).
 - `registerTool` only accepts plain tool objects. Do not pass factory functions — the gateway reads `tool.description` which is `undefined` on functions.
 - `registerService` uses `{ id, start, stop }`, not `{ name, interval, execute }`.
 - Tool `execute` is called as `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. The first arg is a string tool-call ID, not the parsed parameters. Tools do not receive agent context; use the shared `getGroupId`/`setGroupId` pattern (see Graph Partitioning) for `group_id`.
