@@ -31,8 +31,9 @@ export function registerHooks(
   client: GraphitiClient,
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
+  getNativeSearch?: () => NativeSearchFn | null,
 ) {
-  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId));
+  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
   api.on("agent_end", createAgentEndHandler(client, config));
 }
 
