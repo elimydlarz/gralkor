@@ -49,29 +49,26 @@ Both entry points reuse the same tool factories and the same shared helpers from
 The plugin API methods must match these signatures exactly — the gateway validates arguments at registration time:
 
 - **`registerTool(tool, opts?)`** — `tool` must be a plain object `{ name, description, parameters, execute }`. Factory functions are not supported; passing a function causes a crash (the gateway reads `tool.description.trim()`). The gateway calls `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. Tools do not receive agent context; see "Graph Partitioning" for how tools resolve `group_id`.
-- **`api.on(event, handler)`** — Registers a hook handler for an event. The gateway calls handlers with a single `ctx` object: `{ agentId?, userMessage?, agentResponse? }`. (Note: `registerHook(event, handler, metadata)` is a separate 3-arg API — we use `api.on` instead.)
+- **`registerHook(event, handler, metadata)`** — Three arguments required. `metadata` must include `{ name: string }` (e.g. `"gralkor.auto-recall"`). The gateway does `metadata.name.trim()` — omitting the third arg crashes registration. Hook handlers receive a single `ctx` object with `{ agentId?, userMessage?, agentResponse? }`.
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
 ### Data Lifecycle
 
 **Auto-capture** (`agent_end` hook):
-1. Read `ctx.userMessage` and `ctx.agentResponse`.
-2. Skip if disabled, both messages <10 chars, or user message starts with `/`.
-3. Format as `User: ...\nAssistant: ...`.
-4. POST to `/episodes` with timestamp and agent's `group_id`.
-5. Graphiti server-side extracts entities and facts from the episode.
-6. On failure: log warning with `[gralkor]` prefix, do not surface to agent.
+1. Skip if disabled, both messages <10 chars, or user message starts with `/`.
+2. Format as `User: ...\nAssistant: ...`.
+3. POST to `/episodes` with timestamp and agent's `group_id`.
+4. Graphiti server-side extracts entities and facts from the episode.
+5. On failure: swallow silently.
 
 **Auto-recall** (`before_agent_start` hook):
-1. Read `ctx.agentId` and capture into shared group ID state (so tools can use it).
-2. Skip if disabled or no `ctx.userMessage`.
+1. Capture `ctx.agentId` into shared group ID state (so tools can use it).
+2. Skip if disabled or no user message.
 3. Extract up to 8 key terms (stop-word filtered) from user message.
 4. POST to `/search` with terms and `group_id`.
 5. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
-6. Return as injected context via `{ prependContext }`. On failure: log warning, return nothing.
-
-Both hooks log every decision point with `[gralkor]` prefix (visible in OpenClaw logs via `make oc-logs`).
+6. Return as injected context. On failure: return nothing.
 
 ### Communication Path
 
@@ -99,7 +96,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Requirement | Implementation |
 |---|---|
 | Graceful degradation (unconfigured) | Graphiti URL is hardcoded to `http://graphiti:8001`; always registers full plugin |
-| Graceful degradation (unreachable) | Hooks log warnings with `[gralkor]` prefix but do not surface errors to the agent; tools throw so the agent sees the failure |
+| Graceful degradation (unreachable) | Hooks swallow errors silently; tools throw so the agent sees the failure |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Both modes use `graph_search`/`graph_add` names — no collision with native `memory_*` tools |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
@@ -324,8 +321,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 ## Gotchas
 
 - `register()` must be synchronous. OpenClaw's gateway discards the return value of async `register()` functions — the plugin appears loaded but registers zero tools, hooks, or CLI commands. No async work (network probing, etc.) can happen inside `register()`.
-- `registerHook(event, handler, metadata)` is a separate 3-arg API — we use `api.on(event, handler)` instead, which works without metadata.
-- Hook handlers receive a single `ctx` object with `{ agentId?, userMessage?, agentResponse? }` — **not** two args `(event, ctx)`. Using two args causes `ctx` to be `undefined`, crashing the handler silently.
+- `registerHook` requires a third `metadata` argument with `{ name }`. The gateway calls `metadata.name.trim()` — omitting it causes `TypeError: Cannot read properties of undefined (reading 'trim')`.
 - `registerTool` only accepts plain tool objects. Do not pass factory functions — the gateway reads `tool.description` which is `undefined` on functions.
 - `registerService` uses `{ id, start, stop }`, not `{ name, interval, execute }`.
 - Tool `execute` is called as `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. The first arg is a string tool-call ID, not the parsed parameters. Tools do not receive agent context; use the shared `getGroupId`/`setGroupId` pattern (see Graph Partitioning) for `group_id`.
