@@ -61,7 +61,24 @@ function registerFullPlugin(
   const getGroupId = () => currentGroupId;
   const setGroupId = (id: string) => { currentGroupId = id; };
 
-  // Tools
+  // Native memory tools — delegate to OpenClaw's built-in memory infrastructure
+  api.registerTool(
+    (ctx: { config: unknown; sessionKey: string }) => {
+      const memorySearchTool = api.runtime.tools.createMemorySearchTool({
+        config: ctx.config,
+        agentSessionKey: ctx.sessionKey,
+      });
+      const memoryGetTool = api.runtime.tools.createMemoryGetTool({
+        config: ctx.config,
+        agentSessionKey: ctx.sessionKey,
+      });
+      if (!memorySearchTool || !memoryGetTool) return null;
+      return [memorySearchTool, memoryGetTool];
+    },
+    { names: ["memory_search", "memory_get"] },
+  );
+
+  // Graph tools
   const recallTool = createMemoryRecallTool(client, config, undefined, getGroupId);
   const storeTool = createMemoryStoreTool(client, config, undefined, getGroupId);
 
@@ -74,7 +91,13 @@ function registerFullPlugin(
   // Health monitor service
   registerHealthService(api, client);
 
-  // CLI
+  // CLI — native memory commands + gralkor commands
+  api.registerCli(
+    ({ program }) => {
+      api.runtime.tools.registerMemoryCli(program);
+    },
+    { commands: ["memory"] },
+  );
   registerCli(api, client, config);
 }
 
