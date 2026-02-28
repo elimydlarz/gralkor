@@ -104,7 +104,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 |---|---|
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
 | Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode; captures ALL messages in sequence (multi-turn), not just the last of each role |
-| Automatic context recall | `before_agent_start` hook searches graph facts, graph entities, and native Markdown in parallel; injects combined results before each turn (memory mode). Tool mode searches graph only. |
+| Automatic context recall | `before_agent_start` hook searches graph facts and graph entities in parallel in both modes; memory mode additionally searches native Markdown. Injects combined results before each turn. |
 | Unified memory search (memory mode) | `memory_search` combines native Markdown results with graph facts and entity nodes in a single response |
 | Manual store (memory mode) | `memory_add` creates episodes in the knowledge graph; Graphiti extracts structure |
 | Graph tools (tool mode) | `graph_search` queries facts and entity nodes in parallel; `graph_add` creates episodes |
