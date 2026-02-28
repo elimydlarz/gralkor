@@ -117,7 +117,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Graceful degradation (unreachable) | Hooks log warnings and skip; tools throw so the agent sees the failure |
 | Observability | Hooks and tools log `[gralkor]`-prefixed messages: received ctx, search queries, result counts, skip reasons, errors |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
-| Slot compatibility | Both modes use `graph_search`/`graph_add` names — no collision with native `memory_*` tools |
+| Slot compatibility | Memory mode provides native `memory_search`/`memory_get` (delegated) plus `graph_search`/`graph_add`; tool mode only adds `graph_search`/`graph_add` alongside `memory-core` |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
 | Message filtering | Auto-capture skips messages <10 chars and messages starting with `/` |
