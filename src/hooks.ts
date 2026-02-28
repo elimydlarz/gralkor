@@ -108,18 +108,36 @@ export function createAgentEndHandler(
   config: GralkorConfig,
 ) {
   return async (ctx: HookContext): Promise<void> => {
-    if (!config.autoCapture.enabled) return;
+    console.log("[gralkor] [auto-capture] hook fired — ctx:", {
+      agentId: ctx.agentId,
+      userMessage: ctx.userMessage ? `${ctx.userMessage.length} chars` : undefined,
+      agentResponse: ctx.agentResponse ? `${ctx.agentResponse.length} chars` : undefined,
+      ctxKeys: Object.keys(ctx),
+    });
+
+    if (!config.autoCapture.enabled) {
+      console.log("[gralkor] [auto-capture] disabled, skipping");
+      return;
+    }
 
     const userMsg = ctx.userMessage ?? "";
     const agentMsg = ctx.agentResponse ?? "";
 
     // Skip trivially short exchanges or system commands
-    if (userMsg.length < 10 && agentMsg.length < 10) return;
-    if (userMsg.startsWith("/")) return;
+    if (userMsg.length < 10 && agentMsg.length < 10) {
+      console.log("[gralkor] [auto-capture] messages too short, skipping — user:", userMsg.length, "agent:", agentMsg.length);
+      return;
+    }
+    if (userMsg.startsWith("/")) {
+      console.log("[gralkor] [auto-capture] slash command, skipping");
+      return;
+    }
 
     const agentId = ctx.agentId;
     const groupId = resolveGroupId({ agentId });
     const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
+
+    console.log("[gralkor] [auto-capture] storing episode — groupId:", groupId, "bodyLength:", body.length);
 
     try {
       await client.addEpisode({
@@ -128,8 +146,9 @@ export function createAgentEndHandler(
         source_description: "auto-capture",
         group_id: groupId,
       });
-    } catch {
-      // Graphiti unavailable — degrade silently
+      console.log("[gralkor] [auto-capture] episode stored successfully");
+    } catch (err) {
+      console.warn("[gralkor] [auto-capture] store failed:", err instanceof Error ? err.message : err);
     }
   };
 }
