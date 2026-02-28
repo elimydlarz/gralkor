@@ -89,17 +89,19 @@ export function extractUserMessageFromPrompt(ctx: HookContext): string {
 }
 
 /**
- * Extract last user message and last assistant response from ctx.messages (agent_end).
+ * Extract all user and assistant messages from ctx.messages (agent_end).
  *
  * Each message has role ("user"/"assistant"/"toolResult") and content (array of blocks).
  * We extract text blocks, skipping pure tool-call entries.
+ *
+ * Returns a multi-turn conversation string:
+ *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
  */
-export function extractMessagesFromCtx(ctx: HookContext): { userMessage: string; agentResponse: string } {
+export function extractMessagesFromCtx(ctx: HookContext): string {
   const messages = ctx.messages;
-  if (!messages || !Array.isArray(messages)) return { userMessage: "", agentResponse: "" };
+  if (!messages || !Array.isArray(messages)) return "";
 
-  let userMessage = "";
-  let agentResponse = "";
+  const parts: string[] = [];
 
   for (const msg of messages) {
     const textParts = (msg.content ?? [])
@@ -110,13 +112,13 @@ export function extractMessagesFromCtx(ctx: HookContext): { userMessage: string;
     if (!textParts) continue;
 
     if (msg.role === "user") {
-      userMessage = textParts;
+      parts.push(`User: ${textParts}`);
     } else if (msg.role === "assistant") {
-      agentResponse = textParts;
+      parts.push(`Assistant: ${textParts}`);
     }
   }
 
-  return { userMessage, agentResponse };
+  return parts.join("\n");
 }
 
 export function createBeforeAgentStartHandler(
