@@ -377,7 +377,7 @@ describe("before_agent_start handler", () => {
     // All words are stop words or <= 2 chars: "is" (stop), "it" (stop), "by" (stop), "us" (stop)
     const result = await handler({
       agentId: "agent-42",
-      userMessage: "is it by us",
+      prompt: "is it by us",
     });
 
     expect(result).toBeUndefined();
