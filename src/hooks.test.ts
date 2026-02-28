@@ -350,7 +350,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
       agentId: "agent-42",
-      userMessage: "What's the project's architecture?",
+      prompt: "What's the project's architecture?",
     });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
