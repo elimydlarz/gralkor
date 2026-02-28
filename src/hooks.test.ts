@@ -119,7 +119,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toHaveProperty("prependContext");
@@ -138,7 +138,7 @@ describe("before_agent_start handler", () => {
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toHaveProperty("prependContext");
@@ -157,7 +157,7 @@ describe("before_agent_start handler", () => {
       client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
     );
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toHaveProperty("prependContext");
@@ -177,7 +177,7 @@ describe("before_agent_start handler", () => {
       client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
     );
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     const ctx_result = (result as { prependContext: string }).prependContext;
@@ -195,7 +195,7 @@ describe("before_agent_start handler", () => {
       client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
     );
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     const ctx_result = (result as { prependContext: string }).prependContext;
@@ -213,7 +213,7 @@ describe("before_agent_start handler", () => {
       client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
     );
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     const ctx_result = (result as { prependContext: string }).prependContext;
@@ -230,7 +230,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
     const result = await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
@@ -251,7 +251,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
@@ -266,7 +266,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
@@ -278,7 +278,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
@@ -294,7 +294,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
     await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     expect(client.searchFacts).toHaveBeenCalledWith(
@@ -315,7 +315,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
       agentId: "agent-42",
-      userMessage: "Tell me about the project architecture",
+      prompt: "Tell me about the project architecture",
     });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
@@ -389,7 +389,7 @@ describe("before_agent_start handler", () => {
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
-    await handler({ agentId: "agent-42", userMessage: "Tell me about the project architecture" });
+    await handler({ agentId: "agent-42", prompt: "Tell me about the project architecture" });
 
     expect(setGroupId).toHaveBeenCalledWith("agent-42");
   });
@@ -399,7 +399,7 @@ describe("before_agent_start handler", () => {
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
-    await handler({ userMessage: "Tell me about the project architecture" });
+    await handler({ prompt: "Tell me about the project architecture" });
 
     expect(setGroupId).not.toHaveBeenCalled();
   });
