@@ -79,12 +79,7 @@ export function createBeforeAgentStartHandler(
   setGroupId?: (id: string) => void,
 ) {
   return async (ctx: HookContext): Promise<{ prependContext?: string } | void> => {
-    console.log("[gralkor] [auto-recall] hook fired — ctx:", {
-      agentId: ctx.agentId,
-      userMessage: ctx.userMessage ? `${ctx.userMessage.length} chars` : undefined,
-      agentResponse: ctx.agentResponse ? `${ctx.agentResponse.length} chars` : undefined,
-      ctxKeys: Object.keys(ctx),
-    });
+    console.log("[gralkor] [auto-recall] hook fired — ctx:", debugCtx(ctx));
 
     const agentId = ctx.agentId;
     if (setGroupId && agentId) {
