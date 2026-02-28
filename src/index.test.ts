@@ -18,9 +18,9 @@ describe("plugin export shape", () => {
     expect(mod.configSchema.type).toBe("object");
   });
 
-  it("exports tools list", async () => {
+  it("exports unified tools list", async () => {
     const mod = await import("./index.js");
-    expect(mod.tools).toEqual(["memory_search", "memory_get", "graph_search", "graph_add"]);
+    expect(mod.tools).toEqual(["memory_search", "memory_get", "memory_add"]);
   });
 
   it("default export has register as a function (OpenClaw CLI loader)", async () => {
@@ -64,7 +64,7 @@ describe("register()", () => {
       registerCli: vi.fn(),
       runtime: {
         tools: {
-          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search" }),
+          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search", execute: vi.fn() }),
           createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
           registerMemoryCli: vi.fn(),
         },
@@ -77,15 +77,15 @@ describe("register()", () => {
 
     register(api);
 
-    // 3 registerTool calls: 1 factory (native memory) + 2 plain (graph tools)
-    expect(api.registerTool).toHaveBeenCalledTimes(3);
+    // 2 registerTool calls: 1 factory (native memory, wrapped) + 1 plain (memory_add)
+    expect(api.registerTool).toHaveBeenCalledTimes(2);
     expect(api.on).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
     // 2 registerCli calls: memory CLI + gralkor CLI
     expect(api.registerCli).toHaveBeenCalledTimes(2);
   });
 
-  it("registers native memory tools via factory", async () => {
+  it("registers native memory tools via factory with wrapping", async () => {
     const { register } = await import("./index.js");
 
     register(api);
@@ -96,16 +96,14 @@ describe("register()", () => {
     expect(opts).toEqual({ names: ["memory_search", "memory_get"] });
   });
 
-  it("registers two graph tools as plain objects", async () => {
+  it("registers memory_add as a plain tool object", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    // Second and third registerTool calls are the graph tools
-    const graphToolNames = api.registerTool.mock.calls
-      .slice(1)
-      .map((call: unknown[]) => (call[0] as { name: string }).name);
-    expect(graphToolNames).toEqual(["graph_search", "graph_add"]);
+    // Second registerTool call is memory_add
+    const tool = api.registerTool.mock.calls[1][0] as { name: string };
+    expect(tool.name).toBe("memory_add");
   });
 
   it("registers the two lifecycle events via api.on()", async () => {
@@ -192,5 +190,23 @@ describe("register()", () => {
 
     const cmdNames = subcommands.map((c) => c.name);
     expect(cmdNames).toEqual(["status", "search <query...>", "clear [group_id]"]);
+  });
+
+  it("factory returns wrapped memory_search that combines native + graph results", async () => {
+    const { register } = await import("./index.js");
+
+    register(api);
+
+    // Get the factory and simulate OpenClaw calling it
+    const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
+    const tools = factory({ config: {}, sessionKey: "test-session" });
+
+    expect(tools).toHaveLength(2);
+    const [searchTool, getTool] = tools;
+
+    // The wrapped search tool should still be named memory_search
+    expect(searchTool.name).toBe("memory_search");
+    // memory_get should be unwrapped
+    expect(getTool.name).toBe("memory_get");
   });
 });
