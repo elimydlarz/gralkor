@@ -131,7 +131,7 @@ One repo — two published packages (produced by scripts/pack.sh)
 
 OpenClaw Gateway (Node.js)
   └── gralkor plugin (one of the two packages, not both)
-        ├── Tools: graph_search, graph_add
+        ├── Tools: memory_search, memory_get (native), graph_search, graph_add
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: health monitor (60s interval)
         └── CLI: gralkor status, gralkor search, gralkor clear
