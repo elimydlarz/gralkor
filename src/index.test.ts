@@ -47,6 +47,13 @@ describe("register()", () => {
     on: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
+    runtime: {
+      tools: {
+        createMemorySearchTool: ReturnType<typeof vi.fn>;
+        createMemoryGetTool: ReturnType<typeof vi.fn>;
+        registerMemoryCli: ReturnType<typeof vi.fn>;
+      };
+    };
   };
 
   beforeEach(() => {
@@ -55,6 +62,13 @@ describe("register()", () => {
       on: vi.fn(),
       registerService: vi.fn(),
       registerCli: vi.fn(),
+      runtime: {
+        tools: {
+          createMemorySearchTool: vi.fn().mockReturnValue({ name: "memory_search" }),
+          createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
+          registerMemoryCli: vi.fn(),
+        },
+      },
     };
   });
 
@@ -63,21 +77,35 @@ describe("register()", () => {
 
     register(api);
 
-    expect(api.registerTool).toHaveBeenCalledTimes(2);
+    // 3 registerTool calls: 1 factory (native memory) + 2 plain (graph tools)
+    expect(api.registerTool).toHaveBeenCalledTimes(3);
     expect(api.on).toHaveBeenCalledTimes(2);
     expect(api.registerService).toHaveBeenCalledOnce();
-    expect(api.registerCli).toHaveBeenCalledOnce();
+    // 2 registerCli calls: memory CLI + gralkor CLI
+    expect(api.registerCli).toHaveBeenCalledTimes(2);
   });
 
-  it("registers two graph tools", async () => {
+  it("registers native memory tools via factory", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    const toolNames = api.registerTool.mock.calls.map(
-      (call: unknown[]) => (call[0] as { name: string }).name,
-    );
-    expect(toolNames).toEqual(["graph_search", "graph_add"]);
+    // First registerTool call is the factory for native memory tools
+    const [factory, opts] = api.registerTool.mock.calls[0];
+    expect(typeof factory).toBe("function");
+    expect(opts).toEqual({ names: ["memory_search", "memory_get"] });
+  });
+
+  it("registers two graph tools as plain objects", async () => {
+    const { register } = await import("./index.js");
+
+    register(api);
+
+    // Second and third registerTool calls are the graph tools
+    const graphToolNames = api.registerTool.mock.calls
+      .slice(1)
+      .map((call: unknown[]) => (call[0] as { name: string }).name);
+    expect(graphToolNames).toEqual(["graph_search", "graph_add"]);
   });
 
   it("registers the two lifecycle events via api.on()", async () => {
