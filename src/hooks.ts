@@ -69,14 +69,8 @@ export function createBeforeAgentStartHandler(
       return;
     }
 
-    const query = extractKeyTerms(userMessage);
-    if (!query) {
-      console.log("[gralkor] [auto-recall] no key terms extracted, skipping");
-      return;
-    }
-
     const groupId = resolveGroupId({ agentId });
-    console.log("[gralkor] [auto-recall] searching — query:", JSON.stringify(query), "groupId:", groupId);
+    console.log("[gralkor] [auto-recall] searching — query:", JSON.stringify(userMessage), "groupId:", groupId);
 
     try {
       const facts = await client.searchFacts(
