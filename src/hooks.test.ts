@@ -40,23 +40,23 @@ describe("before_agent_start handler", () => {
     client = mockClient();
   });
 
-  it("returns context with matching facts", async () => {
+  it("returns context with matching facts and graph label", async () => {
     client.searchFacts.mockResolvedValue([
       makeFact({ group_id: "agent-42", fact: "Project uses microservices" }),
     ]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
       agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
     });
 
     expect(result).toHaveProperty("prependContext");
-    const prepend = (result as { prependContext: string }).prependContext;
-    expect(prepend).toContain("Project uses microservices");
-    expect(prepend).toContain("gralkor-memory");
-    expect(prepend).toContain('trust="untrusted"');
-    expect(prepend).toContain("Relevant facts from knowledge graph:");
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("Project uses microservices");
+    expect(ctx_result).toContain("gralkor-memory");
+    expect(ctx_result).toContain('trust="untrusted"');
+    expect(ctx_result).toContain("Relevant facts from knowledge graph:");
   });
 
   it("skips when autoRecall is disabled", async () => {
@@ -67,15 +67,15 @@ describe("before_agent_start handler", () => {
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
       agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
     expect(client.searchFacts).not.toHaveBeenCalled();
   });
 
-  it("skips when no user message in ctx", async () => {
+  it("skips when no user message in context", async () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({ agentId: "agent-42" });
 
@@ -83,11 +83,14 @@ describe("before_agent_start handler", () => {
     expect(client.searchFacts).not.toHaveBeenCalled();
   });
 
-  it("searches with key terms from user message", async () => {
+  it("searches using key terms from user message", async () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({ userMessage: "Tell me about the project architecture", agentId: "agent-42" });
+    await handler({
+      agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
+    });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
     expect(query).toContain("project");
@@ -99,20 +102,20 @@ describe("before_agent_start handler", () => {
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
       agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
   });
 
-  it("degrades gracefully when Graphiti is unreachable", async () => {
+  it("degrades silently when Graphiti is unreachable", async () => {
     client.searchFacts.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({
-      userMessage: "Tell me about the project architecture",
       agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
     });
 
     expect(result).toBeUndefined();
@@ -126,7 +129,10 @@ describe("before_agent_start handler", () => {
     };
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
-    await handler({ userMessage: "Tell me about the project architecture", agentId: "agent-42" });
+    await handler({
+      agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
+    });
 
     expect(client.searchFacts).toHaveBeenCalledWith(
       expect.any(String),
@@ -139,7 +145,10 @@ describe("before_agent_start handler", () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({ userMessage: "Tell me about the project architecture" });
+    await handler({
+      agentId: "agent-42",
+      userMessage: "Tell me about the project architecture",
+    });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
     expect(query).not.toContain("the");
@@ -153,9 +162,14 @@ describe("before_agent_start handler", () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({ userMessage: "Go do it now please" });
+    await handler({
+      agentId: "agent-42",
+      userMessage: "Go do it now please",
+    });
 
     const query = client.searchFacts.mock.calls[0]?.[0] as string | undefined;
+    // "go" (2 chars), "do" (stop word + 2 chars), "it" (stop word), "now" (stop word), "please" (3+ chars)
+    // Only "please" should survive
     if (query) {
       expect(query).not.toMatch(/\bgo\b/);
       expect(query).toContain("please");
@@ -166,7 +180,10 @@ describe("before_agent_start handler", () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({ userMessage: "What's the project's architecture?" });
+    await handler({
+      agentId: "agent-42",
+      userMessage: "What's the project's architecture?",
+    });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
     expect(query).not.toContain("?");
@@ -178,6 +195,7 @@ describe("before_agent_start handler", () => {
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima",
     });
 
@@ -188,7 +206,11 @@ describe("before_agent_start handler", () => {
 
   it("skips search when user message yields empty query after stop-word removal", async () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler({ userMessage: "is it by us" });
+    // All words are stop words or <= 2 chars: "is" (stop), "it" (stop), "by" (stop), "us" (stop)
+    const result = await handler({
+      agentId: "agent-42",
+      userMessage: "is it by us",
+    });
 
     expect(result).toBeUndefined();
     expect(client.searchFacts).not.toHaveBeenCalled();
@@ -199,7 +221,7 @@ describe("before_agent_start handler", () => {
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
-    await handler({ userMessage: "Tell me about the project architecture", agentId: "agent-42" });
+    await handler({ agentId: "agent-42", userMessage: "Tell me about the project architecture" });
 
     expect(setGroupId).toHaveBeenCalledWith("agent-42");
   });
@@ -226,9 +248,9 @@ describe("agent_end handler", () => {
   it("captures conversation to agent partition", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "What is the weather?",
       agentResponse: "I don't have access to weather data.",
-      agentId: "agent-42",
     });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
@@ -245,9 +267,9 @@ describe("agent_end handler", () => {
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, config);
     await handler({
+      agentId: "agent-42",
       userMessage: "What is the weather?",
       agentResponse: "Sunny.",
-      agentId: "agent-42",
     });
 
     expect(client.addEpisode).not.toHaveBeenCalled();
@@ -256,9 +278,9 @@ describe("agent_end handler", () => {
   it("skips trivially short exchanges", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "hi",
       agentResponse: "hey",
-      agentId: "agent-42",
     });
 
     expect(client.addEpisode).not.toHaveBeenCalled();
@@ -267,33 +289,33 @@ describe("agent_end handler", () => {
   it("skips messages starting with /", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "/status check everything",
       agentResponse: "All systems operational and running smoothly.",
-      agentId: "agent-42",
     });
 
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("degrades gracefully when Graphiti is unreachable", async () => {
+  it("degrades silently when Graphiti is unreachable", async () => {
     client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
 
     // Should not throw
     await handler({
+      agentId: "agent-42",
       userMessage: "What is the weather?",
       agentResponse: "I don't have access to weather data.",
-      agentId: "agent-42",
     });
   });
 
   it("formats episode body as User/Assistant format", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "What is the weather?",
       agentResponse: "It's sunny today.",
-      agentId: "agent-42",
     });
 
     const call = client.addEpisode.mock.calls[0][0] as {
@@ -309,30 +331,32 @@ describe("agent_end handler", () => {
   it("captures when userMessage is short but agentResponse is long", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "hi",
       agentResponse: "Hello! How can I help you today?",
-      agentId: "agent-42",
     });
 
+    // userMsg.length < 10 but agentMsg.length >= 10 → should capture (AND condition)
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
   });
 
   it("captures when agentResponse is short but userMessage is long", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
+      agentId: "agent-42",
       userMessage: "Can you explain the architecture of this project?",
       agentResponse: "Sure.",
-      agentId: "agent-42",
     });
 
+    // agentMsg.length < 10 but userMsg.length >= 10 → should capture (AND condition)
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
   });
 
   it("defaults missing messages to empty strings", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
-      userMessage: "This is a long enough message to pass the filter",
       agentId: "agent-42",
+      userMessage: "This is a long enough message to pass the filter",
     });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
@@ -350,5 +374,19 @@ describe("agent_end handler", () => {
     expect(client.addEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "default" }),
     );
+  });
+
+  it("reads user message and agent response from context", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    await handler({
+      agentId: "agent-42",
+      userMessage: "This is a long enough message to pass the filter",
+      agentResponse: "Here is a response that is also long enough",
+    });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("User: This is a long enough message");
+    expect(call.episode_body).toContain("Assistant: Here is a response");
   });
 });
