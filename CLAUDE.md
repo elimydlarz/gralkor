@@ -64,28 +64,27 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 | `before_agent_start` (2nd call) | `{ prompt, messages }` | Same |
 | `agent_end` | `{ messages, success, error, durationMs }` | No `agentId`, `userMessage`, `agentResponse` |
 
-**Status:** Debug logging has been added to dump the actual value shapes of `prompt` and `messages` (see `debugCtx()` in `hooks.ts`). After one more deploy+test cycle we will know the exact data format and can update the extraction logic. Current code still reads the legacy `ctx.userMessage`/`ctx.agentResponse` properties, which are `undefined` at runtime, causing hooks to silently skip.
+**Status:** Code now reads `ctx.prompt` (before_agent_start) and `ctx.messages` (agent_end). Debug logging via `debugCtx()` remains for observability.
 
 ### Data Lifecycle
 
 **Auto-capture** (`agent_end` hook):
-1. Handler receives single `ctx` — see "Hook Context Shape" for actual properties.
-2. Extract user message and agent response from ctx (currently broken — needs migration to `ctx.messages`).
-3. Skip if disabled, both messages <10 chars, or user message starts with `/`.
+1. Handler receives single `ctx` with `{ messages, success, error, durationMs }`.
+2. `extractMessagesFromCtx()` walks `ctx.messages` array, extracts text blocks from the last user and assistant messages.
+3. Skip if disabled, no messages extracted, or user message starts with `/`.
 4. Format as `User: ...\nAssistant: ...`.
 5. POST to `/episodes` with timestamp and agent's `group_id`.
 6. Graphiti server-side extracts entities and facts from the episode.
 7. On failure: log warning, continue silently.
 
 **Auto-recall** (`before_agent_start` hook):
-1. Handler receives single `ctx` — see "Hook Context Shape" for actual properties.
-2. Extract user message from ctx (currently broken — needs migration to `ctx.prompt`).
+1. Handler receives single `ctx` with `{ prompt, messages? }`.
+2. `extractUserMessageFromPrompt()` strips metadata wrapper from `ctx.prompt`, skips system prompts.
 3. Capture agent ID into shared group ID state (if available in ctx — currently `agentId` is absent).
 4. Skip if disabled or no user message.
-5. Extract up to 8 key terms (stop-word filtered) from user message.
-6. POST to `/search` with terms and `group_id`.
-7. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
-8. Return as `{ prependContext }`. On failure: log warning, return nothing.
+5. POST to `/search` with the user message and `group_id`. Graphiti handles semantic matching.
+6. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
+7. Return as `{ prependContext }`. On failure: log warning, return nothing.
 
 ### Communication Path
 
