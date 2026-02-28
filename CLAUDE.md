@@ -120,7 +120,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Requirement | Implementation |
 |---|---|
 | Graceful degradation (unconfigured) | Graphiti URL is hardcoded to `http://graphiti:8001`; always registers full plugin |
-| Graceful degradation (unreachable) | Hooks log warnings and skip; tools throw so the agent sees the failure |
+| Graceful degradation (unreachable) | Auto-recall hook logs warnings and skips on graph errors; native search failures caught independently. Auto-capture lets errors propagate. Tools throw so the agent sees the failure. |
 | Observability | Hooks and tools log `[gralkor]`-prefixed messages: received ctx, search queries, result counts, skip reasons, errors |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory mode provides native `memory_search`/`memory_get` (delegated) plus `graph_search`/`graph_add`; tool mode only adds `graph_search`/`graph_add` alongside `memory-core` |
