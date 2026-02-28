@@ -114,7 +114,7 @@ export function createMemoryStoreTool(
         group_id: groupId,
       });
 
-      console.log(`[gralkor] [${toolName}] stored successfully`);
+      console.log(`[gralkor] [${toolName}] stored successfully — groupId:`, groupId);
       return "Stored successfully. The knowledge graph will extract entities and relationships from this content.";
     },
   };
