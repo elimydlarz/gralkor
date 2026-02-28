@@ -202,7 +202,7 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 ### Graceful Degradation
 
 - The Graphiti URL (`http://graphiti:8001`) is a hardcoded constant, not user-configurable. The plugin always registers the full set of tools, hooks, and services.
-- If Graphiti is **unreachable at runtime**, hooks silently skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
+- If Graphiti is **unreachable at runtime**, hooks log a warning and skip (no errors surfaced to the agent), and tools throw so the agent sees the failure.
 
 ## Environment Variables
 
