@@ -137,7 +137,10 @@ function registerFullPlugin(
   );
 
   // memory_add tool (stores to graph)
-  const storeTool = createMemoryStoreTool(client, config, undefined, getGroupId);
+  const storeTool = createMemoryStoreTool(client, config, {
+    name: "memory_add",
+    description: "Store a thought, insight, reflection, or decision in memory. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
+  }, getGroupId);
   api.registerTool(storeTool);
 
   // Hooks — pass getNativeSearch so auto-recall can search both backends
