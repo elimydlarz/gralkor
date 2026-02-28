@@ -185,34 +185,31 @@ export function createAgentEndHandler(
       return;
     }
 
-    const { userMessage, agentResponse } = extractMessagesFromCtx(ctx);
+    const conversation = extractMessagesFromCtx(ctx);
 
-    if (!userMessage && !agentResponse) {
+    if (!conversation) {
       console.log("[gralkor] [auto-capture] no messages extracted, skipping");
       return;
     }
 
-    if (userMessage.startsWith("/")) {
+    // Check if the first user message is a slash command
+    const firstUserLine = conversation.match(/^User: (.+)$/m);
+    if (firstUserLine && firstUserLine[1].startsWith("/")) {
       console.log("[gralkor] [auto-capture] slash command, skipping");
       return;
     }
 
     const agentId = ctx.agentId;
     const groupId = resolveGroupId({ agentId });
-    const body = `User: ${userMessage}\nAssistant: ${agentResponse}`;
 
-    console.log("[gralkor] [auto-capture] storing episode — groupId:", groupId, "bodyLength:", body.length);
+    console.log("[gralkor] [auto-capture] storing episode — groupId:", groupId, "bodyLength:", conversation.length);
 
-    try {
-      await client.addEpisode({
-        name: `conversation-${Date.now()}`,
-        episode_body: body,
-        source_description: "auto-capture",
-        group_id: groupId,
-      });
-      console.log("[gralkor] [auto-capture] episode stored successfully");
-    } catch (err) {
-      console.warn("[gralkor] [auto-capture] store failed:", err instanceof Error ? err.message : err);
-    }
+    await client.addEpisode({
+      name: `conversation-${Date.now()}`,
+      episode_body: conversation,
+      source_description: "auto-capture",
+      group_id: groupId,
+    });
+    console.log("[gralkor] [auto-capture] episode stored successfully");
   };
 }
