@@ -364,7 +364,7 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
       agentId: "agent-42",
-      userMessage: "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima",
+      prompt: "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima",
     });
 
     const query = client.searchFacts.mock.calls[0][0] as string;
