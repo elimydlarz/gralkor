@@ -104,6 +104,54 @@ describe("extractMessagesFromCtx", () => {
   });
 });
 
+describe("extractUserMessageFromPrompt", () => {
+  it("returns empty string when prompt is missing", () => {
+    expect(extractUserMessageFromPrompt({})).toBe("");
+  });
+
+  it("returns empty string for plain session startup", () => {
+    expect(extractUserMessageFromPrompt({
+      prompt: "A new session was started via /new",
+    })).toBe("");
+  });
+
+  it("returns user message from plain prompt", () => {
+    expect(extractUserMessageFromPrompt({
+      prompt: "Tell me about the project",
+    })).toBe("Tell me about the project");
+  });
+
+  it("strips metadata wrapper and returns user message", () => {
+    const prompt = 'Conversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+  });
+
+  it("strips single System: event prefix before session startup", () => {
+    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nA new session was started via /new";
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+  });
+
+  it("strips System: event prefix and returns real user message", () => {
+    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nWhat is the weather today?";
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather today?");
+  });
+
+  it("strips multiple System: event lines", () => {
+    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event happened\n\nA new session was started via /new";
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+  });
+
+  it("strips multiple System: lines before a real user message", () => {
+    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event\n\nWhat is the weather?";
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
+  });
+
+  it("strips System: lines + metadata wrapper before user message", () => {
+    const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nConversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+  });
+});
+
 describe("before_agent_start handler", () => {
   let client: ReturnType<typeof mockClient>;
 
