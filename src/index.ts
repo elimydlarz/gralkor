@@ -107,7 +107,7 @@ export const description =
   "Persistent, temporally-aware memory via Graphiti knowledge graphs and FalkorDB";
 export const kind = "memory" as const;
 
-export const tools = ["graph_search", "graph_add"];
+export const tools = ["memory_search", "memory_get", "graph_search", "graph_add"];
 
 export const configSchema = {
   type: "object" as const,
