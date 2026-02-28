@@ -2,10 +2,17 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HookContext = Record<string, any>;
+/**
+ * Hook context provided by the OpenClaw gateway.
+ * Handlers receive a single ctx object — NOT (event, ctx).
+ */
+interface HookContext {
+  agentId?: string;
+  userMessage?: string;
+  agentResponse?: string;
+}
 
-function extractKeyTerms(text: string): string {
+export function extractKeyTerms(text: string): string {
   // Strip very short/common words to build a search query from the user message
   const stopWords = new Set([
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
@@ -39,30 +46,20 @@ export function createBeforeAgentStartHandler(
   setGroupId?: (id: string) => void,
 ) {
   return async (ctx: HookContext): Promise<{ prependContext?: string } | void> => {
-    const agentId = ctx.agentId as string | undefined;
+    const agentId = ctx.agentId;
     if (setGroupId && agentId) {
       setGroupId(agentId);
     }
 
-    if (!config.autoRecall.enabled) {
-      console.log("[gralkor] auto-recall: disabled by config");
-      return;
-    }
+    if (!config.autoRecall.enabled) return;
 
-    const userMessage = ctx.userMessage as string | undefined;
-    if (!userMessage) {
-      console.log("[gralkor] auto-recall: no user message in ctx (keys: %s)", Object.keys(ctx).join(","));
-      return;
-    }
+    const userMessage = ctx.userMessage ?? "";
+    if (!userMessage) return;
 
     const query = extractKeyTerms(userMessage);
-    if (!query) {
-      console.log("[gralkor] auto-recall: user message yielded empty query after stop-word removal");
-      return;
-    }
+    if (!query) return;
 
     const groupId = resolveGroupId({ agentId });
-    console.log("[gralkor] auto-recall: searching query=%j group=%s", query, groupId);
 
     try {
       const facts = await client.searchFacts(
@@ -71,12 +68,8 @@ export function createBeforeAgentStartHandler(
         config.autoRecall.maxResults,
       );
 
-      if (facts.length === 0) {
-        console.log("[gralkor] auto-recall: no facts matched");
-        return;
-      }
+      if (facts.length === 0) return;
 
-      console.log("[gralkor] auto-recall: injecting %d facts", facts.length);
       const formatted = facts
         .map((f) => `- ${f.fact}`)
         .join("\n");
@@ -84,8 +77,8 @@ export function createBeforeAgentStartHandler(
       return {
         prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
       };
-    } catch (err) {
-      console.warn("[gralkor] auto-recall: search failed:", err instanceof Error ? err.message : err);
+    } catch {
+      // Graphiti unavailable — degrade silently
       return;
     }
   };
@@ -96,30 +89,18 @@ export function createAgentEndHandler(
   config: GralkorConfig,
 ) {
   return async (ctx: HookContext): Promise<void> => {
-    if (!config.autoCapture.enabled) {
-      console.log("[gralkor] auto-capture: disabled by config");
-      return;
-    }
+    if (!config.autoCapture.enabled) return;
 
-    const userMsg = (ctx.userMessage as string | undefined) ?? "";
-    const agentMsg = (ctx.agentResponse as string | undefined) ?? "";
+    const userMsg = ctx.userMessage ?? "";
+    const agentMsg = ctx.agentResponse ?? "";
 
     // Skip trivially short exchanges or system commands
-    if (userMsg.length < 10 && agentMsg.length < 10) {
-      console.log("[gralkor] auto-capture: skipped (messages too short: user=%d, agent=%d)",
-        userMsg.length, agentMsg.length);
-      return;
-    }
-    if (userMsg.startsWith("/")) {
-      console.log("[gralkor] auto-capture: skipped (/ command)");
-      return;
-    }
+    if (userMsg.length < 10 && agentMsg.length < 10) return;
+    if (userMsg.startsWith("/")) return;
 
-    const agentId = ctx.agentId as string | undefined;
+    const agentId = ctx.agentId;
     const groupId = resolveGroupId({ agentId });
     const body = `User: ${userMsg}\nAssistant: ${agentMsg}`;
-
-    console.log("[gralkor] auto-capture: storing episode (group=%s, bodyLen=%d)", groupId, body.length);
 
     try {
       await client.addEpisode({
@@ -128,9 +109,8 @@ export function createAgentEndHandler(
         source_description: "auto-capture",
         group_id: groupId,
       });
-      console.log("[gralkor] auto-capture: episode stored successfully");
-    } catch (err) {
-      console.warn("[gralkor] auto-capture: store failed:", err instanceof Error ? err.message : err);
+    } catch {
+      // Graphiti unavailable — degrade silently
     }
   };
 }
