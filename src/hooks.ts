@@ -121,10 +121,13 @@ export function extractMessagesFromCtx(ctx: HookContext): string {
   return parts.join("\n");
 }
 
+export type NativeSearchFn = (query: string) => Promise<string>;
+
 export function createBeforeAgentStartHandler(
   client: GraphitiClient,
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
+  getNativeSearch?: () => NativeSearchFn | null,
 ) {
   return async (ctx: HookContext): Promise<{ prependContext?: string } | void> => {
     console.log("[gralkor] [auto-recall] hook fired — ctx:", debugCtx(ctx));
@@ -149,22 +152,39 @@ export function createBeforeAgentStartHandler(
     console.log("[gralkor] [auto-recall] searching — query:", JSON.stringify(userMessage), "groupId:", groupId);
 
     try {
-      const facts = await client.searchFacts(
-        userMessage,
-        [groupId],
-        config.autoRecall.maxResults,
-      );
+      const limit = config.autoRecall.maxResults;
 
-      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts — groupId:", groupId, "—", facts.map((f) => f.fact));
+      // Search graph facts, graph nodes, and native markdown in parallel
+      const nativeSearch = getNativeSearch?.();
+      const [facts, nodes, nativeResult] = await Promise.all([
+        client.searchFacts(userMessage, [groupId], limit),
+        client.searchNodes(userMessage, [groupId], limit),
+        nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
+          console.warn("[gralkor] [auto-recall] native search failed:", err instanceof Error ? err.message : err);
+          return null;
+        }) : Promise.resolve(null),
+      ]);
 
-      if (facts.length === 0) return;
+      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts,", nodes.length, "nodes — groupId:", groupId);
 
-      const formatted = facts
-        .map((f) => `- ${f.fact}`)
-        .join("\n");
+      const sections: string[] = [];
+
+      if (facts.length > 0) {
+        sections.push("Facts from knowledge graph:\n" + facts.map((f) => `- ${f.fact}`).join("\n"));
+      }
+
+      if (nodes.length > 0) {
+        sections.push("Entities from knowledge graph:\n" + nodes.map((n) => `- ${n.name}: ${n.summary}`).join("\n"));
+      }
+
+      if (nativeResult) {
+        sections.push("From native memory:\n" + nativeResult);
+      }
+
+      if (sections.length === 0) return;
 
       return {
-        prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
+        prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`,
       };
     } catch (err) {
       console.warn("[gralkor] [auto-recall] search failed:", err instanceof Error ? err.message : err);
