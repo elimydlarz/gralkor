@@ -40,9 +40,13 @@ Both entry points follow the same sequence in their synchronous `register()` fun
 
 1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://graphiti:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
-3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI. In memory mode, `registerFullPlugin` also registers native `memory_search`/`memory_get` via `api.runtime.tools` factory and the `memory` CLI.
+3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI.
 
-Both entry points reuse the same tool factories and the same shared helpers from `src/register.ts`.
+**Memory mode specifics:** `registerFullPlugin` creates shared `nativeSearchFn` state. The `registerTool` factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.searchFacts()` + `client.searchNodes()` in parallel, combining all results. It also stores a reference to the native search function for the auto-recall hook to use. Registers `memory_add` (via `createMemoryStoreTool` with name override) as a plain tool. Registers `memory_get` unchanged. Passes `getNativeSearch` closure to `registerHooks` so auto-recall can search both backends.
+
+**Tool mode specifics:** `registerFullPlugin` registers `graph_search` and `graph_add` as plain tools using the default names from `createMemoryRecallTool`/`createMemoryStoreTool`. No wrapping or native memory integration.
+
+Both entry points reuse the same tool factories (`src/tools.ts`) and shared helpers from `src/register.ts`.
 
 ### OpenClaw Plugin API Contract
 
