@@ -570,6 +570,22 @@ describe("agent_end handler", () => {
     expect(call.name).toMatch(/^conversation-\d+$/);
   });
 
+  it("strips <gralkor-memory> XML from user messages before storing", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>\n';
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}What is the weather?` }] },
+        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
+      ],
+    });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
+    expect(call.episode_body).not.toContain("gralkor-memory");
+  });
+
   it("falls back to 'default' group when agentId is missing", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
