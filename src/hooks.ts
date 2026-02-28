@@ -46,20 +46,37 @@ export function createBeforeAgentStartHandler(
   setGroupId?: (id: string) => void,
 ) {
   return async (ctx: HookContext): Promise<{ prependContext?: string } | void> => {
+    console.log("[gralkor] [auto-recall] hook fired — ctx:", {
+      agentId: ctx.agentId,
+      userMessage: ctx.userMessage ? `${ctx.userMessage.length} chars` : undefined,
+      agentResponse: ctx.agentResponse ? `${ctx.agentResponse.length} chars` : undefined,
+      ctxKeys: Object.keys(ctx),
+    });
+
     const agentId = ctx.agentId;
     if (setGroupId && agentId) {
       setGroupId(agentId);
     }
 
-    if (!config.autoRecall.enabled) return;
+    if (!config.autoRecall.enabled) {
+      console.log("[gralkor] [auto-recall] disabled, skipping");
+      return;
+    }
 
     const userMessage = ctx.userMessage ?? "";
-    if (!userMessage) return;
+    if (!userMessage) {
+      console.log("[gralkor] [auto-recall] no userMessage, skipping");
+      return;
+    }
 
     const query = extractKeyTerms(userMessage);
-    if (!query) return;
+    if (!query) {
+      console.log("[gralkor] [auto-recall] no key terms extracted, skipping");
+      return;
+    }
 
     const groupId = resolveGroupId({ agentId });
+    console.log("[gralkor] [auto-recall] searching — query:", JSON.stringify(query), "groupId:", groupId);
 
     try {
       const facts = await client.searchFacts(
@@ -67,6 +84,8 @@ export function createBeforeAgentStartHandler(
         [groupId],
         config.autoRecall.maxResults,
       );
+
+      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts:", facts.map((f) => f.fact));
 
       if (facts.length === 0) return;
 
@@ -77,8 +96,8 @@ export function createBeforeAgentStartHandler(
       return {
         prependContext: `<gralkor-memory source="auto-recall" trust="untrusted">\nRelevant facts from knowledge graph:\n${formatted}\n</gralkor-memory>`,
       };
-    } catch {
-      // Graphiti unavailable — degrade silently
+    } catch (err) {
+      console.warn("[gralkor] [auto-recall] search failed:", err instanceof Error ? err.message : err);
       return;
     }
   };
