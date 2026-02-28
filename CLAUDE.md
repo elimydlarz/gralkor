@@ -172,7 +172,7 @@ OpenClaw Gateway (Node.js)
 │   ├── tool-entry.ts                 # tool-mode entry point (kind: "tool")
 │   ├── tool-entry.test.ts
 │   ├── register.ts                   # shared registration (tools, hooks, health, CLI)
-│   ├── tools.ts                      # tool factories: createMemoryRecallTool, createMemoryStoreTool
+│   ├── tools.ts                      # tool factories + formatters: createMemoryRecallTool, createMemoryStoreTool, formatFacts, formatNodes
 │   ├── tools.test.ts
 │   ├── hooks.ts                      # hook factories: auto-recall, auto-capture
 │   ├── hooks.test.ts
