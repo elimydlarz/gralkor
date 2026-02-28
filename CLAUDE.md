@@ -29,7 +29,7 @@ Both modes register auto-capture (`agent_end`) and auto-recall (`before_agent_st
 
 | Object | TypeScript type | Description |
 |---|---|---|
-| Episode | `Episode` | A captured conversation turn or manual store. Raw text input to the graph. |
+| Episode | `Episode` | A captured conversation (all turns accumulated) or manual store. Raw text input to the graph. |
 | Fact (edge) | `Fact` | An extracted relationship between two entities. Has temporal validity (`valid_at`, `invalid_at`). |
 | Entity (node) | `EntityNode` | A person, concept, project, or thing extracted from episodes. Has a `summary`. |
 | Group | `string` (group_id) | Partition key. One graph per agent — derived from `agentId`, falls back to `"default"`. Hooks get it from `ctx`; tools read it via shared `getGroupId` closure. |
