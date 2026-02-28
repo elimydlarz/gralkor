@@ -102,6 +102,59 @@ describe("extractMessagesFromCtx", () => {
     });
     expect(result).toBe("User: Part 1\nPart 2");
   });
+
+  it("strips <gralkor-memory> XML from user messages", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>\n';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}What is the weather?` }] },
+        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
+      ],
+    });
+    expect(result).toBe("User: What is the weather?\nAssistant: It's sunny.");
+  });
+
+  it("skips user message that is only <gralkor-memory> XML", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: xml }] },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+    });
+    expect(result).toBe("Assistant: Response");
+  });
+
+  it("does not strip <gralkor-memory> from assistant messages", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nSome content\n</gralkor-memory>';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [{ type: "text", text: xml }] },
+      ],
+    });
+    expect(result).toBe(`Assistant: ${xml}`);
+  });
+
+  it("strips multiple <gralkor-memory> blocks from a single user message", () => {
+    const xml1 = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts block 1\n</gralkor-memory>\n';
+    const xml2 = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts block 2\n</gralkor-memory>\n';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml1}${xml2}Tell me more` }] },
+      ],
+    });
+    expect(result).toBe("User: Tell me more");
+  });
+
+  it("handles <gralkor-memory> with nested newlines and special characters in facts", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- User\'s name is "John O\'Brien"\n- Project uses <React> & TypeScript\n\nEntities from knowledge graph:\n- John: A developer who works on the project\n</gralkor-memory>\n';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}Hello John` }] },
+      ],
+    });
+    expect(result).toBe("User: Hello John");
+  });
 });
 
 describe("extractUserMessageFromPrompt", () => {
