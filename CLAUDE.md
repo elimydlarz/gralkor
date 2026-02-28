@@ -76,7 +76,7 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 
 **Auto-capture** (`agent_end` hook):
 1. Handler receives single `ctx` with `{ messages, success, error, durationMs }`.
-2. `extractMessagesFromCtx()` walks `ctx.messages` array, extracts ALL text blocks from user and assistant messages in sequence (accumulates, does not overwrite).
+2. `extractMessagesFromCtx()` walks `ctx.messages` array, extracts ALL text blocks from user and assistant messages in sequence (accumulates, does not overwrite). **BUG:** Does not strip `<gralkor-memory>` XML blocks from user messages. The gateway injects auto-recall context as a user message, so captured episodes contain the full XML including previously-recalled facts. Graphiti then extracts entities/facts from this meta-content, creating a feedback loop that pollutes the graph with implementation details (e.g. "nativeSearchFn returns whatever originalExecute returns").
 3. Skip if disabled, no messages extracted, or first user message starts with `/`.
 4. Format as multi-turn conversation: `User: ...\nAssistant: ...\nUser: ...\nAssistant: ...`.
 5. POST to `/episodes` with timestamp and agent's `group_id`.
