@@ -54,9 +54,9 @@ The plugin API methods must match these signatures exactly — the gateway valid
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
-### Hook Context Shape (UNDER INVESTIGATION)
+### Hook Context Shape
 
-The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }` as originally documented. Observed ctx keys at runtime (OpenClaw ≥ 2026.2):
+The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }` as originally documented. Confirmed ctx keys at runtime (OpenClaw ≥ 2026.2):
 
 | Hook | Observed ctx keys | Missing vs. docs |
 |---|---|---|
@@ -64,7 +64,9 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 | `before_agent_start` (2nd call) | `{ prompt, messages }` | Same |
 | `agent_end` | `{ messages, success, error, durationMs }` | No `agentId`, `userMessage`, `agentResponse` |
 
-**Status:** Code now reads `ctx.prompt` (before_agent_start) and `ctx.messages` (agent_end). Debug logging via `debugCtx()` remains for observability.
+**Double-fire:** The gateway calls `before_agent_start` **twice** per agent run — once before session creation (only `prompt`), once before LLM invocation (`prompt` + `messages`). Both calls receive the same `prompt` string. The handler must be idempotent. Only the return value of the second call's `prependContext` is used by the gateway.
+
+**Message content format:** `ctx.messages[].content` is an array of `{ type, text?, ... }` objects (not a JSON string). The `type` field is `"text"`, `"toolCall"`, etc. Debug output shows `contentType: 'object'` confirming it's a parsed array.
 
 ### Data Lifecycle
 
