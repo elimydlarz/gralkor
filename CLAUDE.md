@@ -134,7 +134,7 @@ OpenClaw Gateway (Node.js)
         ├── Tools: memory_search, memory_get (native), graph_search, graph_add
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: health monitor (60s interval)
-        └── CLI: gralkor status, gralkor search, gralkor clear
+        ├── CLI: memory (native), gralkor status, gralkor search, gralkor clear
               │
               ▼  HTTP (fetch)
         Graphiti REST API (FastAPI, port 8001)
