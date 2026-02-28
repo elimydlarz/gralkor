@@ -61,7 +61,7 @@ The plugin API methods must match these signatures exactly — the gateway valid
 3. Format as `User: ...\nAssistant: ...`.
 4. POST to `/episodes` with timestamp and agent's `group_id`.
 5. Graphiti server-side extracts entities and facts from the episode.
-6. On failure: swallow silently.
+6. On failure: log warning, continue silently.
 
 **Auto-recall** (`before_agent_start` hook):
 1. Handler receives single `ctx` with `{ agentId?, userMessage? }`.
@@ -70,7 +70,7 @@ The plugin API methods must match these signatures exactly — the gateway valid
 4. Extract up to 8 key terms (stop-word filtered) from user message.
 5. POST to `/search` with terms and `group_id`.
 6. Format returned facts as bulleted list inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
-7. Return as `{ prependContext }`. On failure: return nothing.
+7. Return as `{ prependContext }`. On failure: log warning, return nothing.
 
 ### Communication Path
 
