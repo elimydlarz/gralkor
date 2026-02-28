@@ -80,12 +80,15 @@ export function extractUserMessageFromPrompt(ctx: HookContext): string {
   const prompt = ctx.prompt;
   if (!prompt) return "";
 
+  // Strip leading "System: ..." lines (queued events prepended by gateway)
+  const stripped = prompt.replace(/^(?:System: [^\n]*\n\n)+/, "");
+
   // Skip system instructions
-  if (prompt.startsWith("A new session was started")) return "";
+  if (stripped.startsWith("A new session was started")) return "";
 
   // Strip metadata wrapper if present
   const metadataPattern = /^Conversation info \(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  return prompt.replace(metadataPattern, "");
+  return stripped.replace(metadataPattern, "");
 }
 
 /**
