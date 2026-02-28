@@ -11,10 +11,17 @@ import {
 } from "./register.js";
 
 interface PluginApi {
+  // Plain tool object registration
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerTool(
     tool: { name: string; description: string; parameters: unknown; execute: (...args: any[]) => Promise<any> },
     opts?: { optional?: boolean },
+  ): void;
+  // Factory function registration (used for native memory tools)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerTool(
+    factory: (ctx: any) => any | any[] | null,
+    opts?: { names?: string[] },
   ): void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(event: string, handler: (...args: any[]) => any): void;
@@ -32,6 +39,16 @@ interface PluginApi {
     }) => void | Promise<void>,
     opts?: { commands?: string[] },
   ): void;
+  runtime: {
+    tools: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createMemorySearchTool(opts: { config: any; agentSessionKey: string }): any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createMemoryGetTool(opts: { config: any; agentSessionKey: string }): any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      registerMemoryCli(program: any): void;
+    };
+  };
 }
 
 function registerFullPlugin(
