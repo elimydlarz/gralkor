@@ -464,7 +464,7 @@ describe("agent_end handler", () => {
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
         { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
       ],
-    } as any);
+    });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
@@ -491,13 +491,15 @@ describe("agent_end handler", () => {
 
   it("uses agent's group_id partition", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      agentId: "agent-42",
-      messages: [
-        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
-        { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
-      ],
-    });
+    await handler(
+      {
+        messages: [
+          { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+          { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
+        ],
+      },
+      { agentId: "agent-42" },
+    );
 
     expect(client.addEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "agent-42" }),
