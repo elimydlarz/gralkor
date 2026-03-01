@@ -9,10 +9,10 @@ import {
   registerHealthService,
   registerCli,
 } from "./register.js";
-import type { ToolPluginApi } from "./types.js";
+import type { ToolToolPluginApi } from "./types.js";
 
 function registerFullPlugin(
-  api: PluginApi,
+  api: ToolPluginApi,
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
@@ -63,7 +63,7 @@ export const configSchema = {
   },
 };
 
-export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
+export function register(api: ToolPluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config);
