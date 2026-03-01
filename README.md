@@ -116,7 +116,7 @@ curl http://localhost:8001/health
 }
 ```
 
-### 6. Verify
+### 5. Verify
 
 Restart OpenClaw and check the plugin loaded:
 
