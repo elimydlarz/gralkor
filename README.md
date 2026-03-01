@@ -17,22 +17,25 @@ Powered by [Graphiti](https://github.com/getzep/graphiti) + [FalkorDB](https://w
 
 ## Install
 
-### 1. Get the tarball
+### 1. Install the plugin
 
-If you have a pre-built tarball, skip to step 2.
-
-Otherwise, clone and build:
+**From npm (recommended):**
 
 ```bash
-git clone <repo-url> gralkor && cd gralkor
+# Memory mode
+openclaw plugins install @susu-eng/gralkor
+```
+
+**From tarball:**
+
+Clone and build:
+
+```bash
+git clone https://github.com/susu-eng/gralkor.git && cd gralkor
 pnpm install && make pack
 ```
 
-This produces two tarballs:
-- `openclaw-gralkor-memory-<version>.tgz` (memory mode)
-- `openclaw-gralkor-tool-<version>.tgz` (tool mode)
-
-### 2. Install the plugin
+Then install:
 
 ```bash
 # Memory mode (recommended)
