@@ -297,18 +297,32 @@ make setup-server
 
 ## Building & Deploying
 
-```bash
-make pack
-# produces: openclaw-gralkor-memory-x.y.z.tgz  (memory mode)
-#           openclaw-gralkor-tool-x.y.z.tgz    (tool mode)
+### Publishing to npm
 
-# Install from tarball on the remote host
-openclaw plugins install ~/openclaw-gralkor-memory-x.y.z.tgz  # memory mode
-# OR
-openclaw plugins install ~/openclaw-gralkor-tool-x.y.z.tgz    # tool mode
+The package is published as `@susu-eng/gralkor` (memory mode only). To publish:
+
+```bash
+make version-patch   # or version-minor / version-major — bumps, commits, and tags
+make publish         # builds TypeScript and runs pnpm publish --access public
+git push && git push --tags
 ```
 
-The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
+Prerequisite: `npm login` with an account that has publish access to the `@susu-eng` scope.
+
+### Tarball installs
+
+```bash
+make pack
+# produces: susu-eng-gralkor-memory-x.y.z.tgz  (memory mode)
+#           susu-eng-gralkor-tool-x.y.z.tgz    (tool mode)
+
+# Install from tarball on the remote host
+openclaw plugins install ~/susu-eng-gralkor-memory-x.y.z.tgz  # memory mode
+# OR
+openclaw plugins install ~/susu-eng-gralkor-tool-x.y.z.tgz    # tool mode
+```
+
+The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
 
 The `docker-compose.yml` references `gralkor-server:latest` (a locally-built image, not a registry image). On the deployment host, build the image from the included `server/` source before starting services:
 
