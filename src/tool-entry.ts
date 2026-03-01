@@ -9,7 +9,7 @@ import {
   registerHealthService,
   registerCli,
 } from "./register.js";
-import type { ToolToolPluginApi } from "./types.js";
+import type { ToolPluginApi } from "./types.js";
 
 function registerFullPlugin(
   api: ToolPluginApi,
