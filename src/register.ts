@@ -6,25 +6,7 @@ import {
   createAgentEndHandler,
   type NativeSearchFn,
 } from "./hooks.js";
-
-interface PluginApi {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on(event: string, handler: (...args: any[]) => any): void;
-  registerService(service: {
-    id: string;
-    start: () => void;
-    stop: () => void;
-  }): void;
-  registerCli(
-    registrar: (ctx: {
-      program: any;
-      config: any;
-      workspaceDir?: string;
-      logger: any;
-    }) => void | Promise<void>,
-    opts?: { commands?: string[] },
-  ): void;
-}
+import type { PluginApiBase } from "./types.js";
 
 export function registerHooks(
   api: PluginApi,
