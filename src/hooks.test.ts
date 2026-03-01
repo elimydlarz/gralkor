@@ -331,10 +331,10 @@ describe("before_agent_start handler", () => {
     };
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
-    const result = await handler({
-      agentId: "agent-42",
-      prompt: "Tell me about the project architecture",
-    });
+    const result = await handler(
+      { prompt: "Tell me about the project architecture" },
+      { agentId: "agent-42" },
+    );
 
     expect(result).toBeUndefined();
     expect(client.searchFacts).not.toHaveBeenCalled();
