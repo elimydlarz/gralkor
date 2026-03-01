@@ -20,19 +20,29 @@ interface MessageEntry {
 }
 
 /**
- * Hook context provided by the OpenClaw gateway.
- * Handlers receive a single ctx object — NOT (event, ctx).
+ * Hook event — the first argument passed to hook handlers.
  *
  * before_agent_start: { prompt, messages? }
  * agent_end: { messages, success, error, durationMs }
  */
-interface HookContext {
+export interface HookEvent {
   prompt?: string;
   messages?: MessageEntry[];
   success?: boolean;
   error?: unknown;
   durationMs?: number;
-  agentId?: string; // absent in practice (OpenClaw ≥ 2026.2), kept for group_id if it appears
+}
+
+/**
+ * Hook agent context — the second argument passed to hook handlers.
+ * Contains per-agent identity and session info.
+ */
+export interface HookAgentContext {
+  agentId?: string;
+  sessionKey?: string;
+  sessionId?: string;
+  workspaceDir?: string;
+  messageProvider?: string;
 }
 
 /* Debug helper: summarise any ctx for logging without dumping megabytes. */
