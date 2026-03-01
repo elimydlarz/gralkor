@@ -92,7 +92,7 @@ Verify Graphiti is running:
 curl http://localhost:8001/health
 ```
 
-### 5. Enable the plugin in OpenClaw
+### 4. Enable the plugin in OpenClaw
 
 **Memory mode** — set the memory slot in `~/.openclaw/openclaw.json`:
 
