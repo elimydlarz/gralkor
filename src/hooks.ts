@@ -86,8 +86,8 @@ function debugCtx(ctx: any): Record<string, unknown> {
  *
  * System prompts (e.g. "A new session was started via /new") are not user messages.
  */
-export function extractUserMessageFromPrompt(ctx: HookContext): string {
-  const prompt = ctx.prompt;
+export function extractUserMessageFromPrompt(event: HookEvent): string {
+  const prompt = event.prompt;
   if (!prompt) return "";
 
   // Strip leading "System: ..." lines (queued events prepended by gateway)
