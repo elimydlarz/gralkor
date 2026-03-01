@@ -45,7 +45,7 @@ openclaw plugins install ./openclaw-gralkor-memory-<version>.tgz
 openclaw plugins install ./openclaw-gralkor-tool-<version>.tgz
 ```
 
-### 3. Configure the LLM provider
+### 2. Configure the LLM provider
 
 Navigate to the plugin's installed directory and create a `.env` file from the example:
 
