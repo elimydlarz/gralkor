@@ -430,7 +430,10 @@ describe("before_agent_start handler", () => {
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
-    await handler({ agentId: "agent-42", prompt: "Tell me about the project architecture" });
+    await handler(
+      { prompt: "Tell me about the project architecture" },
+      { agentId: "agent-42" },
+    );
 
     expect(setGroupId).toHaveBeenCalledWith("agent-42");
   });
