@@ -188,6 +188,7 @@ OpenClaw Gateway (Node.js)
 ├── config.yaml                       # LLM/embedder provider config
 ├── docker-compose.yml                # FalkorDB + Graphiti backend services
 ├── .env.example
+├── .npmignore                        # excludes dev artifacts from npm tarball
 ├── openclaw.plugin.json              # active memory-mode manifest (copied from resources/)
 ├── openclaw.tool-plugin.json         # active tool-mode manifest (copied from resources/)
 │
