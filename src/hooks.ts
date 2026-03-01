@@ -218,15 +218,15 @@ export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
-  return async (ctx: HookContext): Promise<void> => {
-    console.log("[gralkor] [auto-capture] hook fired — raw ctx (includes all message types):", debugCtx(ctx));
+  return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
+    console.log("[gralkor] [auto-capture] hook fired — event:", debugCtx(event), "ctx:", ctx);
 
     if (!config.autoCapture.enabled) {
       console.log("[gralkor] [auto-capture] disabled, skipping");
       return;
     }
 
-    const conversation = extractMessagesFromCtx(ctx);
+    const conversation = extractMessagesFromCtx(event);
     console.log("[gralkor] [auto-capture] extracted conversation (user/assistant text only):\n" + conversation);
 
     if (!conversation) {
