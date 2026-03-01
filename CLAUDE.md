@@ -381,6 +381,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - Auto-recall strips leading `System: ...` event lines from `ctx.prompt` before checking for session startup instructions, so queued gateway events (e.g. Telegram reactions) don't break prompt detection
 - Native tool `execute()` returns `{ content: [{ type: "text", text: "..." }, ...] }` (content-block format), **not** a plain string. Any code that calls `originalExecute` on a native tool must unwrap the result — use `unwrapToolResult()` in `src/index.ts`. Passing the raw return value to string interpolation produces `[object Object]`.
 - In memory mode, `memory_search` wraps the native tool's `execute` to also search the graph — the native search function reference is captured in a closure at factory creation time and shared with the auto-recall hook via `getNativeSearch`
+- **Native memory returns empty in FTS-only mode** (upstream OpenClaw bug): When no embedding provider API key is configured, `MemoryIndexManager` falls back to FTS-only mode but `syncMemoryFiles()` and `indexFile()` both bail out with `if (!this.provider) return;`, so the `chunks` and `chunks_fts` tables are never populated. The schema gets created (empty tables exist) but no files are indexed. The FTS-only search path in `manager.search()` then finds nothing. This affects both `memory_search` (via the native tool delegate) and auto-recall (via `getNativeSearch`). See "Native Memory Indexing Pipeline" in Mental Model for details and workaround.
 
 ## Deployment
 
