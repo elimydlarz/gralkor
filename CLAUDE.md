@@ -60,17 +60,22 @@ The plugin API methods must match these signatures exactly — the gateway valid
 
 ### Hook Context Shape
 
-The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }` as originally documented. Confirmed ctx keys at runtime (OpenClaw ≥ 2026.2):
+Hook handlers receive **two arguments: `(event, ctx)`**:
 
-| Hook | Observed ctx keys | Missing vs. docs |
+- **`event`** — Hook-specific data (varies per hook type).
+- **`ctx`** (`PluginHookAgentContext`) — Agent identity, consistent across all hooks: `{ agentId?, sessionKey?, sessionId?, workspaceDir?, messageProvider? }`.
+
+| Hook | `event` keys | `ctx` keys |
 |---|---|---|
-| `before_agent_start` (1st call) | `{ prompt }` | No `agentId`, `userMessage`, `agentResponse` |
-| `before_agent_start` (2nd call) | `{ prompt, messages }` | Same |
-| `agent_end` | `{ messages, success, error, durationMs }` | No `agentId`, `userMessage`, `agentResponse` |
+| `before_agent_start` (1st call) | `{ prompt }` | `{ agentId, sessionKey, sessionId, workspaceDir, messageProvider }` |
+| `before_agent_start` (2nd call) | `{ prompt, messages }` | same |
+| `agent_end` | `{ messages, success, error, durationMs }` | same |
 
-**Double-fire:** The gateway calls `before_agent_start` **twice** per agent run — once before session creation (only `prompt`), once before LLM invocation (`prompt` + `messages`). Both calls receive the same `prompt` string. The handler must be idempotent. Only the return value of the second call's `prependContext` is used by the gateway.
+**Double-fire:** The gateway calls `before_agent_start` **twice** per agent run — once before session creation (only `prompt` in event), once before LLM invocation (`prompt` + `messages`). Both calls receive the same `prompt` string. The handler must be idempotent. Only the return value of the second call's `prependContext` is used by the gateway.
 
-**Message content format:** `ctx.messages[].content` is an array of `{ type, text?, ... }` objects (not a JSON string). The `type` field is `"text"`, `"toolCall"`, etc. Debug output shows `contentType: 'object'` confirming it's a parsed array.
+**Message content format:** `event.messages[].content` is an array of `{ type, text?, ... }` objects (not a JSON string). The `type` field is `"text"`, `"toolCall"`, etc. Debug output shows `contentType: 'object'` confirming it's a parsed array.
+
+**Agent identity:** `ctx.agentId` is the per-agent unique identifier, derived from the session key. Use this for graph partitioning (`group_id`). The `ctx.sessionKey` is also available as an alternative partition key.
 
 ### Data Lifecycle
 
