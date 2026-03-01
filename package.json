@@ -14,7 +14,9 @@
   },
   "files": [
     "dist",
-    "server",
+    "server/Dockerfile",
+    "server/main.py",
+    "server/requirements.txt",
     "openclaw.plugin.json",
     "docker-compose.yml",
     "config.yaml",
