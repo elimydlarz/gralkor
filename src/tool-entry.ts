@@ -9,30 +9,7 @@ import {
   registerHealthService,
   registerCli,
 } from "./register.js";
-
-interface PluginApi {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  registerTool(
-    tool: { name: string; description: string; parameters: unknown; execute: (...args: any[]) => Promise<any> },
-    opts?: { optional?: boolean },
-  ): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on(event: string, handler: (...args: any[]) => any): void;
-  registerService(service: {
-    id: string;
-    start: () => void;
-    stop: () => void;
-  }): void;
-  registerCli(
-    registrar: (ctx: {
-      program: any;
-      config: any;
-      workspaceDir?: string;
-      logger: any;
-    }) => void | Promise<void>,
-    opts?: { commands?: string[] },
-  ): void;
-}
+import type { ToolPluginApi } from "./types.js";
 
 function registerFullPlugin(
   api: PluginApi,
