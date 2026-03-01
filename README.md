@@ -78,7 +78,7 @@ embedder:
   model: "text-embedding-004"
 ```
 
-### 4. Start the backend services
+### 3. Start the backend services
 
 ```bash
 cd ~/.openclaw/plugins/gralkor
