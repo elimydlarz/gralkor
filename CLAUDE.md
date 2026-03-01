@@ -209,7 +209,7 @@ OpenClaw Gateway (Node.js)
 │
 ├── resources/                        # per-mode packaging manifests (used by pack.sh)
 │   ├── memory/
-│   │   ├── package.json              # @openclaw/gralkor — extension: ./dist/index.js
+│   │   ├── package.json              # @susu-eng/gralkor — extension: ./dist/index.js
 │   │   └── openclaw.plugin.json      # canonical memory-mode manifest
 │   └── tool/
 │       ├── package.json              # @openclaw/gralkor — extension: ./dist/tool-entry.js
