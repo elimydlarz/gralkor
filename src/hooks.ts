@@ -110,8 +110,8 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
  * Returns a multi-turn conversation string:
  *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
  */
-export function extractMessagesFromCtx(ctx: HookContext): string {
-  const messages = ctx.messages;
+export function extractMessagesFromCtx(event: HookEvent): string {
+  const messages = event.messages;
   if (!messages || !Array.isArray(messages)) return "";
 
   const parts: string[] = [];
