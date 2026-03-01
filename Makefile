@@ -58,6 +58,10 @@ setup-server:
 pack:
 	bash scripts/pack.sh
 
+publish:
+	pnpm run build
+	pnpm publish --access public
+
 version-major:
 	pnpm version major --no-git-tag-version
 	$(SYNC_RESOURCES)
