@@ -134,7 +134,7 @@ export function createBeforeAgentStartHandler(
     }
 
     const groupId = resolveGroupId({ agentId });
-    console.log("[gralkor] [auto-recall] searching — query:", JSON.stringify(userMessage), "groupId:", groupId);
+    console.log("[gralkor] [auto-recall] searching — groupId:", groupId);
 
     try {
       const limit = config.autoRecall.maxResults;
