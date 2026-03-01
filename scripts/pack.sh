@@ -11,10 +11,10 @@ for mode in memory tool; do
   cp resources/$mode/openclaw.plugin.json openclaw.plugin.json
   pnpm pack >/dev/null 2>&1
 
-  # pnpm produces openclaw-gralkor-<version>.tgz for both modes (same package name).
+  # pnpm produces susu-eng-gralkor-<version>.tgz for both modes (same package name).
   # Rename to mode-specific tarball so the second pack doesn't overwrite the first.
-  mv "openclaw-gralkor-${version}.tgz" "openclaw-gralkor-${mode}-${version}.tgz"
-  tarballs+=("openclaw-gralkor-${mode}-${version}.tgz")
+  mv "susu-eng-gralkor-${version}.tgz" "susu-eng-gralkor-${mode}-${version}.tgz"
+  tarballs+=("susu-eng-gralkor-${mode}-${version}.tgz")
 done
 
 # Restore canonical (memory) state
