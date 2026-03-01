@@ -240,7 +240,7 @@ OpenClaw Gateway (Node.js)
 
 ### Graph Partitioning
 
-Each agent gets its own graph partition automatically — no configuration needed. Tools don't receive agent context (OpenClaw calls `execute(toolCallId, params)` — no ctx), so each entry point creates a shared group ID: the `before_agent_start` hook captures the agent ID via a `setGroupId` callback, and tools read it via a `getGroupId` closure. Falls back to `"default"`. **Note:** As of OpenClaw ≥ 2026.2, `ctx.agentId` is absent from hook context — all partitions currently fall back to `"default"`. Investigating whether agent ID is available elsewhere in the ctx.
+Each agent gets its own graph partition automatically — no configuration needed. Tools don't receive agent context (OpenClaw calls `execute(toolCallId, params)` — no ctx), so each entry point creates a shared group ID: the `before_agent_start` hook captures the agent ID from `ctx.agentId` (second argument) via a `setGroupId` callback, and tools read it via a `getGroupId` closure. Falls back to `"default"` if `agentId` is absent.
 
 The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID string for any context with an optional `agentId` (used by hooks and CLI).
 
