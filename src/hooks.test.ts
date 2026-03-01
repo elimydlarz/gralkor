@@ -464,7 +464,7 @@ describe("agent_end handler", () => {
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
         { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
       ],
-    });
+    } as any);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
