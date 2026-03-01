@@ -190,7 +190,6 @@ export function createAgentEndHandler(
     }
 
     const conversation = extractMessagesFromCtx(event);
-    console.log("[gralkor] [auto-capture] extracted conversation (user/assistant text only):\n" + conversation);
 
     if (!conversation) {
       console.log("[gralkor] [auto-capture] no messages extracted, skipping");
