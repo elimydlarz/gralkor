@@ -315,9 +315,9 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(
       client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
     );
-    const result = await handler({
-      prompt: "Tell me about the project architecture",
-    });
+    const result = await handler(
+      { prompt: "Tell me about the project architecture" },
+    );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
     expect(ctx_result).toContain("Facts from knowledge graph:");
