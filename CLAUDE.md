@@ -80,18 +80,18 @@ Hook handlers receive **two arguments: `(event, ctx)`**:
 ### Data Lifecycle
 
 **Auto-capture** (`agent_end` hook):
-1. Handler receives single `ctx` with `{ messages, success, error, durationMs }`.
-2. `extractMessagesFromCtx()` walks `ctx.messages` array, extracts ALL text blocks from user and assistant messages in sequence (accumulates, does not overwrite). Strips `<gralkor-memory>` XML blocks from user messages before including them, preventing the feedback loop where auto-recall context gets re-ingested.
+1. Handler receives `(event, ctx)` where `event` has `{ messages, success, error, durationMs }` and `ctx` has `{ agentId, sessionKey, ... }`.
+2. `extractMessagesFromCtx()` walks `event.messages` array, extracts ALL text blocks from user and assistant messages in sequence (accumulates, does not overwrite). Strips `<gralkor-memory>` XML blocks from user messages before including them, preventing the feedback loop where auto-recall context gets re-ingested.
 3. Skip if disabled, no messages extracted, or first user message starts with `/`.
 4. Format as multi-turn conversation: `User: ...\nAssistant: ...\nUser: ...\nAssistant: ...`.
-5. POST to `/episodes` with timestamp and agent's `group_id`.
+5. POST to `/episodes` with timestamp and agent's `group_id` (from `ctx.agentId`).
 6. Graphiti server-side extracts entities and facts from the episode.
 7. On failure: error propagates to the gateway (not swallowed).
 
 **Auto-recall** (`before_agent_start` hook):
-1. Handler receives single `ctx` with `{ prompt, messages? }`.
-2. `extractUserMessageFromPrompt()` strips leading `System:` event lines, then strips metadata wrapper from `ctx.prompt`, skips system prompts.
-3. Capture agent ID into shared group ID state (if available in ctx — currently `agentId` is absent).
+1. Handler receives `(event, ctx)` where `event` has `{ prompt, messages? }` and `ctx` has `{ agentId, sessionKey, ... }`.
+2. `extractUserMessageFromPrompt()` strips leading `System:` event lines, then strips metadata wrapper from `event.prompt`, skips system prompts.
+3. Capture `ctx.agentId` into shared group ID state (for tools to use).
 4. Skip if disabled or no user message.
 5. Run searches in parallel: `client.searchFacts()` and `client.searchNodes()` (both modes), plus native `memory_search` if available via `getNativeSearch` closure (memory mode only).
 6. Format results in sections (graph facts, graph entities, native memory) inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
