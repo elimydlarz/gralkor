@@ -12,7 +12,6 @@ type AnyFn = (...args: any[]) => any;
  * Minimal API surface used by shared registration code (hooks, health, CLI).
  */
 export interface PluginApiBase {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(event: string, handler: AnyFn): void;
   registerService(service: {
     id: string;
@@ -38,7 +37,6 @@ export interface PluginApiBase {
  */
 export interface ToolPluginApi extends PluginApiBase {
   registerTool(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tool: { name: string; description: string; parameters: unknown; execute: AnyFn },
     opts?: { optional?: boolean },
   ): void;
@@ -46,8 +44,17 @@ export interface ToolPluginApi extends PluginApiBase {
 
 /**
  * Memory-mode API — adds factory-based tool registration and runtime tools.
+ *
+ * registerTool is overloaded: accepts both plain tool objects and factory functions.
+ * Cannot extend ToolPluginApi because TypeScript doesn't allow narrowing overloads
+ * via interface extension — both signatures must be declared together.
  */
-export interface MemoryPluginApi extends ToolPluginApi {
+export interface MemoryPluginApi extends PluginApiBase {
+  // Plain tool object registration
+  registerTool(
+    tool: { name: string; description: string; parameters: unknown; execute: AnyFn },
+    opts?: { optional?: boolean },
+  ): void;
   // Factory function registration (used for native memory tools)
   registerTool(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
