@@ -11,7 +11,7 @@ import {
   registerCli,
 } from "./register.js";
 import type { NativeSearchFn } from "./hooks.js";
-import type { MemoryPluginApi } from "./types.js";
+import type { MemoryMemoryPluginApi } from "./types.js";
 
 /**
  * Unwrap native tool execute result to a plain string.
@@ -33,7 +33,7 @@ function unwrapToolResult(result: unknown): string {
 }
 
 function registerFullPlugin(
-  api: PluginApi,
+  api: MemoryPluginApi,
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
@@ -167,7 +167,7 @@ export const configSchema = {
   },
 };
 
-export function register(api: PluginApi, rawConfig?: Partial<GralkorConfig>) {
+export function register(api: MemoryPluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config);
