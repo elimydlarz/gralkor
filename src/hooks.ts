@@ -214,6 +214,6 @@ export function createAgentEndHandler(
       source_description: "auto-capture",
       group_id: groupId,
     });
-    console.log("[gralkor] [auto-capture] episode stored — groupId:", groupId, "— body:\n" + conversation);
+    console.log("[gralkor] [auto-capture] episode stored — groupId:", groupId, "bodyLength:", conversation.length);
   };
 }
