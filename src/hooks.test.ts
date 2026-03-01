@@ -352,10 +352,10 @@ describe("before_agent_start handler", () => {
     client.searchFacts.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      agentId: "agent-42",
-      prompt: "Tell me about the project architecture",
-    });
+    await handler(
+      { prompt: "Tell me about the project architecture" },
+      { agentId: "agent-42" },
+    );
 
     const query = client.searchFacts.mock.calls[0][0] as string;
     expect(query).toContain("project");
