@@ -203,6 +203,7 @@ OpenClaw Gateway (Node.js)
 │   ├── hooks.test.ts
 │   ├── client.ts                     # GraphitiClient — HTTP wrapper with retry
 │   ├── client.test.ts
+│   ├── types.ts                      # Shared PluginApiBase, ToolPluginApi, MemoryPluginApi interfaces
 │   ├── config.ts                     # GRAPHITI_URL, GralkorConfig, resolveConfig(), resolveGroupId()
 │   └── config.test.ts
 │
