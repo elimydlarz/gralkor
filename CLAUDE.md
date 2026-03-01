@@ -92,6 +92,21 @@ The OpenClaw gateway does **not** pass `{ agentId, userMessage, agentResponse }`
 6. Format results in sections (graph facts, graph entities, native memory) inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
 7. Return as `{ prependContext }`. On graph failure: log warning, return nothing. Native search failures are caught independently and logged.
 
+### Native Memory Indexing Pipeline (OpenClaw internals)
+
+Understanding how native `memory_search` works is important for memory mode, since gralkor wraps the native tool via `api.runtime.tools.createMemorySearchTool()`.
+
+**Architecture:** `createMemorySearchTool()` (in `src/agents/tools/memory-tool.ts`) calls `getMemorySearchManager()` on each execute, which lazily creates a `MemoryIndexManager` singleton. The manager uses SQLite with FTS5 for keyword search and optional vector embeddings for semantic search.
+
+**Indexing is lazy:** The manager constructor creates the schema (empty tables) and sets `dirty = true`, but does **not** index files. Indexing is triggered by:
+1. `manager.search()` — if `sync.onSearch` is true (default) and `dirty` flag is set, calls `sync()` before searching
+2. `manager.warmSession()` — called at session start if `sync.onSessionStart` is true (default)
+3. File watcher — `chokidar` watches `MEMORY.md` and `memory/*.md` for changes (debounced 15s)
+
+**Known issue (OpenClaw bug):** In FTS-only mode (no embedding provider API key configured), `syncMemoryFiles()` in `manager-sync-ops.ts` returns immediately without indexing: `if (!this.provider) return;`. The same guard exists in `indexFile()`. This means the FTS table is never populated, so `memory_search` always returns empty results in FTS-only mode despite the search path supporting BM25 keyword queries. **Workaround:** configure an embedding provider (e.g. set `OPENAI_API_KEY`) so the full indexing pipeline runs. The FTS table gets populated as a side effect of the embedding indexing path.
+
+**Manager caching:** `MemoryIndexManager` instances are cached by `agentId:workspaceDir:settings` key in a module-level `Map`. Once created, the same manager is reused for all searches within that agent.
+
 ### Communication Path
 
 All plugin → Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The client never touches FalkorDB directly. The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection. The server creates an explicit `FalkorDriver` (from `graphiti_core.driver.falkordb_driver`) with host/port parsed from the `FALKORDB_URI` env var, and passes it to `Graphiti()` via the `graph_driver` parameter.
