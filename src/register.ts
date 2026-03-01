@@ -6,10 +6,10 @@ import {
   createAgentEndHandler,
   type NativeSearchFn,
 } from "./hooks.js";
-import type { PluginApiBase } from "./types.js";
+import type { PluginApiBaseBase } from "./types.js";
 
 export function registerHooks(
-  api: PluginApi,
+  api: PluginApiBase,
   client: GraphitiClient,
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
@@ -20,7 +20,7 @@ export function registerHooks(
 }
 
 export function registerHealthService(
-  api: PluginApi,
+  api: PluginApiBase,
   client: GraphitiClient,
 ) {
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -49,7 +49,7 @@ export function registerHealthService(
 }
 
 export function registerCli(
-  api: PluginApi,
+  api: PluginApiBase,
   client: GraphitiClient,
   config: GralkorConfig,
 ) {
