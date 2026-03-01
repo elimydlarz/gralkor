@@ -342,7 +342,7 @@ describe("before_agent_start handler", () => {
 
   it("skips when no user message in context", async () => {
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler({ agentId: "agent-42" });
+    const result = await handler({}, { agentId: "agent-42" });
 
     expect(result).toBeUndefined();
     expect(client.searchFacts).not.toHaveBeenCalled();
