@@ -36,8 +36,7 @@
   "tools": [
     "memory_search",
     "memory_get",
-    "graph_search",
-    "graph_add"
+    "memory_add"
   ],
   "uiHints": {
     "autoCapture.enabled": {
