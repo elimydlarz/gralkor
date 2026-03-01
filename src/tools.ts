@@ -68,7 +68,11 @@ export function createMemoryRecallTool(
 
       console.log("[gralkor] [graph_search] results — groupId:", groupId, "—", facts.length, "facts,", nodes.length, "nodes");
 
-      return formatFacts(facts) + formatNodes(nodes);
+      const nodesStr = formatNodes(nodes);
+      if (nodesStr) {
+        return formatFacts(facts) + "\n\n" + nodesStr;
+      }
+      return formatFacts(facts);
     },
   };
 }
