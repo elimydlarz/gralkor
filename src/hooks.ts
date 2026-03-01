@@ -169,7 +169,7 @@ export function createBeforeAgentStartHandler(
       if (sections.length === 0) return;
 
       const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`;
-      console.log("[gralkor] [auto-recall] returning prependContext to agent — groupId:", groupId + ":\n" + prependContext);
+      console.log("[gralkor] [auto-recall] returning prependContext — groupId:", groupId, "sections:", sections.length);
 
       return { prependContext };
     } catch (err) {
