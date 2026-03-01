@@ -212,7 +212,7 @@ OpenClaw Gateway (Node.js)
 │   │   ├── package.json              # @susu-eng/gralkor — extension: ./dist/index.js
 │   │   └── openclaw.plugin.json      # canonical memory-mode manifest
 │   └── tool/
-│       ├── package.json              # @openclaw/gralkor — extension: ./dist/tool-entry.js
+│       ├── package.json              # @susu-eng/gralkor — extension: ./dist/tool-entry.js
 │       └── openclaw.plugin.json      # canonical tool-mode manifest
 │
 ├── scripts/
