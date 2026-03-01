@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/gralkor",
+  "name": "@susu-eng/gralkor",
   "version": "8.0.0",
   "description": "OpenClaw tool plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
@@ -20,6 +20,27 @@
     "config.yaml",
     ".env.example"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/susu-eng/gralkor.git"
+  },
+  "homepage": "https://github.com/susu-eng/gralkor#readme",
+  "bugs": {
+    "url": "https://github.com/susu-eng/gralkor/issues"
+  },
+  "author": "susu-eng",
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "graphiti",
+    "falkordb",
+    "knowledge-graph",
+    "tool",
+    "ai-agent"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
     "openclaw": ">= 2026.1.26"
   },
