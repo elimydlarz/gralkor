@@ -117,6 +117,8 @@ export function createBeforeAgentStartHandler(
   getNativeSearch?: () => NativeSearchFn | null,
 ) {
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
+    console.log("[gralkor] [auto-recall] hook fired — agentId:", ctx.agentId, "hasPrompt:", !!event.prompt, "hasMessages:", !!event.messages);
+
     const agentId = ctx.agentId;
     if (setGroupId && agentId) {
       setGroupId(agentId);
