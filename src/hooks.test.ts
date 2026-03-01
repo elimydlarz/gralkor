@@ -220,10 +220,10 @@ describe("before_agent_start handler", () => {
     ]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler({
-      agentId: "agent-42",
-      prompt: "Tell me about the project architecture",
-    });
+    const result = await handler(
+      { prompt: "Tell me about the project architecture" },
+      { agentId: "agent-42" },
+    );
 
     expect(result).toHaveProperty("prependContext");
     const ctx_result = (result as { prependContext: string }).prependContext;
