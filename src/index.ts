@@ -145,8 +145,7 @@ function registerFullPlugin(
           }
 
           if (nodes.length > 0) {
-            // formatNodes has a leading "\n\n" — trim it when standalone
-            sections.push(formatNodes(nodes).trim());
+            sections.push(formatNodes(nodes));
           }
 
           return sections.join("\n\n") || "No memories found.";
