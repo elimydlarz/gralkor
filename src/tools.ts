@@ -21,7 +21,7 @@ export function formatFacts(facts: Fact[]): string {
 export function formatNodes(nodes: EntityNode[]): string {
   if (nodes.length === 0) return "";
   return (
-    "\n\nEntities (knowledge graph):\n" +
+    "Entities (knowledge graph):\n" +
     nodes.map((n) => `- **${n.name}**: ${n.summary}`).join("\n")
   );
 }
