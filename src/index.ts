@@ -11,7 +11,7 @@ import {
   registerCli,
 } from "./register.js";
 import type { NativeSearchFn } from "./hooks.js";
-import type { MemoryMemoryPluginApi } from "./types.js";
+import type { MemoryPluginApi } from "./types.js";
 
 /**
  * Unwrap native tool execute result to a plain string.
