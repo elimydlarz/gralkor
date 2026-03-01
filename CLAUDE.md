@@ -177,6 +177,9 @@ OpenClaw Gateway (Node.js)
 
 ```
 ├── CLAUDE.md
+├── README.md                        # install instructions (agent-facing, concise)
+├── .humans/
+│   └── README.md                    # install instructions (human-facing, detailed)
 ├── Makefile                          # build/test/deploy commands
 ├── package.json                      # root package (dev deps, scripts)
 ├── pnpm-lock.yaml
