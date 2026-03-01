@@ -6,7 +6,7 @@ import {
   createAgentEndHandler,
   type NativeSearchFn,
 } from "./hooks.js";
-import type { PluginApiBaseBase } from "./types.js";
+import type { PluginApiBase } from "./types.js";
 
 export function registerHooks(
   api: PluginApiBase,
