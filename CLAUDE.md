@@ -204,14 +204,16 @@ OpenClaw Gateway (Node.js)
         ├── Tools: memory_search (unified), memory_get (native), memory_add (memory mode)
         │          graph_search, graph_add (tool mode)
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
-        ├── Service: health monitor (60s interval)
+        ├── Service: gralkor-server (manages Python subprocess + 60s health monitor)
         ├── CLI: memory (native), gralkor status, gralkor search <group_id> <query...>, gralkor clear <group_id>
               │
-              ▼  HTTP (fetch)
-        Graphiti REST API (FastAPI, port 8001)
+              │ spawns child process (server-manager.ts)
+              ▼
+        Graphiti REST API (FastAPI, uvicorn, 127.0.0.1:8001)
               │
-              ▼  Redis protocol
-        FalkorDB (port 6379, browser UI port 3000)
+              ▼  embedded (default) or TCP (legacy Docker)
+        FalkorDBLite (embedded, {dataDir}/falkordb/)
+          OR FalkorDB (external, via FALKORDB_URI)
 ```
 
 ## Repo Map
