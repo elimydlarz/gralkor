@@ -6,7 +6,7 @@ Powered by [Graphiti](https://github.com/getzep/graphiti) + [FalkorDB](https://w
 ## Prerequisites
 
 - OpenClaw >= 2026.1.26
-- Docker and Docker Compose
+- Python 3.12+ on the system PATH
 - An LLM provider API key (one of: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY` + `OPENAI_API_KEY`, `GROQ_API_KEY` + `OPENAI_API_KEY`)
 
 ## Choose a mode
@@ -78,21 +78,7 @@ embedder:
   model: "text-embedding-004"
 ```
 
-### 3. Start the backend services
-
-```bash
-cd ~/.openclaw/plugins/gralkor
-docker build -t gralkor-server:latest server/
-docker compose up -d
-```
-
-Verify Graphiti is running:
-
-```bash
-curl http://localhost:8001/health
-```
-
-### 4. Enable the plugin in OpenClaw
+### 3. Enable the plugin in OpenClaw
 
 **Memory mode** — set the memory slot in `~/.openclaw/openclaw.json`:
 
@@ -116,31 +102,30 @@ curl http://localhost:8001/health
 }
 ```
 
-### 5. Verify
+### 4. Restart and go
 
-Restart OpenClaw and check the plugin loaded:
+Restart OpenClaw. On first start, Gralkor automatically:
+- Creates a Python virtual environment
+- Installs Graphiti and its dependencies (~1-2 min first time)
+- Starts the Graphiti server with embedded FalkorDB
+- Subsequent restarts are fast (venv reused, pip skipped)
+
+Verify the plugin loaded:
 
 ```bash
 openclaw plugins list
+openclaw gralkor status
 ```
 
 The agent should now have access to:
 - **Memory mode:** `memory_search`, `memory_get`, `memory_add`
 - **Tool mode:** `graph_search`, `graph_add`
 
-## Network setup for OpenClaw container
-
-If OpenClaw runs in Docker, connect it to the `gralkor` network so it can reach Graphiti at `http://graphiti:8001`:
-
-```bash
-docker network connect gralkor <openclaw-container>
-```
-
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Plugin loads but all graph operations fail | Missing LLM API key | Set the key in `.env` and restart services |
+| Plugin loads but all graph operations fail | Missing LLM API key | Set the key in `.env` and restart OpenClaw |
 | `memory_search` returns empty results | No embedding provider for native memory | Set `OPENAI_API_KEY` in `~/.openclaw/.env` (gateway env) |
-| Graphiti container exits immediately | FalkorDB not ready | Wait a few seconds and `docker compose up -d` again |
-| `curl localhost:8001/health` fails | Services not running | Run `docker compose up -d` from the plugin directory |
+| `gralkor status` says "Server process: stopped" | Python 3.12+ not found on PATH | Install Python 3.12+ and restart OpenClaw |
+| First startup takes a long time | Normal — creating venv and installing deps | Wait ~1-2 min; subsequent starts are fast |
