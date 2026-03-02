@@ -18,8 +18,22 @@ describe("resolveConfig()", () => {
     expect(config).toEqual(defaultConfig);
   });
 
-  it("exports GRAPHITI_URL constant", () => {
-    expect(GRAPHITI_URL).toBe("http://graphiti:8001");
+  it("exports GRAPHITI_URL constant pointing to localhost", () => {
+    expect(GRAPHITI_URL).toBe("http://127.0.0.1:8001");
+  });
+
+  it("exports GRAPHITI_PORT constant", () => {
+    expect(GRAPHITI_PORT).toBe(8001);
+  });
+
+  it("passes through dataDir when provided", () => {
+    const config = resolveConfig({ dataDir: "/custom/data" });
+    expect(config.dataDir).toBe("/custom/data");
+  });
+
+  it("defaults dataDir to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.dataDir).toBeUndefined();
   });
 
   it("overrides autoCapture.enabled", () => {
