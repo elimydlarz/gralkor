@@ -455,8 +455,11 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - `registerService` uses `{ id, start, stop }`, not `{ name, interval, execute }`.
 - Tool `execute` is called as `execute(toolCallId, params, signal, onUpdate)` — **not** `execute(args, ctx)`. The first arg is a string tool-call ID, not the parsed parameters. Tools do not receive agent context; use the shared `getGroupId`/`setGroupId` pattern (see Graph Partitioning) for `group_id`.
 - Do not try to ship both entry points in one package. OpenClaw ≤ 2026.2.24 only supports flat string arrays in `openclaw.extensions`, so all entries inherit the same ID and `kind` from the single manifest — tool mode can never be properly activated this way. The solution is two packages from one repo (see architecture below), each with one entry point and one tailored manifest.
-- Graphiti requires an LLM provider API key — without one the container starts but all operations fail
-- FalkorDB must be healthy before Graphiti can start (`depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
+- Graphiti requires an LLM provider API key — without one the server starts but all operations fail
+- The server manager requires Python >= 3.12 on the system PATH. It tries `python3.12`, `python3.13`, `python3`, `python` in order. If none meet the version requirement, server startup fails (gracefully — plugin still loads but tools see Graphiti as unreachable).
+- First plugin start is slow (~1-2 min) because the server manager creates a Python venv and runs `pip install`. Subsequent starts reuse the venv and skip pip unless `requirements.txt` mtime changes.
+- The server manager does NOT set `FALKORDB_URI` in the subprocess env — its absence triggers embedded FalkorDBLite mode. Setting `FALKORDB_URI` in the host environment has no effect on the managed server; it's only relevant for legacy Docker deployments where the server is started manually.
+- FalkorDB must be healthy before Graphiti can start (only relevant in legacy Docker mode; `depends_on` in docker-compose handles this, but no healthcheck — Graphiti may need a few seconds after FalkorDB is up)
 - The client retries network errors and 5xx responses (up to 2 retries with backoff) but throws immediately on 4xx client errors
 - Auto-recall injects context as XML-tagged content marked `trust="untrusted"`
 - Auto-capture skips empty conversations and conversations where the first user message starts with `/`
