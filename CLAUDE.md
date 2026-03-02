@@ -267,8 +267,8 @@ OpenClaw Gateway (Node.js)
 │
 ├── server/                           # Graphiti REST API (Python/FastAPI)
 │   ├── Dockerfile
-│   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core
-│   ├── requirements.txt              # runtime deps
+│   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core (embedded FalkorDBLite or TCP)
+│   ├── requirements.txt              # runtime deps (includes falkordblite)
 │   ├── requirements-dev.txt          # test deps (pytest, httpx)
 │   ├── pytest.ini
 │   └── tests/
