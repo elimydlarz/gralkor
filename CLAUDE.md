@@ -133,9 +133,27 @@ Understanding how native `memory_search` works is important for memory mode, sin
 
 **Manager caching:** `MemoryIndexManager` instances are cached by `agentId:workspaceDir:settings` key in a module-level `Map`. Once created, the same manager is reused for all searches within that agent.
 
+### Server Manager Lifecycle
+
+The plugin manages the Graphiti server as a child process via `src/server-manager.ts`. On service `start()`:
+
+1. **Find Python** — tries `python3.12`, `python3.13`, `python3`, `python`; requires >= 3.12.
+2. **Create venv** at `{dataDir}/venv`. Skipped if already exists. Uses a `.pip-installed` marker file — pip install only re-runs when `requirements.txt` mtime changes.
+3. **Spawn** `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001` with `cwd = serverDir`. Passes env vars (`CONFIG_PATH`, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` — its absence triggers embedded FalkorDBLite mode.
+4. **Wait for health** — polls `GET /health` every 500ms, 120s timeout (first run with pip install is slow).
+5. **Monitor** — 60s health ping interval.
+
+On service `stop()`: SIGTERM → 5s grace → SIGKILL fallback.
+
+The `registerServerService()` in `src/register.ts` wraps this in a service registered as `gralkor-server`. Startup errors are caught and logged (graceful degradation — tools/hooks handle unreachable Graphiti).
+
 ### Communication Path
 
-All plugin → Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The client never touches FalkorDB directly. The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection. The server creates an explicit `FalkorDriver` (from `graphiti_core.driver.falkordb_driver`) with host/port parsed from the `FALKORDB_URI` env var, and passes it to `Graphiti()` via the `graph_driver` parameter.
+All plugin → Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The client never touches FalkorDB directly. The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection.
+
+**Embedded mode (default):** When `FALKORDB_URI` is not set, the server imports `falkordblite.AsyncFalkorDB` and creates an embedded FalkorDB instance at `{FALKORDB_DATA_DIR}/gralkor.db`. No Docker or external services needed.
+
+**Legacy Docker mode:** When `FALKORDB_URI` is set (e.g. `redis://falkordb:6379`), the server creates a `FalkorDriver` with host/port parsed from the URI, connecting to an external FalkorDB instance via TCP.
 
 ## Requirements
 
