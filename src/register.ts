@@ -76,13 +76,11 @@ export function registerCli(
         });
 
       gralkor
-        .command("search <query...>")
+        .command("search <group_id> <query...>")
         .description("Search the knowledge graph")
-        .requiredOption("-g, --group <group_id>", "Group ID (agent ID) to search")
-        .action(async (query: string[], opts: { group: string }) => {
+        .action(async (groupId: string, query: string[]) => {
           const q = query.join(" ");
           try {
-            const groupId = opts.group;
             console.log(`Searching group "${groupId}" for: ${q}`);
             const [facts, nodes] = await Promise.all([
               client.searchFacts(q, [groupId], 10),
