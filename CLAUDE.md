@@ -242,6 +242,7 @@ OpenClaw Gateway (Node.js)
 │   └── pack.sh                       # builds deployment tarball
 │
 ├── server/                           # Graphiti REST API (Python/FastAPI)
+│   ├── pyproject.toml                # uv project config (dev/test deps, Python >= 3.12)
 │   ├── Dockerfile
 │   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core (embedded FalkorDBLite or TCP)
 │   ├── requirements.txt              # runtime deps (includes falkordblite)
