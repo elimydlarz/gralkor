@@ -135,7 +135,7 @@ describe("register()", () => {
       start: () => void;
       stop: () => void;
     };
-    expect(service.id).toBe("gralkor-health");
+    expect(service.id).toBe("gralkor-server");
     expect(typeof service.start).toBe("function");
     expect(typeof service.stop).toBe("function");
   });
