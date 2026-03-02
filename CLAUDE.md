@@ -434,6 +434,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - `test_search.py` — `POST /search`, `POST /search/nodes`
 - `test_graph_ops.py` — `DELETE /edges/{uuid}`, `POST /clear`, `POST /build-indices`, `POST /build-communities`
 - `test_lifespan.py` — FalkorDBLite embedded vs TCP mode switching in `lifespan()`
+- `test_lifespan.py` — FalkorDBLite embedded vs TCP mode switching in `lifespan()`
 
 ## Conventions
 
