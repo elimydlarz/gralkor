@@ -1,17 +1,21 @@
 """Integration tests that exercise a real FalkorDBLite database.
 
 These tests prove the native binary is installable and functional on the host
-platform — something the unit tests cannot verify because they mock FalkorDBLite
-out of sys.modules.
+platform — something the unit tests cannot verify because they mock everything.
+
+The lifespan test goes through the real main.py startup path: creates a real
+embedded FalkorDBLite, a real FalkorDriver, a real Graphiti instance, and builds
+real graph indices. Only the LLM client and embedder are mocked (they need API keys).
 
 No LLM API keys required. No Docker required.
 """
 
 from __future__ import annotations
 
-import asyncio
+from unittest.mock import MagicMock, patch
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from redislite import AsyncFalkorDB
 
 
@@ -33,7 +37,6 @@ async def test_falkordblite_binary_loads():
 @pytest.mark.asyncio
 async def test_create_embedded_database(db):
     """An embedded FalkorDBLite database can be created and pinged."""
-    # AsyncFalkorDB wraps a redis connection — verify it's alive
     graph = db.select_graph("test_graph")
     assert graph is not None
 
@@ -43,10 +46,8 @@ async def test_write_and_read_graph(db):
     """Data written to the graph can be read back."""
     graph = db.select_graph("test_graph")
 
-    # Create a node
     await graph.query("CREATE (:Person {name: 'Alice', role: 'engineer'})")
 
-    # Read it back
     result = await graph.query("MATCH (p:Person {name: 'Alice'}) RETURN p.name, p.role")
     assert len(result.result_set) == 1
     assert result.result_set[0][0] == "Alice"
@@ -77,3 +78,34 @@ async def test_falkordriver_with_embedded_db(db):
 
     driver = FalkorDriver(falkor_db=db)
     assert driver is not None
+
+
+@pytest.mark.asyncio
+async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
+    """The real main.py lifespan starts up with a real FalkorDBLite database.
+
+    Only the LLM client and embedder are mocked (they need API keys).
+    Everything else is real: FalkorDBLite, FalkorDriver, Graphiti, index creation.
+    """
+    monkeypatch.delenv("FALKORDB_URI", raising=False)
+    monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
+
+    with (
+        patch("main._load_config", return_value={}),
+        patch("main._build_llm_client", return_value=MagicMock()),
+        patch("main._build_embedder", return_value=MagicMock()),
+    ):
+        import main as main_mod
+
+        app = MagicMock()
+        async with main_mod.lifespan(app):
+            # Graphiti instance was created with real FalkorDBLite
+            assert main_mod.graphiti is not None
+            assert main_mod.graphiti.driver is not None
+
+            # The health endpoint works through the real app
+            transport = ASGITransport(app=main_mod.app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                resp = await ac.get("/health")
+                assert resp.status_code == 200
+                assert resp.json() == {"status": "ok"}
