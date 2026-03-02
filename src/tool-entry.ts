@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { GraphitiClient } from "./client.js";
 import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
@@ -6,15 +8,20 @@ import {
 } from "./tools.js";
 import {
   registerHooks,
-  registerHealthService,
+  registerServerService,
   registerCli,
 } from "./register.js";
 import type { ToolPluginApi } from "./types.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pluginDir = join(__dirname, ".."); // dist/ → plugin root
 
 function registerFullPlugin(
   api: ToolPluginApi,
   client: GraphitiClient,
   config: GralkorConfig,
+  dir: string,
 ) {
   // Shared group ID: hooks capture agentId, tools read it
   let currentGroupId = "default";
@@ -31,11 +38,11 @@ function registerFullPlugin(
   // Hooks
   registerHooks(api, client, config, setGroupId);
 
-  // Health monitor service
-  registerHealthService(api, client);
+  // Server manager (replaces health monitor)
+  const manager = registerServerService(api, config, dir);
 
   // CLI
-  registerCli(api, client, config);
+  registerCli(api, client, config, manager);
 }
 
 export const id = "gralkor";
@@ -60,13 +67,17 @@ export const configSchema = {
         maxResults: { type: "number" as const, default: 5 },
       },
     },
+    dataDir: {
+      type: "string" as const,
+      description: "Directory for backend data (venv, database). Defaults to .gralkor-data inside the plugin directory.",
+    },
   },
 };
 
 export function register(api: ToolPluginApi, rawConfig?: Partial<GralkorConfig>) {
   const config = resolveConfig(rawConfig);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
-  registerFullPlugin(api, client, config);
+  registerFullPlugin(api, client, config, pluginDir);
 }
 
 export default { id, name, description, kind, configSchema, register };
