@@ -364,7 +364,7 @@ docker compose up -d
 - `make setup-server` — sync server venv with uv (first time only)
 - `make test` — run all tests (plugin + server)
 - `make test-plugin` — plugin tests only (vitest)
-- `make test-server` — server tests only (pytest via `server/.venv`, no Docker needed)
+- `make test-server` — server tests only (pytest via uv, no Docker needed)
 - `make typecheck` — type-check TypeScript
 - `make build-server` — build the `gralkor-server:latest` Docker image from `server/`
 - `make up` / `make down` / `make logs` — Docker services (legacy mode; `up` automatically builds the image)
