@@ -80,11 +80,55 @@ async def test_falkordriver_with_embedded_db(db):
     assert driver is not None
 
 
+class StubLLMClient:
+    """Minimal LLMClient subclass that passes Pydantic isinstance checks."""
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+    async def generate_response(self, messages, response_model=None, **kwargs):
+        raise NotImplementedError("stub")
+
+    def set_tracer(self, tracer):
+        pass
+
+
+class StubEmbedderClient:
+    """Minimal EmbedderClient subclass that passes Pydantic isinstance checks."""
+
+    async def create(self, input_data):
+        return [0.0] * 1024
+
+    async def create_batch(self, input_data_list):
+        return [[0.0] * 1024 for _ in input_data_list]
+
+
+def _make_stub_llm():
+    from graphiti_core.llm_client import LLMClient
+
+    # Dynamically create a proper subclass of the ABC
+    stub_cls = type("StubLLM", (LLMClient,), {
+        "generate_response": StubLLMClient.generate_response,
+        "set_tracer": StubLLMClient.set_tracer,
+    })
+    return stub_cls.__new__(stub_cls)
+
+
+def _make_stub_embedder():
+    from graphiti_core.embedder import EmbedderClient
+
+    stub_cls = type("StubEmbedder", (EmbedderClient,), {
+        "create": StubEmbedderClient.create,
+        "create_batch": StubEmbedderClient.create_batch,
+    })
+    return stub_cls.__new__(stub_cls)
+
+
 @pytest.mark.asyncio
 async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
     """The real main.py lifespan starts up with a real FalkorDBLite database.
 
-    Only the LLM client and embedder are mocked (they need API keys).
+    Only the LLM client and embedder are stubbed (they need API keys).
     Everything else is real: FalkorDBLite, FalkorDriver, Graphiti, index creation.
     """
     monkeypatch.delenv("FALKORDB_URI", raising=False)
@@ -92,8 +136,8 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
 
     with (
         patch("main._load_config", return_value={}),
-        patch("main._build_llm_client", return_value=MagicMock()),
-        patch("main._build_embedder", return_value=MagicMock()),
+        patch("main._build_llm_client", return_value=_make_stub_llm()),
+        patch("main._build_embedder", return_value=_make_stub_embedder()),
     ):
         import main as main_mod
 
