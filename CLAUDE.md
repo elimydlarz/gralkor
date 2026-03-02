@@ -276,7 +276,8 @@ OpenClaw Gateway (Node.js)
 │       ├── test_health.py            # GET /health
 │       ├── test_episodes.py          # POST/GET/DELETE /episodes
 │       ├── test_search.py            # POST /search, /search/nodes
-│       └── test_graph_ops.py         # DELETE /edges, POST /clear, /build-indices, /build-communities
+│       ├── test_graph_ops.py         # DELETE /edges, POST /clear, /build-indices, /build-communities
+│       └── test_lifespan.py          # FalkorDBLite embedded vs TCP mode switching
 │
 └── dist/                             # compiled JS (git-ignored)
 ```
