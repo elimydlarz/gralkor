@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor",
-  "version": "8.0.0",
+  "version": "9.0.0",
   "description": "OpenClaw tool plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
   "main": "./dist/tool-entry.js",
