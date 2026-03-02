@@ -70,6 +70,38 @@ def _build_embedder(cfg: dict):
     return OpenAIEmbedder(ecfg)
 
 
+def _log_falkordblite_diagnostics(error: Exception) -> None:
+    """Log diagnostic info when FalkorDBLite fails to start."""
+    import platform
+    import subprocess
+
+    print(f"[gralkor] FalkorDBLite startup failed: {error}", flush=True)
+    print(f"[gralkor] Platform: {platform.platform()}, arch: {platform.machine()}", flush=True)
+    try:
+        from redislite import __redis_executable__, __falkordb_module__
+
+        for label, path in [("redis-server", __redis_executable__), ("FalkorDB module", __falkordb_module__)]:
+            if not path:
+                print(f"[gralkor] {label}: not found", flush=True)
+                continue
+            print(f"[gralkor] {label}: {path}", flush=True)
+            for cmd in [[path, "--version"] if "redis" in label else [], ["file", path], ["ldd", path]]:
+                if not cmd:
+                    continue
+                try:
+                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                    out = r.stdout.strip() or r.stderr.strip()
+                    if out:
+                        for line in out.split("\n"):
+                            print(f"[gralkor]   {line}", flush=True)
+                except FileNotFoundError:
+                    pass
+                except Exception:
+                    pass
+    except Exception as diag_err:
+        print(f"[gralkor] Diagnostic collection failed: {diag_err}", flush=True)
+
+
 # ── Graphiti singleton ────────────────────────────────────────
 
 graphiti: Graphiti | None = None
