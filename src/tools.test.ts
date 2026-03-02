@@ -89,9 +89,9 @@ describe("memory_store (createMemoryStoreTool)", () => {
     client.addEpisode.mockResolvedValue({});
   });
 
-  it("defaults to graph_add name", () => {
+  it("defaults to memory_add name", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
-    expect(tool.name).toBe("graph_add");
+    expect(tool.name).toBe("memory_add");
     expect(tool.parameters.required).toContain("content");
   });
 
