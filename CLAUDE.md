@@ -299,7 +299,8 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 
 ### Graceful Degradation
 
-- The Graphiti URL (`http://graphiti:8001`) is a hardcoded constant, not user-configurable. The plugin always registers the full set of tools, hooks, and services.
+- The Graphiti URL (`http://127.0.0.1:8001`) is a hardcoded constant, not user-configurable. The plugin always registers the full set of tools, hooks, and services.
+- If the server **fails to start** (Python not found, pip fails, health timeout): the error is caught and logged by `registerServerService`; the service does not throw, so the plugin still loads. Tools/hooks then encounter Graphiti as unreachable.
 - If Graphiti is **unreachable at runtime**: auto-recall logs a warning and skips (no errors surfaced to the agent), auto-capture lets errors propagate to the gateway, and tools throw so the agent sees the failure.
 
 ## Environment Variables
