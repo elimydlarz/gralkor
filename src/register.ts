@@ -1,6 +1,6 @@
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId, GRAPHITI_URL } from "./config.js";
+import { GRAPHITI_URL } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
