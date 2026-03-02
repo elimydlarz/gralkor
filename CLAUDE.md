@@ -328,7 +328,7 @@ make up              # builds gralkor-server image and starts services
 
 ### Publishing to npm
 
-The package is published as `@susu-eng/gralkor` (memory mode only). To publish:
+The package is published as `@susu-eng/gralkor`. To publish:
 
 ```bash
 make version-patch   # or version-minor / version-major — bumps, commits, and tags
