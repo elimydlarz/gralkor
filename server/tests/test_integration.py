@@ -80,48 +80,26 @@ async def test_falkordriver_with_embedded_db(db):
     assert driver is not None
 
 
-class StubLLMClient:
-    """Minimal LLMClient subclass that passes Pydantic isinstance checks."""
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-
-    async def generate_response(self, messages, response_model=None, **kwargs):
-        raise NotImplementedError("stub")
-
-    def set_tracer(self, tracer):
-        pass
-
-
-class StubEmbedderClient:
-    """Minimal EmbedderClient subclass that passes Pydantic isinstance checks."""
-
-    async def create(self, input_data):
-        return [0.0] * 1024
-
-    async def create_batch(self, input_data_list):
-        return [[0.0] * 1024 for _ in input_data_list]
-
-
 def _make_stub_llm():
+    """Create a stub LLMClient that passes Pydantic isinstance checks."""
     from graphiti_core.llm_client import LLMClient
 
-    # Dynamically create a proper subclass of the ABC
-    stub_cls = type("StubLLM", (LLMClient,), {
-        "generate_response": StubLLMClient.generate_response,
-        "set_tracer": StubLLMClient.set_tracer,
-    })
-    return stub_cls.__new__(stub_cls)
+    class StubLLM(LLMClient):
+        async def _generate_response(self, messages, response_model=None, **kwargs):
+            raise NotImplementedError("stub")
+
+    return StubLLM.__new__(StubLLM)
 
 
 def _make_stub_embedder():
+    """Create a stub EmbedderClient that passes Pydantic isinstance checks."""
     from graphiti_core.embedder import EmbedderClient
 
-    stub_cls = type("StubEmbedder", (EmbedderClient,), {
-        "create": StubEmbedderClient.create,
-        "create_batch": StubEmbedderClient.create_batch,
-    })
-    return stub_cls.__new__(stub_cls)
+    class StubEmbedder(EmbedderClient):
+        async def create(self, input_data):
+            return [0.0] * 1024
+
+    return StubEmbedder.__new__(StubEmbedder)
 
 
 @pytest.mark.asyncio
