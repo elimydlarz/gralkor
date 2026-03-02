@@ -1,12 +1,16 @@
+import { join } from "node:path";
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { GRAPHITI_URL } from "./config.js";
+import { GRAPHITI_URL, GRAPHITI_PORT } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
   type NativeSearchFn,
 } from "./hooks.js";
+import { createServerManager, type ServerManager } from "./server-manager.js";
 import type { PluginApiBase } from "./types.js";
+
+export type { ServerManager } from "./server-manager.js";
 
 export function registerHooks(
   api: PluginApiBase,
@@ -19,39 +23,51 @@ export function registerHooks(
   api.on("agent_end", createAgentEndHandler(client, config));
 }
 
-export function registerHealthService(
+export function registerServerService(
   api: PluginApiBase,
-  client: GraphitiClient,
-) {
-  let timer: ReturnType<typeof setInterval> | undefined;
+  config: GralkorConfig,
+  pluginDir: string,
+): ServerManager {
+  const dataDir = config.dataDir ?? join(pluginDir, ".gralkor-data");
+  const serverDir = join(pluginDir, "server");
+  const configPath = join(pluginDir, "config.yaml");
+
+  const env: Record<string, string> = {};
+  for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY"]) {
+    if (process.env[key]) env[key] = process.env[key]!;
+  }
+
+  const manager = createServerManager({
+    dataDir,
+    serverDir,
+    port: GRAPHITI_PORT,
+    env,
+    configPath,
+  });
 
   api.registerService({
-    id: "gralkor-health",
-    start() {
-      timer = setInterval(async () => {
-        try {
-          await client.health();
-        } catch (err) {
-          console.warn(
-            "[gralkor] Graphiti health check failed:",
-            err instanceof Error ? err.message : err,
-          );
-        }
-      }, 60_000);
-    },
-    stop() {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
+    id: "gralkor-server",
+    async start() {
+      try {
+        await manager.start();
+      } catch (err) {
+        console.error("[gralkor] Failed to start server:", err instanceof Error ? err.message : err);
+        // Don't throw — degrade gracefully. Tools/hooks handle unreachable Graphiti.
       }
     },
+    async stop() {
+      await manager.stop();
+    },
   });
+
+  return manager;
 }
 
 export function registerCli(
   api: PluginApiBase,
   client: GraphitiClient,
   config: GralkorConfig,
+  manager?: ServerManager,
 ) {
   api.registerCli(
     ({ program }) => {
@@ -63,6 +79,9 @@ export function registerCli(
         .command("status")
         .description("Check Graphiti and FalkorDB connection status")
         .action(async () => {
+          if (manager) {
+            console.log(`Server process: ${manager.isRunning() ? "running" : "stopped"}`);
+          }
           try {
             const result = await client.health();
             console.log(
