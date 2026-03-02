@@ -141,7 +141,7 @@ The `registerServerService()` in `src/register.ts` wraps this in a service regis
 
 All plugin → Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The client never touches FalkorDB directly. The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection.
 
-**Embedded mode (default):** When `FALKORDB_URI` is not set, the server imports `falkordblite.AsyncFalkorDB` and creates an embedded FalkorDB instance at `{FALKORDB_DATA_DIR}/gralkor.db`. No Docker or external services needed.
+**Embedded mode (default):** When `FALKORDB_URI` is not set, the server imports `AsyncFalkorDB` from the `redislite` module (installed by the `falkordblite` PyPI package) and creates an embedded FalkorDB instance at `{FALKORDB_DATA_DIR}/gralkor.db`. No Docker or external services needed.
 
 **Legacy Docker mode:** When `FALKORDB_URI` is set (e.g. `redis://falkordb:6379`), the server creates a `FalkorDriver` with host/port parsed from the URI, connecting to an external FalkorDB instance via TCP.
 
