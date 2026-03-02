@@ -3,7 +3,6 @@ import type { GraphitiClient, Fact, EntityNode } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig } from "./config.js";
 import {
-  createMemoryRecallTool,
   createMemoryStoreTool,
   formatFacts,
   formatNodes,
