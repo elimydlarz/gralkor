@@ -87,7 +87,7 @@ export function createMemoryStoreTool(
     name: overrides?.name ?? "graph_add",
     description:
       overrides?.description ??
-      "Store a thought, insight, reflection, or decision in the knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
+      "Store a thought, insight, reflection, or decision in the knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said. Also store detailed descriptions of any images or videos you consume, as media content is not captured by automatic memory.",
     parameters: {
       type: "object" as const,
       properties: {
