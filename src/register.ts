@@ -117,13 +117,12 @@ export function registerCli(
         });
 
       gralkor
-        .command("clear [group_id]")
+        .command("clear <group_id>")
         .description("Clear the knowledge graph for a group")
-        .action(async (groupId?: string) => {
-          const id = groupId ?? resolveGroupId({});
+        .action(async (groupId: string) => {
           try {
-            await client.clearGraph(id);
-            console.log(`Cleared graph for group "${id}".`);
+            await client.clearGraph(groupId);
+            console.log(`Cleared graph for group "${groupId}".`);
           } catch (err) {
             console.log(
               `Clear failed: ${err instanceof Error ? err.message : err}`,
