@@ -41,13 +41,10 @@ export async function findPython(): Promise<string> {
       if (match) {
         const major = parseInt(match[1], 10);
         const minor = parseInt(match[2], 10);
-        const meetsMin =
+        if (
           major > MIN_PYTHON_VERSION[0] ||
-          (major === MIN_PYTHON_VERSION[0] && minor >= MIN_PYTHON_VERSION[1]);
-        const meetsMax =
-          major < MAX_PYTHON_VERSION[0] ||
-          (major === MAX_PYTHON_VERSION[0] && minor <= MAX_PYTHON_VERSION[1]);
-        if (meetsMin && meetsMax) {
+          (major === MIN_PYTHON_VERSION[0] && minor >= MIN_PYTHON_VERSION[1])
+        ) {
           return candidate;
         }
       }
