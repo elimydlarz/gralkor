@@ -154,10 +154,9 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Self-managing backend | Plugin spawns Graphiti server as a managed Python subprocess with embedded FalkorDBLite; no Docker needed. Requires Python 3.12+ on system. |
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
 | Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode; captures ALL messages in sequence (multi-turn), not just the last of each role |
-| Automatic context recall | `before_agent_start` hook searches graph facts and graph entities in parallel in both modes; memory mode additionally searches native Markdown. Injects combined results before each turn. |
-| Unified memory search (memory mode) | `memory_search` combines native Markdown results with graph facts and entity nodes in a single response |
-| Manual store (memory mode) | `memory_add` creates episodes in the knowledge graph; Graphiti extracts structure |
-| Graph tools (tool mode) | `graph_search` queries facts and entity nodes in parallel; `graph_add` creates episodes |
+| Automatic context recall | `before_agent_start` hook searches graph facts, graph entities, and native Markdown in parallel. Injects combined results before each turn. |
+| Unified memory search | `memory_search` combines native Markdown results with graph facts and entity nodes in a single response |
+| Manual store | `memory_add` creates episodes in the knowledge graph; Graphiti extracts structure |
 | Per-agent graph partitioning | `group_id` derived from `agentId` isolates each agent's knowledge; hooks capture it from `ctx`, tools read it via shared closure |
 | CLI diagnostics | `gralkor status`, `gralkor search <group_id> <query...>`, `gralkor clear <group_id>` available for troubleshooting. Group ID (agent ID) is always required — there is no default. |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
