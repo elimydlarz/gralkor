@@ -53,7 +53,7 @@ typecheck:
 	pnpm exec tsc --noEmit
 
 setup-server:
-	cd server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+	cd server && uv sync
 
 pack:
 	bash scripts/pack.sh
