@@ -7,7 +7,6 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const MIN_PYTHON_VERSION = [3, 12];
-const MAX_PYTHON_VERSION = [3, 13]; // falkordblite is incompatible with 3.14+
 const PYTHON_CANDIDATES = ["python3.12", "python3.13", "python3", "python"];
 const HEALTH_POLL_INTERVAL_MS = 500;
 const HEALTH_TIMEOUT_MS = 120_000;
