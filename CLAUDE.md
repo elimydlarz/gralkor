@@ -172,7 +172,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Docker backward compat | Setting `FALKORDB_URI` env var triggers legacy TCP mode; Docker files kept for users who prefer containerized setup |
 | Observability | Hooks and tools log `[gralkor]`-prefixed messages: hook-fired events (structural metadata only), result counts, skip reasons, errors. Message bodies and user content are never logged. |
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
-| Slot compatibility | Memory mode provides unified `memory_search` (native+graph), `memory_get` (native), and `memory_add` (graph); tool mode adds `graph_search`/`graph_add` alongside `memory-core` |
+| Slot compatibility | Provides unified `memory_search` (native+graph), `memory_get` (native), and `memory_add` (graph) in the memory slot |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | Health monitoring | Server manager monitors child process health every 60s; logs warnings on failure |
 | Message filtering | Auto-capture skips empty conversations and conversations where the first user message starts with `/` |
