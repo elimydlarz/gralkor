@@ -47,7 +47,7 @@ test-plugin:
 	pnpm exec vitest run
 
 test-server:
-	cd server && .venv/bin/python -m pytest tests/ -v
+	cd server && uv run pytest tests/ -v
 
 typecheck:
 	pnpm exec tsc --noEmit
