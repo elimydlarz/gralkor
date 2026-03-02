@@ -106,11 +106,11 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
         )
 
         # Read it back
-        records = await graphiti.driver.execute_query(
+        rows, _, _ = await graphiti.driver.execute_query(
             "MATCH (p:Person {name: 'Alice'}) RETURN p.role"
         )
-        assert len(records) == 1
-        assert records[0]["p.role"] == "engineer"
+        assert len(rows) == 1
+        assert rows[0]["p.role"] == "engineer"
 
         # Health endpoint works through the real FastAPI app
         transport = ASGITransport(app=main_mod.app)
