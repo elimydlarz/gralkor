@@ -404,7 +404,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ### Integration tests (real FalkorDBLite)
 
-`test_integration.py` exercises the **real** FalkorDBLite native binary — no mocks. It creates a real embedded database in a temp directory, writes nodes and relationships via Cypher, reads them back, and verifies `FalkorDriver` accepts embedded instances. This proves the `falkordblite` wheel is installable and functional on the host platform.
+`test_integration.py` exercises the **real** FalkorDBLite native binary with zero mocks. It creates real embedded databases in temp directories, writes nodes and relationships via Cypher, reads them back, and verifies `FalkorDriver` accepts embedded instances. The lifespan test runs the full `main.py` startup path unmocked: real config loading, real LLM/embedder client construction, real FalkorDBLite, real FalkorDriver, real Graphiti instance, and real graph index creation. No API keys needed (LLM/embedder clients construct without keys — keys are only needed when calling the LLM, which these tests don't do).
 
 ### Test files
 
