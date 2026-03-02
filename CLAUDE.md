@@ -361,7 +361,7 @@ docker compose up -d
 
 ## Key Commands
 
-- `make setup-server` — create venv and install server deps (first time only)
+- `make setup-server` — sync server venv with uv (first time only)
 - `make test` — run all tests (plugin + server)
 - `make test-plugin` — plugin tests only (vitest)
 - `make test-server` — server tests only (pytest via `server/.venv`, no Docker needed)
