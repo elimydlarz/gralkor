@@ -71,7 +71,7 @@ describe("registerCli", () => {
       }),
     } as unknown as PluginApiBase;
 
-    registerCli(api, client as unknown as GraphitiClient, config);
+    registerCli(api, client as unknown as GraphitiClient, config, undefined);
   });
 
   describe("search command", () => {
