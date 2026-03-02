@@ -80,17 +80,29 @@ async def lifespan(_app: FastAPI):
     global graphiti
     cfg = _load_config()
 
-    uri = os.getenv("FALKORDB_URI", "redis://falkordb:6379")
-    # Parse host:port from redis:// URI (e.g. "redis://falkordb:6379")
-    stripped = uri.split("://", 1)[-1]  # "falkordb:6379"
-    if ":" in stripped:
-        host, port_str = stripped.rsplit(":", 1)
-        port = int(port_str)
+    falkordb_uri = os.getenv("FALKORDB_URI")
+
+    if falkordb_uri:
+        # Legacy Docker mode: external FalkorDB via TCP
+        stripped = falkordb_uri.split("://", 1)[-1]
+        if ":" in stripped:
+            host, port_str = stripped.rsplit(":", 1)
+            port = int(port_str)
+        else:
+            host, port = stripped, 6379
+        driver = FalkorDriver(host=host, port=port)
     else:
-        host, port = stripped, 6379
+        # Default: embedded FalkorDBLite (no Docker needed)
+        from falkordblite import AsyncFalkorDB
+
+        data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
+        os.makedirs(data_dir, exist_ok=True)
+        db_path = os.path.join(data_dir, "gralkor.db")
+        db = AsyncFalkorDB(db_path)
+        driver = FalkorDriver(falkor_db=db)
 
     graphiti = Graphiti(
-        graph_driver=FalkorDriver(host=host, port=port),
+        graph_driver=driver,
         llm_client=_build_llm_client(cfg),
         embedder=_build_embedder(cfg),
     )
