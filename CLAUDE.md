@@ -182,15 +182,9 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 ## Architecture
 
 ```
-One repo — two published packages (produced by scripts/pack.sh)
-  resources/memory/  — package.json + openclaw.plugin.json for memory tarball
-  resources/tool/    — package.json + openclaw.plugin.json for tool tarball
-  src/               — shared TypeScript compiled into both
-
 OpenClaw Gateway (Node.js)
-  └── gralkor plugin (one of the two packages, not both)
-        ├── Tools: memory_search (unified), memory_get (native), memory_add (memory mode)
-        │          graph_search, graph_add (tool mode)
+  └── gralkor plugin (memory slot)
+        ├── Tools: memory_search (unified), memory_get (native), memory_add
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: gralkor-server (manages Python subprocess + 60s health monitor)
         ├── CLI: memory (native), gralkor status, gralkor search <group_id> <query...>, gralkor clear <group_id>
