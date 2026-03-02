@@ -25,7 +25,7 @@ help:
 	@echo "  typecheck       TypeScript type-check"
 	@echo ""
 	@echo "Build"
-	@echo "  pack            Build both deployment tarballs (memory + tool)"
+	@echo "  pack            Build deployment tarball"
 	@echo ""
 	@echo "Versioning"
 	@echo "  version-patch   Bump patch version (x.y.Z)"
