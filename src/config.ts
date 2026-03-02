@@ -31,6 +31,7 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
       maxResults:
         raw.autoRecall?.maxResults ?? defaultConfig.autoRecall.maxResults,
     },
+    dataDir: raw.dataDir,
   };
 }
 
