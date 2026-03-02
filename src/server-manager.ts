@@ -71,31 +71,6 @@ export async function ensureVenv(
   const venvPython = join(venvDir, "bin", "python");
   const markerPath = join(venvDir, PIP_MARKER);
 
-  // Recreate venv if it was created with an incompatible Python version
-  if (existsSync(venvPython)) {
-    try {
-      const { stdout } = await execFileAsync(venvPython, ["--version"]);
-      const match = stdout.trim().match(/Python (\d+)\.(\d+)/);
-      if (match) {
-        const venvMajor = parseInt(match[1], 10);
-        const venvMinor = parseInt(match[2], 10);
-        const tooNew =
-          venvMajor > MAX_PYTHON_VERSION[0] ||
-          (venvMajor === MAX_PYTHON_VERSION[0] && venvMinor > MAX_PYTHON_VERSION[1]);
-        if (tooNew) {
-          console.log(
-            `[gralkor] Existing venv uses Python ${venvMajor}.${venvMinor} (incompatible), recreating...`,
-          );
-          rmSync(venvDir, { recursive: true, force: true });
-        }
-      }
-    } catch {
-      // Can't check version — remove and recreate to be safe
-      console.log("[gralkor] Cannot verify venv Python version, recreating...");
-      rmSync(venvDir, { recursive: true, force: true });
-    }
-  }
-
   // Create venv if it doesn't exist
   if (!existsSync(venvPython)) {
     console.log("[gralkor] Creating Python venv at", venvDir);
