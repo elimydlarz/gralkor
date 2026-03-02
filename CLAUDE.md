@@ -186,7 +186,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Retry with backoff | `GraphitiClient` retries network errors and 5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
 | Slot compatibility | Memory mode provides unified `memory_search` (native+graph), `memory_get` (native), and `memory_add` (graph); tool mode adds `graph_search`/`graph_add` alongside `memory-core` |
 | Security — untrusted context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
-| Health monitoring | Background service pings `/health` every 60s; logs warnings on failure |
+| Health monitoring | Server manager monitors child process health every 60s; logs warnings on failure |
 | Message filtering | Auto-capture skips empty conversations and conversations where the first user message starts with `/` |
 | Capture hygiene | Auto-capture strips injected `<gralkor-memory>` XML from user messages before storing episodes, preventing a feedback loop where recalled facts are re-ingested as new knowledge |
 | Prompt parsing robustness | Auto-recall correctly detects system prompts even when queued events (e.g. Telegram reactions) are prepended to `ctx.prompt` |
