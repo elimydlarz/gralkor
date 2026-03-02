@@ -240,7 +240,7 @@ OpenClaw Gateway (Node.js)
 │   ├── index.test.ts
 │   ├── tool-entry.ts                 # tool-mode entry point (kind: "tool")
 │   ├── tool-entry.test.ts
-│   ├── register.ts                   # shared registration (tools, hooks, health, CLI)
+│   ├── register.ts                   # shared registration (tools, hooks, server service, CLI)
 │   ├── register.test.ts
 │   ├── tools.ts                      # tool factories + formatters: createMemoryRecallTool, createMemoryStoreTool, formatFacts, formatNodes
 │   ├── tools.test.ts
