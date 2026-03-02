@@ -244,7 +244,7 @@ OpenClaw Gateway (Node.js)
 ├── server/                           # Graphiti REST API (Python/FastAPI)
 │   ├── pyproject.toml                # uv project config (dev/test deps, Python >= 3.12)
 │   ├── uv.lock                       # uv lockfile for reproducible dev builds
-│   ├── .python-version               # pins Python 3.13 for dev (3.14 has falkordblite compat issues)
+│   ├── .python-version               # pins Python 3.13 for dev
 │   ├── Dockerfile
 │   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core (embedded FalkorDBLite or TCP)
 │   ├── requirements.txt              # runtime deps (includes falkordblite)
