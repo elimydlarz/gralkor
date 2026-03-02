@@ -192,7 +192,7 @@ describe("register()", () => {
     registrar({ program: mockProgram });
 
     const cmdNames = subcommands.map((c) => c.name);
-    expect(cmdNames).toEqual(["status", "search <query...>", "clear [group_id]"]);
+    expect(cmdNames).toEqual(["status", "search <group_id> <query...>", "clear <group_id>"]);
   });
 
   it("factory returns wrapped memory_search that combines native + graph results", async () => {
