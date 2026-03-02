@@ -390,6 +390,10 @@ make test-server
 | `Graphiti.driver` (FalkorDB access) | Pydantic request validation |
 | `EntityEdge.get_by_uuid()` / `edge.delete()` | Serializer functions (`_serialize_fact`, `_serialize_node`, `_serialize_episode`) |
 | `Node.delete_by_group_id()` | HTTP status codes, response bodies |
+| `falkordblite` module (`sys.modules` patch in `test_lifespan.py`) | Lifespan code-path selection (embedded vs TCP) |
+
+**FalkorDBLite binary not tested:** `test_lifespan.py` patches `falkordblite` into `sys.modules` as a `MagicMock`, so the native binary is never imported. The tests verify that `lifespan()` picks the correct mode and passes the right args to `FalkorDriver`, but do not prove the `falkordblite` wheel is installable or functional on the host platform. To verify the binary: `cd server && .venv/bin/python -c "from falkordblite import AsyncFalkorDB; print('ok')"`.
+
 
 ### How it works
 
