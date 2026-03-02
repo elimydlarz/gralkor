@@ -473,7 +473,9 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ## Deployment
 
-When deployed alongside OpenClaw on a VPS, set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. This way existing backup/restore scripts capture graph data automatically. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8001`.
+**Default (self-managing):** Install the plugin, set an LLM API key, restart OpenClaw. The plugin manages everything else — Python venv, pip deps, Graphiti server, embedded FalkorDB. Data lives in `{dataDir}/` (default: `{pluginDir}/.gralkor-data/`). Configure `dataDir` in plugin config to colocate with OpenClaw's `/data` volume for backup/restore coverage.
+
+**Legacy Docker mode:** When deployed alongside OpenClaw on a VPS with Docker, set `FALKORDB_URI` to use an external FalkorDB container. Set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8001`.
 
 ## Recommended Reading
 
