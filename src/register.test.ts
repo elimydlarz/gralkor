@@ -3,6 +3,7 @@ import { registerCli } from "./register.js";
 import type { PluginApiBase } from "./types.js";
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
+import type { ServerManager } from "./server-manager.js";
 
 /**
  * Build a mock Commander chain that captures subcommands and their action handlers.
