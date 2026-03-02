@@ -380,7 +380,9 @@ openclaw plugins install ~/susu-eng-gralkor-tool-x.y.z.tgz    # tool mode
 
 The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
 
-The `docker-compose.yml` references `gralkor-server:latest` (a locally-built image, not a registry image). On the deployment host, build the image from the included `server/` source before starting services:
+**Default (self-managing):** No Docker needed. The plugin's server manager spawns the Graphiti server automatically using embedded FalkorDBLite. Requires Python 3.12+ on the deployment host.
+
+**Legacy Docker mode:** The `docker-compose.yml` and `server/Dockerfile` are still included for users who prefer containerized FalkorDB. Set `FALKORDB_URI=redis://falkordb:6379` to trigger TCP mode:
 
 ```bash
 docker build -t gralkor-server:latest server/
