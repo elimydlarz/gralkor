@@ -289,6 +289,7 @@ OpenClaw Gateway (Node.js)
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `5` | Max facts injected as context |
+| `dataDir` | string | `{pluginDir}/.gralkor-data` | Directory for backend data (Python venv, FalkorDB database files) |
 
 ### Graph Partitioning
 
