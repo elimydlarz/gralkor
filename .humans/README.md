@@ -6,13 +6,9 @@ Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware
 
 When an agent converses with a user, Gralkor automatically extracts entities and relationships into a knowledge graph, and recalls relevant facts in future conversations — no manual prompt engineering required.
 
-## Two Modes
+## What it does
 
-Gralkor can run in two modes. Choose one — they should not be active at the same time.
-
-### Memory mode (recommended)
-
-Replaces the native memory plugin entirely. Gralkor takes the memory slot.
+Gralkor replaces the native memory plugin entirely, taking the memory slot.
 
 - **`memory_search`** — searches both native Markdown files and the knowledge graph in parallel, returning combined results
 - **`memory_get`** — reads native Markdown memory files directly (delegated to OpenClaw's built-in implementation)
@@ -20,20 +16,7 @@ Replaces the native memory plugin entirely. Gralkor takes the memory slot.
 - Hooks: auto-capture (stores full multi-turn conversations after each agent run), auto-recall (injects relevant facts and entities before the agent responds)
 - Set up: `plugins.slots.memory = "gralkor"` in `openclaw.json`
 
-Use this if you want a unified memory interface where the agent doesn't need to think about which backend to query.
-
-### Tool mode
-
-Runs alongside the native `memory-core` plugin. The agent keeps its native `memory_search`/`memory_get` tools for Markdown files AND gets Graphiti-powered tools.
-
-- **`graph_search`** — searches the knowledge graph for facts and entities
-- **`graph_add`** — stores information in the knowledge graph
-- Hooks: same auto-capture and auto-recall as memory mode
-- Set up: add `"gralkor"` to `plugins.enabled` in `openclaw.json`
-
-Use this if you want to keep native file-based memory separate from the knowledge graph.
-
-Both modes register the same hooks, so conversations are automatically captured and relevant facts are automatically recalled regardless of which mode you choose.
+The agent gets a unified memory interface where it doesn't need to think about which backend to query.
 
 ## Quick Start
 
@@ -93,22 +76,12 @@ embedder:
 
 Edit `~/.openclaw/openclaw.json`:
 
-**Memory mode** (replaces native memory):
 ```json
 {
   "plugins": {
     "slots": {
       "memory": "gralkor"
     }
-  }
-}
-```
-
-**Tool mode** (alongside native memory):
-```json
-{
-  "plugins": {
-    "enabled": ["gralkor"]
   }
 }
 ```
@@ -132,7 +105,7 @@ Start chatting with your agent. Gralkor works in the background:
 - **Auto-capture**: Full multi-turn conversations are stored in the knowledge graph after each agent run
 - **Auto-recall**: Before the agent responds, relevant facts and entities are retrieved and injected as context
 
-## Native memory search (memory mode only)
+## Native memory search
 
 In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key in its own environment — not just in Gralkor's `.env`.
 
@@ -152,7 +125,7 @@ openclaw gralkor search <query>  # Search the knowledge graph
 openclaw gralkor clear [group]   # Delete all data for a group (destructive!)
 ```
 
-In memory mode, the native `openclaw memory` commands also remain available.
+The native `openclaw memory` commands also remain available.
 
 ## Configuration
 
