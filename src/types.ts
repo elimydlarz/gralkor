@@ -15,8 +15,8 @@ export interface PluginApiBase {
   on(event: string, handler: AnyFn): void;
   registerService(service: {
     id: string;
-    start: () => void;
-    stop: () => void;
+    start: () => void | Promise<void>;
+    stop: () => void | Promise<void>;
   }): void;
   registerCli(
     registrar: (ctx: {
