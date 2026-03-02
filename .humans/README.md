@@ -2,7 +2,7 @@
 
 **Persistent memory for OpenClaw agents, powered by knowledge graphs.**
 
-Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run locally via Docker.
+Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run automatically as a managed subprocess — no Docker required.
 
 When an agent converses with a user, Gralkor automatically extracts entities and relationships into a knowledge graph, and recalls relevant facts in future conversations — no manual prompt engineering required.
 
@@ -39,37 +39,28 @@ Both modes register the same hooks, so conversations are automatically captured 
 
 ### 1. Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) (with Compose)
+- Python 3.12+ on the system PATH
 - An API key for a supported LLM provider (see below)
 
-### 2. Build the plugin tarball
+### 2. Install the plugin
+
+**From npm:**
+
+```bash
+openclaw plugins install @susu-eng/gralkor
+```
+
+**From tarball:**
 
 ```bash
 pnpm install
 make pack
-# produces: openclaw-gralkor-memory-<version>.tgz  (memory mode)
-#           openclaw-gralkor-tool-<version>.tgz    (tool mode)
-```
-
-### 3. Deploy the tarball
-
-Copy the tarball to your agent's host:
-
-```bash
-scp openclaw-gralkor-memory-*.tgz user@your-host:~/
-```
-
-### 4. Install the plugin
-
-On the agent's host:
-
-```bash
-openclaw plugins install ~/openclaw-gralkor-memory-<version>.tgz
+openclaw plugins install ./openclaw-gralkor-memory-<version>.tgz
 ```
 
 The plugin files land in `~/.openclaw/plugins/gralkor/`.
 
-### 5. Configure the LLM provider
+### 3. Configure the LLM provider
 
 ```bash
 cd ~/.openclaw/plugins/gralkor
@@ -98,29 +89,7 @@ embedder:
   model: "text-embedding-004"
 ```
 
-### 6. Start the backend
-
-```bash
-cd ~/.openclaw/plugins/gralkor
-
-# Build the Graphiti server image from included source
-docker build -t gralkor-server:latest server/
-
-# Start FalkorDB + Graphiti
-docker compose up -d
-```
-
-This starts:
-- **FalkorDB** on port 6379 (Redis protocol) with a browser UI at [localhost:3000](http://localhost:3000)
-- **Graphiti REST API** on port 8001
-
-Verify it's running:
-
-```bash
-curl http://localhost:8001/health
-```
-
-### 7. Enable the plugin
+### 4. Enable the plugin
 
 Edit `~/.openclaw/openclaw.json`:
 
@@ -144,25 +113,24 @@ Edit `~/.openclaw/openclaw.json`:
 }
 ```
 
-### 8. Restart and go
+### 5. Restart and go
 
-Restart OpenClaw. Verify the plugin loaded:
+Restart OpenClaw. On first start, Gralkor automatically:
+- Creates a Python virtual environment
+- Installs Graphiti and its dependencies (~1-2 min first time)
+- Starts the Graphiti server with embedded FalkorDB
+- Subsequent restarts are fast (venv reused, pip skipped)
+
+Verify the plugin loaded:
 
 ```bash
 openclaw plugins list
+openclaw gralkor status
 ```
 
 Start chatting with your agent. Gralkor works in the background:
 - **Auto-capture**: Full multi-turn conversations are stored in the knowledge graph after each agent run
 - **Auto-recall**: Before the agent responds, relevant facts and entities are retrieved and injected as context
-
-## Network setup for Docker-based OpenClaw
-
-If your OpenClaw gateway runs inside a Docker container, it needs to reach the Graphiti server at `http://graphiti:8001`. Connect it to the `gralkor` network:
-
-```bash
-docker network connect gralkor <your-openclaw-container-name>
-```
 
 ## Native memory search (memory mode only)
 
@@ -179,7 +147,7 @@ Any of `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `VOYAGE_API_KEY`, or `MISTRAL_API_KEY
 ## CLI
 
 ```bash
-openclaw gralkor status          # Check backend connectivity and graph stats
+openclaw gralkor status          # Check backend connectivity and server process status
 openclaw gralkor search <query>  # Search the knowledge graph
 openclaw gralkor clear [group]   # Delete all data for a group (destructive!)
 ```
@@ -196,7 +164,8 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
     "config": {
       "gralkor": {
         "autoCapture": { "enabled": true },
-        "autoRecall": { "enabled": true, "maxResults": 5 }
+        "autoRecall": { "enabled": true, "maxResults": 5 },
+        "dataDir": "/path/to/data"
       }
     }
   }
@@ -208,6 +177,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 | `autoCapture.enabled` | `true` | Automatically store conversations in the graph |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context before each turn |
 | `autoRecall.maxResults` | `5` | Maximum number of facts injected as context |
+| `dataDir` | `{pluginDir}/.gralkor-data` | Directory for backend data (Python venv, FalkorDB database) |
 
 ### Graph partitioning
 
@@ -215,12 +185,11 @@ Each agent gets its own graph partition automatically (based on `agentId`). No c
 
 ## Data storage
 
-FalkorDB stores its data in a Docker volume called `falkordb_data` by default. To colocate it with OpenClaw's data directory (useful for backups):
+By default, all data lives in `{pluginDir}/.gralkor-data/`:
+- `venv/` — Python virtual environment (Graphiti, FalkorDBLite, etc.)
+- `falkordb/` — embedded FalkorDB database files
 
-```bash
-export FALKORDB_DATA_DIR=/path/to/openclaw/data/falkordb
-docker compose up -d
-```
+Set `dataDir` in plugin config to change the location (e.g. to colocate with OpenClaw's data directory for backups).
 
 ## How it works
 
@@ -243,31 +212,22 @@ User sends message
  └──────────────┘              └──────────┘   & facts      └──────────┘
 ```
 
-Graphiti handles the heavy lifting: entity extraction, relationship mapping, temporal tracking, and embedding-based search. Gralkor wires it into the OpenClaw plugin lifecycle.
-
-## Exploring the graph
-
-Open [localhost:3000](http://localhost:3000) to browse FalkorDB's web UI. You'll see nodes (entities like people, projects, concepts) and edges (relationships/facts) that Graphiti has extracted from conversations.
-
-## Ports
-
-| Service | Port | Purpose |
-|---|---|---|
-| FalkorDB | 6379 | Graph database (Redis protocol) |
-| FalkorDB Browser | 3000 | Web UI for browsing the graph |
-| Graphiti | 8001 | REST API (plugin communicates here) |
+Graphiti handles the heavy lifting: entity extraction, relationship mapping, temporal tracking, and embedding-based search. Gralkor wires it into the OpenClaw plugin lifecycle. The Graphiti server and embedded FalkorDB run as a managed subprocess — started and stopped automatically by the plugin.
 
 ## Troubleshooting
 
-**Graphiti container keeps restarting**
-Check logs with `docker compose logs graphiti`. Most likely: missing or invalid LLM API key in `.env`. FalkorDB may also need a few seconds to initialize — try `docker compose restart graphiti`.
+**`gralkor status` says "Server process: stopped"**
+Python 3.12+ is not found on the system PATH. Install Python 3.12+ and restart OpenClaw.
 
-**`gralkor status` says unreachable**
-Make sure Docker is running and the containers are up: `docker compose ps`. Verify Graphiti responds: `curl http://localhost:8001/health`.
+**First startup takes a long time**
+Normal — Gralkor is creating a Python virtual environment and installing dependencies via pip. This takes ~1-2 minutes. Subsequent starts reuse the venv and skip pip.
+
+**Plugin loads but all graph operations fail**
+Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM API key in `.env`.
 
 **No memories being recalled**
 - Check that `autoRecall.enabled` is `true` (it is by default)
-- Verify the graph has data: visit [localhost:3000](http://localhost:3000) or run `openclaw gralkor search <term>`
+- Verify the graph has data: run `openclaw gralkor search <term>`
 - Auto-recall extracts keywords from the user's message — very short messages may not match
 
 **Agent doesn't store conversations**
@@ -277,3 +237,19 @@ Make sure Docker is running and the containers are up: `docker compose ps`. Veri
 
 **`memory_search` returns empty in memory mode**
 Native memory indexing needs an embedding provider key in the OpenClaw gateway's environment. See the "Native memory search" section above.
+
+## Legacy Docker mode
+
+If you prefer to run FalkorDB as a separate Docker container (e.g. for production deployments with specific resource constraints), you can set `FALKORDB_URI` to bypass the embedded mode:
+
+```bash
+cd ~/.openclaw/plugins/gralkor
+docker build -t gralkor-server:latest server/
+FALKORDB_URI=redis://falkordb:6379 docker compose up -d
+```
+
+This starts FalkorDB on port 6379 and the Graphiti API on port 8001. If your OpenClaw gateway runs in Docker, connect it to the `gralkor` network:
+
+```bash
+docker network connect gralkor <your-openclaw-container-name>
+```
