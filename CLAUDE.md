@@ -369,9 +369,9 @@ docker compose up -d
 - `make build-server` — build the `gralkor-server:latest` Docker image from `server/`
 - `make up` / `make down` / `make logs` — Docker services (legacy mode; `up` automatically builds the image)
 - Graphiti port: **8001** (localhost in self-managing mode; container-internal and host-mapped in Docker mode).
-- `make pack` — build both deployment tarballs (memory + tool) via `scripts/pack.sh`
+- `make pack` — build deployment tarball via `scripts/pack.sh`
 - `make publish` — build TypeScript and publish `@susu-eng/gralkor` to npm
-- `make version-patch` / `make version-minor` / `make version-major` — bump version in root + both `resources/` package.json files, then commit all three and tag `vX.Y.Z`
+- `make version-patch` / `make version-minor` / `make version-major` — bump version in root + `resources/memory/package.json`, then commit and tag `vX.Y.Z`
 
 ## Server Tests
 
