@@ -110,7 +110,7 @@ Hook handlers receive **two arguments: `(event, ctx)`**:
 
 ### Native Memory Indexing Pipeline (OpenClaw internals)
 
-Understanding how native `memory_search` works is important for memory mode, since gralkor wraps the native tool via `api.runtime.tools.createMemorySearchTool()`.
+Understanding how native `memory_search` works is important since gralkor wraps the native tool via `api.runtime.tools.createMemorySearchTool()`.
 
 **Architecture:** `createMemorySearchTool()` (in `src/agents/tools/memory-tool.ts`) calls `getMemorySearchManager()` on each execute, which lazily creates a `MemoryIndexManager` singleton. The manager uses SQLite with FTS5 for keyword search and optional vector embeddings for semantic search.
 
