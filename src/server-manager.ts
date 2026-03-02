@@ -53,7 +53,7 @@ export async function findPython(): Promise<string> {
     }
   }
   throw new Error(
-    `Python >= ${MIN_PYTHON_VERSION.join(".")} and <= ${MAX_PYTHON_VERSION.join(".")} is required but not found on PATH. ` +
+    `Python >= ${MIN_PYTHON_VERSION.join(".")} is required but not found on PATH. ` +
     `Tried: ${PYTHON_CANDIDATES.join(", ")}`,
   );
 }
