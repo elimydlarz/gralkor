@@ -38,9 +38,10 @@ Both modes register auto-capture (`agent_end`) and auto-recall (`before_agent_st
 
 Both entry points follow the same sequence in their synchronous `register()` function:
 
-1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://graphiti:8001"`) in `src/config.ts`, not user-configurable.
+1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://127.0.0.1:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
-3. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), health service, and CLI.
+3. Resolve `pluginDir` from `import.meta.url` (`dist/` → plugin root).
+4. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), server manager service, and CLI.
 
 **Memory mode specifics:** `registerFullPlugin` creates shared `nativeSearchFn` state. The `registerTool` factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.searchFacts()` + `client.searchNodes()` in parallel, combining all results. It also stores a reference to the native search function for the auto-recall hook to use. Registers `memory_add` (via `createMemoryStoreTool` with name override) as a plain tool. Registers `memory_get` unchanged. Passes `getNativeSearch` closure to `registerHooks` so auto-recall can search both backends.
 
