@@ -4,21 +4,11 @@ set -euo pipefail
 pnpm run --silent build
 
 version=$(node -p "require('./resources/memory/package.json').version")
-tarballs=()
 
-for mode in memory tool; do
-  cp resources/$mode/package.json package.json
-  cp resources/$mode/openclaw.plugin.json openclaw.plugin.json
-  pnpm pack >/dev/null 2>&1
-
-  # pnpm produces susu-eng-gralkor-<version>.tgz for both modes (same package name).
-  # Rename to mode-specific tarball so the second pack doesn't overwrite the first.
-  mv "susu-eng-gralkor-${version}.tgz" "susu-eng-gralkor-${mode}-${version}.tgz"
-  tarballs+=("susu-eng-gralkor-${mode}-${version}.tgz")
-done
-
-# Restore canonical (memory) state
 cp resources/memory/package.json package.json
 cp resources/memory/openclaw.plugin.json openclaw.plugin.json
+pnpm pack >/dev/null 2>&1
 
-printf '%s\n' "${tarballs[@]}"
+mv "susu-eng-gralkor-${version}.tgz" "susu-eng-gralkor-memory-${version}.tgz"
+
+echo "susu-eng-gralkor-memory-${version}.tgz"
