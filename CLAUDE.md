@@ -149,7 +149,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Manual store (memory mode) | `memory_add` creates episodes in the knowledge graph; Graphiti extracts structure |
 | Graph tools (tool mode) | `graph_search` queries facts and entity nodes in parallel; `graph_add` creates episodes |
 | Per-agent graph partitioning | `group_id` derived from `agentId` isolates each agent's knowledge; hooks capture it from `ctx`, tools read it via shared closure |
-| CLI diagnostics | `gralkor status`, `gralkor search`, `gralkor clear` available for troubleshooting |
+| CLI diagnostics | `gralkor status`, `gralkor search <group_id> <query...>`, `gralkor clear <group_id>` available for troubleshooting. Group ID (agent ID) is always required — there is no default. |
 | Temporal awareness | Facts have `valid_at` / `invalid_at`; Graphiti tracks when knowledge changes |
 | Native memory tools (memory mode) | `memory_search` wraps native search with graph search; `memory_get` delegated to OpenClaw runtime via `api.runtime.tools` |
 | Error propagation (auto-capture) | `agent_end` hook lets Graphiti errors propagate to the gateway instead of swallowing them |
