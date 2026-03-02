@@ -58,6 +58,26 @@ The plugin API methods must match these signatures exactly — the gateway valid
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
 - **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
 
+### Additional Plugin API Surface (OpenClaw internals)
+
+Beyond the methods gralkor uses, the plugin API exposes:
+
+- **`api.runtime.media`** — Image resizing, MIME detection, audio validation. Utility only — no vision/description capabilities.
+- **`api.runtime.config`** — Load/write config files.
+- **`api.runtime.system`** — Run commands, format dependency hints.
+- **`api.runtime.tts`** — Text-to-speech (telephony via configured provider).
+- **`api.runtime.channel`** — Text chunking, message routing, channel-specific operations.
+- **`api.runtime.logging`** — Structured logging with bindings.
+- **`api.runtime.state`** — Resolve state directory.
+
+**Additional hooks** (not used by gralkor):
+- **`before_model_resolve`** — Observe/override which model/provider will be used.
+- **`before_prompt_build`** — Observe/modify system prompt and prepended context before building final prompt.
+- **`llm_input`** — **Read-only** observation of what's sent to the LLM. Event contains `{ provider, model, systemPrompt, prompt, historyMessages, imagesCount }`. Returns `void`.
+- **`llm_output`** — **Read-only** observation of the LLM response. Event contains `{ provider, model, assistantTexts, usage }`. Returns `void`.
+
+**No LLM inference API:** Plugins cannot call the model powering the agent. OpenClaw intentionally keeps LLM inference out of the plugin sandbox. Plugins that need LLM capabilities must call external APIs directly (e.g. OpenAI vision endpoint) or delegate to their own server-side infrastructure.
+
 ### Hook Context Shape
 
 Hook handlers receive **two arguments: `(event, ctx)`**:
