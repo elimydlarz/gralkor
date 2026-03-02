@@ -342,16 +342,13 @@ Prerequisite: `npm login` with an account that has publish access to the `@susu-
 
 ```bash
 make pack
-# produces: susu-eng-gralkor-memory-x.y.z.tgz  (memory mode)
-#           susu-eng-gralkor-tool-x.y.z.tgz    (tool mode)
+# produces: susu-eng-gralkor-memory-x.y.z.tgz
 
 # Install from tarball on the remote host
-openclaw plugins install ~/susu-eng-gralkor-memory-x.y.z.tgz  # memory mode
-# OR
-openclaw plugins install ~/susu-eng-gralkor-tool-x.y.z.tgz    # tool mode
+openclaw plugins install ~/susu-eng-gralkor-memory-x.y.z.tgz
 ```
 
-The `files` field in `resources/{memory,tool}/package.json` controls what goes into each tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. Each tarball contains only one manifest (`openclaw.plugin.json`), stamped by `scripts/pack.sh` before packing.
+The `files` field in `resources/memory/package.json` controls what goes into the tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. The manifest (`openclaw.plugin.json`) is stamped by `scripts/pack.sh` before packing.
 
 **Default (self-managing):** No Docker needed. The plugin's server manager spawns the Graphiti server automatically using embedded FalkorDBLite. Requires Python 3.12+ on the deployment host.
 
