@@ -9,12 +9,6 @@ Powered by [Graphiti](https://github.com/getzep/graphiti) + [FalkorDB](https://w
 - Python 3.12+ on the system PATH
 - An LLM provider API key (one of: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY` + `OPENAI_API_KEY`, `GROQ_API_KEY` + `OPENAI_API_KEY`)
 
-## Choose a mode
-
-**Memory mode** — replaces native memory with a unified interface (native Markdown + knowledge graph). Install this unless you have a reason not to.
-
-**Tool mode** — adds `graph_search`/`graph_add` tools alongside the existing native memory plugin. Use this if you want to keep native memory separate.
-
 ## Install
 
 ### 1. Install the plugin
@@ -22,7 +16,6 @@ Powered by [Graphiti](https://github.com/getzep/graphiti) + [FalkorDB](https://w
 **From npm (recommended):**
 
 ```bash
-# Memory mode
 openclaw plugins install @susu-eng/gralkor
 ```
 
@@ -38,11 +31,7 @@ pnpm install && make pack
 Then install:
 
 ```bash
-# Memory mode (recommended)
 openclaw plugins install ./openclaw-gralkor-memory-<version>.tgz
-
-# OR tool mode
-openclaw plugins install ./openclaw-gralkor-tool-<version>.tgz
 ```
 
 ### 2. Configure the LLM provider
@@ -80,7 +69,7 @@ embedder:
 
 ### 3. Enable the plugin in OpenClaw
 
-**Memory mode** — set the memory slot in `~/.openclaw/openclaw.json`:
+Set the memory slot in `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -88,16 +77,6 @@ embedder:
     "slots": {
       "memory": "gralkor"
     }
-  }
-}
-```
-
-**Tool mode** — add to the enabled plugins list in `~/.openclaw/openclaw.json`:
-
-```json
-{
-  "plugins": {
-    "enabled": ["gralkor"]
   }
 }
 ```
@@ -117,9 +96,7 @@ openclaw plugins list
 openclaw gralkor status
 ```
 
-The agent should now have access to:
-- **Memory mode:** `memory_search`, `memory_get`, `memory_add`
-- **Tool mode:** `graph_search`, `graph_add`
+The agent should now have access to: `memory_search`, `memory_get`, `memory_add`.
 
 ## Troubleshooting
 
