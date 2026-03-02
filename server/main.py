@@ -93,7 +93,7 @@ async def lifespan(_app: FastAPI):
         driver = FalkorDriver(host=host, port=port)
     else:
         # Default: embedded FalkorDBLite (no Docker needed)
-        from falkordblite import AsyncFalkorDB
+        from redislite import AsyncFalkorDB
 
         data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
         os.makedirs(data_dir, exist_ok=True)
