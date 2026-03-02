@@ -309,7 +309,9 @@ The `resolveGroupId(ctx)` function in `src/config.ts` returns the group ID strin
 - `ANTHROPIC_API_KEY` — API key for Anthropic (still needs `OPENAI_API_KEY` for embeddings).
 - `GOOGLE_API_KEY` — API key for Gemini (fully self-contained: LLM + embeddings + reranking).
 - `GROQ_API_KEY` — API key for Groq (still needs `OPENAI_API_KEY` for embeddings).
-LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provider`). See `.env.example` for details.
+- `FALKORDB_URI` — (Optional) Set to a `redis://host:port` URI to use an external FalkorDB via TCP instead of embedded FalkorDBLite. Only needed for legacy Docker deployments.
+
+LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provider`). See `.env.example` for details. The server manager forwards `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, and `GROQ_API_KEY` to the Python subprocess automatically.
 
 ## Dev Workflow
 
