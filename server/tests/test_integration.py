@@ -3,16 +3,18 @@
 These tests prove the native binary is installable and functional on the host
 platform — something the unit tests cannot verify because they mock everything.
 
-The lifespan test goes through the real main.py startup path: creates a real
-embedded FalkorDBLite, a real FalkorDriver, a real Graphiti instance, and builds
-real graph indices. Only the LLM client and embedder are mocked (they need API keys).
+The lifespan test goes through the real main.py startup path with zero mocks:
+real config loading, real LLM/embedder client construction, real FalkorDBLite,
+real FalkorDriver, real Graphiti instance, and real graph index creation.
+(The LLM/embedder clients construct fine without API keys — keys are only
+needed when actually calling the LLM, which these tests don't do.)
 
 No LLM API keys required. No Docker required.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -80,54 +82,27 @@ async def test_falkordriver_with_embedded_db(db):
     assert driver is not None
 
 
-def _make_stub_llm():
-    """Create a stub LLMClient that passes Pydantic isinstance checks."""
-    from graphiti_core.llm_client import LLMClient
-
-    class StubLLM(LLMClient):
-        async def _generate_response(self, messages, response_model=None, **kwargs):
-            raise NotImplementedError("stub")
-
-    return StubLLM.__new__(StubLLM)
-
-
-def _make_stub_embedder():
-    """Create a stub EmbedderClient that passes Pydantic isinstance checks."""
-    from graphiti_core.embedder import EmbedderClient
-
-    class StubEmbedder(EmbedderClient):
-        async def create(self, input_data):
-            return [0.0] * 1024
-
-    return StubEmbedder.__new__(StubEmbedder)
-
-
 @pytest.mark.asyncio
 async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
-    """The real main.py lifespan starts up with a real FalkorDBLite database.
+    """The real main.py lifespan starts up with zero mocks.
 
-    Only the LLM client and embedder are stubbed (they need API keys).
-    Everything else is real: FalkorDBLite, FalkorDriver, Graphiti, index creation.
+    Real config loading, real LLM/embedder client construction, real
+    FalkorDBLite, real FalkorDriver, real Graphiti, real index creation.
     """
     monkeypatch.delenv("FALKORDB_URI", raising=False)
     monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
 
-    with (
-        patch("main._load_config", return_value={}),
-        patch("main._build_llm_client", return_value=_make_stub_llm()),
-        patch("main._build_embedder", return_value=_make_stub_embedder()),
-    ):
-        import main as main_mod
+    import main as main_mod
 
-        app = MagicMock()
-        async with main_mod.lifespan(app):
-            # Graphiti instance was created with real FalkorDBLite
-            assert main_mod.graphiti is not None
-            assert main_mod.graphiti.driver is not None
+    app = MagicMock()
+    async with main_mod.lifespan(app):
+        # Graphiti instance was created with real FalkorDBLite
+        assert main_mod.graphiti is not None
+        assert main_mod.graphiti.driver is not None
 
-            # The health endpoint works through the real app
-            transport = ASGITransport(app=main_mod.app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                resp = await ac.get("/health")
-                assert resp.status_code == 200
-                assert resp.json() == {"status": "ok"}
+        # The health endpoint works through the real app
+        transport = ASGITransport(app=main_mod.app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.get("/health")
+            assert resp.status_code == 200
+            assert resp.json() == {"status": "ok"}
