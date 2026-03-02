@@ -315,13 +315,9 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 
 ## Dev Workflow
 
+**Prerequisites:** Python 3.12+ on system PATH (for the managed Graphiti server).
+
 ```bash
-# Build the gralkor-server image and start backend services
-make up
-
-# Verify Graphiti is running
-curl http://localhost:8001/health
-
 # Install plugin locally in OpenClaw (for development)
 openclaw plugins install -l .
 
@@ -330,6 +326,10 @@ openclaw plugins install -l .
 #
 # For tool mode — enable in openclaw.json plugins list:
 #   plugins.enabled = ["gralkor"]
+
+# The server starts automatically when OpenClaw loads the plugin.
+# First run creates a Python venv and installs deps (~1-2 min).
+# Subsequent starts are fast (venv reused, pip skipped if requirements unchanged).
 
 # Type-check
 make typecheck
@@ -345,6 +345,10 @@ make test-server
 
 # First time only: create venv and install server test deps
 make setup-server
+
+# (Optional) Legacy Docker mode — if you prefer external FalkorDB:
+make up              # builds gralkor-server image and starts services
+# Then set FALKORDB_URI=redis://falkordb:6379 to trigger TCP mode
 ```
 
 ## Building & Deploying
