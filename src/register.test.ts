@@ -207,3 +207,45 @@ describe("registerCli", () => {
     });
   });
 });
+
+describe("registerCli with ServerManager", () => {
+  it("shows server process status when manager is provided", async () => {
+    const client = {
+      health: vi.fn().mockResolvedValue({ status: "ok" }),
+      searchFacts: vi.fn().mockResolvedValue([]),
+      searchNodes: vi.fn().mockResolvedValue([]),
+      clearGraph: vi.fn(),
+    };
+    const config: GralkorConfig = {
+      autoCapture: { enabled: true },
+      autoRecall: { enabled: true, maxResults: 5 },
+    };
+    const manager: ServerManager = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      isRunning: vi.fn().mockReturnValue(true),
+    };
+
+    const { program, actions } = createMockProgram();
+    const api = {
+      registerTool: vi.fn(),
+      on: vi.fn(),
+      registerService: vi.fn(),
+      registerCli: vi.fn().mockImplementation((registrar: any) => {
+        registrar({ program });
+      }),
+    } as unknown as PluginApiBase;
+
+    registerCli(api, client as unknown as GraphitiClient, config, manager);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const statusAction = actions.get("status");
+    await statusAction!();
+
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Server process: running");
+
+    logSpy.mockRestore();
+  });
+});
