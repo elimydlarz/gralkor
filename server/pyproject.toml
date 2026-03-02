@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "graphiti-core[falkordb]>=0.28",
     "falkordblite",
+    "redis<7",
     "fastapi>=0.115",
     "uvicorn>=0.34",
     "pyyaml>=6.0",
