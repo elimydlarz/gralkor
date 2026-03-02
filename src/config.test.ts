@@ -4,6 +4,7 @@ import {
   resolveGroupId,
   defaultConfig,
   GRAPHITI_URL,
+  GRAPHITI_PORT,
 } from "./config.js";
 
 describe("resolveConfig()", () => {
