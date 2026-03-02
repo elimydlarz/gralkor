@@ -375,14 +375,14 @@ docker compose up -d
 
 ## Server Tests
 
-Functional tests for the Graphiti REST API live in `server/tests/`. They need **no Docker, no FalkorDB, no LLM API keys**.
+Tests for the Graphiti REST API live in `server/tests/`. They need **no Docker, no LLM API keys**.
 
 ```bash
-make setup-server   # first time only — creates server/.venv
+make setup-server   # first time only — syncs server/.venv via uv
 make test-server
 ```
 
-### What's mocked vs. real
+### Unit tests (mocked Graphiti)
 
 | Mocked (graphiti-core boundary) | Exercised for real |
 |---|---|
@@ -390,16 +390,17 @@ make test-server
 | `Graphiti.driver` (FalkorDB access) | Pydantic request validation |
 | `EntityEdge.get_by_uuid()` / `edge.delete()` | Serializer functions (`_serialize_fact`, `_serialize_node`, `_serialize_episode`) |
 | `Node.delete_by_group_id()` | HTTP status codes, response bodies |
-| `falkordblite` module (`sys.modules` patch in `test_lifespan.py`) | Lifespan code-path selection (embedded vs TCP) |
+| `redislite.AsyncFalkorDB` (mocked in `test_lifespan.py`) | Lifespan code-path selection (embedded vs TCP) |
 
-**FalkorDBLite binary not tested:** `test_lifespan.py` patches `falkordblite` into `sys.modules` as a `MagicMock`, so the native binary is never imported. The tests verify that `lifespan()` picks the correct mode and passes the right args to `FalkorDriver`, but do not prove the `falkordblite` wheel is installable or functional on the host platform. To verify the binary: `cd server && .venv/bin/python -c "from falkordblite import AsyncFalkorDB; print('ok')"`.
-
-
-### How it works
+### How unit tests work
 
 `httpx.AsyncClient` with `ASGITransport(app=app)` sends real HTTP through FastAPI in-process. `ASGITransport` does **not** trigger lifespan events, so the real `Graphiti(...)` constructor and FalkorDB connection are never called. The `conftest.py` `client` fixture injects an `AsyncMock` into the `main.graphiti` module global instead.
 
 Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNamespace` objects that duck-type the real `graphiti-core` domain objects — the serializers only read plain attributes, so this works without importing the real classes (which would try to connect to FalkorDB).
+
+### Integration tests (real FalkorDBLite)
+
+`test_integration.py` exercises the **real** FalkorDBLite native binary — no mocks. It creates a real embedded database in a temp directory, writes nodes and relationships via Cypher, reads them back, and verifies `FalkorDriver` accepts embedded instances. This proves the `falkordblite` wheel is installable and functional on the host platform.
 
 ### Test files
 
@@ -407,7 +408,8 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 - `test_episodes.py` — `POST /episodes`, `GET /episodes`, `DELETE /episodes/{uuid}`
 - `test_search.py` — `POST /search`, `POST /search/nodes`
 - `test_graph_ops.py` — `DELETE /edges/{uuid}`, `POST /clear`, `POST /build-indices`, `POST /build-communities`
-- `test_lifespan.py` — FalkorDBLite embedded vs TCP mode switching in `lifespan()` (code-path only; see note above about native binary)
+- `test_lifespan.py` — lifespan code-path selection (embedded vs TCP mode based on env vars)
+- `test_integration.py` — real FalkorDBLite: binary import, DB create, Cypher read/write, FalkorDriver compat
 
 ## Conventions
 
