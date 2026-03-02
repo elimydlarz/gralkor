@@ -1,27 +1,21 @@
-# Gralkor — OpenClaw Memory/Tool Plugin (Graphiti + FalkorDB)
+# Gralkor — OpenClaw Memory Plugin (Graphiti + FalkorDB)
 
 ## What is this?
 
 An OpenClaw plugin that gives AI agents persistent, temporally-aware memory via knowledge graphs.
 Uses Graphiti (knowledge graph framework by Zep) backed by FalkorDB (in-memory graph database).
 
-Gralkor ships **two packages from one repo**. Each is published independently with its own tailored manifest; the source is shared. Only one should be active at a time:
+Gralkor is a memory plugin (`kind: "memory"`) that replaces the native memory plugin with a unified memory interface. The agent sees three tools: `memory_search` (searches both native Markdown files and the Graphiti knowledge graph in parallel), `memory_get` (native Markdown only), and `memory_add` (stores to the knowledge graph). Auto-recall searches both backends; auto-capture stores full multi-turn conversations to the graph.
 
-| | Memory mode | Tool mode |
-|---|---|---|
-| Entry point | `src/index.ts` → `dist/index.js` | `src/tool-entry.ts` → `dist/tool-entry.js` |
-| Plugin ID | `gralkor` | `gralkor` |
-| Kind | `"memory"` | `"tool"` |
-| Tool names | `memory_search` (unified native+graph), `memory_get` (native), `memory_add` | `graph_search`, `graph_add` |
-| Slot | Takes the memory slot (replaces `memory-core`) | No slot — coexists with `memory-core` |
-| Hooks | `before_agent_start`, `agent_end` | Same |
-| CLI | `memory`, `gralkor` | `gralkor` |
-
-**Memory mode** (`gralkor`, `kind: "memory"`): Replaces the native memory plugin with a unified memory interface. The agent sees three tools: `memory_search` (searches both native Markdown files and the Graphiti knowledge graph in parallel), `memory_get` (native Markdown only), and `memory_add` (stores to the knowledge graph). Auto-recall searches both backends; auto-capture stores full multi-turn conversations to the graph.
-
-**Tool mode** (`gralkor`, `kind: "tool"`): Runs alongside `memory-core`. The agent keeps native `memory_search`/`memory_get` over Markdown files AND gets Graphiti-powered `graph_search`/`graph_add` tools for structured knowledge retrieval.
-
-Both modes register auto-capture (`agent_end`) and auto-recall (`before_agent_start`) hooks from the shared `hooks.ts`. Auto-capture captures full multi-turn conversations and lets Graphiti errors propagate in both modes. Auto-recall searches graph facts and entities in both modes; memory mode additionally searches native Markdown via the `getNativeSearch` closure.
+| | |
+|---|---|
+| Entry point | `src/index.ts` → `dist/index.js` |
+| Plugin ID | `gralkor` |
+| Kind | `"memory"` |
+| Tool names | `memory_search` (unified native+graph), `memory_get` (native), `memory_add` |
+| Slot | Takes the memory slot (replaces `memory-core`) |
+| Hooks | `before_agent_start`, `agent_end` |
+| CLI | `memory`, `gralkor` |
 
 ## Mental Model
 
