@@ -291,7 +291,7 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 
 ## Dev Workflow
 
-**Prerequisites:** Python 3.12+ on system PATH (for the managed Graphiti server).
+**Prerequisites:** Python 3.12+ on system PATH (for the managed Graphiti server). `uv` for server dev/test workflow.
 
 ```bash
 # Install plugin locally in OpenClaw (for development)
@@ -316,7 +316,7 @@ make test-plugin
 # Run only server tests (Python) — no Docker/FalkorDB needed
 make test-server
 
-# First time only: create venv and install server test deps
+# First time only: sync server venv with uv
 make setup-server
 
 # (Optional) Legacy Docker mode — if you prefer external FalkorDB:
