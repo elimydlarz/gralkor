@@ -33,21 +33,9 @@ export interface PluginApiBase {
 }
 
 /**
- * Tool-mode API — adds plain-object tool registration.
- */
-export interface ToolPluginApi extends PluginApiBase {
-  registerTool(
-    tool: { name: string; description: string; parameters: unknown; execute: AnyFn },
-    opts?: { optional?: boolean },
-  ): void;
-}
-
-/**
- * Memory-mode API — adds factory-based tool registration and runtime tools.
+ * Memory-mode API — adds tool registration and runtime tools.
  *
  * registerTool is overloaded: accepts both plain tool objects and factory functions.
- * Cannot extend ToolPluginApi because TypeScript doesn't allow narrowing overloads
- * via interface extension — both signatures must be declared together.
  */
 export interface MemoryPluginApi extends PluginApiBase {
   // Plain tool object registration
