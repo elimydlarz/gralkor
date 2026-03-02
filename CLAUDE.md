@@ -248,8 +248,10 @@ OpenClaw Gateway (Node.js)
 │   ├── hooks.test.ts
 │   ├── client.ts                     # GraphitiClient — HTTP wrapper with retry
 │   ├── client.test.ts
+│   ├── server-manager.ts             # Python process lifecycle: find, venv, spawn, health, stop
+│   ├── server-manager.test.ts
 │   ├── types.ts                      # Shared PluginApiBase, ToolPluginApi, MemoryPluginApi interfaces
-│   ├── config.ts                     # GRAPHITI_URL, GralkorConfig, resolveConfig(), resolveGroupId()
+│   ├── config.ts                     # GRAPHITI_URL, GRAPHITI_PORT, GralkorConfig, resolveConfig(), resolveGroupId()
 │   └── config.test.ts
 │
 ├── resources/                        # per-mode packaging manifests (used by pack.sh)
