@@ -215,16 +215,13 @@ OpenClaw Gateway (Node.js)
 ├── .env.example
 ├── .npmignore                        # excludes dev artifacts from npm tarball
 ├── openclaw.plugin.json              # active memory-mode manifest (copied from resources/)
-├── openclaw.tool-plugin.json         # active tool-mode manifest (copied from resources/)
 │
-├── src/                              # TypeScript plugin source (shared by both modes)
-│   ├── index.ts                      # memory-mode entry point (kind: "memory")
+├── src/                              # TypeScript plugin source
+│   ├── index.ts                      # entry point (kind: "memory")
 │   ├── index.test.ts
-│   ├── tool-entry.ts                 # tool-mode entry point (kind: "tool")
-│   ├── tool-entry.test.ts
 │   ├── register.ts                   # shared registration (tools, hooks, server service, CLI)
 │   ├── register.test.ts
-│   ├── tools.ts                      # tool factories + formatters: createMemoryRecallTool, createMemoryStoreTool, formatFacts, formatNodes
+│   ├── tools.ts                      # tool factories + formatters: createMemoryStoreTool, formatFacts, formatNodes
 │   ├── tools.test.ts
 │   ├── hooks.ts                      # hook factories: auto-recall, auto-capture
 │   ├── hooks.test.ts
@@ -232,20 +229,17 @@ OpenClaw Gateway (Node.js)
 │   ├── client.test.ts
 │   ├── server-manager.ts             # Python process lifecycle: find, venv, spawn, health, stop
 │   ├── server-manager.test.ts
-│   ├── types.ts                      # Shared PluginApiBase, ToolPluginApi, MemoryPluginApi interfaces
+│   ├── types.ts                      # PluginApiBase, MemoryPluginApi interfaces
 │   ├── config.ts                     # GRAPHITI_URL, GRAPHITI_PORT, GralkorConfig, resolveConfig(), resolveGroupId()
 │   └── config.test.ts
 │
-├── resources/                        # per-mode packaging manifests (used by pack.sh)
-│   ├── memory/
-│   │   ├── package.json              # @susu-eng/gralkor — extension: ./dist/index.js
-│   │   └── openclaw.plugin.json      # canonical memory-mode manifest
-│   └── tool/
-│       ├── package.json              # @susu-eng/gralkor — extension: ./dist/tool-entry.js
-│       └── openclaw.plugin.json      # canonical tool-mode manifest
+├── resources/
+│   └── memory/
+│       ├── package.json              # @susu-eng/gralkor — extension: ./dist/index.js
+│       └── openclaw.plugin.json      # canonical memory-mode manifest
 │
 ├── scripts/
-│   └── pack.sh                       # builds both tarballs (memory + tool)
+│   └── pack.sh                       # builds deployment tarball
 │
 ├── server/                           # Graphiti REST API (Python/FastAPI)
 │   ├── Dockerfile
