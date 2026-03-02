@@ -297,11 +297,8 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 # Install plugin locally in OpenClaw (for development)
 openclaw plugins install -l .
 
-# For memory mode — set memory slot in openclaw.json:
+# Set memory slot in openclaw.json:
 #   plugins.slots.memory = "gralkor"
-#
-# For tool mode — enable in openclaw.json plugins list:
-#   plugins.enabled = ["gralkor"]
 
 # The server starts automatically when OpenClaw loads the plugin.
 # First run creates a Python venv and installs deps (~1-2 min).
