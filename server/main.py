@@ -98,7 +98,55 @@ async def lifespan(_app: FastAPI):
         data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
         os.makedirs(data_dir, exist_ok=True)
         db_path = os.path.join(data_dir, "gralkor.db")
-        db = AsyncFalkorDB(db_path)
+        try:
+            db = AsyncFalkorDB(db_path)
+        except Exception as e:
+            # Surface the redis-server log for diagnostics
+            sync = getattr(e, "__context__", None) or e
+            # Try to read the redis log from the partially-initialized client
+            try:
+                from redislite import __redis_executable__, __falkordb_module__
+                import subprocess
+                print(f"[gralkor] FalkorDBLite startup failed: {e}", flush=True)
+                print(f"[gralkor] redis-server binary: {__redis_executable__}", flush=True)
+                print(f"[gralkor] FalkorDB module: {__falkordb_module__}", flush=True)
+                if __redis_executable__:
+                    try:
+                        result = subprocess.run(
+                            [__redis_executable__, "--version"],
+                            capture_output=True, text=True, timeout=5,
+                        )
+                        print(f"[gralkor] redis-server version: {result.stdout.strip()}", flush=True)
+                    except Exception:
+                        print("[gralkor] Could not get redis-server version", flush=True)
+                if __falkordb_module__:
+                    import platform
+                    arch = platform.machine()
+                    print(f"[gralkor] Platform: {platform.platform()}, arch: {arch}", flush=True)
+                    try:
+                        result = subprocess.run(
+                            ["file", __falkordb_module__],
+                            capture_output=True, text=True, timeout=5,
+                        )
+                        print(f"[gralkor] Module file type: {result.stdout.strip()}", flush=True)
+                    except Exception:
+                        pass
+                    try:
+                        result = subprocess.run(
+                            ["ldd", __falkordb_module__],
+                            capture_output=True, text=True, timeout=5,
+                        )
+                        if result.returncode != 0:
+                            print(f"[gralkor] ldd stderr: {result.stderr.strip()}", flush=True)
+                        else:
+                            for line in result.stdout.strip().split("\n"):
+                                if "not found" in line:
+                                    print(f"[gralkor] Missing lib: {line.strip()}", flush=True)
+                    except Exception:
+                        pass
+            except Exception as diag_err:
+                print(f"[gralkor] Diagnostic failed: {diag_err}", flush=True)
+            raise
         driver = FalkorDriver(falkor_db=db)
 
     graphiti = Graphiti(
