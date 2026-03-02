@@ -30,7 +30,7 @@ Gralkor is a memory plugin (`kind: "memory"`) that replaces the native memory pl
 
 ### Plugin Registration
 
-Both entry points follow the same sequence in their synchronous `register()` function:
+The entry point follows this sequence in its synchronous `register()` function:
 
 1. `resolveConfig()` merges plugin config with defaults. The Graphiti URL is a hardcoded constant (`GRAPHITI_URL = "http://127.0.0.1:8001"`) in `src/config.ts`, not user-configurable.
 2. Create a `GraphitiClient` with the resolved URL.
