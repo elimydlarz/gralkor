@@ -150,7 +150,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Self-managing backend | Plugin spawns Graphiti server as a managed Python subprocess with embedded FalkorDBLite; no Docker needed. Requires Python 3.12+ on system. |
+| Self-managing backend | Plugin spawns Graphiti server as a managed Python subprocess with embedded FalkorDBLite; no Docker needed. Requires `uv` on PATH (handles Python automatically). |
 | Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
 | Automatic conversation capture | `agent_end` hook stores every non-trivial exchange as an episode; captures ALL messages in sequence (multi-turn), not just the last of each role |
 | Automatic context recall | `before_agent_start` hook searches graph facts, graph entities, and native Markdown in parallel. Injects combined results before each turn. |
