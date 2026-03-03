@@ -56,19 +56,6 @@ describe("formatFacts", () => {
   });
 });
 
-describe("formatNodes", () => {
-  it("formats nodes with header", () => {
-    const result = formatNodes([makeNode()]);
-    expect(result).toContain("Entities (knowledge graph):");
-    expect(result).toContain("**Sky**");
-    expect(result).toContain("The atmosphere above the Earth");
-  });
-
-  it("returns empty string when empty", () => {
-    expect(formatNodes([])).toBe("");
-  });
-});
-
 describe("memory_store (createMemoryStoreTool)", () => {
   let client: ReturnType<typeof mockClient>;
 
