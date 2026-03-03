@@ -32,11 +32,38 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
   async function start(): Promise<void> {
     if (proc) return;
 
-    const pythonBin = await findPython();
-    const requirementsPath = join(opts.serverDir, "requirements.txt");
-
     await mkdir(opts.dataDir, { recursive: true });
-    const venvPython = await ensureVenv(pythonBin, opts.dataDir, requirementsPath);
+
+    const venvDir = join(opts.dataDir, "venv");
+    const venvPython = join(venvDir, "bin", "python");
+
+    // Ensure uv is available
+    try {
+      await execFileAsync("uv", ["--version"]);
+    } catch {
+      throw new Error(
+        "uv is required but not found on PATH. " +
+        "Install: curl -LsSf https://astral.sh/uv/install.sh | sh",
+      );
+    }
+
+    // Sync Python environment
+    const syncEnv: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      UV_PROJECT_ENVIRONMENT: venvDir,
+    };
+    const wheelsDir = join(opts.serverDir, "wheels");
+    if (existsSync(wheelsDir)) {
+      syncEnv.UV_FIND_LINKS = wheelsDir;
+    }
+
+    console.log("[gralkor] Syncing Python environment with uv...");
+    await execFileAsync(
+      "uv",
+      ["sync", "--no-dev", "--frozen", "--directory", opts.serverDir],
+      { env: syncEnv, timeout: 300_000 },
+    );
+    console.log("[gralkor] Python environment ready");
 
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
