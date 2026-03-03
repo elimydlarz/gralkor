@@ -84,12 +84,9 @@ describe("registerCli", () => {
       expect(client.searchFacts).toHaveBeenCalledWith("hello world", ["my-agent"], 10);
     });
 
-    it("displays facts and entities from results", async () => {
+    it("displays facts from results", async () => {
       client.searchFacts.mockResolvedValue([
         { fact: "Alice likes cats", invalid_at: null },
-      ]);
-      client.searchNodes.mockResolvedValue([
-        { name: "Alice", summary: "A person who likes cats" },
       ]);
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -99,7 +96,6 @@ describe("registerCli", () => {
 
       const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Alice likes cats");
-      expect(output).toContain("Alice: A person who likes cats");
       expect(output).toContain('group "agent-42"');
 
       logSpy.mockRestore();
