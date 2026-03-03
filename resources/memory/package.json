@@ -16,6 +16,8 @@
     "dist",
     "server/Dockerfile",
     "server/main.py",
+    "server/pyproject.toml",
+    "server/uv.lock",
     "server/requirements.txt",
     "server/wheels",
     "openclaw.plugin.json",
