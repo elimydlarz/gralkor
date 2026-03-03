@@ -166,7 +166,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 
 | Requirement | Implementation |
 |---|---|
-| Graceful degradation (server start) | Server manager catches startup errors (Python not found, pip fails, etc.) and logs them; plugin degrades to tools/hooks that see Graphiti as unreachable |
+| Graceful degradation (server start) | Server manager catches startup errors (uv not found, uv sync fails, etc.) and logs them; plugin degrades to tools/hooks that see Graphiti as unreachable |
 | Graceful degradation (unreachable) | Auto-recall hook logs warnings and skips on graph errors; native search failures caught independently. Auto-capture lets errors propagate. Tools throw so the agent sees the failure. |
 | Docker backward compat | Setting `FALKORDB_URI` env var triggers legacy TCP mode; Docker files kept for users who prefer containerized setup |
 | Observability | Hooks and tools log `[gralkor]`-prefixed messages: hook-fired events (structural metadata only), result counts, skip reasons, errors. Message bodies and user content are never logged. |
