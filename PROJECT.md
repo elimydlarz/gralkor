@@ -21,5 +21,25 @@
   2026-03-02T13:41:35.352+00:00 [gralkor] [server]     from falkordblite import AsyncFalkorDB
   2026-03-02T13:41:35.353+00:00 [gralkor] [server] ModuleNotFoundError: No module named 'falkordblite'
   ```
+  Theory:
+  Now I see the full picture. The registerServerService calls api.registerService({ id: "gralkor-server", start() {...} }). That service's start() should be called by OpenClaw when the plugin loads. The fact that we see zero [gralkor] Starting... or [gralkor] Failed to start server: logs means api.registerService either isn't supported or the service isn't being started.
+
+  This is likely a new API (api.registerService) that doesn't exist yet in the current version of OpenClaw. Let me check:
+
+
+  There it is — registerService pushes to registry.services but there's no code that iterates services and calls .start(). The API exists structurally but the gateway never actually starts the registered services. That's the bug — api.registerService is a no-op in the current OpenClaw version.
+
+  Summary of the problem:
+
+  • Gralkor v2 uses api.registerService to register a service that starts the embedded Graphiti/FalkorDBLite server
+  • OpenClaw's plugin subsystem accepts the registration but never calls .start() on it
+  • So the Python server never launches, Graphiti stays unreachable at port 8001
+
+  The fix could be either:
+
+  1. In OpenClaw: implement service lifecycle (call service.start() after plugin registration, service.stop() on shutdown)
+  2. In Gralkor (workaround): start the server eagerly in register() instead of via registerService
+
+  Which side do you want to fix? Or both?
 
 ## Later
