@@ -141,27 +141,22 @@ export function createBeforeAgentStartHandler(
     try {
       const limit = config.autoRecall.maxResults;
 
-      // Search graph facts, graph nodes, and native markdown in parallel
+      // Search graph facts and native markdown in parallel
       const nativeSearch = getNativeSearch?.();
-      const [facts, nodes, nativeResult] = await Promise.all([
+      const [facts, nativeResult] = await Promise.all([
         client.searchFacts(userMessage, [groupId], limit),
-        client.searchNodes(userMessage, [groupId], limit),
         nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
           console.warn("[gralkor] [auto-recall] native search failed:", err instanceof Error ? err.message : err);
           return null;
         }) : Promise.resolve(null),
       ]);
 
-      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts,", nodes.length, "nodes — groupId:", groupId);
+      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts — groupId:", groupId);
 
       const sections: string[] = [];
 
       if (facts.length > 0) {
         sections.push("Facts from knowledge graph:\n" + facts.map((f) => `- ${f.fact}`).join("\n"));
-      }
-
-      if (nodes.length > 0) {
-        sections.push("Entities from knowledge graph:\n" + nodes.map((n) => `- ${n.name}: ${n.summary}`).join("\n"));
       }
 
       if (nativeResult) {
