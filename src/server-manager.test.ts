@@ -78,6 +78,7 @@ describe("createServerManager", () => {
     mockExecFileSuccess("");
     // No wheels dir by default
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([]);
   });
 
   it("isRunning returns false before start", () => {
