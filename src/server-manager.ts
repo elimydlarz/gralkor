@@ -88,9 +88,10 @@ export async function ensureVenv(
 
   if (markerMtime !== reqMtime) {
     console.log("[gralkor] Installing Python dependencies...");
+    const wheelsDir = join(dirname(requirementsPath), "wheels");
     await execFileAsync(
       venvPython,
-      ["-m", "pip", "install", "-q", "-r", requirementsPath],
+      ["-m", "pip", "install", "-q", "--find-links", wheelsDir, "-r", requirementsPath],
       { timeout: 300_000 }, // 5 min timeout for pip
     );
     writeFileSync(markerPath, reqMtime);
