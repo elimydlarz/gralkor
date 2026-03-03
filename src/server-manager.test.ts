@@ -138,12 +138,15 @@ describe("createServerManager", () => {
     expect(passedEnv.FALKORDB_URI).toBeUndefined();
   });
 
-  it("passes UV_FIND_LINKS when wheels dir exists", async () => {
+  it("force-installs bundled wheels after uv sync", async () => {
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
     mockFetch.mockResolvedValue({ ok: true });
-    // wheels dir exists
+    // wheels dir exists with a wheel file
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
+      "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+    ]);
 
     const manager = createServerManager({
       dataDir: "/data",
@@ -154,8 +157,79 @@ describe("createServerManager", () => {
     await manager.start();
 
     const execFileCalls = (execFile as unknown as ReturnType<typeof vi.fn>).mock.calls;
+
+    // uv sync should NOT have UV_FIND_LINKS (we use uv pip install instead)
     const syncOpts = execFileCalls[1][2];
-    expect(syncOpts.env.UV_FIND_LINKS).toBe("/server/wheels");
+    expect(syncOpts.env.UV_FIND_LINKS).toBeUndefined();
+
+    // Third execFile call should be uv pip install for the bundled wheel
+    expect(execFileCalls[2][0]).toBe("uv");
+    expect(execFileCalls[2][1]).toEqual([
+      "pip", "install", "--reinstall", "--no-deps",
+      "/server/wheels/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+      "--python", "/data/venv/bin/python",
+    ]);
+  });
+
+  it("skips wheel install when wheels dir has no .whl files", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+    // wheels dir exists but empty
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([".gitkeep"]);
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    const execFileCalls = (execFile as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    // Only uv --version and uv sync, no pip install
+    expect(execFileCalls).toHaveLength(2);
+  });
+
+  it("continues gracefully when bundled wheel is incompatible", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
+      "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+    ]);
+
+    // uv --version succeeds, uv sync succeeds, uv pip install FAILS
+    let callCount = 0;
+    (execFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_cmd: string, _args: string[], ...rest: unknown[]) => {
+        callCount++;
+        const cb = typeof rest[rest.length - 1] === "function"
+          ? rest[rest.length - 1] as (err: Error | null, result?: { stdout: string; stderr: string }) => void
+          : typeof rest[rest.length - 2] === "function"
+            ? rest[rest.length - 2] as (err: Error | null, result?: { stdout: string; stderr: string }) => void
+            : null;
+        if (cb) {
+          if (callCount <= 2) {
+            cb(null, { stdout: "", stderr: "" });
+          } else {
+            cb(new Error("No matching distribution found"));
+          }
+        }
+      },
+    );
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    // Should not throw — graceful degradation
+    await manager.start();
+    expect(manager.isRunning()).toBe(true);
   });
 
   it("throws when uv is not found", async () => {
