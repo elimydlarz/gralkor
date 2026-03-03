@@ -17,6 +17,7 @@
     "server/Dockerfile",
     "server/main.py",
     "server/requirements.txt",
+    "server/wheels",
     "openclaw.plugin.json",
     "docker-compose.yml",
     "config.yaml",
