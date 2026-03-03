@@ -37,7 +37,7 @@ The entry point follows this sequence in its synchronous `register()` function:
 3. Resolve `pluginDir` from `import.meta.url` (`dist/` → plugin root).
 4. Call `registerFullPlugin()` which creates shared group ID state (`getGroupId`/`setGroupId`), then registers tools (with `getGroupId`), hooks (with `setGroupId`), server manager service, and CLI.
 
-`registerFullPlugin` creates shared `nativeSearchFn` state. The `registerTool` factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.searchFacts()` + `client.searchNodes()` in parallel, combining all results. It also stores a reference to the native search function for the auto-recall hook to use. Registers `memory_add` (via `createMemoryStoreTool`) as a plain tool. Registers `memory_get` unchanged. Passes `getNativeSearch` closure to `registerHooks` so auto-recall can search both backends.
+`registerFullPlugin` creates shared `nativeSearchFn` state. The `registerTool` factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.searchFacts()` in parallel, combining all results. It also stores a reference to the native search function for the auto-recall hook to use. Registers `memory_add` (via `createMemoryStoreTool`) as a plain tool. Registers `memory_get` unchanged. Passes `getNativeSearch` closure to `registerHooks` so auto-recall can search both backends.
 
 ### OpenClaw Plugin API Contract
 
