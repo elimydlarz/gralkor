@@ -103,7 +103,6 @@ describe("registerCli", () => {
 
     it("shows 'No results found.' when graph returns nothing", async () => {
       client.searchFacts.mockResolvedValue([]);
-      client.searchNodes.mockResolvedValue([]);
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
