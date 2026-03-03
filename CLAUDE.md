@@ -354,7 +354,7 @@ make pack
 openclaw plugins install ~/susu-eng-gralkor-memory-x.y.z.tgz
 ```
 
-The `files` field in `resources/memory/package.json` controls what goes into the tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. The manifest (`openclaw.plugin.json`) is stamped by `scripts/pack.sh` before packing.
+The `files` field in `resources/memory/package.json` controls what goes into the tarball: `dist/`, `server/Dockerfile`, `server/main.py`, `server/requirements.txt`, `server/wheels` (falkordblite arm64 wheel), `openclaw.plugin.json`, `docker-compose.yml`, `config.yaml`, `.env.example`. The manifest (`openclaw.plugin.json`) is stamped by `scripts/pack.sh` before packing.
 
 **Default (self-managing):** No Docker needed. The plugin's server manager spawns the Graphiti server automatically using embedded FalkorDBLite. Requires Python 3.12+ on the deployment host.
 
