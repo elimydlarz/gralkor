@@ -221,7 +221,7 @@ OpenClaw Gateway (Node.js)
 │   ├── index.test.ts
 │   ├── register.ts                   # shared registration (tools, hooks, server service, CLI)
 │   ├── register.test.ts
-│   ├── tools.ts                      # tool factories + formatters: createMemoryStoreTool, formatFacts, formatNodes
+│   ├── tools.ts                      # tool factories + formatters: createMemoryStoreTool, formatFacts
 │   ├── tools.test.ts
 │   ├── hooks.ts                      # hook factories: auto-recall, auto-capture
 │   ├── hooks.test.ts
