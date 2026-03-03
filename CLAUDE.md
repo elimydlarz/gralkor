@@ -105,7 +105,7 @@ Hook handlers receive **two arguments: `(event, ctx)`**:
 3. Capture `ctx.agentId` into shared group ID state (for tools to use).
 4. Skip if disabled or no user message.
 5. Run searches in parallel: `client.searchFacts()` and `client.searchNodes()`, plus native `memory_search` via `getNativeSearch` closure.
-6. Format results in sections (graph facts, graph entities, native memory) inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
+6. Format results in sections (graph facts, native memory) inside `<gralkor-memory source="auto-recall" trust="untrusted">` XML.
 7. Return as `{ prependContext }`. On graph failure: log warning, return nothing. Native search failures are caught independently and logged.
 
 ### Native Memory Indexing Pipeline (OpenClaw internals)
