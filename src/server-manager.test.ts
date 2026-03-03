@@ -26,7 +26,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 import { execFile, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { createServerManager } from "./server-manager.js";
 import { EventEmitter } from "node:events";
 
