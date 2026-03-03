@@ -250,6 +250,7 @@ OpenClaw Gateway (Node.js)
 │   ├── main.py                       # FastAPI app — thin wrapper around graphiti-core (embedded FalkorDBLite or TCP)
 │   ├── requirements.txt              # runtime deps (includes falkordblite)
 │   ├── requirements-dev.txt          # test deps (pytest, httpx)
+│   ├── wheels/                       # (transient) falkordblite arm64 wheel, built by pack.sh, included in tarball
 │   ├── pytest.ini
 │   └── tests/
 │       ├── conftest.py               # AsyncMock Graphiti + factory helpers
