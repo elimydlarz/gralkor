@@ -151,7 +151,7 @@ describe("ensureVenv", () => {
     // Should call pip install
     expect(execFile).toHaveBeenCalledWith(
       "/data/venv/bin/python",
-      ["-m", "pip", "install", "-q", "-r", "/server/requirements.txt"],
+      ["-m", "pip", "install", "-q", "--find-links", "/server/wheels", "-r", "/server/requirements.txt"],
       expect.objectContaining({ timeout: 300_000 }),
       expect.any(Function),
     );
