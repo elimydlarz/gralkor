@@ -167,7 +167,7 @@ export const configSchema = {
       type: "object" as const,
       properties: {
         enabled: { type: "boolean" as const, default: true },
-        maxResults: { type: "number" as const, default: 5 },
+        maxResults: { type: "number" as const, default: 10 },
       },
     },
     dataDir: {
