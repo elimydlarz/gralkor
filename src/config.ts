@@ -18,7 +18,7 @@ export interface GralkorConfig {
 
 export const defaultConfig: GralkorConfig = {
   autoCapture: { enabled: true },
-  autoRecall: { enabled: true, maxResults: 5 },
+  autoRecall: { enabled: true, maxResults: 10 },
 };
 
 export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
