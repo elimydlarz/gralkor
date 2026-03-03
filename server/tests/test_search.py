@@ -187,6 +187,51 @@ async def test_search_facts_with_null_invalid_at(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_search_facts_sanitizes_backticks(client, mock_graphiti):
+    mock_graphiti.search.return_value = []
+
+    resp = await client.post("/search", json={
+        "query": "tell me about ```json\n{}\n```",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.search.call_args.kwargs
+    assert "`" not in call_kwargs["query"]
+    assert call_kwargs["query"] == "tell me about  json\n{}\n "
+
+
+@pytest.mark.asyncio
+async def test_search_nodes_sanitizes_backticks(client, mock_graphiti):
+    from types import SimpleNamespace
+    mock_graphiti.search_.return_value = SimpleNamespace(nodes=[])
+
+    resp = await client.post("/search/nodes", json={
+        "query": "what is `foo`?",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.search_.call_args.kwargs
+    assert "`" not in call_kwargs["query"]
+    assert call_kwargs["query"] == "what is  foo ?"
+
+
+@pytest.mark.asyncio
+async def test_search_facts_query_without_backticks_unchanged(client, mock_graphiti):
+    mock_graphiti.search.return_value = []
+
+    resp = await client.post("/search", json={
+        "query": "plain query without special chars",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.search.call_args.kwargs
+    assert call_kwargs["query"] == "plain query without special chars"
+
+
+@pytest.mark.asyncio
 async def test_search_nodes_asserts_values(client, mock_graphiti):
     nodes = [make_entity(uuid="n1", name="Alice", summary="A person", group_id="grp-1")]
     mock_graphiti.search_.return_value = SimpleNamespace(nodes=nodes)
