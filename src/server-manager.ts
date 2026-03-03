@@ -1,7 +1,7 @@
 import { execFile, type ChildProcess, spawn } from "node:child_process";
 import { existsSync, statSync, writeFileSync, readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
