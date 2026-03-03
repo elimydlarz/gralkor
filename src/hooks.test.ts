@@ -221,26 +221,8 @@ describe("before_agent_start handler", () => {
     expect(ctx_result).toContain("Facts from knowledge graph:");
   });
 
-  it("returns context with matching entities", async () => {
-    client.searchFacts.mockResolvedValue([]);
-    client.searchNodes.mockResolvedValue([
-      makeNode({ name: "Microservices", summary: "Architecture pattern" }),
-    ]);
-
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler(
-      { prompt: "Tell me about the project architecture" },
-    );
-
-    expect(result).toHaveProperty("prependContext");
-    const ctx_result = (result as { prependContext: string }).prependContext;
-    expect(ctx_result).toContain("Entities from knowledge graph:");
-    expect(ctx_result).toContain("Microservices: Architecture pattern");
-  });
-
   it("includes native memory results when getNativeSearch is provided", async () => {
     client.searchFacts.mockResolvedValue([]);
-    client.searchNodes.mockResolvedValue([]);
     const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
     const getNativeSearch = () => nativeSearch;
 
