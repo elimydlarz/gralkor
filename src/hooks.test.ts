@@ -330,7 +330,6 @@ describe("before_agent_start handler", () => {
 
   it("returns undefined when no results from any source", async () => {
     client.searchFacts.mockResolvedValue([]);
-    client.searchNodes.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
