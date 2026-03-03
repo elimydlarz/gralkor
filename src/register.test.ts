@@ -40,7 +40,6 @@ describe("registerCli", () => {
   let client: {
     health: ReturnType<typeof vi.fn>;
     searchFacts: ReturnType<typeof vi.fn>;
-    searchNodes: ReturnType<typeof vi.fn>;
     clearGraph: ReturnType<typeof vi.fn>;
   };
   let config: GralkorConfig;
