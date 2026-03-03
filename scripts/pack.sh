@@ -20,6 +20,7 @@ docker run --rm --platform linux/arm64 \
     cd /tmp/fdb
     pip install --quiet wheel setuptools
     python setup.py bdist_wheel
+    python -m wheel tags --remove --python-tag py3 --abi-tag none dist/*.whl
     cp dist/*.whl /out/
   "
 ls server/wheels/
