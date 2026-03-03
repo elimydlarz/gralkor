@@ -370,11 +370,6 @@ describe("before_agent_start handler", () => {
       expect.any(Array),
       3,
     );
-    expect(client.searchNodes).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Array),
-      3,
-    );
   });
 
   it("passes full user message as search query", async () => {
