@@ -39,17 +39,6 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
   };
 }
 
-function makeNode(overrides: Partial<EntityNode> = {}): EntityNode {
-  return {
-    uuid: "node-1",
-    name: "Sky",
-    summary: "The atmosphere above the Earth",
-    group_id: "default",
-    created_at: "2025-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
 describe("extractMessagesFromCtx", () => {
   it("returns empty string when no messages", () => {
     expect(extractMessagesFromCtx({})).toBe("");
