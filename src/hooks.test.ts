@@ -275,7 +275,6 @@ describe("before_agent_start handler", () => {
 
   it("degrades gracefully when native search fails", async () => {
     client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
-    client.searchNodes.mockResolvedValue([]);
     const nativeSearch = vi.fn().mockRejectedValue(new Error("native error"));
     const getNativeSearch = () => nativeSearch;
 
