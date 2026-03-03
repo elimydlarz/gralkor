@@ -32,7 +32,7 @@ async def test_embedded_mode_when_no_falkordb_uri(tmp_path, monkeypatch):
         patch("main._build_embedder", return_value=MagicMock()),
         patch("main.FalkorDriver", mock_driver_cls),
         patch("main.Graphiti", mock_graphiti_cls),
-        patch("redislite.AsyncFalkorDB", return_value=mock_async_db),
+        patch("redislite.async_falkordb_client.AsyncFalkorDB", return_value=mock_async_db),
     ):
         import main as main_mod
         app = MagicMock()
