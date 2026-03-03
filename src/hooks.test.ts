@@ -259,7 +259,6 @@ describe("before_agent_start handler", () => {
 
   it("skips native results when getNativeSearch returns null", async () => {
     client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
-    client.searchNodes.mockResolvedValue([]);
     const getNativeSearch = () => null;
 
     const handler = createBeforeAgentStartHandler(
