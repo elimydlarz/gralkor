@@ -18,14 +18,6 @@ export function formatFacts(facts: Fact[]): string {
   return `Facts (knowledge graph):\n${lines}`;
 }
 
-export function formatNodes(nodes: EntityNode[]): string {
-  if (nodes.length === 0) return "";
-  return (
-    "Entities (knowledge graph):\n" +
-    nodes.map((n) => `- **${n.name}**: ${n.summary}`).join("\n")
-  );
-}
-
 export function createMemoryStoreTool(
   client: GraphitiClient,
   config: GralkorConfig,
