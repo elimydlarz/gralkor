@@ -454,7 +454,7 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 ## Deployment
 
-**Default (self-managing):** Install the plugin, set an LLM API key, restart OpenClaw. The plugin manages everything else — Python venv, pip deps, Graphiti server, embedded FalkorDB. Data lives in `{dataDir}/` (default: `{pluginDir}/.gralkor-data/`). Configure `dataDir` in plugin config to colocate with OpenClaw's `/data` volume for backup/restore coverage.
+**Default (self-managing):** Install the plugin, set an LLM API key, restart OpenClaw. The plugin manages everything else — Python environment via `uv sync`, Graphiti server, embedded FalkorDB. Data lives in `{dataDir}/` (default: `{pluginDir}/.gralkor-data/`). Requires `uv` on the host. Configure `dataDir` in plugin config to colocate with OpenClaw's `/data` volume for backup/restore coverage.
 
 **Legacy Docker mode:** When deployed alongside OpenClaw on a VPS with Docker, set `FALKORDB_URI` to use an external FalkorDB container. Set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8001`.
 
