@@ -5,7 +5,6 @@ import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
   formatFacts,
-  formatNodes,
 } from "./tools.js";
 import {
   registerHooks,
