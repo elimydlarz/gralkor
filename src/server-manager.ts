@@ -52,10 +52,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       ...process.env as Record<string, string>,
       UV_PROJECT_ENVIRONMENT: venvDir,
     };
-    const wheelsDir = join(opts.serverDir, "wheels");
-    if (existsSync(wheelsDir)) {
-      syncEnv.UV_FIND_LINKS = wheelsDir;
-    }
 
     console.log("[gralkor] Syncing Python environment with uv...");
     await execFileAsync(
@@ -64,6 +60,39 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       { env: syncEnv, timeout: 300_000 },
     );
     console.log("[gralkor] Python environment ready");
+
+    // Force-install bundled wheels to override broken PyPI packages.
+    // UV_FIND_LINKS doesn't work with `uv sync --frozen` (lockfile hash
+    // verification rejects locally-built wheels), so we use a separate
+    // `uv pip install` step that bypasses the lockfile entirely.
+    const wheelsDir = join(opts.serverDir, "wheels");
+    if (existsSync(wheelsDir)) {
+      const wheels = readdirSync(wheelsDir).filter((f) => f.endsWith(".whl"));
+      if (wheels.length > 0) {
+        try {
+          console.log("[gralkor] Installing bundled wheels...");
+          await execFileAsync(
+            "uv",
+            [
+              "pip", "install",
+              "--reinstall", "--no-deps", "--no-index",
+              "--find-links", wheelsDir,
+              ...wheels.map((w) => w.replace(/-\d.*/, "").replaceAll("-", "_")),
+              "--python", venvPython,
+            ],
+            { timeout: 60_000 },
+          );
+          console.log("[gralkor] Bundled wheels installed");
+        } catch {
+          // Wheel might not be compatible with this platform (e.g. arm64
+          // wheel on a macOS dev machine) — that's OK, uv sync already
+          // installed compatible packages from PyPI.
+          console.log(
+            "[gralkor] Bundled wheels not compatible with this platform, using PyPI versions",
+          );
+        }
+      }
+    }
 
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
