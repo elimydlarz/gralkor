@@ -198,7 +198,7 @@ async def test_search_facts_sanitizes_backticks(client, mock_graphiti):
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.search.call_args.kwargs
     assert "`" not in call_kwargs["query"]
-    assert call_kwargs["query"] == "tell me about  json\n{}\n "
+    assert call_kwargs["query"] == "tell me about    json\n{}\n   "
 
 
 @pytest.mark.asyncio
