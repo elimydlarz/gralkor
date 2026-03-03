@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor",
-  "version": "14.0.0",
+  "version": "14.0.1",
   "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,8 @@
     "dist",
     "server/Dockerfile",
     "server/main.py",
+    "server/pyproject.toml",
+    "server/uv.lock",
     "server/requirements.txt",
     "server/wheels",
     "openclaw.plugin.json",
