@@ -178,6 +178,7 @@ All plugin → Graphiti communication goes through `GraphitiClient` (`src/client
 | Message filtering | Auto-capture skips empty conversations and conversations where the first user message starts with `/` |
 | Capture hygiene | Auto-capture strips injected `<gralkor-memory>` XML from user messages before storing episodes, preventing a feedback loop where recalled facts are re-ingested as new knowledge |
 | Prompt parsing robustness | Auto-recall correctly detects system prompts even when queued events (e.g. Telegram reactions) are prepended to `ctx.prompt` |
+| Bundled arm64 wheel | `make pack` builds a correct falkordblite wheel for linux/arm64 via Docker, bundled in tarball; pip `--find-links` prefers it over the broken PyPI sdist on aarch64 hosts |
 
 ## Architecture
 
