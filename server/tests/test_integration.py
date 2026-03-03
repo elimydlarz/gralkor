@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from redislite import AsyncFalkorDB
+from redislite.async_falkordb_client import AsyncFalkorDB
 
 
 @pytest.fixture
