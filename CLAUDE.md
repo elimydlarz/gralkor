@@ -306,8 +306,8 @@ openclaw plugins install -l .
 #   plugins.slots.memory = "gralkor"
 
 # The server starts automatically when OpenClaw loads the plugin.
-# First run creates a Python venv and installs deps (~1-2 min).
-# Subsequent starts are fast (venv reused, pip skipped if requirements unchanged).
+# First run syncs Python environment with uv (~1-2 min).
+# Subsequent starts are fast (venv reused, uv sync is a no-op when locked).
 
 # Type-check
 make typecheck
