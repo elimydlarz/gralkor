@@ -13,6 +13,7 @@ vi.mock("node:child_process", () => {
 // Mock fs
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
+  readdirSync: vi.fn().mockReturnValue([]),
 }));
 
 // Mock fs/promises
