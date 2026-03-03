@@ -240,9 +240,8 @@ describe("before_agent_start handler", () => {
     expect(nativeSearch).toHaveBeenCalled();
   });
 
-  it("combines facts, nodes, and native results", async () => {
+  it("combines facts and native results", async () => {
     client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
-    client.searchNodes.mockResolvedValue([makeNode({ name: "Entity", summary: "A summary" })]);
     const nativeSearch = vi.fn().mockResolvedValue("Native data");
     const getNativeSearch = () => nativeSearch;
 
@@ -255,7 +254,6 @@ describe("before_agent_start handler", () => {
 
     const ctx_result = (result as { prependContext: string }).prependContext;
     expect(ctx_result).toContain("Facts from knowledge graph:");
-    expect(ctx_result).toContain("Entities from knowledge graph:");
     expect(ctx_result).toContain("From native memory:");
   });
 
