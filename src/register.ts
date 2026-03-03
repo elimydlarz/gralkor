@@ -101,33 +101,20 @@ export function registerCli(
           const q = query.join(" ");
           try {
             console.log(`Searching group "${groupId}" for: ${q}`);
-            const [facts, nodes] = await Promise.all([
-              client.searchFacts(q, [groupId], 10),
-              client.searchNodes(q, [groupId], 10),
-            ]);
-            console.log(`Found ${facts.length} facts, ${nodes.length} entities in group "${groupId}".`);
-            if (facts.length === 0 && nodes.length === 0) {
+            const facts = await client.searchFacts(q, [groupId], 10);
+            console.log(`Found ${facts.length} facts in group "${groupId}".`);
+            if (facts.length === 0) {
               console.log("No results found.");
               return;
             }
-            const sections: string[] = [];
-            if (facts.length > 0) {
-              sections.push(
-                "Facts (knowledge graph):\n" +
-                facts.map((f) => {
-                  const validity =
-                    f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-                  return `  - ${f.fact}${validity}`;
-                }).join("\n"),
-              );
-            }
-            if (nodes.length > 0) {
-              sections.push(
-                "Entities (knowledge graph):\n" +
-                nodes.map((n) => `  - ${n.name}: ${n.summary}`).join("\n"),
-              );
-            }
-            console.log(sections.join("\n\n"));
+            console.log(
+              "Facts (knowledge graph):\n" +
+              facts.map((f) => {
+                const validity =
+                  f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
+                return `  - ${f.fact}${validity}`;
+              }).join("\n"),
+            );
           } catch (err) {
             console.log(
               `Search failed: ${err instanceof Error ? err.message : err}`,
