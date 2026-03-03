@@ -193,6 +193,21 @@ describe("extractUserMessageFromPrompt", () => {
     const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nConversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
     expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
   });
+
+  it("strips 'Sender' metadata wrapper", () => {
+    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123", "senderName": "Eli"}\n```\n\nTell me about the project';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+  });
+
+  it("strips arbitrary label before (untrusted metadata) wrapper", () => {
+    const prompt = 'Some Future Label (untrusted metadata):\n```json\n{"foo": "bar"}\n```\n\nHello world';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Hello world");
+  });
+
+  it("strips System: lines + Sender metadata wrapper", () => {
+    const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nWhat is the weather?';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
+  });
 });
 
 describe("before_agent_start handler", () => {
