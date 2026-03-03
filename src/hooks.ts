@@ -49,7 +49,7 @@ export interface HookAgentContext {
  * Extract the user's actual message from ctx.prompt (before_agent_start).
  *
  * The prompt may be wrapped in metadata:
- *   "Conversation info (untrusted metadata):\n```json\n{...}\n```\n\nActual message"
+ *   "Sender (untrusted metadata):\n```json\n{...}\n```\n\nActual message"
  *
  * System prompts (e.g. "A new session was started via /new") are not user messages.
  */
