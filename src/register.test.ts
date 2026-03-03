@@ -54,7 +54,7 @@ describe("registerCli", () => {
     };
     config = {
       autoCapture: { enabled: true },
-      autoRecall: { enabled: true, maxResults: 5 },
+      autoRecall: { enabled: true, maxResults: 10 },
     };
 
     const { program, actions: a } = createMockProgram();
