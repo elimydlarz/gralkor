@@ -1,18 +1,15 @@
 import { execFile, type ChildProcess, spawn } from "node:child_process";
-import { existsSync, statSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const MIN_PYTHON_VERSION = [3, 12];
-const PYTHON_CANDIDATES = ["python3.12", "python3.13", "python3", "python"];
 const HEALTH_POLL_INTERVAL_MS = 500;
 const HEALTH_TIMEOUT_MS = 120_000;
 const MONITOR_INTERVAL_MS = 60_000;
 const STOP_GRACE_MS = 5_000;
-const PIP_MARKER = ".pip-installed";
 
 export interface ServerManagerOptions {
   dataDir: string;
