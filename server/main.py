@@ -280,7 +280,7 @@ async def search_facts(req: SearchRequest):
 @app.post("/search/nodes")
 async def search_nodes(req: SearchRequest):
     results = await graphiti.search_(
-        query=req.query,
+        query=_sanitize_query(req.query),
         config=NODE_HYBRID_SEARCH_RRF,
         group_ids=req.group_ids,
     )
