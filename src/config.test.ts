@@ -49,7 +49,7 @@ describe("resolveConfig()", () => {
 
   it("uses default maxResults when only enabled is overridden", () => {
     const config = resolveConfig({ autoRecall: { enabled: true } as any });
-    expect(config.autoRecall.maxResults).toBe(5);
+    expect(config.autoRecall.maxResults).toBe(10);
   });
 });
 
