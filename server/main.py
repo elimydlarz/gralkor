@@ -258,10 +258,19 @@ async def delete_episode(uuid: str):
     return Response(status_code=204)
 
 
+def _sanitize_query(query: str) -> str:
+    """Strip backticks that cause RediSearch syntax errors.
+
+    graphiti-core's _SEPARATOR_MAP handles most special characters
+    but misses backticks. We strip them at the API boundary.
+    """
+    return query.replace("`", " ")
+
+
 @app.post("/search")
 async def search_facts(req: SearchRequest):
     edges = await graphiti.search(
-        query=req.query,
+        query=_sanitize_query(req.query),
         group_ids=req.group_ids,
         num_results=req.num_results,
     )
