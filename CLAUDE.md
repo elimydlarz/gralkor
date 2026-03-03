@@ -128,7 +128,7 @@ Understanding how native `memory_search` works is important since gralkor wraps 
 The plugin manages the Graphiti server as a child process via `src/server-manager.ts`. On service `start()`:
 
 1. **Find Python** — tries `python3.12`, `python3.13`, `python3`, `python`; requires >= 3.12.
-2. **Create venv** at `{dataDir}/venv`. Skipped if already exists. Uses a `.pip-installed` marker file — pip install only re-runs when `requirements.txt` mtime changes.
+2. **Create venv** at `{dataDir}/venv`. Skipped if already exists. Uses a `.pip-installed` marker file — pip install only re-runs when `requirements.txt` mtime changes. Pip is invoked with `--find-links {serverDir}/wheels` so bundled wheels (e.g. the falkordblite arm64 wheel from `make pack`) are preferred over PyPI when available. When the wheels directory doesn't exist, pip silently ignores it and resolves from PyPI as before.
 3. **Spawn** `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001` with `cwd = serverDir`. Passes env vars (`CONFIG_PATH`, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` — its absence triggers embedded FalkorDBLite mode.
 4. **Wait for health** — polls `GET /health` every 500ms, 120s timeout (first run with pip install is slow).
 5. **Monitor** — 60s health ping interval.
