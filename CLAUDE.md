@@ -240,7 +240,7 @@ OpenClaw Gateway (Node.js)
 │       └── openclaw.plugin.json      # canonical memory-mode manifest
 │
 ├── scripts/
-│   └── pack.sh                       # builds deployment tarball
+│   └── pack.sh                       # builds deployment tarball (builds falkordblite arm64 wheel via Docker)
 │
 ├── server/                           # Graphiti REST API (Python/FastAPI)
 │   ├── pyproject.toml                # uv project config (dev/test deps, Python >= 3.12)
