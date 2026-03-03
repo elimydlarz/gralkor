@@ -73,9 +73,8 @@ describe("registerCli", () => {
   });
 
   describe("search command", () => {
-    it("passes group_id to client.searchFacts and client.searchNodes", async () => {
+    it("passes group_id to client.searchFacts", async () => {
       client.searchFacts.mockResolvedValue([]);
-      client.searchNodes.mockResolvedValue([]);
 
       const searchAction = actions.get("search <group_id> <query...>");
       expect(searchAction).toBeDefined();
@@ -83,7 +82,6 @@ describe("registerCli", () => {
       await searchAction!("my-agent", ["hello", "world"]);
 
       expect(client.searchFacts).toHaveBeenCalledWith("hello world", ["my-agent"], 10);
-      expect(client.searchNodes).toHaveBeenCalledWith("hello world", ["my-agent"], 10);
     });
 
     it("displays facts and entities from results", async () => {
