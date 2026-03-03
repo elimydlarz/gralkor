@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { GraphitiClient, Fact, EntityNode } from "./client.js";
+import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig } from "./config.js";
 import {
