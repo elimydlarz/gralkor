@@ -50,7 +50,6 @@ describe("registerCli", () => {
     client = {
       health: vi.fn(),
       searchFacts: vi.fn().mockResolvedValue([]),
-      searchNodes: vi.fn().mockResolvedValue([]),
       clearGraph: vi.fn().mockResolvedValue(undefined),
     };
     config = {
