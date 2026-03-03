@@ -296,7 +296,7 @@ LLM provider is configured in `config.yaml` (`llm.provider` and `embedder.provid
 
 ## Dev Workflow
 
-**Prerequisites:** Python 3.12+ on system PATH (for the managed Graphiti server). `uv` for server dev/test workflow.
+**Prerequisites:** `uv` on system PATH (for the managed Graphiti server and server dev/test workflow). uv handles Python installation automatically.
 
 ```bash
 # Install plugin locally in OpenClaw (for development)
