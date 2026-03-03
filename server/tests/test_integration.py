@@ -31,7 +31,7 @@ def db(tmp_path):
 @pytest.mark.asyncio
 async def test_falkordblite_binary_loads():
     """The falkordblite native binary can be imported."""
-    from redislite import AsyncFalkorDB as cls
+    from redislite.async_falkordb_client import AsyncFalkorDB as cls
 
     assert cls is not None
 
