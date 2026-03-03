@@ -64,7 +64,7 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
   if (stripped.startsWith("A new session was started")) return "";
 
   // Strip metadata wrapper if present
-  const metadataPattern = /^Conversation info \(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
+  const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
   return stripped.replace(metadataPattern, "");
 }
 
