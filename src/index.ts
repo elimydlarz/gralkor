@@ -90,15 +90,14 @@ function registerFullPlugin(
           console.log("[gralkor] [memory_search] execute — toolCallId:", toolCallId, "query:", JSON.stringify(args.query), "groupId:", groupId);
 
           // Search native markdown and graph in parallel
-          const [nativeRaw, facts, nodes] = await Promise.all([
+          const [nativeRaw, facts] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
             client.searchFacts(args.query, [groupId], limit),
-            client.searchNodes(args.query, [groupId], limit),
           ]);
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars,", facts.length, "facts,", nodes.length, "nodes");
+          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars,", facts.length, "facts");
 
           const sections: string[] = [];
 
@@ -108,10 +107,6 @@ function registerFullPlugin(
 
           if (facts.length > 0) {
             sections.push(formatFacts(facts));
-          }
-
-          if (nodes.length > 0) {
-            sections.push(formatNodes(nodes));
           }
 
           return sections.join("\n\n") || "No memories found.";
