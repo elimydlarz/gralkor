@@ -128,7 +128,7 @@ async def lifespan(_app: FastAPI):
         import logging
         logging.getLogger("redislite").setLevel(logging.DEBUG)
 
-        from redislite import AsyncFalkorDB
+        from redislite.async_falkordb_client import AsyncFalkorDB
 
         data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
         os.makedirs(data_dir, exist_ok=True)
