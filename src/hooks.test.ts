@@ -200,7 +200,6 @@ describe("before_agent_start handler", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.searchNodes.mockResolvedValue([]);
   });
 
   it("returns context with matching facts", async () => {
