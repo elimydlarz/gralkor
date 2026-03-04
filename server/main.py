@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -10,6 +11,18 @@ from typing import Any
 import yaml
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
+
+
+# ── Suppress noisy health-check access logs ───────────────────
+
+
+class _HealthCheckFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "GET /health" not in msg
+
+
+logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
 from graphiti_core import Graphiti
 from graphiti_core.driver.falkordb_driver import FalkorDriver
