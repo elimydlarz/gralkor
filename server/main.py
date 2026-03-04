@@ -19,7 +19,10 @@ from pydantic import BaseModel
 class _HealthCheckFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
-        return "GET /health" not in msg
+        if "GET /health" not in msg:
+            return True
+        # Keep failed health checks (non-2xx)
+        return " 200 " not in msg
 
 
 logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
