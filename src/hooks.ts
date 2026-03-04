@@ -60,8 +60,9 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
   // Strip leading "System: ..." lines (queued events prepended by gateway)
   const stripped = prompt.replace(/^(?:System: [^\n]*\n\n)+/, "");
 
-  // Skip system instructions
-  if (stripped.startsWith("A new session was started")) return "";
+  // Strip session-start system instruction (may have user message after it)
+  const afterSession = stripped.replace(/^A new session was started[^\n]*(?:\n\n)?/, "");
+  if (!afterSession) return "";
 
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
