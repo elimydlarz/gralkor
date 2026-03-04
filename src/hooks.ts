@@ -66,7 +66,7 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
 
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  return stripped.replace(metadataPattern, "");
+  return afterSession.replace(metadataPattern, "");
 }
 
 /**
