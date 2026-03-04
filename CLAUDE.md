@@ -84,6 +84,8 @@ Hook handlers receive **two arguments: `(event, ctx)`**:
 
 **Double-fire:** The gateway calls `before_agent_start` **twice** per agent run — once before session creation (only `prompt` in event), once before LLM invocation (`prompt` + `messages`). Both calls receive the same `prompt` string. The handler must be idempotent. Only the return value of the second call's `prependContext` is used by the gateway.
 
+**Fire-and-forget (`agent_end`):** The gateway dispatches `agent_end` without awaiting the result — the handler runs in the background while the gateway continues cleanup. No `AbortSignal` is passed to hooks. Multiple handlers run in parallel via `Promise.all`. Errors are caught and logged by the gateway's `.catch()` but do not block or crash the gateway. Since the handler is not awaited, the gateway cannot cancel or abort it — the handler runs until completion (or until the process exits).
+
 **Message content format:** `event.messages[].content` is an array of `{ type, text?, ... }` objects (not a JSON string). The `type` field is `"text"`, `"toolCall"`, etc. Debug output shows `contentType: 'object'` confirming it's a parsed array.
 
 **Agent identity:** `ctx.agentId` is the per-agent unique identifier, derived from the session key. Use this for graph partitioning (`group_id`). The `ctx.sessionKey` is also available as an alternative partition key.
