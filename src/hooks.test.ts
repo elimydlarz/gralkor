@@ -158,6 +158,17 @@ describe("extractUserMessageFromPrompt", () => {
     })).toBe("");
   });
 
+  it("extracts user message after session startup line", () => {
+    expect(extractUserMessageFromPrompt({
+      prompt: "A new session was started via /new\n\nHello",
+    })).toBe("Hello");
+  });
+
+  it("extracts user message with metadata after session startup line", () => {
+    const prompt = 'A new session was started via /new\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nHello';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Hello");
+  });
+
   it("returns user message from plain prompt", () => {
     expect(extractUserMessageFromPrompt({
       prompt: "Tell me about the project",
