@@ -104,7 +104,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
     proc = spawn(
       venvPython,
-      ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(opts.port)],
+      ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(opts.port), "--no-access-log"],
       {
         cwd: opts.serverDir,
         env,
