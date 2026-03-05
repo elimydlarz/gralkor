@@ -38,6 +38,10 @@
     "memory_get",
     "memory_add"
   ],
+  "commands": [
+    "memory",
+    "gralkor"
+  ],
   "uiHints": {
     "autoCapture.enabled": {
       "label": "Auto-capture conversations"
