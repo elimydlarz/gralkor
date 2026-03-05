@@ -47,7 +47,7 @@ The plugin API methods must match these signatures exactly — the gateway valid
 - **`api.runtime.tools`** — Provides access to OpenClaw's built-in tool factories: `createMemorySearchTool({ config, agentSessionKey })`, `createMemoryGetTool({ config, agentSessionKey })`, `registerMemoryCli(program)`. Memory-mode plugins use these to delegate native `memory_search`/`memory_get` to the same infrastructure `memory-core` uses.
 - **`api.on(event, handler)`** — Registers a hook handler. Alternatively, `registerHook(event, handler, metadata)` takes a third `metadata` arg with `{ name: string }` — the gateway does `metadata.name.trim()` so omitting it crashes. Our code uses `api.on` (no metadata needed). **Hook handlers receive two arguments: `(event, ctx)`** where `event` contains hook-specific data and `ctx` contains agent identity (see "Hook Context Shape" below).
 - **`registerService({ id, start, stop })`** — Uses `id` (not `name`), and lifecycle methods `start()`/`stop()` (not `interval`/`execute`).
-- **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`.
+- **`registerCli(registrar, opts?)`** — `registrar` receives `{ program }` (Commander instance). `opts` can include `{ commands: string[] }`. Plugin CLI commands are mounted under `openclaw plugins` (not top-level) due to OpenClaw's lazy CLI loading — the `plugins` subcli entry calls `registerPluginCliCommands` which invokes plugin registrars.
 
 ### Additional Plugin API Surface (OpenClaw internals)
 
