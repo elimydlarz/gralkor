@@ -7,6 +7,7 @@ import {
   createAgentEndHandler,
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
+  extractLastUserMessageFromMessages,
   type HookAgentContext,
 } from "./hooks.js";
 
