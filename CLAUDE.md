@@ -15,7 +15,7 @@ Gralkor is a memory plugin (`kind: "memory"`) that replaces the native memory pl
 | Tool names | `memory_search` (unified native+graph), `memory_get` (native), `memory_add` |
 | Slot | Takes the memory slot (replaces `memory-core`) |
 | Hooks | `before_agent_start`, `agent_end` |
-| CLI | `memory`, `gralkor` |
+| CLI | `openclaw plugins memory`, `openclaw plugins gralkor` |
 
 ## Mental Model
 
