@@ -66,7 +66,35 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
 
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  return afterSession.replace(metadataPattern, "");
+  const fromPrompt = afterSession.replace(metadataPattern, "").trim();
+  if (fromPrompt) return fromPrompt;
+
+  // Fallback: prompt was only metadata with no user text after it.
+  // Extract the last user message from event.messages (available on 2nd fire).
+  return extractLastUserMessageFromMessages(event);
+}
+
+/**
+ * Extract the last user message text from event.messages.
+ * Used as fallback when the prompt contains only metadata wrapper
+ * and the user text is not appended after it.
+ */
+export function extractLastUserMessageFromMessages(event: HookEvent): string {
+  const messages = event.messages;
+  if (!messages || !Array.isArray(messages)) return "";
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      const text = (messages[i].content ?? [])
+        .filter((block: ContentBlock) => block.type === "text" && block.text)
+        .map((block: ContentBlock) => block.text!)
+        .join("\n")
+        .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
+        .trim();
+      if (text) return text;
+    }
+  }
+  return "";
 }
 
 /**
