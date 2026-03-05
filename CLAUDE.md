@@ -103,7 +103,7 @@ Hook handlers receive **two arguments: `(event, ctx)`**:
 
 **Auto-recall** (`before_agent_start` hook):
 1. Handler receives `(event, ctx)` where `event` has `{ prompt, messages? }` and `ctx` has `{ agentId, sessionKey, ... }`.
-2. `extractUserMessageFromPrompt()` strips leading `System:` event lines, then strips session-start lines (`"A new session was started..."`), then strips any `<label> (untrusted metadata):\n```json\n...\n``` ` wrapper from `event.prompt` (the label varies — gateway currently sends `Sender`, previously `Conversation info`). Returns empty if nothing remains after stripping.
+2. `extractUserMessageFromPrompt()` strips leading `System:` event lines, then strips session-start lines (`"A new session was started..."`), then strips any `<label> (untrusted metadata):\n```json\n...\n``` ` wrapper from `event.prompt` (the label varies — gateway currently sends `Sender`, previously `Conversation info`). If nothing remains after stripping (e.g. prompt was only metadata with no appended user text), falls back to `extractLastUserMessageFromMessages()` which extracts the last user message from `event.messages` (available on the second fire). The fallback strips `<gralkor-memory>` blocks to avoid using recalled context as the search query. Returns empty if both sources yield nothing.
 3. Capture `ctx.agentId` into shared group ID state (for tools to use).
 4. Skip if disabled or no user message.
 5. Run searches in parallel: `client.searchFacts()` and native `memory_search` via `getNativeSearch` closure.
