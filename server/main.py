@@ -13,19 +13,6 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 
-# ── Suppress noisy health-check access logs ───────────────────
-
-
-class _HealthCheckFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        msg = record.getMessage()
-        if "GET /health" not in msg:
-            return True
-        # Keep failed health checks (non-2xx)
-        return " 200 " not in msg
-
-
-logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
 from graphiti_core import Graphiti
 from graphiti_core.driver.falkordb_driver import FalkorDriver
