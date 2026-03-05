@@ -220,6 +220,67 @@ describe("extractUserMessageFromPrompt", () => {
     const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nWhat is the weather?';
     expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
   });
+
+  it("falls back to messages when prompt is only metadata wrapper", () => {
+    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
+    expect(extractUserMessageFromPrompt({
+      prompt,
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Any context about Cyril Rioli?" }] },
+      ],
+    })).toBe("Any context about Cyril Rioli?");
+  });
+
+  it("falls back to last user message from messages, skipping gralkor-memory", () => {
+    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
+    expect(extractUserMessageFromPrompt({
+      prompt,
+      messages: [
+        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nSome fact\n</gralkor-memory>\n\nFirst question' }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nAnother fact\n</gralkor-memory>\n\nSecond question' }] },
+      ],
+    })).toBe("Second question");
+  });
+
+  it("returns empty when prompt is only metadata and no messages", () => {
+    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+  });
+});
+
+describe("extractLastUserMessageFromMessages", () => {
+  it("returns empty when no messages", () => {
+    expect(extractLastUserMessageFromMessages({})).toBe("");
+  });
+
+  it("returns last user message text", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+        { role: "user", content: [{ type: "text", text: "Second" }] },
+      ],
+    })).toBe("Second");
+  });
+
+  it("strips gralkor-memory blocks", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n\nActual question' }] },
+      ],
+    })).toBe("Actual question");
+  });
+
+  it("skips user messages that are only gralkor-memory", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Real message" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
+      ],
+    })).toBe("Real message");
+  });
 });
 
 describe("before_agent_start handler", () => {
