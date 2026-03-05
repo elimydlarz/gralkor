@@ -460,6 +460,8 @@ Factory helpers (`make_episode`, `make_edge`, `make_entity`) return `SimpleNames
 
 **Default (self-managing):** Install the plugin, set an LLM API key, restart OpenClaw. The plugin manages everything else — Python environment via `uv sync`, Graphiti server, embedded FalkorDB. Data lives in `{dataDir}/` (default: `{pluginDir}/.gralkor-data/`). Requires `uv` on the host. Configure `dataDir` in plugin config to colocate with OpenClaw's `/data` volume for backup/restore coverage.
 
+**Docker HOME split:** The OpenClaw Docker image runs the gateway with `HOME=/data`, but interactive shell sessions (SSH, `docker exec`) use `HOME=/root`. OpenClaw resolves its config directory from `$HOME/.openclaw/`. This means `openclaw plugins install` in an init script (HOME=/data) writes config and extensions to `/data/.openclaw/`, while `openclaw plugins list` from an interactive shell reads `/root/.openclaw/`. The plugin works at runtime (gateway uses `/data/.openclaw/`) but is invisible to the interactive CLI. **Fix:** symlink the entire directory: `ln -sfn /data/.openclaw /root/.openclaw`. Symlinking only `extensions/` is insufficient — the config file (`openclaw.json`) also diverges, so plugin entries, slot assignments, and allowlist entries are missing from the CLI's view.
+
 **Legacy Docker mode:** When deployed alongside OpenClaw on a VPS with Docker, set `FALKORDB_URI` to use an external FalkorDB container. Set `FALKORDB_DATA_DIR` to colocate FalkorDB data inside OpenClaw's `/data` volume. The `gralkor` Docker network lets the OpenClaw container reach Graphiti at `http://graphiti:8001`.
 
 ## Recommended Reading
