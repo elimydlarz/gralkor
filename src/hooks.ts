@@ -160,7 +160,7 @@ export function createBeforeAgentStartHandler(
 
     const userMessage = extractUserMessageFromPrompt(event);
     if (!userMessage) {
-      console.log("[gralkor] [auto-recall] no user message in prompt, skipping");
+      console.log("[gralkor] [auto-recall] no user message in prompt, skipping — promptLength:", event.prompt?.length ?? 0, "messageCount:", event.messages?.length ?? 0);
       return;
     }
 
