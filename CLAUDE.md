@@ -131,7 +131,7 @@ The plugin manages the Graphiti server as a child process via `src/server-manage
 
 1. **Sync Python environment** — runs `uv sync --no-dev --frozen --directory {serverDir}` with `UV_PROJECT_ENVIRONMENT={dataDir}/venv`. uv handles Python discovery/installation, venv creation, and dependency resolution from `pyproject.toml` + `uv.lock`.
 1b. **Force-install bundled wheels** — if a `wheels/` directory exists in `serverDir` containing `.whl` files, runs `uv pip install --reinstall --no-deps <wheel> --python {venvPython}` for each wheel. This bypasses the lockfile (whose hash verification rejects locally-built wheels) and overrides broken PyPI packages (e.g. the falkordblite arm64 wheel from `make pack`). If the wheel is incompatible with the current platform, the error is caught and the PyPI version from step 1 is kept.
-2. **Spawn** `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001` with `cwd = serverDir`. Passes env vars (`CONFIG_PATH`, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` — its absence triggers embedded FalkorDBLite mode.
+2. **Spawn** `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log` with `cwd = serverDir`. Passes env vars (`CONFIG_PATH`, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` — its absence triggers embedded FalkorDBLite mode.
 3. **Wait for health** — polls `GET /health` every 500ms, 120s timeout (first run with uv sync is slow).
 4. **Monitor** — 60s health ping interval.
 
