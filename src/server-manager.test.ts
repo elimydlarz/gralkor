@@ -120,7 +120,7 @@ describe("createServerManager", () => {
     // Should spawn uvicorn with venv python
     expect(spawn).toHaveBeenCalledWith(
       "/data/venv/bin/python",
-      ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8001"],
+      ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8001", "--no-access-log"],
       expect.objectContaining({
         cwd: "/server",
         env: expect.objectContaining({
