@@ -191,7 +191,7 @@ OpenClaw Gateway (Node.js)
         ├── Tools: memory_search (unified), memory_get (native), memory_add
         ├── Hooks: before_agent_start (auto-recall), agent_end (auto-capture)
         ├── Service: gralkor-server (manages Python subprocess + 60s health monitor)
-        ├── CLI: memory (native), gralkor status, gralkor search <group_id> <query...>, gralkor clear <group_id>
+        ├── CLI: memory (native), gralkor status/search/clear (all under `openclaw plugins`)
               │
               │ spawns child process (server-manager.ts)
               ▼
