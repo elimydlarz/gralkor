@@ -10,7 +10,9 @@ OpenClaw plugin giving AI agents persistent, temporally-aware memory via knowled
 | Hooks | `before_agent_start` (auto-recall), `agent_end` (auto-capture) |
 | CLI | `openclaw plugins memory`, `openclaw plugins gralkor` |
 
-## Architecture
+## Mental Model
+
+### Architecture
 
 ```
 OpenClaw Gateway (Node.js)
@@ -27,12 +29,85 @@ OpenClaw Gateway (Node.js)
 
 All plugin→Graphiti communication goes through `GraphitiClient` (`src/client.ts`). The server (`server/main.py`) holds the only `Graphiti` instance and FalkorDB connection.
 
-## Domain Objects
+### Domain Objects
 
 - **Episode** — captured conversation or manual store; raw text input to the graph
 - **Fact (edge)** — extracted relationship between entities; has temporal validity (`valid_at`/`invalid_at`)
 - **Entity (node)** — person, concept, project, or thing; has a `summary`
 - **Group** — partition key (`group_id`) derived from `agentId`; one graph per agent
+
+### Plugin Registration
+
+`register()` (synchronous) calls `resolveConfig()` → creates `GraphitiClient` → calls `registerFullPlugin()` which creates shared `getGroupId`/`setGroupId` state, then registers tools, hooks, server service, and CLI. The `memory_search` factory wraps native search (from `api.runtime.tools`) to also call `client.searchFacts()` in parallel.
+
+### Data Lifecycle
+
+**Auto-recall** (`before_agent_start`): Strips `System:` lines, session-start lines, and metadata wrappers from `event.prompt` to extract user message. Falls back to last user message from `event.messages`. Searches graph facts + native memory in parallel. Returns `{ prependContext }` wrapped in `<gralkor-memory trust="untrusted">` XML.
+
+**Auto-capture** (`agent_end`): Extracts all text blocks from user/assistant messages. Strips `<gralkor-memory>` blocks (prevents feedback loop). Skips empty conversations and `/`-prefixed first messages. POSTs as episode to Graphiti. Errors propagate (not swallowed).
+
+### Graph Partitioning
+
+Tools don't receive agent context, so `before_agent_start` captures `ctx.agentId` via `setGroupId`, tools read via `getGroupId` closure. Falls back to `"default"`.
+
+### Server Manager Lifecycle
+
+1. `uv sync --no-dev --frozen` (creates/reuses venv)
+2. Force-install bundled wheels from `server/wheels/` (arm64 falkordblite fix)
+3. Spawn uvicorn on port 8001 with embedded FalkorDBLite
+4. Poll `/health` every 500ms (120s timeout)
+5. Monitor health every 60s
+
+Stop: SIGTERM → 5s grace → SIGKILL. Startup errors caught (graceful degradation).
+
+### Plugin API Contract
+
+- **`register()` must be synchronous.** Async register appears loaded but registers nothing.
+- **`registerTool(tool, opts?)`** — Plain object `{ name, description, parameters, execute }` or factory `(ctx) => Tool[]` with `opts: { names: string[] }`. Execute signature: `execute(toolCallId, params, signal, onUpdate)` — NOT `execute(args, ctx)`.
+- **`api.runtime.tools`** — Built-in factories: `createMemorySearchTool()`, `createMemoryGetTool()`, `registerMemoryCli()`.
+- **`api.on(event, handler)`** — Register hooks. Prefer over `registerHook` (which requires `metadata.name`).
+- **`registerService({ id, start, stop })`** — NOT `{ name, interval, execute }`.
+- **`registerCli(registrar, opts?)`** — Commands mount under `openclaw plugins`.
+
+### Hook Handlers: `(event, ctx)`
+
+| Hook | `event` | `ctx` |
+|---|---|---|
+| `before_agent_start` (fires **twice**) | `{ prompt, messages? }` | `{ agentId, sessionKey, sessionId, workspaceDir, messageProvider }` |
+| `agent_end` (fire-and-forget) | `{ messages, success, error, durationMs }` | same |
+
+- **Double-fire:** `before_agent_start` fires once before session creation (only `prompt`), once before LLM invocation (`prompt` + `messages`). Only second call's `prependContext` is used. Handler must be idempotent.
+- **Fire-and-forget:** `agent_end` is not awaited. Errors caught by gateway `.catch()`.
+- **Message format:** `event.messages[].content` is an array of `{ type, text?, ... }` objects, not strings.
+
+## Requirements
+
+### Functional
+
+| Requirement | Implementation |
+|---|---|
+| Self-managing backend | Spawns Graphiti server as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
+| Persistent cross-conversation memory | Episodes stored in FalkorDB via Graphiti; survive restarts |
+| Automatic conversation capture | `agent_end` hook stores every non-trivial multi-turn exchange as an episode |
+| Automatic context recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results |
+| Unified memory search | `memory_search` combines native Markdown + graph facts in a single response |
+| Manual store | `memory_add` creates episodes in knowledge graph; Graphiti extracts structure |
+| Per-agent graph partitioning | `group_id` from `agentId` isolates each agent's knowledge |
+| CLI diagnostics | `openclaw plugins gralkor status/search/clear` (group ID always required) |
+| Temporal awareness | Facts have `valid_at`/`invalid_at`; Graphiti tracks knowledge changes |
+
+### Cross-functional
+
+| Requirement | Implementation |
+|---|---|
+| Graceful degradation | Server start failures logged (plugin still loads); auto-recall skips on graph errors; auto-capture propagates errors; tools throw |
+| Observability | `[gralkor]`-prefixed logs: events, result counts, skip reasons, errors. No message content logged. Uvicorn access logs disabled. |
+| Retry with backoff | Client retries network errors/5xx up to 2 times (500ms, 1000ms); 4xx throws immediately |
+| Security | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
+| Capture hygiene | Strips `<gralkor-memory>` blocks before storing; skips `/`-prefixed and empty conversations |
+| Prompt parsing robustness | Strips `System:` lines, session-start lines, metadata wrappers; falls back to `event.messages` |
+| Query sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax) |
+| Bundled arm64 wheel | `make pack` builds correct falkordblite wheel for linux/arm64 via Docker |
 
 ## Repo Map
 
@@ -57,36 +132,6 @@ resources/memory/
   openclaw.plugin.json  # canonical memory-mode manifest
 scripts/pack.sh         # builds deployment tarball (+ falkordblite arm64 wheel via Docker)
 ```
-
-## Plugin API Contract
-
-- **`register()` must be synchronous.** Async register appears loaded but registers nothing.
-- **`registerTool(tool, opts?)`** — Plain object `{ name, description, parameters, execute }` or factory `(ctx) => Tool[]` with `opts: { names: string[] }`. Execute signature: `execute(toolCallId, params, signal, onUpdate)` — NOT `execute(args, ctx)`.
-- **`api.runtime.tools`** — Built-in factories: `createMemorySearchTool()`, `createMemoryGetTool()`, `registerMemoryCli()`.
-- **`api.on(event, handler)`** — Register hooks. Prefer over `registerHook` (which requires `metadata.name`).
-- **`registerService({ id, start, stop })`** — NOT `{ name, interval, execute }`.
-- **`registerCli(registrar, opts?)`** — Commands mount under `openclaw plugins`.
-
-### Hook Handlers: `(event, ctx)`
-
-| Hook | `event` | `ctx` |
-|---|---|---|
-| `before_agent_start` (fires **twice**) | `{ prompt, messages? }` | `{ agentId, sessionKey, sessionId, workspaceDir, messageProvider }` |
-| `agent_end` (fire-and-forget) | `{ messages, success, error, durationMs }` | same |
-
-- **Double-fire:** `before_agent_start` fires once before session creation (only `prompt`), once before LLM invocation (`prompt` + `messages`). Only second call's `prependContext` is used. Handler must be idempotent.
-- **Fire-and-forget:** `agent_end` is not awaited. Errors caught by gateway `.catch()`.
-- **Message format:** `event.messages[].content` is an array of `{ type, text?, ... }` objects, not strings.
-
-### Graph Partitioning
-
-Tools don't receive agent context, so `before_agent_start` captures `ctx.agentId` via `setGroupId`, tools read via `getGroupId` closure. Falls back to `"default"`.
-
-## Data Lifecycle
-
-**Auto-recall** (`before_agent_start`): Strips `System:` lines, session-start lines, and metadata wrappers from `event.prompt` to extract user message. Falls back to last user message from `event.messages`. Searches graph facts + native memory in parallel. Returns `{ prependContext }` wrapped in `<gralkor-memory trust="untrusted">` XML.
-
-**Auto-capture** (`agent_end`): Extracts all text blocks from user/assistant messages. Strips `<gralkor-memory>` blocks (prevents feedback loop). Skips empty conversations and `/`-prefixed first messages. POSTs as episode to Graphiti. Errors propagate (not swallowed).
 
 ## Configuration
 
@@ -120,26 +165,10 @@ make publish          # build + pnpm publish
 make pack             # deployment tarball (requires Docker for arm64 wheel)
 ```
 
-## Server Manager Lifecycle
-
-1. `uv sync --no-dev --frozen` (creates/reuses venv)
-2. Force-install bundled wheels from `server/wheels/` (arm64 falkordblite fix)
-3. Spawn uvicorn on port 8001 with embedded FalkorDBLite
-4. Poll `/health` every 500ms (120s timeout)
-5. Monitor health every 60s
-
-Stop: SIGTERM → 5s grace → SIGKILL. Startup errors caught (graceful degradation).
-
-## Graceful Degradation
-
-- Server fails to start: error logged, plugin still loads, tools see Graphiti as unreachable
-- Graphiti unreachable at runtime: auto-recall skips silently, auto-capture propagates errors, tools throw
-
 ## Conventions
 
 - TypeScript ES modules, target ES2022, imports use `.js` extensions
 - All Graphiti communication via HTTP (`src/client.ts`)
-- Client retries network errors/5xx up to 2 times (500ms, 1000ms backoff); 4xx throws immediately
 
 ## Gotchas
 
