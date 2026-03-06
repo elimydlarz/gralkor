@@ -61,7 +61,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 ### Data Lifecycle
 
 **Auto-recall** (`before_agent_start`):
-1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), and metadata wrappers (`/^.+?\(untrusted metadata\):/`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks from fallback.
+1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), metadata wrappers (`/^.+?\(untrusted metadata\):/`), and benchmark timestamp prefixes (`[timestamp: 2023-05-08T13:56:00]`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks and timestamp prefixes from fallback.
 2. Capture `ctx.agentId` into shared group ID state.
 3. Skip if disabled or no user message.
 4. Search `client.searchFacts()` and native `memory_search` in parallel.
@@ -69,9 +69,9 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 6. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (`agent_end`):
-1. `extractMessagesFromCtx()` walks `event.messages`, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages (prevents feedback loop). **Silently drops media** (images, video) — only `type === "text"` blocks.
+1. `extractMessagesFromCtx()` walks `event.messages`, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML and benchmark timestamp prefixes (`[timestamp: ...]`) from user messages. Returns `{ text, firstTimestamp }`. **Silently drops media** (images, video) — only `type === "text"` blocks.
 2. Skip if disabled, empty, or first user message starts with `/`.
-3. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes`.
+3. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to `firstTimestamp` (if present). When no timestamp prefix exists, `reference_time` is omitted and the client defaults to wall-clock time.
 4. Errors propagate to gateway (intentional — gateway catches via `.catch()`).
 
 ### Graph Partitioning
