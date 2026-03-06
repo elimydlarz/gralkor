@@ -8,6 +8,7 @@ import {
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
+  extractTimestamp,
   type HookAgentContext,
 } from "./hooks.js";
 
