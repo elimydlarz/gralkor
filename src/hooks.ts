@@ -104,7 +104,7 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
         .join("\n")
         .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
         .trim();
-      if (text) return text;
+      if (text) return extractTimestamp(text).stripped;
     }
   }
   return "";
