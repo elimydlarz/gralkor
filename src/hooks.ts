@@ -119,11 +119,12 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
  * Returns a multi-turn conversation string:
  *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
  */
-export function extractMessagesFromCtx(event: HookEvent): string {
+export function extractMessagesFromCtx(event: HookEvent): ExtractedConversation {
   const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return "";
+  if (!messages || !Array.isArray(messages)) return { text: "", firstTimestamp: null };
 
   const parts: string[] = [];
+  let firstTimestamp: string | null = null;
 
   for (const msg of messages) {
     const textParts = (msg.content ?? [])
@@ -134,20 +135,23 @@ export function extractMessagesFromCtx(event: HookEvent): string {
     if (!textParts) continue;
 
     // Strip injected auto-recall XML from user messages to prevent feedback loop
-    const cleanText = msg.role === "user"
+    let cleanText = msg.role === "user"
       ? textParts.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "").trim()
       : textParts;
 
     if (!cleanText) continue;
 
     if (msg.role === "user") {
+      const { timestamp, stripped } = extractTimestamp(cleanText);
+      if (timestamp && !firstTimestamp) firstTimestamp = timestamp;
+      cleanText = stripped;
       parts.push(`User: ${cleanText}`);
     } else if (msg.role === "assistant") {
       parts.push(`Assistant: ${cleanText}`);
     }
   }
 
-  return parts.join("\n");
+  return { text: parts.join("\n"), firstTimestamp };
 }
 
 export type NativeSearchFn = (query: string) => Promise<string>;
