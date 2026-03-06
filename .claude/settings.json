@@ -1,7 +1,6 @@
 {
   "enabledPlugins": {
     "req-mod-sync@req-mod-sync": true,
-    "trunk-sync@trunk-sync": true,
-    "test-trees@test-trees": true
+    "trunk-sync@trunk-sync": true
   }
 }
