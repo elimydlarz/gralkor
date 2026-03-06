@@ -118,6 +118,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
 | temporal-awareness | Facts have `valid_at`/`invalid_at`; Graphiti tracks knowledge changes |
+| benchmark-timestamps | `[timestamp: ISO]` prefix in messages parsed by `extractTimestamp()`, stripped from content, passed as `reference_time` to episodes. Auto-recall strips for clean search queries. Absent timestamps preserve wall-clock default. |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
 | error-propagation | Auto-capture lets Graphiti errors propagate to gateway |
 
