@@ -234,7 +234,7 @@ export function createAgentEndHandler(
       return;
     }
 
-    const conversation = extractMessagesFromCtx(event);
+    const { text: conversation, firstTimestamp } = extractMessagesFromCtx(event);
 
     if (!conversation) {
       console.log("[gralkor] [auto-capture] no messages extracted, skipping");
@@ -258,6 +258,7 @@ export function createAgentEndHandler(
       episode_body: conversation,
       source_description: "auto-capture",
       group_id: groupId,
+      ...(firstTimestamp && { reference_time: firstTimestamp }),
     });
     console.log("[gralkor] [auto-capture] episode stored — groupId:", groupId, "bodyLength:", conversation.length);
   };
