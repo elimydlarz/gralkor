@@ -711,6 +711,35 @@ describe("agent_end handler", () => {
     expect(call.episode_body).not.toContain("gralkor-memory");
   });
 
+  it("passes reference_time when timestamp is present in messages", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What is the weather?" }] },
+        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
+      ],
+    });
+
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ reference_time: "2023-05-08T13:56:00" }),
+    );
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
+  });
+
+  it("omits reference_time when no timestamp is present", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
+      ],
+    });
+
+    const call = client.addEpisode.mock.calls[0][0] as Record<string, unknown>;
+    expect(call).not.toHaveProperty("reference_time");
+  });
+
   it("falls back to 'default' group when agentId is missing", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({
