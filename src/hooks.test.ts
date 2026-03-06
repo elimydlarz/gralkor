@@ -43,8 +43,8 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 
 describe("extractMessagesFromCtx", () => {
   it("returns empty string when no messages", () => {
-    expect(extractMessagesFromCtx({})).toBe("");
-    expect(extractMessagesFromCtx({ messages: [] })).toBe("");
+    expect(extractMessagesFromCtx({}).text).toBe("");
+    expect(extractMessagesFromCtx({ messages: [] }).text).toBe("");
   });
 
   it("extracts a single user+assistant exchange", () => {
@@ -54,7 +54,8 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Hi there");
+    expect(result.text).toBe("User: Hello\nAssistant: Hi there");
+    expect(result.firstTimestamp).toBeNull();
   });
 
   it("accumulates all messages in sequence", () => {
@@ -66,7 +67,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
       ],
     });
-    expect(result).toBe(
+    expect(result.text).toBe(
       "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
     );
   });
@@ -80,7 +81,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Done" }] },
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Done");
+    expect(result.text).toBe("User: Hello\nAssistant: Done");
   });
 
   it("joins multiple text blocks within one message", () => {
@@ -92,7 +93,7 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("User: Part 1\nPart 2");
+    expect(result.text).toBe("User: Part 1\nPart 2");
   });
 
   it("strips <gralkor-memory> XML from user messages", () => {
@@ -103,7 +104,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
       ],
     });
-    expect(result).toBe("User: What is the weather?\nAssistant: It's sunny.");
+    expect(result.text).toBe("User: What is the weather?\nAssistant: It's sunny.");
   });
 
   it("skips user message that is only <gralkor-memory> XML", () => {
@@ -114,7 +115,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
       ],
     });
-    expect(result).toBe("Assistant: Response");
+    expect(result.text).toBe("Assistant: Response");
   });
 
   it("does not strip <gralkor-memory> from assistant messages", () => {
@@ -124,7 +125,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: xml }] },
       ],
     });
-    expect(result).toBe(`Assistant: ${xml}`);
+    expect(result.text).toBe(`Assistant: ${xml}`);
   });
 
   it("strips multiple <gralkor-memory> blocks from a single user message", () => {
@@ -135,7 +136,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml1}${xml2}Tell me more` }] },
       ],
     });
-    expect(result).toBe("User: Tell me more");
+    expect(result.text).toBe("User: Tell me more");
   });
 
   it("handles <gralkor-memory> with nested newlines and special characters in facts", () => {
@@ -145,7 +146,31 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml}Hello John` }] },
       ],
     });
-    expect(result).toBe("User: Hello John");
+    expect(result.text).toBe("User: Hello John");
+  });
+
+  it("strips timestamp from user messages and returns firstTimestamp", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What happened yesterday?" }] },
+        { role: "assistant", content: [{ type: "text", text: "You had a meeting." }] },
+      ],
+    });
+    expect(result.text).toBe("User: What happened yesterday?\nAssistant: You had a meeting.");
+    expect(result.firstTimestamp).toBe("2023-05-08T13:56:00");
+  });
+
+  it("returns first timestamp from multi-turn with timestamps", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] First question" }] },
+        { role: "assistant", content: [{ type: "text", text: "First answer" }] },
+        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T14:30:00] Second question" }] },
+        { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
+      ],
+    });
+    expect(result.text).toBe("User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer");
+    expect(result.firstTimestamp).toBe("2023-05-08T13:56:00");
   });
 });
 
