@@ -41,6 +41,32 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
   };
 }
 
+describe("extractTimestamp", () => {
+  it("parses and strips valid timestamp prefix", () => {
+    const result = extractTimestamp("[timestamp: 2023-05-08T13:56:00] Hello");
+    expect(result.timestamp).toBe("2023-05-08T13:56:00");
+    expect(result.stripped).toBe("Hello");
+  });
+
+  it("returns null and original text when no timestamp prefix", () => {
+    const result = extractTimestamp("Just a normal message");
+    expect(result.timestamp).toBeNull();
+    expect(result.stripped).toBe("Just a normal message");
+  });
+
+  it("does not match timestamp in the middle of text", () => {
+    const result = extractTimestamp("Some text [timestamp: 2023-05-08T13:56:00] more");
+    expect(result.timestamp).toBeNull();
+    expect(result.stripped).toBe("Some text [timestamp: 2023-05-08T13:56:00] more");
+  });
+
+  it("handles timestamp with no trailing text", () => {
+    const result = extractTimestamp("[timestamp: 2023-05-08T13:56:00] ");
+    expect(result.timestamp).toBe("2023-05-08T13:56:00");
+    expect(result.stripped).toBe("");
+  });
+});
+
 describe("extractMessagesFromCtx", () => {
   it("returns empty string when no messages", () => {
     expect(extractMessagesFromCtx({}).text).toBe("");
