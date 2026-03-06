@@ -80,7 +80,7 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
   const fromPrompt = afterSession.replace(metadataPattern, "").trim();
-  if (fromPrompt) return fromPrompt;
+  if (fromPrompt) return extractTimestamp(fromPrompt).stripped;
 
   // Fallback: prompt was only metadata with no user text after it.
   // Extract the last user message from event.messages (available on 2nd fire).
