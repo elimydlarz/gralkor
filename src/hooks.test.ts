@@ -273,6 +273,17 @@ describe("extractUserMessageFromPrompt", () => {
     expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
   });
 
+  it("strips timestamp prefix from user message", () => {
+    expect(extractUserMessageFromPrompt({
+      prompt: "[timestamp: 2023-05-08T13:56:00] Tell me about the project",
+    })).toBe("Tell me about the project");
+  });
+
+  it("strips timestamp after metadata wrapper", () => {
+    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n[timestamp: 2023-05-08T13:56:00] Tell me about the project';
+    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+  });
+
   it("falls back to messages when prompt is only metadata wrapper", () => {
     const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
     expect(extractUserMessageFromPrompt({
