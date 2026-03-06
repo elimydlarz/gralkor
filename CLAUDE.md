@@ -133,7 +133,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
 | message-filtering | Auto-capture skips empty conversations and `/`-prefixed first messages |
-| capture-hygiene | Strips `<gralkor-memory>` from user messages before storing (prevents feedback loop) |
+| capture-hygiene | Strips `<gralkor-memory>` and `[timestamp: ...]` prefixes from user messages before storing (prevents feedback loop / leaking benchmark metadata) |
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
 | bundled-arm64-wheel | `make pack` builds falkordblite wheel for linux/arm64 via Docker; server manager force-installs after `uv sync` |
