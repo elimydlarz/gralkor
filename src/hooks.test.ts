@@ -335,6 +335,14 @@ describe("extractLastUserMessageFromMessages", () => {
     })).toBe("Actual question");
   });
 
+  it("strips timestamp prefix from last user message", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What happened?" }] },
+      ],
+    })).toBe("What happened?");
+  });
+
   it("skips user messages that are only gralkor-memory", () => {
     expect(extractLastUserMessageFromMessages({
       messages: [
