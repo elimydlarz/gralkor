@@ -2,6 +2,19 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
+const TIMESTAMP_RE = /^\[timestamp:\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\]\s*/;
+
+export function extractTimestamp(text: string): { timestamp: string | null; stripped: string } {
+  const match = text.match(TIMESTAMP_RE);
+  if (!match) return { timestamp: null, stripped: text };
+  return { timestamp: match[1], stripped: text.slice(match[0].length) };
+}
+
+interface ExtractedConversation {
+  text: string;
+  firstTimestamp: string | null;
+}
+
 /**
  * A content block inside a message entry.
  */
