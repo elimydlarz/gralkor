@@ -54,16 +54,22 @@ describe("extractTimestamp", () => {
     expect(result.stripped).toBe("Just a normal message");
   });
 
-  it("does not match timestamp in the middle of text", () => {
+  it("matches timestamp anywhere in the text", () => {
     const result = extractTimestamp("Some text [timestamp: 2023-05-08T13:56:00] more");
-    expect(result.timestamp).toBeNull();
-    expect(result.stripped).toBe("Some text [timestamp: 2023-05-08T13:56:00] more");
+    expect(result.timestamp).toBe("2023-05-08T13:56:00");
+    expect(result.stripped).toBe("Some text more");
   });
 
   it("handles timestamp with no trailing text", () => {
     const result = extractTimestamp("[timestamp: 2023-05-08T13:56:00] ");
     expect(result.timestamp).toBe("2023-05-08T13:56:00");
     expect(result.stripped).toBe("");
+  });
+
+  it("handles timestamp after other metadata", () => {
+    const result = extractTimestamp("prefix\n[timestamp: 2023-05-08T13:56:00] Hello");
+    expect(result.timestamp).toBe("2023-05-08T13:56:00");
+    expect(result.stripped).toBe("prefix\nHello");
   });
 });
 
