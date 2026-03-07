@@ -71,6 +71,24 @@ describe("extractTimestamp", () => {
     expect(result.timestamp).toBe("2023-05-08T13:56:00");
     expect(result.stripped).toBe("prefix\nHello");
   });
+
+  it("does not match bare ISO date without [timestamp: ] wrapper", () => {
+    const result = extractTimestamp("2023-05-08T13:56:00 Hello");
+    expect(result.timestamp).toBeNull();
+    expect(result.stripped).toBe("2023-05-08T13:56:00 Hello");
+  });
+
+  it("does not match timestamp: without brackets", () => {
+    const result = extractTimestamp("timestamp: 2023-05-08T13:56:00 Hello");
+    expect(result.timestamp).toBeNull();
+    expect(result.stripped).toBe("timestamp: 2023-05-08T13:56:00 Hello");
+  });
+
+  it("does not match brackets without timestamp: label", () => {
+    const result = extractTimestamp("[2023-05-08T13:56:00] Hello");
+    expect(result.timestamp).toBeNull();
+    expect(result.stripped).toBe("[2023-05-08T13:56:00] Hello");
+  });
 });
 
 describe("extractMessagesFromCtx", () => {
