@@ -62,7 +62,7 @@ describe("formatFacts", () => {
       invalid_at: "2025-06-01T00:00:00Z",
       fact: "outdated fact",
     })]);
-    expect(result).toContain("- outdated fact (valid from 2025-01-01T00:00:00Z)(invalid since 2025-06-01T00:00:00Z)");
+    expect(result).toContain("- outdated fact (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
   });
 
   it("returns 'No graph facts found.' when empty", () => {
