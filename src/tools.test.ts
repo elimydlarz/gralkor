@@ -46,9 +46,23 @@ describe("formatFacts", () => {
     expect(result).toContain("- remembered fact");
   });
 
+  it("shows valid_at date", () => {
+    const result = formatFacts([makeFact({ valid_at: "2025-01-01T00:00:00Z", fact: "known fact" })]);
+    expect(result).toContain("- known fact (valid from 2025-01-01T00:00:00Z)");
+  });
+
   it("shows invalidation date", () => {
     const result = formatFacts([makeFact({ invalid_at: "2025-06-01T00:00:00Z", fact: "old fact" })]);
     expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
+  });
+
+  it("shows both valid_at and invalid_at", () => {
+    const result = formatFacts([makeFact({
+      valid_at: "2025-01-01T00:00:00Z",
+      invalid_at: "2025-06-01T00:00:00Z",
+      fact: "outdated fact",
+    })]);
+    expect(result).toContain("- outdated fact (valid from 2025-01-01T00:00:00Z)(invalid since 2025-06-01T00:00:00Z)");
   });
 
   it("returns 'No graph facts found.' when empty", () => {
