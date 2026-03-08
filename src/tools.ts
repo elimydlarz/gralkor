@@ -10,9 +10,9 @@ export function formatFacts(facts: Fact[]): string {
   if (facts.length === 0) return "No graph facts found.";
   const lines = facts
     .map((f) => {
-      const validity =
-        f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-      return `- ${f.fact}${validity}`;
+      const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
+      const invalidAt = f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
+      return `- ${f.fact}${validAt}${invalidAt}`;
     })
     .join("\n");
   return `Facts (knowledge graph):\n${lines}`;
