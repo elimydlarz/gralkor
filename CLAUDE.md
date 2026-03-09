@@ -164,7 +164,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | rate-limit-passthrough | Server middleware returns 429 for upstream `RateLimitError` (any provider); prevents client retry amplification |
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
-| message-filtering | Auto-capture skips empty conversations and `/`-prefixed first messages |
+| message-filtering | Auto-capture skips empty conversations (no text extracted) |
 | capture-hygiene | Strips `<gralkor-memory>` from user messages before storing (prevents feedback loop) |
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
