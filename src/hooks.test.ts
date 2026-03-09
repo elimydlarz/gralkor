@@ -389,7 +389,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("returns context with matching facts", async () => {
-    client.searchFacts.mockResolvedValue([
+    client.search.mockResolvedValue([
       makeFact({ group_id: "agent-42", fact: "Project uses microservices" }),
     ]);
 
@@ -408,7 +408,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("includes native memory results when getNativeSearch is provided", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
     const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
     const getNativeSearch = () => nativeSearch;
 
@@ -427,7 +427,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("combines facts and native results", async () => {
-    client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
     const nativeSearch = vi.fn().mockResolvedValue("Native data");
     const getNativeSearch = () => nativeSearch;
 
@@ -444,7 +444,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("skips native results when getNativeSearch returns null", async () => {
-    client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
     const getNativeSearch = () => null;
 
     const handler = createBeforeAgentStartHandler(
@@ -460,7 +460,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("degrades gracefully when native search fails", async () => {
-    client.searchFacts.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
     const nativeSearch = vi.fn().mockRejectedValue(new Error("native error"));
     const getNativeSearch = () => nativeSearch;
 
@@ -489,7 +489,7 @@ describe("before_agent_start handler", () => {
     );
 
     expect(result).toBeUndefined();
-    expect(client.searchFacts).not.toHaveBeenCalled();
+    expect(client.search).not.toHaveBeenCalled();
   });
 
   it("skips when no user message in context", async () => {
@@ -497,11 +497,11 @@ describe("before_agent_start handler", () => {
     const result = await handler({}, { agentId: "agent-42" });
 
     expect(result).toBeUndefined();
-    expect(client.searchFacts).not.toHaveBeenCalled();
+    expect(client.search).not.toHaveBeenCalled();
   });
 
   it("searches using key terms from user message", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
@@ -509,13 +509,13 @@ describe("before_agent_start handler", () => {
       { agentId: "agent-42" },
     );
 
-    const query = client.searchFacts.mock.calls[0][0] as string;
+    const query = client.search.mock.calls[0][0] as string;
     expect(query).toContain("project");
     expect(query).toContain("architecture");
   });
 
   it("returns undefined when no results from any source", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
@@ -527,7 +527,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("degrades silently when Graphiti is unreachable", async () => {
-    client.searchFacts.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.search.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
@@ -539,7 +539,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("respects maxResults config", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
     const config: GralkorConfig = {
       ...defaultConfig,
       autoRecall: { enabled: true, maxResults: 3 },
@@ -551,7 +551,7 @@ describe("before_agent_start handler", () => {
       { agentId: "agent-42" },
     );
 
-    expect(client.searchFacts).toHaveBeenCalledWith(
+    expect(client.search).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(Array),
       3,
@@ -559,7 +559,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("passes full user message as search query", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
@@ -567,12 +567,12 @@ describe("before_agent_start handler", () => {
       { agentId: "agent-42" },
     );
 
-    const query = client.searchFacts.mock.calls[0][0] as string;
+    const query = client.search.mock.calls[0][0] as string;
     expect(query).toBe("Tell me about the project architecture");
   });
 
   it("calls setGroupId with agentId when provided", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
@@ -585,7 +585,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("does not call setGroupId when agentId is missing", async () => {
-    client.searchFacts.mockResolvedValue([]);
+    client.search.mockResolvedValue([]);
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
