@@ -313,16 +313,17 @@ def _sanitize_query(query: str) -> str:
 
 @app.post("/search")
 async def search(req: SearchRequest):
-    edges = await graphiti.search(
+    config = COMBINED_HYBRID_SEARCH_RRF.model_copy(update={"limit": req.num_results})
+    results = await graphiti.search_(
         query=_sanitize_query(req.query),
+        config=config,
         group_ids=req.group_ids,
-        num_results=req.num_results,
     )
     return {
-        "facts": [_serialize_fact(e) for e in edges],
-        "nodes": [],
-        "episodes": [],
-        "communities": [],
+        "facts": [_serialize_fact(e) for e in results.edges],
+        "nodes": [_serialize_node(n) for n in results.nodes],
+        "episodes": [_serialize_episode(ep) for ep in results.episodes],
+        "communities": [_serialize_community(c) for c in results.communities],
     }
 
 
