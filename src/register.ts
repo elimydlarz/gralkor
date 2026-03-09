@@ -5,7 +5,6 @@ import { GRAPHITI_URL, GRAPHITI_PORT } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
-  createBeforeResetHandler,
   createSessionEndHandler,
   createGatewayStopHandler,
   type NativeSearchFn,
