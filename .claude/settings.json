@@ -2,5 +2,13 @@
   "enabledPlugins": {
     "req-mod-sync@req-mod-sync": true,
     "trunk-sync@trunk-sync": true
+  },
+  "extraKnownMarketplaces": {
+    "trunk-sync": {
+      "source": {
+        "source": "github",
+        "repo": "elimydlarz/trunk-sync"
+      }
+    }
   }
 }
