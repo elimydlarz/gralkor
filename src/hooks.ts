@@ -336,22 +336,6 @@ export function createAgentEndHandler(
   };
 }
 
-export function createBeforeResetHandler(
-  client: GraphitiClient,
-  buffers: SessionBufferMap,
-) {
-  return async (_event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
-    const key = resolveBufferKey(ctx);
-    const buffer = buffers.get(key);
-    if (!buffer) {
-      console.log("[gralkor] [auto-capture] before_reset — no buffer for key:", key);
-      return;
-    }
-
-    console.log("[gralkor] [auto-capture] before_reset — flushing key:", key);
-    await flushSessionBuffer(key, buffer, buffers, client);
-  };
-}
 
 export function createSessionEndHandler(
   client: GraphitiClient,
