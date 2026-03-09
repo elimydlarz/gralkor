@@ -778,7 +778,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   let buffers: SessionBufferMap;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     client = mockClient();
     client.addEpisode.mockResolvedValue({});
     buffers = new Map();
@@ -786,7 +785,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   afterEach(() => {
     buffers.clear();
-    vi.useRealTimers();
   });
 
   it("3 turns then /new → single episode with full conversation", async () => {
