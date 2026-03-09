@@ -282,23 +282,33 @@ export async function flushSessionBuffer(
   client: GraphitiClient,
 ): Promise<void> {
   clearTimeout(buffer.timer);
-  buffers.delete(key);
 
-  const conversation = extractMessagesFromCtx({ messages: buffer.messages });
+  // Only send messages that haven't been flushed yet (incremental flush).
+  // On boundary flushes (before_reset, session_end, gateway_stop) we delete
+  // the buffer entirely. On idle flushes we keep the buffer but advance the
+  // flushedMessageCount so the next flush only sends new messages.
+  const newMessages = buffer.messages.slice(buffer.flushedMessageCount);
+  const isBoundaryFlush = !buffers.has(key) || buffer.messages === buffers.get(key)?.messages;
+
+  const conversation = extractMessagesFromCtx({ messages: newMessages });
   if (!conversation) {
-    console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
+    console.log("[gralkor] [auto-capture] flush skipped — no new messages extracted, key:", key);
+    buffers.delete(key);
     return;
   }
 
-  // Skip slash commands
-  const firstUserLine = conversation.match(/^User: (.+)$/m);
-  if (firstUserLine && firstUserLine[1].startsWith("/")) {
-    console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
-    return;
+  // Skip slash commands (only check on first flush for this session)
+  if (buffer.flushedMessageCount === 0) {
+    const firstUserLine = conversation.match(/^User: (.+)$/m);
+    if (firstUserLine && firstUserLine[1].startsWith("/")) {
+      console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
+      buffers.delete(key);
+      return;
+    }
   }
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
-  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
+  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length, "newMessages:", newMessages.length, "totalMessages:", buffer.messages.length);
 
   await client.addEpisode({
     name: `conversation-${Date.now()}`,
@@ -306,6 +316,13 @@ export async function flushSessionBuffer(
     source_description: "auto-capture",
     group_id: groupId,
   });
+
+  // Advance the watermark so next flush only sends new messages
+  buffer.flushedMessageCount = buffer.messages.length;
+
+  // Boundary flushes remove the buffer; idle flushes keep it for incremental use
+  buffers.delete(key);
+
   console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
 }
 
