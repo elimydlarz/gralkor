@@ -759,7 +759,7 @@ describe("agent_end handler", () => {
       ],
     });
 
-    // Advance 80s (less than 90s timeout)
+    // Advance 80s (less than 120s timeout)
     await vi.advanceTimersByTimeAsync(80_000);
     expect(client.addEpisode).not.toHaveBeenCalled();
 
@@ -773,12 +773,12 @@ describe("agent_end handler", () => {
       ],
     });
 
-    // Advance another 80s — original timer would have fired but reset timer hasn't
-    await vi.advanceTimersByTimeAsync(80_000);
+    // Advance 100s — original timer would have fired but reset timer hasn't
+    await vi.advanceTimersByTimeAsync(100_000);
     expect(client.addEpisode).not.toHaveBeenCalled();
 
-    // Advance remaining 10s to trigger the reset timer
-    await vi.advanceTimersByTimeAsync(10_000);
+    // Advance remaining 20s to trigger the reset timer (120s total from 2nd call)
+    await vi.advanceTimersByTimeAsync(20_000);
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
     expect(call.episode_body).toContain("Second");
