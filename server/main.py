@@ -10,6 +10,7 @@ from typing import Any
 
 import yaml
 from fastapi import FastAPI, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 
