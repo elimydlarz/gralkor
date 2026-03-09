@@ -301,12 +301,13 @@ describe("addEpisode()", () => {
   });
 });
 
-describe("searchFacts()", () => {
+describe("search()", () => {
   it("sends POST to /search with correct body", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse([]));
+    const emptyResults = { facts: [], nodes: [], episodes: [], communities: [] };
+    fetchMock.mockResolvedValue(jsonResponse(emptyResults));
 
-    await client.searchFacts("test query", ["g1", "g2"], 5);
+    await client.search("test query", ["g1", "g2"], 5);
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toEqual({
@@ -318,26 +319,31 @@ describe("searchFacts()", () => {
 
   it("defaults limit to 10", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse([]));
+    const emptyResults = { facts: [], nodes: [], episodes: [], communities: [] };
+    fetchMock.mockResolvedValue(jsonResponse(emptyResults));
 
-    await client.searchFacts("q", ["g1"]);
+    await client.search("q", ["g1"]);
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.num_results).toBe(10);
   });
-});
 
-describe("searchNodes()", () => {
-  it("sends POST to /search/nodes", async () => {
+  it("returns SearchResults shape", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse([]));
+    const results = {
+      facts: [{ uuid: "f1", name: "KNOWS", fact: "A knows B", group_id: "g1", valid_at: null, invalid_at: null, created_at: "2025-01-01" }],
+      nodes: [{ uuid: "n1", name: "A", summary: "Entity A", group_id: "g1", created_at: "2025-01-01" }],
+      episodes: [],
+      communities: [],
+    };
+    fetchMock.mockResolvedValue(jsonResponse(results));
 
-    await client.searchNodes("query", ["g1"], 3);
+    const result = await client.search("test", ["g1"]);
 
-    const [url] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8000/search/nodes");
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.num_results).toBe(3);
+    expect(result.facts).toHaveLength(1);
+    expect(result.nodes).toHaveLength(1);
+    expect(result.episodes).toHaveLength(0);
+    expect(result.communities).toHaveLength(0);
   });
 });
 
