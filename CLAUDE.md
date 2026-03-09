@@ -149,6 +149,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 ├── Makefile                          # build/test/deploy commands
 ├── package.json                      # root package
 ├── tsconfig.json
+├── vitest.config.ts                  # vitest config (tree reporter)
 ├── config.yaml                       # LLM/embedder provider config
 ├── docker-compose.yml                # legacy Docker mode
 ├── .env.example
@@ -210,6 +211,8 @@ make test-plugin                      # vitest only
 make test-server                      # pytest only (no Docker needed)
 make setup-server                     # first time: sync server venv with uv
 ```
+
+TDD: write failing tests first, then implement. Test output uses tree reporters (vitest `tree`, pytest `-v`).
 
 ## Building & Deploying
 
