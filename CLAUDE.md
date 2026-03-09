@@ -218,7 +218,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
-| `autoCapture.idleTimeoutMs` | number | `90000` | Flush buffered session after this many ms of inactivity |
+| `autoCapture.idleTimeoutMs` | number | `120000` | Flush buffered session after this many ms of inactivity |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
 | `dataDir` | string | `{pluginDir}/.gralkor-data` | Backend data directory (venv, FalkorDB files) |
