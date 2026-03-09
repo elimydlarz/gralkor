@@ -101,20 +101,35 @@ export function registerCli(
           const q = query.join(" ");
           try {
             console.log(`Searching group "${groupId}" for: ${q}`);
-            const facts = await client.searchFacts(q, [groupId], 10);
-            console.log(`Found ${facts.length} facts in group "${groupId}".`);
-            if (facts.length === 0) {
+            const results = await client.search(q, [groupId], 10);
+            const total = results.facts.length + results.nodes.length + results.communities.length + results.episodes.length;
+            console.log(`Found ${total} results in group "${groupId}".`);
+            if (total === 0) {
               console.log("No results found.");
               return;
             }
-            console.log(
-              "Facts (knowledge graph):\n" +
-              facts.map((f) => {
-                const validity =
-                  f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-                return `  - ${f.fact}${validity}`;
-              }).join("\n"),
-            );
+            if (results.facts.length > 0) {
+              console.log(
+                "Facts:\n" +
+                results.facts.map((f) => {
+                  const validity =
+                    f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
+                  return `  - ${f.fact}${validity}`;
+                }).join("\n"),
+              );
+            }
+            if (results.nodes.length > 0) {
+              console.log(
+                "Entities:\n" +
+                results.nodes.map((n) => `  - ${n.name}: ${n.summary}`).join("\n"),
+              );
+            }
+            if (results.communities.length > 0) {
+              console.log(
+                "Topics:\n" +
+                results.communities.map((c) => `  - ${c.name}: ${c.summary}`).join("\n"),
+              );
+            }
           } catch (err) {
             console.log(
               `Search failed: ${err instanceof Error ? err.message : err}`,
