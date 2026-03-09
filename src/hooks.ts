@@ -252,12 +252,16 @@ export function createBeforeAgentStartHandler(
 /**
  * Session buffer entry — holds the latest message snapshot for a session,
  * flushed as a single episode at session boundaries or on idle timeout.
+ *
+ * `flushedMessageCount` tracks how many messages from the front of the array
+ * have already been flushed, so incremental flushes only send new messages.
  */
 export interface SessionBuffer {
   messages: MessageEntry[];
   agentId?: string;
   sessionKey?: string;
   lastSeenAt: number;
+  flushedMessageCount: number;
   timer: ReturnType<typeof setTimeout>;
 }
 
