@@ -90,9 +90,10 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), metadata wrappers (`/^.+?\(untrusted metadata\):/`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks from fallback.
 2. Capture `ctx.agentId` into shared group ID state.
 3. Skip if disabled or no user message.
-4. Search `client.search()` (combined hybrid search: facts, nodes, episodes, communities) and native `memory_search` in parallel.
-5. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
-6. On graph failure: log warning, skip. Native failures caught independently.
+4. **Double-fire dedup:** `before_agent_start` fires twice per agent run (OpenClaw behavior). The handler caches the result from the 1st fire for 5 seconds; if the same query arrives within that window, it returns the cached result without making API calls. This halves per-turn search cost.
+5. Search `client.search()` (combined hybrid search: facts, nodes, episodes, communities) and native `memory_search` in parallel.
+6. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
+7. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (session buffering via `agent_end` → flush on boundary/idle):
 1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins). An idle timer (`idleTimeoutMs`, default 90s) triggers flush if no new `agent_end` fires.
