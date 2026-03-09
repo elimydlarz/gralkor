@@ -157,6 +157,31 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Gralkor Graphiti Server", lifespan=lifespan)
 
 
+# ── Rate-limit passthrough ───────────────────────────────────
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    """Detect upstream rate-limit errors from any LLM provider."""
+    # openai.RateLimitError, anthropic.RateLimitError, etc.
+    return type(exc).__name__ == "RateLimitError" or (
+        hasattr(exc, "status_code") and getattr(exc, "status_code", None) == 429
+    )
+
+
+@app.exception_handler(Exception)
+async def _rate_limit_passthrough(request, exc: Exception):
+    """Return 429 for upstream rate-limit errors instead of 500."""
+    # Walk the exception chain (cause / context)
+    current: Exception | None = exc
+    while current is not None:
+        if _is_rate_limit_error(current):
+            msg = str(current).split("\n")[0][:200]
+            return JSONResponse(status_code=429, content={"detail": msg})
+        current = current.__cause__ or current.__context__
+        if current is exc:
+            break
+    raise exc
+
+
 # ── Request / response models ────────────────────────────────
 
 
