@@ -267,7 +267,7 @@ function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): strin
 
 /**
  * Flush a single session buffer → episode, then delete it from the map.
- * Called by boundary handlers: before_reset, session_end, gateway_stop.
+ * Called by session_end handler.
  */
 export async function flushSessionBuffer(
   key: string,
@@ -278,14 +278,6 @@ export async function flushSessionBuffer(
   const conversation = extractMessagesFromCtx({ messages: buffer.messages });
   if (!conversation) {
     console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
-    buffers.delete(key);
-    return;
-  }
-
-  // Skip slash commands
-  const firstUserLine = conversation.match(/^User: (.+)$/m);
-  if (firstUserLine && firstUserLine[1].startsWith("/")) {
-    console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
     buffers.delete(key);
     return;
   }
