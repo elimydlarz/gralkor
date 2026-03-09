@@ -75,19 +75,19 @@ describe("registerCli", () => {
   });
 
   describe("search command", () => {
-    it("passes group_id to client.searchFacts", async () => {
-      client.searchFacts.mockResolvedValue([]);
+    it("passes group_id to client.search", async () => {
+      client.search.mockResolvedValue([]);
 
       const searchAction = actions.get("search <group_id> <query...>");
       expect(searchAction).toBeDefined();
 
       await searchAction!("my-agent", ["hello", "world"]);
 
-      expect(client.searchFacts).toHaveBeenCalledWith("hello world", ["my-agent"], 10);
+      expect(client.search).toHaveBeenCalledWith("hello world", ["my-agent"], 10);
     });
 
     it("displays facts from results", async () => {
-      client.searchFacts.mockResolvedValue([
+      client.search.mockResolvedValue([
         { fact: "Alice likes cats", invalid_at: null },
       ]);
 
@@ -104,7 +104,7 @@ describe("registerCli", () => {
     });
 
     it("shows 'No results found.' when graph returns nothing", async () => {
-      client.searchFacts.mockResolvedValue([]);
+      client.search.mockResolvedValue([]);
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -118,7 +118,7 @@ describe("registerCli", () => {
     });
 
     it("handles search errors gracefully", async () => {
-      client.searchFacts.mockRejectedValue(new Error("connection refused"));
+      client.search.mockRejectedValue(new Error("connection refused"));
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
