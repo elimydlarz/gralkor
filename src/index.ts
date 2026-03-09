@@ -4,7 +4,7 @@ import { GraphitiClient } from "./client.js";
 import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
-  formatFacts,
+  formatSearchResults,
 } from "./tools.js";
 import {
   registerHooks,
