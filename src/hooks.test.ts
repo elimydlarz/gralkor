@@ -389,9 +389,10 @@ describe("before_agent_start handler", () => {
   });
 
   it("returns context with matching facts", async () => {
-    client.search.mockResolvedValue([
-      makeFact({ group_id: "agent-42", fact: "Project uses microservices" }),
-    ]);
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [makeFact({ group_id: "agent-42", fact: "Project uses microservices" })],
+    });
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
