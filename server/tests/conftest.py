@@ -99,7 +99,16 @@ def mock_graphiti():
     g.retrieve_episodes.return_value = [make_episode()]
     g.remove_episode.return_value = None
     g.search.return_value = [make_edge()]
-    g.search_.return_value = SimpleNamespace(nodes=[make_entity()])
+    g.search_.return_value = SimpleNamespace(
+        edges=[make_edge()],
+        nodes=[make_entity()],
+        episodes=[make_episode()],
+        communities=[make_community()],
+        edge_reranker_scores=[],
+        node_reranker_scores=[],
+        episode_reranker_scores=[],
+        community_reranker_scores=[],
+    )
     g.build_indices_and_constraints.return_value = None
     g.build_communities.return_value = (["community-1"], ["edge-1", "edge-2"])
     g.close.return_value = None
