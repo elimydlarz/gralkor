@@ -132,24 +132,12 @@ export class GraphitiClient {
     });
   }
 
-  async searchFacts(
+  async search(
     query: string,
     groupIds: string[],
     limit = 10,
-  ): Promise<Fact[]> {
+  ): Promise<SearchResults> {
     return this.request("POST", "/search", {
-      query,
-      group_ids: groupIds,
-      num_results: limit,
-    });
-  }
-
-  async searchNodes(
-    query: string,
-    groupIds: string[],
-    limit = 10,
-  ): Promise<EntityNode[]> {
-    return this.request("POST", "/search/nodes", {
       query,
       group_ids: groupIds,
       num_results: limit,
