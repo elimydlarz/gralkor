@@ -880,7 +880,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("two concurrent sessions flush independently", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
 
     const ctx1 = { agentId: "agent-1", sessionKey: "sess-1" };
     const ctx2 = { agentId: "agent-1", sessionKey: "sess-2" };
@@ -901,8 +901,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
     expect(buffers.size).toBe(2);
 
-    // Reset session 1 only
-    await beforeReset({}, ctx1);
+    // End session 1 only
+    await sessionEnd({}, { ...ctx1, sessionId: "sid-1" });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
@@ -910,8 +910,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
 
-    // Reset session 2
-    await beforeReset({}, ctx2);
+    // End session 2
+    await sessionEnd({}, { ...ctx2, sessionId: "sid-2" });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
     const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
