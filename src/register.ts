@@ -26,7 +26,6 @@ export function registerHooks(
 
   api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
   api.on("agent_end", createAgentEndHandler(client, config, buffers));
-  api.on("before_reset", createBeforeResetHandler(client, buffers));
   api.on("session_end", createSessionEndHandler(client, buffers));
   api.on("gateway_stop", createGatewayStopHandler(client, buffers));
 }
