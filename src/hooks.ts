@@ -155,6 +155,14 @@ export function createBeforeAgentStartHandler(
   setGroupId?: (id: string) => void,
   getNativeSearch?: () => NativeSearchFn | null,
 ) {
+  // Deduplicate the double-fire: cache result for same query within a short window.
+  // before_agent_start fires twice per agent run (OpenClaw behavior) — only the 2nd
+  // fire's prependContext is used, but both trigger expensive searches. We cache the
+  // result from the 1st fire and return it on the 2nd.
+  let lastQuery = "";
+  let lastResult: { prependContext?: string } | void;
+  let lastResultAt = 0;
+
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     console.log("[gralkor] [auto-recall] hook fired — agentId:", ctx.agentId, "hasPrompt:", !!event.prompt, "hasMessages:", !!event.messages);
 
@@ -172,6 +180,14 @@ export function createBeforeAgentStartHandler(
     if (!userMessage) {
       console.log("[gralkor] [auto-recall] no user message in prompt, skipping — promptLength:", event.prompt?.length ?? 0, "messageCount:", event.messages?.length ?? 0);
       return;
+    }
+
+    // Deduplicate: if we searched for the same query within 5s, return cached result.
+    // This prevents the double-fire from doubling API calls.
+    const now = Date.now();
+    if (userMessage === lastQuery && now - lastResultAt < 5_000) {
+      console.log("[gralkor] [auto-recall] returning cached result (double-fire dedup)");
+      return lastResult;
     }
 
     const groupId = resolveGroupId({ agentId });
@@ -210,12 +226,22 @@ export function createBeforeAgentStartHandler(
         sections.push("From native memory:\n" + nativeResult);
       }
 
-      if (sections.length === 0) return;
+      if (sections.length === 0) {
+        lastQuery = userMessage;
+        lastResult = undefined;
+        lastResultAt = now;
+        return;
+      }
 
       const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`;
       console.log("[gralkor] [auto-recall] returning prependContext — groupId:", groupId, "sections:", sections.length);
 
-      return { prependContext };
+      const result = { prependContext };
+      lastQuery = userMessage;
+      lastResult = result;
+      lastResultAt = now;
+
+      return result;
     } catch (err) {
       console.warn("[gralkor] [auto-recall] search failed:", err instanceof Error ? err.message : err);
       return;
