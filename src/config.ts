@@ -17,7 +17,7 @@ export interface GralkorConfig {
 }
 
 export const defaultConfig: GralkorConfig = {
-  autoCapture: { enabled: true, idleTimeoutMs: 120_000 },
+  autoCapture: { enabled: true },
   autoRecall: { enabled: true, maxResults: 10 },
 };
 
