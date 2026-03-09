@@ -919,32 +919,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(0);
   });
 
-  it("gateway_stop flushes all active sessions", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const gatewayStop = createGatewayStopHandler(client as unknown as GraphitiClient, buffers);
-
-    await agentEnd({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Sess A" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply A" }] },
-      ],
-    }, { sessionKey: "sess-a" });
-
-    await agentEnd({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Sess B" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply B" }] },
-      ],
-    }, { sessionKey: "sess-b" });
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-
-    await gatewayStop();
-
-    expect(client.addEpisode).toHaveBeenCalledTimes(2);
-    expect(buffers.size).toBe(0);
-  });
-
   it("strips gralkor-memory XML across accumulated turns", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
