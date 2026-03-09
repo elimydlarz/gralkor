@@ -117,7 +117,7 @@ describe("register()", () => {
     const eventNames = api.on.mock.calls.map(
       (call: unknown[]) => call[0] as string,
     );
-    expect(eventNames).toEqual(["before_agent_start", "agent_end", "session_end", "gateway_stop"]);
+    expect(eventNames).toEqual(["before_agent_start", "agent_end", "session_end"]);
 
     // Handlers should be functions
     for (const call of api.on.mock.calls) {
