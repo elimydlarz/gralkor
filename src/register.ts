@@ -6,7 +6,6 @@ import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
   createSessionEndHandler,
-  createGatewayStopHandler,
   type NativeSearchFn,
   type SessionBufferMap,
 } from "./hooks.js";
