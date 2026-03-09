@@ -95,11 +95,11 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 6. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 7. On graph failure: log warning, skip. Native failures caught independently.
 
-**Auto-capture** (session buffering via `agent_end` → flush on session boundary):
-1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins). No idle timer — flush only on boundary events.
-2. `before_reset`, `session_end`, and `gateway_stop` handlers flush buffered sessions via `flushSessionBuffer()`.
+**Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
+1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins).
+2. `session_end` handler flushes the buffer for the ended session via `flushSessionBuffer()`. One flush per session — no idle timers, no duplicate flushes.
 3. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
-4. Skip if disabled, empty, or first user message starts with `/`.
+4. Skip if disabled or empty (no text extracted).
 5. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
 6. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors propagate to callers.
 
