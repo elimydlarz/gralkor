@@ -184,3 +184,23 @@ async def test_delete_episode_backend_error_propagates(client, mock_graphiti):
 
     with pytest.raises(RuntimeError, match="not found"):
         await client.delete("/episodes/ep-99")
+
+
+@pytest.mark.asyncio
+async def test_add_episode_rate_limit_returns_429(client, mock_graphiti):
+    """Upstream RateLimitError during episode ingestion returns HTTP 429."""
+
+    class RateLimitError(Exception):
+        status_code = 429
+
+    mock_graphiti.add_episode.side_effect = RateLimitError("insufficient_quota")
+
+    resp = await client.post("/episodes", json={
+        "name": "chat",
+        "episode_body": "body",
+        "source_description": "src",
+        "group_id": "g1",
+    })
+
+    assert resp.status_code == 429
+    assert "insufficient_quota" in resp.json()["detail"]
