@@ -5,7 +5,11 @@ import { GRAPHITI_URL, GRAPHITI_PORT } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
+  createBeforeResetHandler,
+  createSessionEndHandler,
+  createGatewayStopHandler,
   type NativeSearchFn,
+  type SessionBufferMap,
 } from "./hooks.js";
 import { createServerManager, type ServerManager } from "./server-manager.js";
 import type { PluginApiBase } from "./types.js";
@@ -19,8 +23,13 @@ export function registerHooks(
   setGroupId?: (id: string) => void,
   getNativeSearch?: () => NativeSearchFn | null,
 ) {
+  const buffers: SessionBufferMap = new Map();
+
   api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
-  api.on("agent_end", createAgentEndHandler(client, config));
+  api.on("agent_end", createAgentEndHandler(client, config, buffers));
+  api.on("before_reset", createBeforeResetHandler(client, buffers));
+  api.on("session_end", createSessionEndHandler(client, buffers));
+  api.on("gateway_stop", createGatewayStopHandler(client, buffers));
 }
 
 export function registerServerService(

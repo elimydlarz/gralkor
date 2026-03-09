@@ -2,19 +2,6 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
 
-const TIMESTAMP_RE = /\[timestamp:\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\]\s*/;
-
-export function extractTimestamp(text: string): { timestamp: string | null; stripped: string } {
-  const match = text.match(TIMESTAMP_RE);
-  if (!match) return { timestamp: null, stripped: text };
-  return { timestamp: match[1], stripped: text.replace(match[0], "").trim() };
-}
-
-interface ExtractedConversation {
-  text: string;
-  firstTimestamp: string | null;
-}
-
 /**
  * A content block inside a message entry.
  */
@@ -47,7 +34,7 @@ export interface HookEvent {
 }
 
 /**
- * Hook agent context — the second argument passed to hook handlers.
+ * Hook agent context — the second argument passed to agent hook handlers.
  * Contains per-agent identity and session info.
  */
 export interface HookAgentContext {
@@ -56,6 +43,16 @@ export interface HookAgentContext {
   sessionId?: string;
   workspaceDir?: string;
   messageProvider?: string;
+}
+
+/**
+ * Hook session context — passed to session hooks (session_start, session_end).
+ * Has required sessionId unlike HookAgentContext.
+ */
+export interface HookSessionContext {
+  agentId?: string;
+  sessionId: string;
+  sessionKey?: string;
 }
 
 /**
@@ -80,7 +77,7 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
   const fromPrompt = afterSession.replace(metadataPattern, "").trim();
-  if (fromPrompt) return extractTimestamp(fromPrompt).stripped;
+  if (fromPrompt) return fromPrompt;
 
   // Fallback: prompt was only metadata with no user text after it.
   // Extract the last user message from event.messages (available on 2nd fire).
@@ -104,7 +101,7 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
         .join("\n")
         .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
         .trim();
-      if (text) return extractTimestamp(text).stripped;
+      if (text) return text;
     }
   }
   return "";
@@ -119,12 +116,11 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
  * Returns a multi-turn conversation string:
  *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
  */
-export function extractMessagesFromCtx(event: HookEvent): ExtractedConversation {
+export function extractMessagesFromCtx(event: HookEvent): string {
   const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return { text: "", firstTimestamp: null };
+  if (!messages || !Array.isArray(messages)) return "";
 
   const parts: string[] = [];
-  let firstTimestamp: string | null = null;
 
   for (const msg of messages) {
     const textParts = (msg.content ?? [])
@@ -135,23 +131,20 @@ export function extractMessagesFromCtx(event: HookEvent): ExtractedConversation 
     if (!textParts) continue;
 
     // Strip injected auto-recall XML from user messages to prevent feedback loop
-    let cleanText = msg.role === "user"
+    const cleanText = msg.role === "user"
       ? textParts.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "").trim()
       : textParts;
 
     if (!cleanText) continue;
 
     if (msg.role === "user") {
-      const { timestamp, stripped } = extractTimestamp(cleanText);
-      if (timestamp && !firstTimestamp) firstTimestamp = timestamp;
-      cleanText = stripped;
       parts.push(`User: ${cleanText}`);
     } else if (msg.role === "assistant") {
       parts.push(`Assistant: ${cleanText}`);
     }
   }
 
-  return { text: parts.join("\n"), firstTimestamp };
+  return parts.join("\n");
 }
 
 export type NativeSearchFn = (query: string) => Promise<string>;
@@ -230,44 +223,165 @@ export function createBeforeAgentStartHandler(
   };
 }
 
+/**
+ * Session buffer entry — holds the latest message snapshot for a session,
+ * flushed as a single episode at session boundaries or on idle timeout.
+ */
+export interface SessionBuffer {
+  messages: MessageEntry[];
+  agentId?: string;
+  sessionKey?: string;
+  lastSeenAt: number;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+export type SessionBufferMap = Map<string, SessionBuffer>;
+
+function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): string {
+  return ctx.sessionKey || ctx.agentId || "default";
+}
+
+/**
+ * Flush a single session buffer → episode, then delete it from the map.
+ * Shared by all flush triggers (idle timer, before_reset, session_end, gateway_stop).
+ */
+export async function flushSessionBuffer(
+  key: string,
+  buffer: SessionBuffer,
+  buffers: SessionBufferMap,
+  client: GraphitiClient,
+): Promise<void> {
+  clearTimeout(buffer.timer);
+  buffers.delete(key);
+
+  const conversation = extractMessagesFromCtx({ messages: buffer.messages });
+  if (!conversation) {
+    console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
+    return;
+  }
+
+  // Skip slash commands
+  const firstUserLine = conversation.match(/^User: (.+)$/m);
+  if (firstUserLine && firstUserLine[1].startsWith("/")) {
+    console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
+    return;
+  }
+
+  const groupId = resolveGroupId({ agentId: buffer.agentId });
+  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
+
+  await client.addEpisode({
+    name: `conversation-${Date.now()}`,
+    episode_body: conversation,
+    source_description: "auto-capture",
+    group_id: groupId,
+  });
+  console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
+}
+
 export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
+  buffers: SessionBufferMap,
 ) {
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
-    console.log("[gralkor] [auto-capture] hook fired — agentId:", ctx.agentId, "messageCount:", event.messages?.length ?? 0, "success:", event.success);
+    console.log("[gralkor] [auto-capture] agent_end fired — agentId:", ctx.agentId, "messageCount:", event.messages?.length ?? 0, "success:", event.success);
 
     if (!config.autoCapture.enabled) {
       console.log("[gralkor] [auto-capture] disabled, skipping");
       return;
     }
 
-    const { text: conversation, firstTimestamp } = extractMessagesFromCtx(event);
-
-    if (!conversation) {
-      console.log("[gralkor] [auto-capture] no messages extracted, skipping");
+    if (!event.messages || event.messages.length === 0) {
+      console.log("[gralkor] [auto-capture] no messages, skipping");
       return;
     }
 
-    // Check if the first user message is a slash command
-    const firstUserLine = conversation.match(/^User: (.+)$/m);
-    if (firstUserLine && firstUserLine[1].startsWith("/")) {
-      console.log("[gralkor] [auto-capture] slash command, skipping");
-      return;
+    const key = resolveBufferKey(ctx);
+    const existing = buffers.get(key);
+    if (existing) {
+      clearTimeout(existing.timer);
     }
 
-    const agentId = ctx.agentId;
-    const groupId = resolveGroupId({ agentId });
+    const timer = setTimeout(() => {
+      const buf = buffers.get(key);
+      if (buf) {
+        flushSessionBuffer(key, buf, buffers, client).catch((err) => {
+          console.warn("[gralkor] [auto-capture] idle flush failed:", err instanceof Error ? err.message : err);
+        });
+      }
+    }, config.autoCapture.idleTimeoutMs);
 
-    console.log("[gralkor] [auto-capture] storing episode — groupId:", groupId, "bodyLength:", conversation.length);
+    // Prevent timer from keeping the process alive
+    if (typeof timer === "object" && "unref" in timer) {
+      timer.unref();
+    }
 
-    await client.addEpisode({
-      name: `conversation-${Date.now()}`,
-      episode_body: conversation,
-      source_description: "auto-capture",
-      group_id: groupId,
-      ...(firstTimestamp && { reference_time: firstTimestamp }),
+    buffers.set(key, {
+      messages: event.messages,
+      agentId: ctx.agentId,
+      sessionKey: ctx.sessionKey,
+      lastSeenAt: Date.now(),
+      timer,
     });
-    console.log("[gralkor] [auto-capture] episode stored — groupId:", groupId, "bodyLength:", conversation.length);
+
+    console.log("[gralkor] [auto-capture] buffer updated — key:", key, "messageCount:", event.messages.length);
+  };
+}
+
+export function createBeforeResetHandler(
+  client: GraphitiClient,
+  buffers: SessionBufferMap,
+) {
+  return async (_event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
+    const key = resolveBufferKey(ctx);
+    const buffer = buffers.get(key);
+    if (!buffer) {
+      console.log("[gralkor] [auto-capture] before_reset — no buffer for key:", key);
+      return;
+    }
+
+    console.log("[gralkor] [auto-capture] before_reset — flushing key:", key);
+    await flushSessionBuffer(key, buffer, buffers, client);
+  };
+}
+
+export function createSessionEndHandler(
+  client: GraphitiClient,
+  buffers: SessionBufferMap,
+) {
+  return async (_event: HookEvent, ctx: HookSessionContext): Promise<void> => {
+    const key = resolveBufferKey(ctx);
+    const buffer = buffers.get(key);
+    if (!buffer) {
+      console.log("[gralkor] [auto-capture] session_end — no buffer for key:", key);
+      return;
+    }
+
+    console.log("[gralkor] [auto-capture] session_end — flushing key:", key);
+    await flushSessionBuffer(key, buffer, buffers, client);
+  };
+}
+
+export function createGatewayStopHandler(
+  client: GraphitiClient,
+  buffers: SessionBufferMap,
+) {
+  return async (): Promise<void> => {
+    if (buffers.size === 0) {
+      console.log("[gralkor] [auto-capture] gateway_stop — no buffers to flush");
+      return;
+    }
+
+    console.log("[gralkor] [auto-capture] gateway_stop — flushing", buffers.size, "buffer(s)");
+    const flushPromises: Promise<void>[] = [];
+    for (const [key, buffer] of buffers) {
+      flushPromises.push(
+        flushSessionBuffer(key, buffer, buffers, client).catch((err) => {
+          console.warn("[gralkor] [auto-capture] gateway_stop flush failed for key:", key, err instanceof Error ? err.message : err);
+        }),
+      );
+    }
+    await Promise.all(flushPromises);
   };
 }

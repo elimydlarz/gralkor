@@ -30,7 +30,6 @@ export interface AddEpisodeParams {
   episode_body: string;
   source_description: string;
   group_id: string;
-  reference_time?: string;
 }
 
 export interface Community {
@@ -128,7 +127,7 @@ export class GraphitiClient {
   async addEpisode(params: AddEpisodeParams): Promise<Episode> {
     return this.request("POST", "/episodes", {
       ...params,
-      reference_time: params.reference_time ?? new Date().toISOString(),
+      reference_time: new Date().toISOString(),
     });
   }
 

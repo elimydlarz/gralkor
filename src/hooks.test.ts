@@ -1,15 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
+  createBeforeResetHandler,
+  createSessionEndHandler,
+  createGatewayStopHandler,
+  flushSessionBuffer,
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
-  extractTimestamp,
   type HookAgentContext,
+  type SessionBufferMap,
+  type SessionBuffer,
 } from "./hooks.js";
 
 function mockClient(): {
@@ -44,60 +49,10 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
   };
 }
 
-describe("extractTimestamp", () => {
-  it("parses and strips valid timestamp prefix", () => {
-    const result = extractTimestamp("[timestamp: 2023-05-08T13:56:00] Hello");
-    expect(result.timestamp).toBe("2023-05-08T13:56:00");
-    expect(result.stripped).toBe("Hello");
-  });
-
-  it("returns null and original text when no timestamp prefix", () => {
-    const result = extractTimestamp("Just a normal message");
-    expect(result.timestamp).toBeNull();
-    expect(result.stripped).toBe("Just a normal message");
-  });
-
-  it("matches timestamp anywhere in the text", () => {
-    const result = extractTimestamp("Some text [timestamp: 2023-05-08T13:56:00] more");
-    expect(result.timestamp).toBe("2023-05-08T13:56:00");
-    expect(result.stripped).toBe("Some text more");
-  });
-
-  it("handles timestamp with no trailing text", () => {
-    const result = extractTimestamp("[timestamp: 2023-05-08T13:56:00] ");
-    expect(result.timestamp).toBe("2023-05-08T13:56:00");
-    expect(result.stripped).toBe("");
-  });
-
-  it("handles timestamp after other metadata", () => {
-    const result = extractTimestamp("prefix\n[timestamp: 2023-05-08T13:56:00] Hello");
-    expect(result.timestamp).toBe("2023-05-08T13:56:00");
-    expect(result.stripped).toBe("prefix\nHello");
-  });
-
-  it("does not match bare ISO date without [timestamp: ] wrapper", () => {
-    const result = extractTimestamp("2023-05-08T13:56:00 Hello");
-    expect(result.timestamp).toBeNull();
-    expect(result.stripped).toBe("2023-05-08T13:56:00 Hello");
-  });
-
-  it("does not match timestamp: without brackets", () => {
-    const result = extractTimestamp("timestamp: 2023-05-08T13:56:00 Hello");
-    expect(result.timestamp).toBeNull();
-    expect(result.stripped).toBe("timestamp: 2023-05-08T13:56:00 Hello");
-  });
-
-  it("does not match brackets without timestamp: label", () => {
-    const result = extractTimestamp("[2023-05-08T13:56:00] Hello");
-    expect(result.timestamp).toBeNull();
-    expect(result.stripped).toBe("[2023-05-08T13:56:00] Hello");
-  });
-});
-
 describe("extractMessagesFromCtx", () => {
   it("returns empty string when no messages", () => {
-    expect(extractMessagesFromCtx({}).text).toBe("");
-    expect(extractMessagesFromCtx({ messages: [] }).text).toBe("");
+    expect(extractMessagesFromCtx({})).toBe("");
+    expect(extractMessagesFromCtx({ messages: [] })).toBe("");
   });
 
   it("extracts a single user+assistant exchange", () => {
@@ -107,8 +62,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
       ],
     });
-    expect(result.text).toBe("User: Hello\nAssistant: Hi there");
-    expect(result.firstTimestamp).toBeNull();
+    expect(result).toBe("User: Hello\nAssistant: Hi there");
   });
 
   it("accumulates all messages in sequence", () => {
@@ -120,7 +74,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
       ],
     });
-    expect(result.text).toBe(
+    expect(result).toBe(
       "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
     );
   });
@@ -134,7 +88,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Done" }] },
       ],
     });
-    expect(result.text).toBe("User: Hello\nAssistant: Done");
+    expect(result).toBe("User: Hello\nAssistant: Done");
   });
 
   it("joins multiple text blocks within one message", () => {
@@ -146,7 +100,7 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result.text).toBe("User: Part 1\nPart 2");
+    expect(result).toBe("User: Part 1\nPart 2");
   });
 
   it("strips <gralkor-memory> XML from user messages", () => {
@@ -157,7 +111,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
       ],
     });
-    expect(result.text).toBe("User: What is the weather?\nAssistant: It's sunny.");
+    expect(result).toBe("User: What is the weather?\nAssistant: It's sunny.");
   });
 
   it("skips user message that is only <gralkor-memory> XML", () => {
@@ -168,7 +122,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
       ],
     });
-    expect(result.text).toBe("Assistant: Response");
+    expect(result).toBe("Assistant: Response");
   });
 
   it("does not strip <gralkor-memory> from assistant messages", () => {
@@ -178,7 +132,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: xml }] },
       ],
     });
-    expect(result.text).toBe(`Assistant: ${xml}`);
+    expect(result).toBe(`Assistant: ${xml}`);
   });
 
   it("strips multiple <gralkor-memory> blocks from a single user message", () => {
@@ -189,7 +143,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml1}${xml2}Tell me more` }] },
       ],
     });
-    expect(result.text).toBe("User: Tell me more");
+    expect(result).toBe("User: Tell me more");
   });
 
   it("handles <gralkor-memory> with nested newlines and special characters in facts", () => {
@@ -199,31 +153,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml}Hello John` }] },
       ],
     });
-    expect(result.text).toBe("User: Hello John");
-  });
-
-  it("strips timestamp from user messages and returns firstTimestamp", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What happened yesterday?" }] },
-        { role: "assistant", content: [{ type: "text", text: "You had a meeting." }] },
-      ],
-    });
-    expect(result.text).toBe("User: What happened yesterday?\nAssistant: You had a meeting.");
-    expect(result.firstTimestamp).toBe("2023-05-08T13:56:00");
-  });
-
-  it("returns first timestamp from multi-turn with timestamps", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] First question" }] },
-        { role: "assistant", content: [{ type: "text", text: "First answer" }] },
-        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T14:30:00] Second question" }] },
-        { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
-      ],
-    });
-    expect(result.text).toBe("User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer");
-    expect(result.firstTimestamp).toBe("2023-05-08T13:56:00");
+    expect(result).toBe("User: Hello John");
   });
 });
 
@@ -300,17 +230,6 @@ describe("extractUserMessageFromPrompt", () => {
     expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
   });
 
-  it("strips timestamp prefix from user message", () => {
-    expect(extractUserMessageFromPrompt({
-      prompt: "[timestamp: 2023-05-08T13:56:00] Tell me about the project",
-    })).toBe("Tell me about the project");
-  });
-
-  it("strips timestamp after metadata wrapper", () => {
-    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n[timestamp: 2023-05-08T13:56:00] Tell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
-  });
-
   it("falls back to messages when prompt is only metadata wrapper", () => {
     const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
     expect(extractUserMessageFromPrompt({
@@ -360,14 +279,6 @@ describe("extractLastUserMessageFromMessages", () => {
         { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n\nActual question' }] },
       ],
     })).toBe("Actual question");
-  });
-
-  it("strips timestamp prefix from last user message", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What happened?" }] },
-      ],
-    })).toBe("What happened?");
   });
 
   it("skips user messages that are only gralkor-memory", () => {
@@ -598,14 +509,24 @@ describe("before_agent_start handler", () => {
 
 describe("agent_end handler", () => {
   let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
 
   beforeEach(() => {
     client = mockClient();
     client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+    vi.useFakeTimers();
   });
 
-  it("captures conversation from messages array", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+  afterEach(() => {
+    // Clean up any remaining timers
+    for (const buf of buffers.values()) clearTimeout(buf.timer);
+    buffers.clear();
+    vi.useRealTimers();
+  });
+
+  it("buffers messages and flushes on idle timeout", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -613,13 +534,21 @@ describe("agent_end handler", () => {
       ],
     });
 
+    // Not flushed yet
+    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(buffers.size).toBe(1);
+
+    // Flush via flushSessionBuffer
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
     expect(call.episode_body).toBe("User: What is the weather?\nAssistant: I don't have access to weather data.");
   });
 
-  it("captures multi-turn conversations", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+  it("captures multi-turn conversations on flush", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -629,7 +558,9 @@ describe("agent_end handler", () => {
       ],
     });
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
     expect(call.episode_body).toBe(
       "User: What is the weather?\nAssistant: It's sunny.\nUser: And tomorrow?\nAssistant: Rain expected.",
@@ -637,7 +568,7 @@ describe("agent_end handler", () => {
   });
 
   it("uses agent's group_id partition", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler(
       {
         messages: [
@@ -648,6 +579,9 @@ describe("agent_end handler", () => {
       { agentId: "agent-42" },
     );
 
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     expect(client.addEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "agent-42" }),
     );
@@ -656,10 +590,10 @@ describe("agent_end handler", () => {
   it("skips when autoCapture is disabled", async () => {
     const config: GralkorConfig = {
       ...defaultConfig,
-      autoCapture: { enabled: false },
+      autoCapture: { enabled: false, idleTimeoutMs: 90_000 },
     };
 
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, config);
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, config, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -667,20 +601,22 @@ describe("agent_end handler", () => {
       ],
     });
 
+    expect(buffers.size).toBe(0);
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("skips when no messages extracted", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+  it("skips when no messages", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [],
     });
 
+    expect(buffers.size).toBe(0);
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("skips messages starting with /", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+  it("skips slash commands on flush", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "/status check everything" }] },
@@ -688,30 +624,40 @@ describe("agent_end handler", () => {
       ],
     });
 
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("propagates errors when Graphiti is unreachable", async () => {
+  it("propagates errors when Graphiti is unreachable on flush", async () => {
     client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
-
-    await expect(handler({
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
         { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
       ],
-    })).rejects.toThrow("ECONNREFUSED");
+    });
+
+    const [key, buffer] = [...buffers.entries()][0];
+    await expect(
+      flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient),
+    ).rejects.toThrow("ECONNREFUSED");
   });
 
-  it("formats episode body with auto-capture metadata", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+  it("formats episode body with auto-capture metadata on flush", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
         { role: "assistant", content: [{ type: "text", text: "It's sunny today." }] },
       ],
     });
+
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
     const call = client.addEpisode.mock.calls[0][0] as {
       episode_body: string;
@@ -724,7 +670,7 @@ describe("agent_end handler", () => {
   });
 
   it("strips <gralkor-memory> XML from user messages before storing", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>\n';
     await handler({
       messages: [
@@ -733,43 +679,17 @@ describe("agent_end handler", () => {
       ],
     });
 
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
     expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
     expect(call.episode_body).not.toContain("gralkor-memory");
   });
 
-  it("passes reference_time when timestamp is present in messages", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "[timestamp: 2023-05-08T13:56:00] What is the weather?" }] },
-        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
-      ],
-    });
-
-    expect(client.addEpisode).toHaveBeenCalledWith(
-      expect.objectContaining({ reference_time: "2023-05-08T13:56:00" }),
-    );
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
-  });
-
-  it("omits reference_time when no timestamp is present", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
-        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
-      ],
-    });
-
-    const call = client.addEpisode.mock.calls[0][0] as Record<string, unknown>;
-    expect(call).not.toHaveProperty("reference_time");
-  });
-
   it("falls back to 'default' group when agentId is missing", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "This is a long enough message to pass the filter" }] },
@@ -777,8 +697,667 @@ describe("agent_end handler", () => {
       ],
     });
 
+    const [key, buffer] = [...buffers.entries()][0];
+    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+
     expect(client.addEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "default" }),
     );
+  });
+
+  it("replaces buffer on subsequent agent_end calls (not append)", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First question" }] },
+        { role: "assistant", content: [{ type: "text", text: "First answer" }] },
+      ],
+    });
+
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First question" }] },
+        { role: "assistant", content: [{ type: "text", text: "First answer" }] },
+        { role: "user", content: [{ type: "text", text: "Second question" }] },
+        { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
+      ],
+    });
+
+    expect(buffers.size).toBe(1);
+    const buffer = buffers.values().next().value!;
+    expect(buffer.messages).toHaveLength(4);
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
+  it("flushes buffer on idle timeout", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
+      ],
+    });
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
+    expect(buffers.size).toBe(0);
+  });
+
+  it("resets idle timer on subsequent agent_end calls", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      ],
+    });
+
+    // Advance 80s (less than 90s timeout)
+    await vi.advanceTimersByTimeAsync(80_000);
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // Second agent_end resets the timer
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+        { role: "user", content: [{ type: "text", text: "Second" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
+      ],
+    });
+
+    // Advance another 80s — original timer would have fired but reset timer hasn't
+    await vi.advanceTimersByTimeAsync(80_000);
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // Advance remaining 10s to trigger the reset timer
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("Second");
+  });
+
+  it("uses sessionKey as buffer key when available", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    await handler(
+      {
+        messages: [
+          { role: "user", content: [{ type: "text", text: "Hello" }] },
+          { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+        ],
+      },
+      { agentId: "agent-42", sessionKey: "session-abc" },
+    );
+
+    expect(buffers.has("session-abc")).toBe(true);
+    expect(buffers.has("agent-42")).toBe(false);
+  });
+
+  it("uses agentId as buffer key when sessionKey is absent", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    await handler(
+      {
+        messages: [
+          { role: "user", content: [{ type: "text", text: "Hello" }] },
+          { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+        ],
+      },
+      { agentId: "agent-42" },
+    );
+
+    expect(buffers.has("agent-42")).toBe(true);
+  });
+
+  it("separates buffers for different sessions", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+
+    await handler(
+      { messages: [{ role: "user", content: [{ type: "text", text: "Session 1" }] }] },
+      { sessionKey: "session-1" },
+    );
+    await handler(
+      { messages: [{ role: "user", content: [{ type: "text", text: "Session 2" }] }] },
+      { sessionKey: "session-2" },
+    );
+
+    expect(buffers.size).toBe(2);
+  });
+});
+
+describe("session lifecycle (agent_end → boundary flush)", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+  });
+
+  afterEach(() => {
+    for (const buf of buffers.values()) clearTimeout(buf.timer);
+    buffers.clear();
+    vi.useRealTimers();
+  });
+
+  it("3 turns then /new → single episode with full conversation", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+
+    // Turn 1: agent_end delivers full session history (1 exchange)
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "What's my name?" }] },
+        { role: "assistant", content: [{ type: "text", text: "I don't know yet." }] },
+      ],
+    }, ctx);
+
+    // Turn 2: agent_end delivers full session history (2 exchanges)
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "What's my name?" }] },
+        { role: "assistant", content: [{ type: "text", text: "I don't know yet." }] },
+        { role: "user", content: [{ type: "text", text: "My name is Eli." }] },
+        { role: "assistant", content: [{ type: "text", text: "Nice to meet you, Eli!" }] },
+      ],
+    }, ctx);
+
+    // Turn 3: agent_end delivers full session history (3 exchanges)
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "What's my name?" }] },
+        { role: "assistant", content: [{ type: "text", text: "I don't know yet." }] },
+        { role: "user", content: [{ type: "text", text: "My name is Eli." }] },
+        { role: "assistant", content: [{ type: "text", text: "Nice to meet you, Eli!" }] },
+        { role: "user", content: [{ type: "text", text: "Remember that." }] },
+        { role: "assistant", content: [{ type: "text", text: "I'll remember your name is Eli." }] },
+      ],
+    }, ctx);
+
+    // No episodes created yet
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // User types /new → before_reset fires
+    await beforeReset({}, ctx);
+
+    // Exactly 1 episode with all 3 turns
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toBe(
+      "User: What's my name?\n" +
+      "Assistant: I don't know yet.\n" +
+      "User: My name is Eli.\n" +
+      "Assistant: Nice to meet you, Eli!\n" +
+      "User: Remember that.\n" +
+      "Assistant: I'll remember your name is Eli.",
+    );
+    expect(buffers.size).toBe(0);
+  });
+
+  it("3 turns then session_end → single episode", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+    }, agentCtx);
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+        { role: "user", content: [{ type: "text", text: "Bye" }] },
+        { role: "assistant", content: [{ type: "text", text: "Goodbye!" }] },
+      ],
+    }, agentCtx);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // New session starts → previous session ends
+    await sessionEnd({}, sessionCtx);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toContain("Hello");
+    expect(body).toContain("Bye");
+    expect(body).toContain("Goodbye!");
+    expect(buffers.size).toBe(0);
+  });
+
+  it("idle timeout after last turn → single episode (no boundary hook needed)", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
+      ],
+    }, ctx);
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "First" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
+        { role: "user", content: [{ type: "text", text: "Second" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
+      ],
+    }, ctx);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // User walks away — idle timeout fires
+    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toContain("First");
+    expect(body).toContain("Second");
+    expect(body).toContain("Reply 2");
+    expect(buffers.size).toBe(0);
+  });
+
+  it("two concurrent sessions flush independently", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+
+    const ctx1 = { agentId: "agent-1", sessionKey: "sess-1" };
+    const ctx2 = { agentId: "agent-1", sessionKey: "sess-2" };
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 1 message" }] },
+        { role: "assistant", content: [{ type: "text", text: "Session 1 reply" }] },
+      ],
+    }, ctx1);
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 2 message" }] },
+        { role: "assistant", content: [{ type: "text", text: "Session 2 reply" }] },
+      ],
+    }, ctx2);
+
+    expect(buffers.size).toBe(2);
+
+    // Reset session 1 only
+    await beforeReset({}, ctx1);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body1).toContain("Session 1");
+    expect(buffers.size).toBe(1);
+    expect(buffers.has("sess-2")).toBe(true);
+
+    // Session 2 flushes on idle
+    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
+    expect(body2).toContain("Session 2");
+    expect(buffers.size).toBe(0);
+  });
+
+  it("gateway_stop flushes all active sessions", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const gatewayStop = createGatewayStopHandler(client as unknown as GraphitiClient, buffers);
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Sess A" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply A" }] },
+      ],
+    }, { sessionKey: "sess-a" });
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Sess B" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply B" }] },
+      ],
+    }, { sessionKey: "sess-b" });
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    await gatewayStop();
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    expect(buffers.size).toBe(0);
+  });
+
+  it("boundary flush prevents subsequent idle flush (no double-flush)", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+    }, ctx);
+
+    // Boundary flush
+    await beforeReset({}, ctx);
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+
+    // Idle timer fires — buffer already cleared, no double-flush
+    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("strips gralkor-memory XML across accumulated turns", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Name is Eli\n</gralkor-memory>\n';
+
+    // Turn 1: has injected memory context
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}What's my name?` }] },
+        { role: "assistant", content: [{ type: "text", text: "Your name is Eli." }] },
+      ],
+    }, ctx);
+
+    // Turn 2: also has injected memory context
+    await agentEnd({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}What's my name?` }] },
+        { role: "assistant", content: [{ type: "text", text: "Your name is Eli." }] },
+        { role: "user", content: [{ type: "text", text: `${xml}And my last name?` }] },
+        { role: "assistant", content: [{ type: "text", text: "I don't know your last name." }] },
+      ],
+    }, ctx);
+
+    await beforeReset({}, ctx);
+
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).not.toContain("gralkor-memory");
+    expect(body).toBe(
+      "User: What's my name?\n" +
+      "Assistant: Your name is Eli.\n" +
+      "User: And my last name?\n" +
+      "Assistant: I don't know your last name.",
+    );
+  });
+});
+
+describe("flushSessionBuffer", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+
+  beforeEach(() => {
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+  });
+
+  it("flushes buffer and removes it from the map", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 0),
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episode_body: "User: Hello\nAssistant: Hi",
+        source_description: "auto-capture",
+        group_id: "agent-42",
+      }),
+    );
+    expect(buffers.size).toBe(0);
+  });
+
+  it("skips flush when extracted conversation is empty", async () => {
+    const buffer: SessionBuffer = {
+      messages: [],
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 0),
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(buffers.size).toBe(0);
+  });
+
+  it("skips flush when first user message is a slash command", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "/status check" }] },
+        { role: "assistant", content: [{ type: "text", text: "All good." }] },
+      ],
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 0),
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(buffers.size).toBe(0);
+  });
+
+  it("clears the timer on flush", async () => {
+    const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+    const timer = setTimeout(() => {}, 99999);
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      lastSeenAt: Date.now(),
+      timer,
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(timer);
+    clearTimeoutSpy.mockRestore();
+    clearTimeout(timer);
+  });
+});
+
+describe("before_reset handler", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+
+  beforeEach(() => {
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+  });
+
+  it("flushes buffer for the session being reset", async () => {
+    buffers.set("session-abc", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Important conversation" }] },
+        { role: "assistant", content: [{ type: "text", text: "Noted." }] },
+      ],
+      agentId: "agent-42",
+      sessionKey: "session-abc",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+
+    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    await handler({}, { sessionKey: "session-abc" });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episode_body: "User: Important conversation\nAssistant: Noted.",
+        group_id: "agent-42",
+      }),
+    );
+    expect(buffers.size).toBe(0);
+  });
+
+  it("does nothing when no buffer exists for the session", async () => {
+    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    await handler({}, { sessionKey: "nonexistent" });
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
+  it("does not affect other session buffers", async () => {
+    buffers.set("session-1", {
+      messages: [{ role: "user", content: [{ type: "text", text: "Session 1" }] }],
+      sessionKey: "session-1",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+    buffers.set("session-2", {
+      messages: [{ role: "user", content: [{ type: "text", text: "Session 2" }] }],
+      sessionKey: "session-2",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+
+    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
+    await handler({}, { sessionKey: "session-1" });
+
+    expect(buffers.size).toBe(1);
+    expect(buffers.has("session-2")).toBe(true);
+
+    clearTimeout(buffers.get("session-2")!.timer);
+  });
+});
+
+describe("session_end handler", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+
+  beforeEach(() => {
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+  });
+
+  it("flushes buffer for the ended session", async () => {
+    buffers.set("session-abc", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Conversation" }] },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+      agentId: "agent-42",
+      sessionKey: "session-abc",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(buffers.size).toBe(0);
+  });
+
+  it("does nothing when no buffer exists", async () => {
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+});
+
+describe("gateway_stop handler", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+
+  beforeEach(() => {
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+  });
+
+  it("flushes all buffers", async () => {
+    buffers.set("session-1", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 1 msg" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
+      ],
+      agentId: "agent-1",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+    buffers.set("session-2", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 2 msg" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
+      ],
+      agentId: "agent-2",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+
+    const handler = createGatewayStopHandler(client as unknown as GraphitiClient, buffers);
+    await handler();
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    expect(buffers.size).toBe(0);
+  });
+
+  it("does nothing when no buffers exist", async () => {
+    const handler = createGatewayStopHandler(client as unknown as GraphitiClient, buffers);
+    await handler();
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
+  it("continues flushing other buffers when one fails", async () => {
+    client.addEpisode
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockResolvedValueOnce({});
+
+    buffers.set("session-1", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 1" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
+      ],
+      agentId: "agent-1",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+    buffers.set("session-2", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Session 2" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
+      ],
+      agentId: "agent-2",
+      lastSeenAt: Date.now(),
+      timer: setTimeout(() => {}, 99999),
+    });
+
+    const handler = createGatewayStopHandler(client as unknown as GraphitiClient, buffers);
+    await handler();
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    expect(buffers.size).toBe(0);
   });
 });
