@@ -4,14 +4,14 @@
 
 An OpenClaw plugin that gives AI agents persistent, temporally-aware memory via knowledge graphs. Uses Graphiti (knowledge graph framework by Zep) backed by FalkorDB (in-memory graph database).
 
-A memory plugin (`kind: "memory"`) replacing native `memory-core` with three tools: `memory_search` (unified native Markdown + Graphiti graph), `memory_get` (native Markdown only), `memory_add` (knowledge graph). Auto-recall searches both backends before each turn; auto-capture stores full multi-turn conversations to the graph after each turn.
+A memory plugin (`kind: "memory"`) replacing native `memory-core` with three tools: `memory_search` (unified native Markdown + Graphiti graph), `memory_get` (native Markdown only), `memory_add` (knowledge graph). Auto-recall searches both backends before each turn; auto-capture buffers session messages and flushes a single episode per session at session boundaries or on idle timeout.
 
 | | |
 |---|---|
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
 | Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph) |
-| Hooks | `before_agent_start` (auto-recall), `agent_end` (auto-capture) |
+| Hooks | `before_agent_start` (auto-recall), `agent_end`/`before_reset`/`session_end`/`gateway_stop` (auto-capture) |
 | CLI | `openclaw plugins memory`, `openclaw plugins gralkor` |
 
 ## Mental Model
@@ -25,6 +25,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 | Entity (node) | `EntityNode` | Person, concept, project, or thing extracted from episodes. Has a `summary`. |
 | Community | `Community` | Cluster of related entities. Has `name` and `summary`. Built via `build-communities` endpoint. |
 | Group | `string` | Partition key derived from `agentId` (falls back to `"default"`). One graph per agent. |
+| SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session, with idle timer. Keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on boundary or idle timeout. |
 
 ### Plugin Registration
 
@@ -46,34 +47,60 @@ The tool factory wraps native `memory_search` (from `api.runtime.tools`) to also
 
 Other API: `api.runtime.{media, config, system, tts, channel, logging, state}`. No LLM inference API — plugins needing LLM must call external APIs directly.
 
-Other hooks (unused by gralkor): `before_model_resolve`, `before_prompt_build`, `llm_input` (read-only), `llm_output` (read-only).
-
 ### Hook Behavior
 
-Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `{ agentId?, sessionKey?, sessionId?, workspaceDir?, messageProvider? }`.
+Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `{ agentId?, sessionKey?, sessionId?, workspaceDir?, messageProvider? }`. Session hooks receive `PluginHookSessionContext` with `{ agentId?, sessionId, sessionKey? }`.
 
-| Hook | `event` shape | Notes |
-|---|---|---|
-| `before_agent_start` | `{ prompt, messages? }` | Fires **twice** per run (before session, before LLM). Only 2nd call's `prependContext` is used. Must be idempotent. |
-| `agent_end` | `{ messages, success, error, durationMs }` | **Fire-and-forget** — gateway doesn't await. Errors caught by `.catch()`, don't block gateway. No `AbortSignal` passed (but `AbortError` observed from Node HTTP layer). |
+**All available OpenClaw hooks** (source: `/tmp/openclaw/src/plugins/types.ts`):
+
+| Category | Hook | `event` shape | Execution | Notes |
+|---|---|---|---|---|
+| Agent | `before_model_resolve` | `{ provider?, model? }` | Sequential | Override provider/model before resolution |
+| Agent | `before_prompt_build` | `{ prompt, messages? }` | Sequential | Inject context before prompt submission |
+| Agent | `before_agent_start` | `{ prompt, messages? }` | Sequential | Legacy — combines model resolve + prompt build. Fires **twice** per run; only 2nd call's `prependContext` is used. Must be idempotent. |
+| Agent | `llm_input` | LLM payload | Fire-and-forget | Read-only observation of LLM input |
+| Agent | `llm_output` | LLM payload | Fire-and-forget | Read-only observation of LLM output |
+| Agent | `agent_end` | `{ messages, success, error, durationMs }` | Fire-and-forget | Fires after **every agent run** (each user message → response cycle), not per session. Gateway doesn't await. `AbortError` observed from Node HTTP layer. |
+| Compaction | `before_compaction` | `{ sessionFile? }` | Fire-and-forget | Fires before message compaction; `sessionFile` available for async reads |
+| Compaction | `after_compaction` | `{ ... }` | Fire-and-forget | Fires after compaction completes |
+| Compaction | `before_reset` | `{ sessionFile?, messages?, reason? }` | Fire-and-forget | Fires on `/new` or `/reset` **before messages are lost**. Has full `messages` array. |
+| Message | `message_received` | `{ ... }` | Fire-and-forget | Incoming message observation |
+| Message | `message_sending` | `{ ... }` | Sequential | Can modify or cancel outgoing messages |
+| Message | `message_sent` | `{ ... }` | Fire-and-forget | Outgoing message observation |
+| Tool | `before_tool_call` | `{ ... }` | Sequential | Can modify or block tool calls |
+| Tool | `after_tool_call` | `{ ... }` | Fire-and-forget | Tool call completion observation |
+| Tool | `tool_result_persist` | `{ ... }` | **Synchronous** | Hot path — must not return Promise |
+| Tool | `before_message_write` | `{ ... }` | **Synchronous** | Hot path — must not return Promise |
+| Session | `session_start` | `{ sessionId, sessionKey?, resumedFrom? }` | Fire-and-forget | New session created |
+| Session | `session_end` | `{ sessionId, sessionKey?, messageCount, durationMs? }` | Fire-and-forget | Session replaced or reset. **No messages payload** — metadata only. Fires when `isNewSession=true` and previous session exists. |
+| Subagent | `subagent_spawning` | `{ ... }` | Sequential | Before subagent spawn |
+| Subagent | `subagent_delivery_target` | `{ ... }` | Sequential | Message routing for subagent |
+| Subagent | `subagent_spawned` | `{ ... }` | Fire-and-forget | After subagent spawned |
+| Subagent | `subagent_ended` | `{ ... }` | Fire-and-forget | Subagent completed |
+| Gateway | `gateway_start` | `{ ... }` | Fire-and-forget | Gateway process started |
+| Gateway | `gateway_stop` | `{ ... }` | Fire-and-forget | Gateway process shutting down |
+
+**Hooks used by gralkor:** `before_agent_start` (auto-recall), `agent_end` + `before_reset` + `session_end` + `gateway_stop` (auto-capture with session buffering).
 
 `event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"toolCall"`, etc.
 
 ### Data Lifecycle
 
 **Auto-recall** (`before_agent_start`):
-1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), metadata wrappers (`/^.+?\(untrusted metadata\):/`), and benchmark timestamp prefixes (`[timestamp: 2023-05-08T13:56:00]`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks and timestamp prefixes from fallback.
+1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), metadata wrappers (`/^.+?\(untrusted metadata\):/`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks from fallback.
 2. Capture `ctx.agentId` into shared group ID state.
 3. Skip if disabled or no user message.
 4. Search `client.search()` (combined hybrid search: facts, nodes, episodes, communities) and native `memory_search` in parallel.
 5. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 6. On graph failure: log warning, skip. Native failures caught independently.
 
-**Auto-capture** (`agent_end`):
-1. `extractMessagesFromCtx()` walks `event.messages`, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML and benchmark timestamp prefixes (`[timestamp: ...]`) from user messages. Returns `{ text, firstTimestamp }`. **Silently drops media** (images, video) — only `type === "text"` blocks.
-2. Skip if disabled, empty, or first user message starts with `/`.
-3. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to `firstTimestamp` (if present). When no timestamp prefix exists, `reference_time` is omitted and the client defaults to wall-clock time.
-4. Errors propagate to gateway (intentional — gateway catches via `.catch()`).
+**Auto-capture** (session buffering via `agent_end` → flush on boundary/idle):
+1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins). An idle timer (`idleTimeoutMs`, default 90s) triggers flush if no new `agent_end` fires.
+2. `before_reset`, `session_end`, and `gateway_stop` handlers flush buffered sessions immediately via `flushSessionBuffer()`.
+3. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
+4. Skip if disabled, empty, or first user message starts with `/`.
+5. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
+6. Flush errors: idle timer catches and logs; boundary handlers let errors propagate.
 
 ### Graph Partitioning
 
@@ -112,7 +139,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 |---|---|
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
-| auto-capture | `agent_end` hook stores non-trivial multi-turn exchanges as episodes |
+| auto-capture | `agent_end` buffers messages per session; flushed as episodes on idle timeout, `before_reset`, `session_end`, or `gateway_stop` |
 | auto-recall | `before_agent_start` searches graph (facts, nodes, communities) + native Markdown in parallel, injects combined results. Episodes excluded from auto-recall. |
 | unified-search | `memory_search` combines native Markdown + graph results (facts, nodes, episodes, communities via `COMBINED_HYBRID_SEARCH_RRF`) |
 | combined-hybrid-search | `POST /search` uses `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_RRF` — searches across edges, nodes, episodes, communities using BM25 + cosine similarity with RRF reranking. Config copied per-request to avoid mutating the module-level singleton. |
@@ -120,9 +147,8 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
 | temporal-awareness | Facts have `valid_at`/`invalid_at`; Graphiti tracks knowledge changes |
-| benchmark-timestamps | `[timestamp: ISO]` prefix in messages parsed by `extractTimestamp()`, stripped from content, passed as `reference_time` to episodes. Auto-recall strips for clean search queries. Absent timestamps preserve wall-clock default. |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
-| error-propagation | Auto-capture lets Graphiti errors propagate to gateway |
+| error-propagation | Auto-capture flush errors propagate at session boundaries; idle flush errors are logged |
 
 ### Cross-functional
 
@@ -135,7 +161,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
 | message-filtering | Auto-capture skips empty conversations and `/`-prefixed first messages |
-| capture-hygiene | Strips `<gralkor-memory>` and `[timestamp: ...]` prefixes from user messages before storing (prevents feedback loop / leaking benchmark metadata) |
+| capture-hygiene | Strips `<gralkor-memory>` from user messages before storing (prevents feedback loop) |
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
 | bundled-arm64-wheel | `make pack` builds falkordblite wheel for linux/arm64 via Docker; server manager force-installs after `uv sync` |
@@ -187,6 +213,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
+| `autoCapture.idleTimeoutMs` | number | `90000` | Flush buffered session after this many ms of inactivity |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
 | `dataDir` | string | `{pluginDir}/.gralkor-data` | Backend data directory (venv, FalkorDB files) |

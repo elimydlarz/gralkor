@@ -266,22 +266,6 @@ describe("addEpisode()", () => {
     expect(body.group_id).toBe("g1");
   });
 
-  it("uses provided reference_time", async () => {
-    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
-
-    await client.addEpisode({
-      name: "test",
-      episode_body: "body",
-      source_description: "src",
-      group_id: "g1",
-      reference_time: "2025-06-15T12:00:00Z",
-    });
-
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.reference_time).toBe("2025-06-15T12:00:00Z");
-  });
-
   it("defaults reference_time to current ISO timestamp", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
     fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));

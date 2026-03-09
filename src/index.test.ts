@@ -82,7 +82,7 @@ describe("register()", () => {
 
     // 2 registerTool calls: 1 factory (native memory, wrapped) + 1 plain (memory_add)
     expect(api.registerTool).toHaveBeenCalledTimes(2);
-    expect(api.on).toHaveBeenCalledTimes(2);
+    expect(api.on).toHaveBeenCalledTimes(5);
     expect(api.registerService).toHaveBeenCalledOnce();
     // 2 registerCli calls: memory CLI + gralkor CLI
     expect(api.registerCli).toHaveBeenCalledTimes(2);
@@ -117,7 +117,7 @@ describe("register()", () => {
     const eventNames = api.on.mock.calls.map(
       (call: unknown[]) => call[0] as string,
     );
-    expect(eventNames).toEqual(["before_agent_start", "agent_end"]);
+    expect(eventNames).toEqual(["before_agent_start", "agent_end", "before_reset", "session_end", "gateway_stop"]);
 
     // Handlers should be functions
     for (const call of api.on.mock.calls) {
