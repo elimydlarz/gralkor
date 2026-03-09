@@ -519,8 +519,6 @@ describe("agent_end handler", () => {
   });
 
   afterEach(() => {
-    // Clean up any remaining timers
-    for (const buf of buffers.values()) clearTimeout(buf.timer);
     buffers.clear();
     vi.useRealTimers();
   });
