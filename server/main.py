@@ -217,6 +217,16 @@ def _serialize_episode(ep: EpisodicNode) -> dict[str, Any]:
     }
 
 
+def _serialize_community(c: CommunityNode) -> dict[str, Any]:
+    return {
+        "uuid": c.uuid,
+        "name": c.name,
+        "summary": c.summary,
+        "group_id": c.group_id,
+        "created_at": _ts(c.created_at),
+    }
+
+
 # ── Endpoints ─────────────────────────────────────────────────
 
 
