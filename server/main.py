@@ -159,27 +159,32 @@ app = FastAPI(title="Gralkor Graphiti Server", lifespan=lifespan)
 
 # ── Rate-limit passthrough ───────────────────────────────────
 
-def _is_rate_limit_error(exc: Exception) -> bool:
-    """Detect upstream rate-limit errors from any LLM provider."""
-    # openai.RateLimitError, anthropic.RateLimitError, etc.
-    return type(exc).__name__ == "RateLimitError" or (
-        hasattr(exc, "status_code") and getattr(exc, "status_code", None) == 429
-    )
 
-
-@app.exception_handler(Exception)
-async def _rate_limit_passthrough(request, exc: Exception):
-    """Return 429 for upstream rate-limit errors instead of 500."""
-    # Walk the exception chain (cause / context)
+def _find_rate_limit_error(exc: Exception) -> Exception | None:
+    """Walk exception chain to find an upstream rate-limit error."""
     current: Exception | None = exc
-    while current is not None:
-        if _is_rate_limit_error(current):
-            msg = str(current).split("\n")[0][:200]
-            return JSONResponse(status_code=429, content={"detail": msg})
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        # Match openai.RateLimitError, anthropic.RateLimitError, etc.
+        if type(current).__name__ == "RateLimitError" or (
+            hasattr(current, "status_code") and getattr(current, "status_code", None) == 429
+        ):
+            return current
         current = current.__cause__ or current.__context__
-        if current is exc:
-            break
-    raise exc
+    return None
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        rl = _find_rate_limit_error(exc)
+        if rl is not None:
+            msg = str(rl).split("\n")[0][:200]
+            return JSONResponse(status_code=429, content={"detail": msg})
+        raise
 
 
 # ── Request / response models ────────────────────────────────
