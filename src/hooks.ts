@@ -284,6 +284,7 @@ export async function flushSessionBuffer(
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
   console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
+  console.log("[gralkor] [auto-capture] episode body:\n" + conversation);
 
   // Remove buffer before API call so errors don't leave stale entries
   buffers.delete(key);
