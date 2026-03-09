@@ -113,8 +113,9 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
 | auto-capture | `agent_end` hook stores non-trivial multi-turn exchanges as episodes |
-| auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results |
-| unified-search | `memory_search` combines native Markdown + graph facts |
+| auto-recall | `before_agent_start` searches graph (facts, nodes, communities) + native Markdown in parallel, injects combined results. Episodes excluded from auto-recall. |
+| unified-search | `memory_search` combines native Markdown + graph results (facts, nodes, episodes, communities via `COMBINED_HYBRID_SEARCH_RRF`) |
+| combined-hybrid-search | `POST /search` uses `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_RRF` — searches across edges, nodes, episodes, communities using BM25 + cosine similarity with RRF reranking. Config copied per-request to avoid mutating the module-level singleton. |
 | manual-store | `memory_add` creates episodes; Graphiti extracts structure |
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
