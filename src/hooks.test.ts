@@ -409,7 +409,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("includes native memory results when getNativeSearch is provided", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
     const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
     const getNativeSearch = () => nativeSearch;
 
@@ -502,7 +502,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("searches using key terms from user message", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
@@ -516,7 +516,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("returns undefined when no results from any source", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
@@ -540,7 +540,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("respects maxResults config", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
     const config: GralkorConfig = {
       ...defaultConfig,
       autoRecall: { enabled: true, maxResults: 3 },
@@ -560,7 +560,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("passes full user message as search query", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
@@ -573,7 +573,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("calls setGroupId with agentId when provided", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
@@ -586,7 +586,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("does not call setGroupId when agentId is missing", async () => {
-    client.search.mockResolvedValue([]);
+    client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
