@@ -76,7 +76,7 @@ describe("registerCli", () => {
 
   describe("search command", () => {
     it("passes group_id to client.search", async () => {
-      client.search.mockResolvedValue([]);
+      client.search.mockResolvedValue(emptySearchResults());
 
       const searchAction = actions.get("search <group_id> <query...>");
       expect(searchAction).toBeDefined();
@@ -87,9 +87,10 @@ describe("registerCli", () => {
     });
 
     it("displays facts from results", async () => {
-      client.search.mockResolvedValue([
-        { fact: "Alice likes cats", invalid_at: null },
-      ]);
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [{ fact: "Alice likes cats", invalid_at: null }],
+      });
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -104,7 +105,7 @@ describe("registerCli", () => {
     });
 
     it("shows 'No results found.' when graph returns nothing", async () => {
-      client.search.mockResolvedValue([]);
+      client.search.mockResolvedValue(emptySearchResults());
 
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
