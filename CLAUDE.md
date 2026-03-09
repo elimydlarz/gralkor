@@ -142,7 +142,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 |---|---|
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
-| auto-capture | `agent_end` buffers messages per session; flushed as single episode on session boundary (`before_reset`, `session_end`, `gateway_stop`) |
+| auto-capture | `agent_end` buffers messages per session; flushed as single episode on `session_end` |
 | auto-recall | `before_agent_start` searches graph (facts, nodes, communities) + native Markdown in parallel, injects combined results. Episodes excluded from auto-recall. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph results (facts, nodes, episodes, communities via `COMBINED_HYBRID_SEARCH_RRF`) |
 | combined-hybrid-search | `POST /search` uses `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_RRF` — searches across edges, nodes, episodes, communities using BM25 + cosine similarity with RRF reranking. Config copied per-request to avoid mutating the module-level singleton. |
