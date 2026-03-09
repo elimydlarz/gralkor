@@ -947,8 +947,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Name is Eli\n</gralkor-memory>\n';
 
     // Turn 1: has injected memory context
@@ -957,7 +958,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
         { role: "user", content: [{ type: "text", text: `${xml}What's my name?` }] },
         { role: "assistant", content: [{ type: "text", text: "Your name is Eli." }] },
       ],
-    }, ctx);
+    }, agentCtx);
 
     // Turn 2: also has injected memory context
     await agentEnd({
@@ -967,9 +968,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
         { role: "user", content: [{ type: "text", text: `${xml}And my last name?` }] },
         { role: "assistant", content: [{ type: "text", text: "I don't know your last name." }] },
       ],
-    }, ctx);
+    }, agentCtx);
 
-    await beforeReset({}, ctx);
+    await sessionEnd({}, sessionCtx);
 
     const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
     expect(body).not.toContain("gralkor-memory");
