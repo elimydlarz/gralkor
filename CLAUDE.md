@@ -11,7 +11,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
 | Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph) |
-| Hooks | `before_agent_start` (auto-recall), `agent_end`/`before_reset`/`session_end`/`gateway_stop` (auto-capture) |
+| Hooks | `before_agent_start` (auto-recall), `agent_end`/`session_end` (auto-capture) |
 | CLI | `openclaw plugins memory`, `openclaw plugins gralkor` |
 
 ## Mental Model
