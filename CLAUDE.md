@@ -34,7 +34,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 2. Create `GraphitiClient`, resolve `pluginDir` from `import.meta.url`.
 3. `registerFullPlugin()` creates shared state (`getGroupId`/`setGroupId`, `getNativeSearch`/`setNativeSearch`), then registers tools, hooks, server service, and CLI.
 
-The tool factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.searchFacts()` in parallel. The native search reference is shared with auto-recall via closure.
+The tool factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.search()` in parallel. The native search reference is shared with auto-recall via closure.
 
 ### Plugin API Contract
 
