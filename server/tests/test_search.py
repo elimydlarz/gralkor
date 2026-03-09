@@ -132,6 +132,45 @@ async def test_search_backend_error_propagates(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_search_rate_limit_returns_429(client, mock_graphiti):
+    """Upstream RateLimitError is returned as HTTP 429, not 500."""
+
+    class RateLimitError(Exception):
+        """Simulates openai.RateLimitError."""
+        status_code = 429
+
+    mock_graphiti.search_.side_effect = RateLimitError("insufficient_quota")
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 429
+    assert "insufficient_quota" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_search_wrapped_rate_limit_returns_429(client, mock_graphiti):
+    """RateLimitError wrapped in another exception still returns 429."""
+
+    class RateLimitError(Exception):
+        status_code = 429
+
+    cause = RateLimitError("quota exceeded")
+    wrapper = RuntimeError("search failed")
+    wrapper.__cause__ = cause
+    mock_graphiti.search_.side_effect = wrapper
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 429
+
+
+@pytest.mark.asyncio
 async def test_search_returns_empty_results(client, mock_graphiti):
     mock_graphiti.search_.return_value = SimpleNamespace(
         edges=[], nodes=[], episodes=[], communities=[],
