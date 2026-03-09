@@ -787,7 +787,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   });
 
   afterEach(() => {
-    for (const buf of buffers.values()) clearTimeout(buf.timer);
     buffers.clear();
     vi.useRealTimers();
   });
