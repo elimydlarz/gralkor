@@ -25,7 +25,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 | Entity (node) | `EntityNode` | Person, concept, project, or thing extracted from episodes. Has a `summary`. |
 | Community | `Community` | Cluster of related entities. Has `name` and `summary`. Built via `build-communities` endpoint. |
 | Group | `string` | Partition key derived from `agentId` (falls back to `"default"`). One graph per agent. |
-| SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session, with idle timer. Keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on boundary or idle timeout. |
+| SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session. Keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on session boundary. |
 
 ### Plugin Registration
 
