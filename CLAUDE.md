@@ -92,7 +92,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 3. Skip if disabled or no user message.
 4. **Double-fire dedup:** `before_agent_start` fires twice per agent run (OpenClaw behavior). The handler caches the result from the 1st fire for 5 seconds; if the same query arrives within that window, it returns the cached result without making API calls. This halves per-turn search cost.
 5. Search `client.search()` (facts only — uses `graphiti.search()` edge-based hybrid) and native `memory_search` in parallel.
-6. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
+6. Include facts (and any nodes/communities if present) in context. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 7. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
