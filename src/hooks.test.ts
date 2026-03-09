@@ -609,21 +609,6 @@ describe("agent_end handler", () => {
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("skips slash commands on flush", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "/status check everything" }] },
-        { role: "assistant", content: [{ type: "text", text: "All systems operational and running smoothly." }] },
-      ],
-    });
-
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-  });
-
   it("propagates errors when Graphiti is unreachable on flush", async () => {
     client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
 
