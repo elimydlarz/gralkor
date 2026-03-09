@@ -65,8 +65,8 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 1. Extract user message from `event.prompt`: strips `System:` lines, session-start lines (`"A new session was started..."`), metadata wrappers (`/^.+?\(untrusted metadata\):/`), and benchmark timestamp prefixes (`[timestamp: 2023-05-08T13:56:00]`). Falls back to last user message from `event.messages` if prompt yields nothing. Strips `<gralkor-memory>` blocks and timestamp prefixes from fallback.
 2. Capture `ctx.agentId` into shared group ID state.
 3. Skip if disabled or no user message.
-4. Search `client.searchFacts()` and native `memory_search` in parallel.
-5. Return combined results in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
+4. Search `client.search()` (combined hybrid search: facts, nodes, episodes, communities) and native `memory_search` in parallel.
+5. Include facts, entities, and communities in context (episodes excluded — raw conversation text is noisy/redundant with native memory). Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 6. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (`agent_end`):
