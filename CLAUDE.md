@@ -93,7 +93,7 @@ Startup errors caught and logged — plugin degrades gracefully (tools/hooks see
 
 ### Communication Path
 
-Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately) → Graphiti REST API → FalkorDB.
+Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately) → Graphiti REST API → FalkorDB. Single `search()` method calls `POST /search` returning `{ facts, nodes, episodes, communities }`.
 
 **Embedded mode (default):** No `FALKORDB_URI` → imports `AsyncFalkorDB` from `redislite` module → embedded DB at `{FALKORDB_DATA_DIR}/gralkor.db`.
 **Legacy Docker mode:** `FALKORDB_URI` set → TCP to external FalkorDB.
