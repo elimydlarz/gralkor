@@ -187,22 +187,30 @@ export function createBeforeAgentStartHandler(
     try {
       const limit = config.autoRecall.maxResults;
 
-      // Search graph facts and native markdown in parallel
+      // Search graph and native markdown in parallel
       const nativeSearch = getNativeSearch?.();
-      const [facts, nativeResult] = await Promise.all([
-        client.searchFacts(userMessage, [groupId], limit),
+      const [searchResults, nativeResult] = await Promise.all([
+        client.search(userMessage, [groupId], limit),
         nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
           console.warn("[gralkor] [auto-recall] native search failed:", err instanceof Error ? err.message : err);
           return null;
         }) : Promise.resolve(null),
       ]);
 
-      console.log("[gralkor] [auto-recall] search returned", facts.length, "facts — groupId:", groupId);
+      console.log("[gralkor] [auto-recall] search returned", searchResults.facts.length, "facts,", searchResults.nodes.length, "nodes,", searchResults.communities.length, "communities — groupId:", groupId);
 
       const sections: string[] = [];
 
-      if (facts.length > 0) {
-        sections.push("Facts from knowledge graph:\n" + facts.map((f) => `- ${f.fact}`).join("\n"));
+      if (searchResults.facts.length > 0) {
+        sections.push("Facts from knowledge graph:\n" + searchResults.facts.map((f) => `- ${f.fact}`).join("\n"));
+      }
+
+      if (searchResults.nodes.length > 0) {
+        sections.push("Entities from knowledge graph:\n" + searchResults.nodes.map((n) => `- ${n.name}: ${n.summary}`).join("\n"));
+      }
+
+      if (searchResults.communities.length > 0) {
+        sections.push("Topics from knowledge graph:\n" + searchResults.communities.map((c) => `- ${c.name}: ${c.summary}`).join("\n"));
       }
 
       if (nativeResult) {
