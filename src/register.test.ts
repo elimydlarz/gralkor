@@ -39,17 +39,19 @@ function createMockProgram() {
 describe("registerCli", () => {
   let client: {
     health: ReturnType<typeof vi.fn>;
-    searchFacts: ReturnType<typeof vi.fn>;
+    search: ReturnType<typeof vi.fn>;
     clearGraph: ReturnType<typeof vi.fn>;
   };
   let config: GralkorConfig;
   let api: PluginApiBase;
   let actions: Map<string, (...args: any[]) => Promise<void>>;
 
+  const emptySearchResults = () => ({ facts: [], nodes: [], episodes: [], communities: [] });
+
   beforeEach(() => {
     client = {
       health: vi.fn(),
-      searchFacts: vi.fn().mockResolvedValue([]),
+      search: vi.fn().mockResolvedValue(emptySearchResults()),
       clearGraph: vi.fn().mockResolvedValue(undefined),
     };
     config = {
