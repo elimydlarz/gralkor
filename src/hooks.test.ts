@@ -18,14 +18,17 @@ function mockClient(): {
   return {
     health: vi.fn(),
     addEpisode: vi.fn(),
-    searchFacts: vi.fn(),
-    searchNodes: vi.fn(),
+    search: vi.fn(),
     getEpisodes: vi.fn(),
     deleteEpisode: vi.fn(),
     deleteEdge: vi.fn(),
     clearGraph: vi.fn(),
     getStatus: vi.fn(),
   };
+}
+
+function emptySearchResults() {
+  return { facts: [], nodes: [], episodes: [], communities: [] };
 }
 
 function makeFact(overrides: Partial<Fact> = {}): Fact {
