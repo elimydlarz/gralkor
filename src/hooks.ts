@@ -251,18 +251,12 @@ export function createBeforeAgentStartHandler(
 
 /**
  * Session buffer entry — holds the latest message snapshot for a session,
- * flushed as a single episode at session boundaries or on idle timeout.
- *
- * `flushedMessageCount` tracks how many messages from the front of the array
- * have already been flushed, so incremental flushes only send new messages.
+ * flushed as a single episode on session boundary events.
  */
 export interface SessionBuffer {
   messages: MessageEntry[];
   agentId?: string;
   sessionKey?: string;
-  lastSeenAt: number;
-  flushedMessageCount: number;
-  timer: ReturnType<typeof setTimeout>;
 }
 
 export type SessionBufferMap = Map<string, SessionBuffer>;
@@ -273,7 +267,7 @@ function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): strin
 
 /**
  * Flush a single session buffer → episode, then delete it from the map.
- * Shared by all flush triggers (idle timer, before_reset, session_end, gateway_stop).
+ * Called by boundary handlers: before_reset, session_end, gateway_stop.
  */
 export async function flushSessionBuffer(
   key: string,
@@ -281,37 +275,25 @@ export async function flushSessionBuffer(
   buffers: SessionBufferMap,
   client: GraphitiClient,
 ): Promise<void> {
-  clearTimeout(buffer.timer);
-
-  // Only send messages that haven't been flushed yet (incremental flush).
-  // On boundary flushes (before_reset, session_end, gateway_stop) we delete
-  // the buffer entirely. On idle flushes we keep the buffer but advance the
-  // flushedMessageCount so the next flush only sends new messages.
-  const newMessages = buffer.messages.slice(buffer.flushedMessageCount);
-
-  const conversation = extractMessagesFromCtx({ messages: newMessages });
+  const conversation = extractMessagesFromCtx({ messages: buffer.messages });
   if (!conversation) {
-    console.log("[gralkor] [auto-capture] flush skipped — no new messages extracted, key:", key);
+    console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
     buffers.delete(key);
     return;
   }
 
-  // Skip slash commands (only check on first flush for this session)
-  if (buffer.flushedMessageCount === 0) {
-    const firstUserLine = conversation.match(/^User: (.+)$/m);
-    if (firstUserLine && firstUserLine[1].startsWith("/")) {
-      console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
-      buffers.delete(key);
-      return;
-    }
+  // Skip slash commands
+  const firstUserLine = conversation.match(/^User: (.+)$/m);
+  if (firstUserLine && firstUserLine[1].startsWith("/")) {
+    console.log("[gralkor] [auto-capture] flush skipped — slash command, key:", key);
+    buffers.delete(key);
+    return;
   }
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
-  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length, "newMessages:", newMessages.length, "totalMessages:", buffer.messages.length);
+  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
 
-  // Remove buffer before the API call so errors don't leave stale entries.
-  // The watermark is on the buffer object itself, so if a new agent_end
-  // re-adds it, the watermark is preserved via flushedMessageCount.
+  // Remove buffer before API call so errors don't leave stale entries
   buffers.delete(key);
 
   await client.addEpisode({
@@ -320,9 +302,6 @@ export async function flushSessionBuffer(
     source_description: "auto-capture",
     group_id: groupId,
   });
-
-  // Advance the watermark (only matters if buffer is re-added by a later agent_end)
-  buffer.flushedMessageCount = buffer.messages.length;
 
   console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
 }
@@ -346,32 +325,11 @@ export function createAgentEndHandler(
     }
 
     const key = resolveBufferKey(ctx);
-    const existing = buffers.get(key);
-    if (existing) {
-      clearTimeout(existing.timer);
-    }
-
-    const timer = setTimeout(() => {
-      const buf = buffers.get(key);
-      if (buf) {
-        flushSessionBuffer(key, buf, buffers, client).catch((err) => {
-          console.warn("[gralkor] [auto-capture] idle flush failed:", err instanceof Error ? err.message : err);
-        });
-      }
-    }, config.autoCapture.idleTimeoutMs);
-
-    // Prevent timer from keeping the process alive
-    if (typeof timer === "object" && "unref" in timer) {
-      timer.unref();
-    }
 
     buffers.set(key, {
       messages: event.messages,
       agentId: ctx.agentId,
       sessionKey: ctx.sessionKey,
-      lastSeenAt: Date.now(),
-      flushedMessageCount: existing?.flushedMessageCount ?? 0,
-      timer,
     });
 
     console.log("[gralkor] [auto-capture] buffer updated — key:", key, "messageCount:", event.messages.length);
