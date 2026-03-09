@@ -80,7 +80,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 | Gateway | `gateway_start` | `{ ... }` | Fire-and-forget | Gateway process started |
 | Gateway | `gateway_stop` | `{ ... }` | Fire-and-forget | Gateway process shutting down |
 
-**Hooks used by gralkor:** `before_agent_start` (auto-recall), `agent_end` + `before_reset` + `session_end` + `gateway_stop` (auto-capture with session buffering).
+**Hooks used by gralkor:** `before_agent_start` (auto-recall), `agent_end` + `session_end` (auto-capture with session buffering).
 
 `event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"toolCall"`, etc.
 
