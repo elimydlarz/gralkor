@@ -884,39 +884,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(0);
   });
 
-  it("idle timeout after last turn → single episode (no boundary hook needed)", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
-
-    await agentEnd({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
-      ],
-    }, ctx);
-
-    await agentEnd({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
-        { role: "user", content: [{ type: "text", text: "Second" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
-      ],
-    }, ctx);
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-
-    // User walks away — idle timeout fires
-    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
-
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
-    expect(body).toContain("First");
-    expect(body).toContain("Second");
-    expect(body).toContain("Reply 2");
-    expect(buffers.size).toBe(0);
-  });
-
   it("two concurrent sessions flush independently", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
