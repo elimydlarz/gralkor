@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { GraphitiClient, Fact } from "./client.js";
+import type { GraphitiClient, Fact, EntityNode, Episode, Community } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig } from "./config.js";
 import {
   createMemoryStoreTool,
   formatFacts,
+  formatNodes,
+  formatEpisodes,
+  formatCommunities,
+  formatSearchResults,
 } from "./tools.js";
 
 function mockClient(): {
@@ -13,8 +17,7 @@ function mockClient(): {
   return {
     health: vi.fn(),
     addEpisode: vi.fn(),
-    searchFacts: vi.fn(),
-    searchNodes: vi.fn(),
+    search: vi.fn(),
     getEpisodes: vi.fn(),
     deleteEpisode: vi.fn(),
     deleteEdge: vi.fn(),
