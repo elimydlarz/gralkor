@@ -4,7 +4,7 @@
 
 An OpenClaw plugin that gives AI agents persistent, temporally-aware memory via knowledge graphs. Uses Graphiti (knowledge graph framework by Zep) backed by FalkorDB (in-memory graph database).
 
-A memory plugin (`kind: "memory"`) replacing native `memory-core` with three tools: `memory_search` (unified native Markdown + Graphiti graph), `memory_get` (native Markdown only), `memory_add` (knowledge graph). Auto-recall searches both backends before each turn; auto-capture buffers session messages and flushes a single episode per session at session boundaries or on idle timeout.
+A memory plugin (`kind: "memory"`) replacing native `memory-core` with three tools: `memory_search` (unified native Markdown + Graphiti graph), `memory_get` (native Markdown only), `memory_add` (knowledge graph). Auto-recall searches both backends before each turn; auto-capture buffers session messages and flushes a single episode per session at session boundaries.
 
 | | |
 |---|---|
