@@ -1205,6 +1205,7 @@ describe("before_reset handler", () => {
       ],
       agentId: "agent-42",
       sessionKey: "session-abc",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1233,12 +1234,14 @@ describe("before_reset handler", () => {
     buffers.set("session-1", {
       messages: [{ role: "user", content: [{ type: "text", text: "Session 1" }] }],
       sessionKey: "session-1",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
     buffers.set("session-2", {
       messages: [{ role: "user", content: [{ type: "text", text: "Session 2" }] }],
       sessionKey: "session-2",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1271,6 +1274,7 @@ describe("session_end handler", () => {
       ],
       agentId: "agent-42",
       sessionKey: "session-abc",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1307,6 +1311,7 @@ describe("gateway_stop handler", () => {
         { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
       ],
       agentId: "agent-1",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1316,6 +1321,7 @@ describe("gateway_stop handler", () => {
         { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
       ],
       agentId: "agent-2",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1345,6 +1351,7 @@ describe("gateway_stop handler", () => {
         { role: "assistant", content: [{ type: "text", text: "Reply 1" }] },
       ],
       agentId: "agent-1",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
@@ -1354,6 +1361,7 @@ describe("gateway_stop handler", () => {
         { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
       ],
       agentId: "agent-2",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 99999),
     });
