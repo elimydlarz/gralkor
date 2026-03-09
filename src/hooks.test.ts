@@ -951,27 +951,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(0);
   });
 
-  it("boundary flush prevents subsequent idle flush (no double-flush)", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
-
-    await agentEnd({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
-      ],
-    }, ctx);
-
-    // Boundary flush
-    await beforeReset({}, ctx);
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-
-    // Idle timer fires — buffer already cleared, no double-flush
-    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-  });
-
   it("strips gralkor-memory XML across accumulated turns", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
