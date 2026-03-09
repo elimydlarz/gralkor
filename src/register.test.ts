@@ -206,7 +206,7 @@ describe("registerCli with ServerManager", () => {
   it("shows server process status when manager is provided", async () => {
     const client = {
       health: vi.fn().mockResolvedValue({ status: "ok" }),
-      searchFacts: vi.fn().mockResolvedValue([]),
+      search: vi.fn().mockResolvedValue({ facts: [], nodes: [], episodes: [], communities: [] }),
       clearGraph: vi.fn(),
     };
     const config: GralkorConfig = {
