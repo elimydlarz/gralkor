@@ -369,6 +369,7 @@ export function createAgentEndHandler(
       agentId: ctx.agentId,
       sessionKey: ctx.sessionKey,
       lastSeenAt: Date.now(),
+      flushedMessageCount: existing?.flushedMessageCount ?? 0,
       timer,
     });
 
