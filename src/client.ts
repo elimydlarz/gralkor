@@ -33,6 +33,21 @@ export interface AddEpisodeParams {
   reference_time?: string;
 }
 
+export interface Community {
+  uuid: string;
+  name: string;
+  summary: string;
+  group_id: string;
+  created_at: string;
+}
+
+export interface SearchResults {
+  facts: Fact[];
+  nodes: EntityNode[];
+  episodes: Episode[];
+  communities: Community[];
+}
+
 export interface GraphitiClientOptions {
   baseUrl: string;
   timeoutMs?: number;
