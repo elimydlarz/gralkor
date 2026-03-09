@@ -428,7 +428,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("combines facts and native results", async () => {
-    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const nativeSearch = vi.fn().mockResolvedValue("Native data");
     const getNativeSearch = () => nativeSearch;
 
@@ -445,7 +445,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("skips native results when getNativeSearch returns null", async () => {
-    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const getNativeSearch = () => null;
 
     const handler = createBeforeAgentStartHandler(
@@ -461,7 +461,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("degrades gracefully when native search fails", async () => {
-    client.search.mockResolvedValue([makeFact({ fact: "A fact" })]);
+    client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const nativeSearch = vi.fn().mockRejectedValue(new Error("native error"));
     const getNativeSearch = () => nativeSearch;
 
