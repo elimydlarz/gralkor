@@ -1,6 +1,5 @@
 export interface AutoCaptureConfig {
   enabled: boolean;
-  idleTimeoutMs: number;
 }
 
 export interface AutoRecallConfig {
