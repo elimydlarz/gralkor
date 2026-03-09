@@ -916,8 +916,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
 
-    // Session 2 flushes on idle
-    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
+    // Reset session 2
+    await beforeReset({}, ctx2);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
     const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
