@@ -787,10 +787,11 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     buffers.clear();
   });
 
-  it("3 turns then /new → single episode with full conversation", async () => {
+  it("3 turns then session_end → single episode with full conversation", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const beforeReset = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    const ctx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
     // Turn 1: agent_end delivers full session history (1 exchange)
     await agentEnd({
@@ -798,7 +799,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
         { role: "user", content: [{ type: "text", text: "What's my name?" }] },
         { role: "assistant", content: [{ type: "text", text: "I don't know yet." }] },
       ],
-    }, ctx);
+    }, agentCtx);
 
     // Turn 2: agent_end delivers full session history (2 exchanges)
     await agentEnd({
@@ -808,7 +809,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
         { role: "user", content: [{ type: "text", text: "My name is Eli." }] },
         { role: "assistant", content: [{ type: "text", text: "Nice to meet you, Eli!" }] },
       ],
-    }, ctx);
+    }, agentCtx);
 
     // Turn 3: agent_end delivers full session history (3 exchanges)
     await agentEnd({
@@ -820,13 +821,13 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
         { role: "user", content: [{ type: "text", text: "Remember that." }] },
         { role: "assistant", content: [{ type: "text", text: "I'll remember your name is Eli." }] },
       ],
-    }, ctx);
+    }, agentCtx);
 
     // No episodes created yet
     expect(client.addEpisode).not.toHaveBeenCalled();
 
-    // User types /new → before_reset fires
-    await beforeReset({}, ctx);
+    // Session ends
+    await sessionEnd({}, sessionCtx);
 
     // Exactly 1 episode with all 3 turns
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
