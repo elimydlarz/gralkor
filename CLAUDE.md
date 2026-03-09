@@ -104,7 +104,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 6. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
 7. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors propagate to callers.
 
-**Known gap:** Only `session_end` triggers a flush. `before_reset` (fires on `/new`, `/reset`) and `gateway_stop` (fires on process shutdown) are not handled — if the gateway stops without a new session starting, buffered messages are lost.
+**Known gap:** Only `session_end` triggers a flush. If the gateway stops without a new session starting, buffered messages are lost.
 
 ### Graph Partitioning
 
