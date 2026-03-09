@@ -5,9 +5,7 @@ import { defaultConfig } from "./config.js";
 import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
-  createBeforeResetHandler,
   createSessionEndHandler,
-  createGatewayStopHandler,
   flushSessionBuffer,
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
