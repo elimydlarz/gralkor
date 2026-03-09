@@ -96,12 +96,13 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 7. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (session buffering via `agent_end` → flush on boundary/idle):
-1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins). An idle timer (`idleTimeoutMs`, default 90s) triggers flush if no new `agent_end` fires.
+1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins). An idle timer (`idleTimeoutMs`, default 120s) triggers flush if no new `agent_end` fires. Preserves `flushedMessageCount` from previous buffer entry.
 2. `before_reset`, `session_end`, and `gateway_stop` handlers flush buffered sessions immediately via `flushSessionBuffer()`.
-3. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
-4. Skip if disabled, empty, or first user message starts with `/`.
-5. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
-6. Flush errors: idle timer catches and logs; boundary handlers let errors propagate.
+3. **Incremental flush:** `flushSessionBuffer()` only sends messages after `flushedMessageCount` (messages already sent in prior flushes are skipped). This prevents re-ingesting the same conversation text when idle flushes fire mid-session.
+4. Calls `extractMessagesFromCtx()` on the new messages slice, which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
+5. Skip if disabled, empty, or first user message starts with `/`.
+6. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
+7. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors: idle timer catches and logs; boundary handlers let errors propagate.
 
 ### Graph Partitioning
 
