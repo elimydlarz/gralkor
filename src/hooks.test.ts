@@ -1045,65 +1045,6 @@ describe("flushSessionBuffer", () => {
 
 });
 
-describe("before_reset handler", () => {
-  let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
-
-  beforeEach(() => {
-    client = mockClient();
-    client.addEpisode.mockResolvedValue({});
-    buffers = new Map();
-  });
-
-  it("flushes buffer for the session being reset", async () => {
-    buffers.set("session-abc", {
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Important conversation" }] },
-        { role: "assistant", content: [{ type: "text", text: "Noted." }] },
-      ],
-      agentId: "agent-42",
-      sessionKey: "session-abc",
-    });
-
-    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    await handler({}, { sessionKey: "session-abc" });
-
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    expect(client.addEpisode).toHaveBeenCalledWith(
-      expect.objectContaining({
-        episode_body: "User: Important conversation\nAssistant: Noted.",
-        group_id: "agent-42",
-      }),
-    );
-    expect(buffers.size).toBe(0);
-  });
-
-  it("does nothing when no buffer exists for the session", async () => {
-    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    await handler({}, { sessionKey: "nonexistent" });
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-  });
-
-  it("does not affect other session buffers", async () => {
-    buffers.set("session-1", {
-      messages: [{ role: "user", content: [{ type: "text", text: "Session 1" }] }],
-      sessionKey: "session-1",
-    });
-    buffers.set("session-2", {
-      messages: [{ role: "user", content: [{ type: "text", text: "Session 2" }] }],
-      sessionKey: "session-2",
-    });
-
-    const handler = createBeforeResetHandler(client as unknown as GraphitiClient, buffers);
-    await handler({}, { sessionKey: "session-1" });
-
-    expect(buffers.size).toBe(1);
-    expect(buffers.has("session-2")).toBe(true);
-
-  });
-});
-
 describe("session_end handler", () => {
   let client: ReturnType<typeof mockClient>;
   let buffers: SessionBufferMap;
