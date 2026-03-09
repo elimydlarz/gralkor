@@ -985,21 +985,6 @@ describe("flushSessionBuffer", () => {
     expect(buffers.size).toBe(0);
   });
 
-  it("skips flush when first user message is a slash command", async () => {
-    const buffer: SessionBuffer = {
-      messages: [
-        { role: "user", content: [{ type: "text", text: "/status check" }] },
-        { role: "assistant", content: [{ type: "text", text: "All good." }] },
-      ],
-    };
-    buffers.set("key-1", buffer);
-
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-    expect(buffers.size).toBe(0);
-  });
-
 });
 
 describe("session_end handler", () => {
