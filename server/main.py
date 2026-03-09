@@ -19,7 +19,8 @@ from graphiti_core.driver.falkordb_driver import FalkorDriver
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EntityNode, EpisodicNode, EpisodeType, Node
 from graphiti_core.llm_client import LLMConfig
-from graphiti_core.search.search_config_recipes import NODE_HYBRID_SEARCH_RRF
+from graphiti_core.nodes import CommunityNode
+from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_RRF
 
 
 # ── Config ────────────────────────────────────────────────────
