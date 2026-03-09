@@ -1113,6 +1113,7 @@ describe("flushSessionBuffer", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi" }] },
       ],
       agentId: "agent-42",
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 0),
     };
@@ -1134,6 +1135,7 @@ describe("flushSessionBuffer", () => {
   it("skips flush when extracted conversation is empty", async () => {
     const buffer: SessionBuffer = {
       messages: [],
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 0),
     };
@@ -1151,6 +1153,7 @@ describe("flushSessionBuffer", () => {
         { role: "user", content: [{ type: "text", text: "/status check" }] },
         { role: "assistant", content: [{ type: "text", text: "All good." }] },
       ],
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer: setTimeout(() => {}, 0),
     };
@@ -1170,6 +1173,7 @@ describe("flushSessionBuffer", () => {
         { role: "user", content: [{ type: "text", text: "Hello" }] },
         { role: "assistant", content: [{ type: "text", text: "Hi" }] },
       ],
+      flushedMessageCount: 0,
       lastSeenAt: Date.now(),
       timer,
     };
