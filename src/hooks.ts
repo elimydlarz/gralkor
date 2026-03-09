@@ -346,25 +346,3 @@ export function createSessionEndHandler(
   };
 }
 
-export function createGatewayStopHandler(
-  client: GraphitiClient,
-  buffers: SessionBufferMap,
-) {
-  return async (): Promise<void> => {
-    if (buffers.size === 0) {
-      console.log("[gralkor] [auto-capture] gateway_stop — no buffers to flush");
-      return;
-    }
-
-    console.log("[gralkor] [auto-capture] gateway_stop — flushing", buffers.size, "buffer(s)");
-    const flushPromises: Promise<void>[] = [];
-    for (const [key, buffer] of buffers) {
-      flushPromises.push(
-        flushSessionBuffer(key, buffer, buffers, client).catch((err) => {
-          console.warn("[gralkor] [auto-capture] gateway_stop flush failed for key:", key, err instanceof Error ? err.message : err);
-        }),
-      );
-    }
-    await Promise.all(flushPromises);
-  };
-}
