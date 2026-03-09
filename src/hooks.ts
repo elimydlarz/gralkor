@@ -288,7 +288,6 @@ export async function flushSessionBuffer(
   // the buffer entirely. On idle flushes we keep the buffer but advance the
   // flushedMessageCount so the next flush only sends new messages.
   const newMessages = buffer.messages.slice(buffer.flushedMessageCount);
-  const isBoundaryFlush = !buffers.has(key) || buffer.messages === buffers.get(key)?.messages;
 
   const conversation = extractMessagesFromCtx({ messages: newMessages });
   if (!conversation) {
