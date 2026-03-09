@@ -590,7 +590,7 @@ describe("agent_end handler", () => {
   it("skips when autoCapture is disabled", async () => {
     const config: GralkorConfig = {
       ...defaultConfig,
-      autoCapture: { enabled: false, idleTimeoutMs: 90_000 },
+      autoCapture: { enabled: false },
     };
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, config, buffers);
