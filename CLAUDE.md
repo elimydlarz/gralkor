@@ -96,12 +96,15 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 7. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
-1. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry replaces the previous (latest snapshot wins).
-2. `session_end` handler flushes the buffer for the ended session via `flushSessionBuffer()`. One flush per session — no idle timers, no duplicate flushes.
-3. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
-4. Skip if disabled or empty (no text extracted).
-5. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
-6. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors propagate to callers.
+1. `agent_end` fires after every agent run (each user message → response cycle). `event.messages` is the **full session message array** (`activeSession.messages` in OpenClaw) — all turns accumulated in the session, not just the current turn. However, if context-window compaction has occurred, earlier messages may be replaced with compacted summaries.
+2. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry **replaces** the previous (latest snapshot wins — correct because each `agent_end` delivers the cumulative session state).
+3. `session_end` handler flushes the buffer for the ended session via `flushSessionBuffer()`. One flush per session — no idle timers, no duplicate flushes.
+4. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
+5. Skip if disabled or empty (no text extracted).
+6. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
+7. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors propagate to callers.
+
+**Known gap:** Only `session_end` triggers a flush. `before_reset` (fires on `/new`, `/reset`) and `gateway_stop` (fires on process shutdown) are not handled — if the gateway stops without a new session starting, buffered messages are lost.
 
 ### Graph Partitioning
 
