@@ -1103,7 +1103,6 @@ describe("before_reset handler", () => {
     expect(buffers.size).toBe(1);
     expect(buffers.has("session-2")).toBe(true);
 
-    clearTimeout(buffers.get("session-2")!.timer);
   });
 });
 
