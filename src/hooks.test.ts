@@ -515,15 +515,13 @@ describe("agent_end handler", () => {
     client = mockClient();
     client.addEpisode.mockResolvedValue({});
     buffers = new Map();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     buffers.clear();
-    vi.useRealTimers();
   });
 
-  it("buffers messages and flushes on idle timeout", async () => {
+  it("buffers messages and flushes on boundary", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
       messages: [
