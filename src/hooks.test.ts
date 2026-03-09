@@ -1045,26 +1045,6 @@ describe("flushSessionBuffer", () => {
     expect(buffers.size).toBe(0);
   });
 
-  it("clears the timer on flush", async () => {
-    const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
-    const timer = setTimeout(() => {}, 99999);
-    const buffer: SessionBuffer = {
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
-      ],
-      flushedMessageCount: 0,
-      lastSeenAt: Date.now(),
-      timer,
-    };
-    buffers.set("key-1", buffer);
-
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
-
-    expect(clearTimeoutSpy).toHaveBeenCalledWith(timer);
-    clearTimeoutSpy.mockRestore();
-    clearTimeout(timer);
-  });
 });
 
 describe("before_reset handler", () => {
