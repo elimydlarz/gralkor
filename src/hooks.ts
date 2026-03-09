@@ -310,6 +310,11 @@ export async function flushSessionBuffer(
   const groupId = resolveGroupId({ agentId: buffer.agentId });
   console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length, "newMessages:", newMessages.length, "totalMessages:", buffer.messages.length);
 
+  // Remove buffer before the API call so errors don't leave stale entries.
+  // The watermark is on the buffer object itself, so if a new agent_end
+  // re-adds it, the watermark is preserved via flushedMessageCount.
+  buffers.delete(key);
+
   await client.addEpisode({
     name: `conversation-${Date.now()}`,
     episode_body: conversation,
@@ -317,11 +322,8 @@ export async function flushSessionBuffer(
     group_id: groupId,
   });
 
-  // Advance the watermark so next flush only sends new messages
+  // Advance the watermark (only matters if buffer is re-added by a later agent_end)
   buffer.flushedMessageCount = buffer.messages.length;
-
-  // Boundary flushes remove the buffer; idle flushes keep it for incremental use
-  buffers.delete(key);
 
   console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
 }
