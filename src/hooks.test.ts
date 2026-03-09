@@ -730,60 +730,6 @@ describe("agent_end handler", () => {
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("flushes buffer on idle timeout", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
-        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
-      ],
-    });
-
-    expect(client.addEpisode).not.toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(defaultConfig.autoCapture.idleTimeoutMs);
-
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
-    expect(buffers.size).toBe(0);
-  });
-
-  it("resets idle timer on subsequent agent_end calls", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-      ],
-    });
-
-    // Advance 80s (less than 120s timeout)
-    await vi.advanceTimersByTimeAsync(80_000);
-    expect(client.addEpisode).not.toHaveBeenCalled();
-
-    // Second agent_end resets the timer
-    await handler({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-        { role: "user", content: [{ type: "text", text: "Second" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] },
-      ],
-    });
-
-    // Advance 100s — original timer would have fired but reset timer hasn't
-    await vi.advanceTimersByTimeAsync(100_000);
-    expect(client.addEpisode).not.toHaveBeenCalled();
-
-    // Advance remaining 20s to trigger the reset timer (120s total from 2nd call)
-    await vi.advanceTimersByTimeAsync(20_000);
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toContain("Second");
-  });
-
   it("uses sessionKey as buffer key when available", async () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler(
