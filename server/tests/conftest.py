@@ -68,6 +68,22 @@ def make_entity(
     )
 
 
+def make_community(
+    uuid: str = "comm-001",
+    name: str = "Test Community",
+    summary: str = "A test community",
+    group_id: str = "grp-1",
+    created_at: datetime | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        uuid=uuid,
+        name=name,
+        summary=summary,
+        group_id=group_id,
+        created_at=created_at or datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+
+
 # ── Fixtures ─────────────────────────────────────────────────
 
 
