@@ -93,7 +93,7 @@ export function registerCli(
               `Graphiti is ${result.status ?? "reachable"} at ${GRAPHITI_URL}`,
             );
           } catch (err) {
-            console.log(
+            console.error(
               `Graphiti is unreachable at ${GRAPHITI_URL}: ${err instanceof Error ? err.message : err}`,
             );
           }
