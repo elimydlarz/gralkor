@@ -105,9 +105,9 @@ function registerFullPlugin(
             sections.push(nativeResult);
           }
 
-          const graphFormatted = formatSearchResults(searchResults);
-          if (graphFormatted !== "No graph results found.") {
-            sections.push(graphFormatted);
+          const hasGraphResults = searchResults.facts.length > 0 || searchResults.nodes.length > 0 || searchResults.episodes.length > 0 || searchResults.communities.length > 0;
+          if (hasGraphResults) {
+            sections.push(formatSearchResults(searchResults));
           }
 
           return sections.join("\n\n") || "No memories found.";
