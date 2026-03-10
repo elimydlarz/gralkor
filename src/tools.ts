@@ -59,8 +59,9 @@ export function createMemoryStoreTool(
   overrides?: ToolOverrides,
   getGroupId?: () => string,
 ) {
+  const toolName = overrides?.name ?? "memory_add";
   return {
-    name: overrides?.name ?? "memory_add",
+    name: toolName,
     description:
       overrides?.description ??
       "Store a thought, insight, reflection, or decision in the knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said. Also store detailed descriptions of any images or videos you consume, as media content is not captured by automatic memory.",
@@ -82,7 +83,6 @@ export function createMemoryStoreTool(
       _toolCallId: string,
       args: { content: string; source?: string },
     ): Promise<string> {
-      const toolName = overrides?.name ?? "memory_add";
       console.log(`[gralkor] [${toolName}] execute — toolCallId:`, _toolCallId, "args:", JSON.stringify(args));
       const groupId = getGroupId?.() ?? "default";
       console.log(`[gralkor] [${toolName}] storing — groupId:`, groupId, "contentLength:", args.content.length);
