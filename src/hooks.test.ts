@@ -609,7 +609,7 @@ describe("agent_end handler", () => {
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
 
-  it("propagates errors when Graphiti is unreachable on flush", async () => {
+  it("propagates errors when Graphiti is unreachable on flush (after retries)", async () => {
     client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
@@ -622,8 +622,9 @@ describe("agent_end handler", () => {
 
     const [key, buffer] = [...buffers.entries()][0];
     await expect(
-      flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient),
+      flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     ).rejects.toThrow("ECONNREFUSED");
+    expect(client.addEpisode).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
   });
 
   it("formats episode body with auto-capture metadata on flush", async () => {
