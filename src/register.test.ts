@@ -158,7 +158,7 @@ describe("registerCli", () => {
     it("handles clear errors gracefully", async () => {
       client.clearGraph.mockRejectedValue(new Error("timeout"));
 
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const clearAction = actions.get("clear <group_id>");
       await clearAction!("agent-1");
