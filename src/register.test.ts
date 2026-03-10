@@ -121,7 +121,7 @@ describe("registerCli", () => {
     it("handles search errors gracefully", async () => {
       client.search.mockRejectedValue(new Error("connection refused"));
 
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const searchAction = actions.get("search <group_id> <query...>");
       await searchAction!("agent-1", ["test"]);
