@@ -163,7 +163,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | graceful-degradation | Server startup errors caught/logged; auto-recall skips on graph errors; tools throw so agent sees failure |
 | docker-compat | `FALKORDB_URI` env var triggers legacy TCP mode |
 | observability | `[gralkor]`-prefixed logs: events, counts, skip reasons, errors. No user content logged. Uvicorn access logs disabled. |
-| retry-backoff | `GraphitiClient` retries network/5xx up to 2 times; 4xx throws immediately |
+| retry-backoff | Two retry layers: `GraphitiClient` retries network/5xx up to 2 times (500ms/1s); `flushSessionBuffer` retries transient errors up to 3 times (1s/2s/4s exponential). 4xx errors not retried at either layer. |
 | rate-limit-passthrough | Server middleware returns 429 for upstream `RateLimitError` (any provider); prevents client retry amplification |
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
