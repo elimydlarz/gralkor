@@ -137,6 +137,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     monitorTimer = setInterval(async () => {
       try {
         const res = await fetch(`http://127.0.0.1:${opts.port}/health`);
+        await res.text(); // Drain response body to prevent memory leak
         if (!res.ok) {
           console.warn("[gralkor] Server health check returned", res.status);
         }
