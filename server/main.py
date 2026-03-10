@@ -202,7 +202,7 @@ class SearchRequest(BaseModel):
     num_results: int = 10
 
 
-class ClearRequest(BaseModel):
+class GroupIdRequest(BaseModel):
     group_id: str
 
 
