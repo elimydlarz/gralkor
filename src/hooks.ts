@@ -293,7 +293,6 @@ export async function flushSessionBuffer(
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
   console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
-  console.log("[gralkor] [auto-capture] episode body:\n" + conversation);
 
   // Remove buffer before API call so errors don't leave stale entries
   buffers.delete(key);
@@ -371,7 +370,9 @@ export function createSessionEndHandler(
     }
 
     console.log("[gralkor] [auto-capture] session_end — flushing key:", key);
-    await flushSessionBuffer(key, buffer, buffers, client);
+    flushSessionBuffer(key, buffer, buffers, client).catch((err) => {
+      console.warn("[gralkor] [auto-capture] session_end flush failed:", err instanceof Error ? err.message : err);
+    });
   };
 }
 
