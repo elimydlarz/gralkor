@@ -150,7 +150,7 @@ export function registerCli(
             await client.clearGraph(groupId);
             console.log(`Cleared graph for group "${groupId}".`);
           } catch (err) {
-            console.log(
+            console.error(
               `Clear failed: ${err instanceof Error ? err.message : err}`,
             );
           }
