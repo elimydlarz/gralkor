@@ -810,8 +810,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     // No episodes created yet
     expect(client.addEpisode).not.toHaveBeenCalled();
 
-    // Session ends
+    // Session ends (flush is fire-and-forget)
     await sessionEnd({}, sessionCtx);
+    await new Promise((r) => setTimeout(r, 0));
 
     // Exactly 1 episode with all 3 turns
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
@@ -851,8 +852,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
     expect(client.addEpisode).not.toHaveBeenCalled();
 
-    // New session starts → previous session ends
+    // New session starts → previous session ends (flush is fire-and-forget)
     await sessionEnd({}, sessionCtx);
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
@@ -885,8 +887,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
     expect(buffers.size).toBe(2);
 
-    // End session 1 only
+    // End session 1 only (flush is fire-and-forget)
     await sessionEnd({}, { ...ctx1, sessionId: "sid-1" });
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
@@ -894,8 +897,9 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
 
-    // End session 2
+    // End session 2 (flush is fire-and-forget)
     await sessionEnd({}, { ...ctx2, sessionId: "sid-2" });
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
     const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
@@ -929,6 +933,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     }, agentCtx);
 
     await sessionEnd({}, sessionCtx);
+    await new Promise((r) => setTimeout(r, 0));
 
     const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
     expect(body).not.toContain("gralkor-memory");
@@ -1049,6 +1054,9 @@ describe("session_end handler", () => {
     const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
     await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
+    // flush is fire-and-forget — wait for the microtask to settle
+    await new Promise((r) => setTimeout(r, 0));
+
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     expect(buffers.size).toBe(0);
   });
@@ -1058,6 +1066,26 @@ describe("session_end handler", () => {
     await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
 
     expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when flush fails", async () => {
+    client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
+
+    buffers.set("session-abc", {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Conversation" }] },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+      agentId: "agent-42",
+      sessionKey: "session-abc",
+    });
+
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    // Should not throw despite flush failure
+    await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
+
+    // Let the fire-and-forget flush (and its retries) settle
+    await new Promise((r) => setTimeout(r, 50));
   });
 });
 
