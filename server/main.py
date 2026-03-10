@@ -333,7 +333,7 @@ async def delete_edge(uuid: str):
 
 
 @app.post("/clear")
-async def clear_graph(req: ClearRequest):
+async def clear_graph(req: GroupIdRequest):
     driver = graphiti.driver
     await Node.delete_by_group_id(driver, req.group_id)
     return {"deleted": True}
