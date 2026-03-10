@@ -188,7 +188,7 @@ describe("registerCli", () => {
     it("reports unreachable on error", async () => {
       client.health.mockRejectedValue(new Error("ECONNREFUSED"));
 
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const statusAction = actions.get("status");
       await statusAction!();
