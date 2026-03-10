@@ -346,7 +346,7 @@ async def build_indices():
 
 
 @app.post("/build-communities")
-async def build_communities(req: ClearRequest):
+async def build_communities(req: GroupIdRequest):
     communities, edges = await graphiti.build_communities(
         group_ids=[req.group_id],
     )
