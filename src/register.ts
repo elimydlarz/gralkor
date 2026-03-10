@@ -136,7 +136,7 @@ export function registerCli(
               );
             }
           } catch (err) {
-            console.log(
+            console.error(
               `Search failed: ${err instanceof Error ? err.message : err}`,
             );
           }
