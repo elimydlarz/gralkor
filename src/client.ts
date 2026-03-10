@@ -85,7 +85,7 @@ export class GraphitiClient {
         });
 
         if (!res.ok) {
-          const text = await res.text().catch(() => "");
+          const text = await res.text().catch(() => "").then((t) => t.slice(0, 500));
           const err = new Error(
             `Graphiti ${method} ${path} returned ${res.status}: ${text}`,
           );
