@@ -102,7 +102,8 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 4. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
 5. Skip if disabled or empty (no text extracted).
 6. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
-7. Buffer is deleted before the API call (so errors don't leave stale entries). Flush errors propagate to callers.
+7. Buffer is deleted before the API call (so errors don't leave stale entries).
+8. `addEpisode` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
 
 **Known gap:** Only `session_end` triggers a flush. If the gateway stops without a new session starting, buffered messages are lost.
 
