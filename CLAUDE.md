@@ -154,7 +154,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
 | temporal-awareness | Facts have `valid_at`/`invalid_at`; Graphiti tracks knowledge changes |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
-| error-propagation | Auto-capture flush errors propagate to boundary handler callers |
+| error-propagation | Auto-capture flush retries transient errors (3 retries, exponential backoff); final error propagates to callers |
 
 ### Cross-functional
 
