@@ -266,14 +266,23 @@ function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): strin
 }
 
 /**
+ * Returns true if the error is retryable (not a 4xx client error).
+ */
+function isRetryableError(err: unknown): boolean {
+  if (err instanceof Error && /returned 4\d{2}:/.test(err.message)) return false;
+  return true;
+}
+
+/**
  * Flush a single session buffer → episode, then delete it from the map.
- * Called by session_end handler.
+ * Called by session_end handler. Retries up to 3 times with exponential backoff.
  */
 export async function flushSessionBuffer(
   key: string,
   buffer: SessionBuffer,
   buffers: SessionBufferMap,
   client: GraphitiClient,
+  { retryDelayMs = 1000 }: { retryDelayMs?: number } = {},
 ): Promise<void> {
   const conversation = extractMessagesFromCtx({ messages: buffer.messages });
   if (!conversation) {
@@ -289,14 +298,33 @@ export async function flushSessionBuffer(
   // Remove buffer before API call so errors don't leave stale entries
   buffers.delete(key);
 
-  await client.addEpisode({
-    name: `conversation-${Date.now()}`,
-    episode_body: conversation,
-    source_description: "auto-capture",
-    group_id: groupId,
-  });
+  const maxRetries = 3;
+  let lastError: unknown;
 
-  console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await client.addEpisode({
+        name: `conversation-${Date.now()}`,
+        episode_body: conversation,
+        source_description: "auto-capture",
+        group_id: groupId,
+      });
+
+      console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
+      return;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries && isRetryableError(err)) {
+        const delay = retryDelayMs * Math.pow(2, attempt);
+        console.warn(`[gralkor] [auto-capture] flush attempt ${attempt + 1} failed, retrying in ${delay}ms:`, err instanceof Error ? err.message : err);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        break;
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 export function createAgentEndHandler(
