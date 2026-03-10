@@ -986,6 +986,44 @@ describe("flushSessionBuffer", () => {
     expect(buffers.size).toBe(0);
   });
 
+  it("retries transient errors and succeeds", async () => {
+    client.addEpisode
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockRejectedValueOnce(new Error("AbortError"))
+      .mockResolvedValueOnce({});
+
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 });
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry client errors (4xx)", async () => {
+    client.addEpisode.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
+
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await expect(
+      flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
+    ).rejects.toThrow("422");
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
 });
 
 describe("session_end handler", () => {
