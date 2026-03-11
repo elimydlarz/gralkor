@@ -17,7 +17,8 @@ export interface ServerManagerOptions {
   serverDir: string;
   port: number;
   env?: Record<string, string>;
-  configPath?: string;
+  llmConfig?: LlmConfig;
+  embedderConfig?: EmbedderConfig;
 }
 
 export interface ServerManager {
