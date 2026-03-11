@@ -172,6 +172,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
 | bundled-arm64-wheel | `make pack` builds falkordblite wheel for linux/arm64 via Docker; server manager force-installs after `uv sync` |
+| configurable-providers | `llm`/`embedder` settings in plugin config; all provider SDKs bundled; dynamic `config.yaml` written to `dataDir` at startup with defaults |
 
 ## Repo Map
 
