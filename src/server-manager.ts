@@ -89,15 +89,25 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       }
     }
 
+    // Write dynamic config.yaml from plugin settings (with defaults)
+    const configPath = join(opts.dataDir, "config.yaml");
+    const configYaml = [
+      "llm:",
+      `  provider: "${opts.llmConfig?.provider ?? "openai"}"`,
+      `  model: "${opts.llmConfig?.model ?? "gpt-4.1-mini"}"`,
+      "embedder:",
+      `  provider: "${opts.embedderConfig?.provider ?? "openai"}"`,
+      `  model: "${opts.embedderConfig?.model ?? "text-embedding-3-small"}"`,
+      "",
+    ].join("\n");
+    await writeFile(configPath, configYaml, "utf-8");
+
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
       ...opts.env,
       FALKORDB_DATA_DIR: join(opts.dataDir, "falkordb"),
+      CONFIG_PATH: configPath,
     };
-
-    if (opts.configPath) {
-      env.CONFIG_PATH = opts.configPath;
-    }
 
     // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
     delete env.FALKORDB_URI;
