@@ -237,7 +237,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 - `GROQ_API_KEY` — Groq LLM (still needs `OPENAI_API_KEY` for embeddings).
 - `FALKORDB_URI` — (Optional) `redis://host:port` for legacy Docker mode.
 
-Provider configured in `config.yaml` (`llm.provider`, `embedder.provider`). Server manager forwards all API keys to the Python subprocess.
+Provider configurable via plugin settings (`llm.provider`, `embedder.provider`) — a dynamic `config.yaml` is generated in `dataDir` at startup. Server manager forwards all API keys to the Python subprocess.
 
 ## Dev Workflow
 
