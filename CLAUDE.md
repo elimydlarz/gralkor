@@ -117,7 +117,7 @@ Managed via `src/server-manager.ts`, registered as service `gralkor-server`:
 
 1. `uv sync --no-dev --frozen --directory {serverDir}` with `UV_PROJECT_ENVIRONMENT={dataDir}/venv`
 2. Force-install bundled wheels from `server/wheels/` (if any) via `uv pip install --reinstall --no-deps` — bypasses lockfile hash verification. Incompatible wheels caught gracefully.
-3. Spawn `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log`. Passes env vars (`CONFIG_PATH`, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` (absence triggers embedded FalkorDBLite).
+3. Write dynamic `config.yaml` to `dataDir` from plugin settings (`llm`/`embedder`) with defaults (`gpt-4.1-mini`, `text-embedding-3-small`). Spawn `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log`. Passes env vars (`CONFIG_PATH` pointing to generated config, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` (absence triggers embedded FalkorDBLite).
 4. Poll `GET /health` every 500ms, 120s timeout. Monitor every 60s after startup.
 5. Stop: SIGTERM → 5s grace → SIGKILL.
 
