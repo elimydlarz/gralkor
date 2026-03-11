@@ -51,6 +51,22 @@ describe("resolveConfig()", () => {
     const config = resolveConfig({ autoRecall: { enabled: true } as any });
     expect(config.autoRecall.maxResults).toBe(10);
   });
+
+  it("passes through llm config when provided", () => {
+    const config = resolveConfig({ llm: { provider: "gemini", model: "gemini-2.0-flash" } });
+    expect(config.llm).toEqual({ provider: "gemini", model: "gemini-2.0-flash" });
+  });
+
+  it("passes through embedder config when provided", () => {
+    const config = resolveConfig({ embedder: { provider: "openai", model: "text-embedding-3-small" } });
+    expect(config.embedder).toEqual({ provider: "openai", model: "text-embedding-3-small" });
+  });
+
+  it("defaults llm and embedder to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.llm).toBeUndefined();
+    expect(config.embedder).toBeUndefined();
+  });
 });
 
 describe("resolveGroupId()", () => {
