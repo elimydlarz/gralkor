@@ -1,8 +1,9 @@
 import { execFile, type ChildProcess, spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { LlmConfig, EmbedderConfig } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 
