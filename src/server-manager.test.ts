@@ -102,7 +102,6 @@ describe("createServerManager", () => {
       serverDir: "/server",
       port: 8001,
       env: { OPENAI_API_KEY: "test-key" },
-      configPath: "/plugin/config.yaml",
     });
 
     await manager.start();
@@ -127,7 +126,7 @@ describe("createServerManager", () => {
         cwd: "/server",
         env: expect.objectContaining({
           OPENAI_API_KEY: "test-key",
-          CONFIG_PATH: "/plugin/config.yaml",
+          CONFIG_PATH: "/data/config.yaml",
           FALKORDB_DATA_DIR: "/data/falkordb",
         }),
       }),
