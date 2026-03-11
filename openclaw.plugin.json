@@ -30,6 +30,32 @@
             "description": "Maximum number of facts to inject as context"
           }
         }
+      },
+      "llm": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "LLM provider for knowledge extraction (openai, anthropic, gemini, groq)"
+          },
+          "model": {
+            "type": "string",
+            "description": "LLM model name (e.g. gpt-4.1-mini, gemini-2.0-flash)"
+          }
+        }
+      },
+      "embedder": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Embedding provider (openai, gemini)"
+          },
+          "model": {
+            "type": "string",
+            "description": "Embedding model name (e.g. text-embedding-3-small)"
+          }
+        }
       }
     }
   },
@@ -47,6 +73,18 @@
     },
     "autoRecall.maxResults": {
       "label": "Max auto-recall results"
+    },
+    "llm.provider": {
+      "label": "LLM provider"
+    },
+    "llm.model": {
+      "label": "LLM model"
+    },
+    "embedder.provider": {
+      "label": "Embedding provider"
+    },
+    "embedder.model": {
+      "label": "Embedding model"
     }
   }
 }
