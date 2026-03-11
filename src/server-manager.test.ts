@@ -17,8 +17,10 @@ vi.mock("node:fs", () => ({
 }));
 
 // Mock fs/promises
+const mockWriteFile = vi.fn().mockResolvedValue(undefined);
 vi.mock("node:fs/promises", () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
 }));
 
 // Mock fetch globally
