@@ -245,6 +245,50 @@ describe("createServerManager", () => {
     await expect(manager.start()).rejects.toThrow("uv is required");
   });
 
+  it("writes config.yaml to dataDir with default values", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      "/data/config.yaml",
+      expect.stringContaining('provider: "openai"'),
+      "utf-8",
+    );
+    const written = mockWriteFile.mock.calls[0][1] as string;
+    expect(written).toContain('model: "gpt-4.1-mini"');
+    expect(written).toContain('model: "text-embedding-3-small"');
+  });
+
+  it("writes config.yaml with user-provided llm/embedder values", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+      llmConfig: { provider: "gemini", model: "gemini-2.0-flash" },
+      embedderConfig: { provider: "gemini", model: "text-embedding-004" },
+    });
+
+    await manager.start();
+
+    const written = mockWriteFile.mock.calls[0][1] as string;
+    expect(written).toContain('provider: "gemini"');
+    expect(written).toContain('model: "gemini-2.0-flash"');
+    expect(written).toContain('model: "text-embedding-004"');
+  });
+
   it("stop sends SIGTERM to the process", async () => {
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
