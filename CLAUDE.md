@@ -222,6 +222,10 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
+| `llm.provider` | string | `"openai"` | LLM provider (openai, anthropic, gemini, groq) |
+| `llm.model` | string | `"gpt-4.1-mini"` | LLM model name |
+| `embedder.provider` | string | `"openai"` | Embedding provider (openai, gemini) |
+| `embedder.model` | string | `"text-embedding-3-small"` | Embedding model name |
 | `dataDir` | string | `{pluginDir}/.gralkor-data` | Backend data directory (venv, FalkorDB files) |
 
 ## Environment Variables
