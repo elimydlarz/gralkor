@@ -35,7 +35,6 @@ export function registerServerService(
 ): ServerManager {
   const dataDir = config.dataDir ?? join(pluginDir, ".gralkor-data");
   const serverDir = join(pluginDir, "server");
-  const configPath = join(pluginDir, "config.yaml");
 
   const env: Record<string, string> = {};
   for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY"]) {
@@ -47,7 +46,8 @@ export function registerServerService(
     serverDir,
     port: GRAPHITI_PORT,
     env,
-    configPath,
+    llmConfig: config.llm,
+    embedderConfig: config.embedder,
   });
 
   api.registerService({
