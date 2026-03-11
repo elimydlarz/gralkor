@@ -7,12 +7,24 @@ export interface AutoRecallConfig {
   maxResults: number;
 }
 
+export interface LlmConfig {
+  provider: string;
+  model: string;
+}
+
+export interface EmbedderConfig {
+  provider: string;
+  model: string;
+}
+
 export const GRAPHITI_URL = "http://127.0.0.1:8001";
 export const GRAPHITI_PORT = 8001;
 
 export interface GralkorConfig {
   autoCapture: AutoCaptureConfig;
   autoRecall: AutoRecallConfig;
+  llm?: LlmConfig;
+  embedder?: EmbedderConfig;
   dataDir?: string;
 }
 
@@ -31,6 +43,8 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
       maxResults:
         raw.autoRecall?.maxResults ?? defaultConfig.autoRecall.maxResults,
     },
+    llm: raw.llm,
+    embedder: raw.embedder,
     dataDir: raw.dataDir,
   };
 }
