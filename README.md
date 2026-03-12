@@ -160,7 +160,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 | `autoRecall.enabled` | `true` | Automatically recall relevant context before each turn |
 | `autoRecall.maxResults` | `5` | Maximum number of facts injected as context |
 | `idleTimeoutMs` | `300000` | How long (ms) after the last agent response to wait before flushing buffered messages to the graph. Prevents data loss when sessions aren't explicitly ended (e.g. user walks away, gateway restarts). Set to `0` to disable idle flushing. |
-| `dataDir` | `{pluginDir}/.gralkor-data` | Directory for backend data (Python venv, FalkorDB database) |
+| `dataDir` | `{pluginDir}/../.gralkor-data` | Directory for backend data (Python venv, FalkorDB database) |
 
 ### Graph partitioning
 
@@ -168,11 +168,13 @@ Each agent gets its own graph partition automatically (based on `agentId`). No c
 
 ## Data storage
 
-By default, all data lives in `{pluginDir}/.gralkor-data/`:
+By default, all data lives in `.gralkor-data/` alongside the plugin directory (i.e. `{pluginDir}/../.gralkor-data/`):
 - `venv/` — Python virtual environment (Graphiti, FalkorDBLite, etc.)
 - `falkordb/` — embedded FalkorDB database files
 
-Set `dataDir` in plugin config to change the location (e.g. to colocate with OpenClaw's data directory for backups).
+This location is outside the plugin directory so that `openclaw plugins uninstall` doesn't destroy runtime data — the graph database survives plugin upgrades without any data-preservation workarounds.
+
+Set `dataDir` in plugin config to change the location.
 
 ## How it works
 
