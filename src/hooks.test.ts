@@ -1356,6 +1356,94 @@ describe("session_end handler", () => {
   });
 });
 
+describe("test mode logging", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    client.search.mockResolvedValue(emptySearchResults());
+    buffers = new Map();
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    buffers.clear();
+  });
+
+  it("logs episode body in test mode during flush", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { test: true });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test] episode body:"),
+    );
+    expect(testLogs).toHaveLength(1);
+    expect(testLogs[0][0]).toContain("User: Hello\nAssistant: Hi");
+  });
+
+  it("does not log episode body when test mode is off", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { test: false });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test]"),
+    );
+    expect(testLogs).toHaveLength(0);
+  });
+
+  it("logs auto-recall context in test mode", async () => {
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [makeFact({ fact: "Sky is blue" })],
+    });
+
+    const config: GralkorConfig = { ...defaultConfig, test: true };
+    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
+    await handler({ prompt: "What color is the sky?" }, { agentId: "agent-42" });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test] auto-recall context:"),
+    );
+    expect(testLogs).toHaveLength(1);
+    expect(testLogs[0][0]).toContain("Sky is blue");
+  });
+
+  it("does not log auto-recall context when test mode is off", async () => {
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [makeFact({ fact: "Sky is blue" })],
+    });
+
+    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    await handler({ prompt: "What color is the sky?" }, { agentId: "agent-42" });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test]"),
+    );
+    expect(testLogs).toHaveLength(0);
+  });
+});
+
 describe("idle timeout flush", () => {
   let client: ReturnType<typeof mockClient>;
   let buffers: SessionBufferMap;
