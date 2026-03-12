@@ -56,6 +56,11 @@
             "description": "Embedding model name (e.g. text-embedding-3-small)"
           }
         }
+      },
+      "test": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable test mode — logs full episode bodies and search results for debugging"
       }
     }
   },
