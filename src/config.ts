@@ -28,6 +28,7 @@ export interface GralkorConfig {
   llm?: LlmConfig;
   embedder?: EmbedderConfig;
   dataDir?: string;
+  test?: boolean;
 }
 
 export const defaultConfig: GralkorConfig = {
