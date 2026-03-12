@@ -87,8 +87,6 @@ function registerFullPlugin(
           const groupId = getGroupId();
           const limit = args.limit ?? 10;
 
-          console.log("[gralkor] [memory_search] execute — toolCallId:", toolCallId, "query:", JSON.stringify(args.query), "groupId:", groupId);
-
           // Search native markdown and graph in parallel
           const [nativeRaw, searchResults] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
@@ -97,7 +95,7 @@ function registerFullPlugin(
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars, facts:", searchResults.facts.length);
+          console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
 
           const sections: string[] = [];
 
