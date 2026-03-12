@@ -52,6 +52,7 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
     llm: raw.llm,
     embedder: raw.embedder,
     dataDir: raw.dataDir,
+    test: raw.test ?? false,
   };
 }
 
