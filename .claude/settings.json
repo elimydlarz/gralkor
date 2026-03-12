@@ -1,11 +1,6 @@
 {
-  "enabledPlugins": {},
-  "extraKnownMarketplaces": {
-    "trunk-sync": {
-      "source": {
-        "source": "github",
-        "repo": "elimydlarz/trunk-sync"
-      }
-    }
-  }
+  "enabledPlugins": {
+    "trunk-sync@susu-eng": true
+  },
+  "extraKnownMarketplaces": {}
 }
