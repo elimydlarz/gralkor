@@ -73,12 +73,7 @@ Edit `~/.openclaw/openclaw.json`:
 
 ### 4. Set your LLM API key
 
-Graphiti needs an LLM to extract entities and relationships from conversations. Set the API key for your provider in `~/.openclaw/.env`:
-
-```bash
-# Google Gemini (default) — fully self-contained (LLM + embeddings + reranking)
-echo 'GOOGLE_API_KEY=...' >> ~/.openclaw/.env
-```
+Graphiti needs an LLM to extract entities and relationships from conversations. Make sure the API key for your chosen provider is available in the environment (see [OpenClaw docs](https://openclaw.dev/docs) for where env vars are configured).
 
 Supported providers:
 
