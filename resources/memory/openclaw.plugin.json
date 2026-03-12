@@ -90,6 +90,9 @@
     },
     "embedder.model": {
       "label": "Embedding model"
+    },
+    "test": {
+      "label": "Test mode (verbose logging)"
     }
   }
 }
