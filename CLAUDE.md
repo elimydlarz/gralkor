@@ -180,8 +180,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 
 ```
 ├── CLAUDE.md
-├── README.md                        # install instructions (agent-facing)
-├── .humans/README.md                # install instructions (human-facing)
+├── README.md                        # project readme
 ├── Makefile                          # build/test/deploy commands
 ├── package.json                      # root package
 ├── tsconfig.json
