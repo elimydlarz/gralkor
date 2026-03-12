@@ -8,6 +8,7 @@ import {
   createSessionEndHandler,
   type NativeSearchFn,
   type SessionBufferMap,
+  type IdleTimerMap,
 } from "./hooks.js";
 import { createServerManager, type ServerManager } from "./server-manager.js";
 import type { PluginApiBase } from "./types.js";
@@ -22,10 +23,11 @@ export function registerHooks(
   getNativeSearch?: () => NativeSearchFn | null,
 ) {
   const buffers: SessionBufferMap = new Map();
+  const timers: IdleTimerMap = new Map();
 
   api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
-  api.on("agent_end", createAgentEndHandler(client, config, buffers));
-  api.on("session_end", createSessionEndHandler(client, buffers));
+  api.on("agent_end", createAgentEndHandler(client, config, buffers, timers));
+  api.on("session_end", createSessionEndHandler(client, buffers, timers));
 }
 
 export function registerServerService(

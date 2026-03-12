@@ -138,6 +138,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
       "gralkor": {
         "autoCapture": { "enabled": true },
         "autoRecall": { "enabled": true, "maxResults": 5 },
+        "idleTimeoutMs": 300000,
         "dataDir": "/path/to/data"
       }
     }
@@ -150,6 +151,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 | `autoCapture.enabled` | `true` | Automatically store conversations in the graph |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context before each turn |
 | `autoRecall.maxResults` | `5` | Maximum number of facts injected as context |
+| `idleTimeoutMs` | `300000` | How long (ms) after the last agent response to wait before flushing buffered messages to the graph. Prevents data loss when sessions aren't explicitly ended (e.g. user walks away, gateway restarts). Set to `0` to disable idle flushing. |
 | `dataDir` | `{pluginDir}/.gralkor-data` | Directory for backend data (Python venv, FalkorDB database) |
 
 ### Graph partitioning
@@ -205,6 +207,7 @@ Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM A
 
 **Agent doesn't store conversations**
 - Check that `autoCapture.enabled` is `true` (it is by default)
+- Conversations are flushed to the graph when the session ends or after 5 minutes of inactivity (configurable via `idleTimeoutMs`). If the process is killed before either fires, buffered messages are lost.
 - Conversations where the first user message starts with `/` are skipped by design
 - Empty conversations (no extractable text) are skipped
 
