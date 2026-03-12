@@ -27,7 +27,7 @@ export function registerHooks(
 
   api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
   api.on("agent_end", createAgentEndHandler(client, config, buffers, timers));
-  api.on("session_end", createSessionEndHandler(client, buffers, timers));
+  api.on("session_end", createSessionEndHandler(client, config, buffers, timers));
 }
 
 export function registerServerService(

@@ -1,5 +1,6 @@
 export interface AutoCaptureConfig {
   enabled: boolean;
+  maxThinkingChars?: number;
 }
 
 export interface AutoRecallConfig {
@@ -30,7 +31,7 @@ export interface GralkorConfig {
 }
 
 export const defaultConfig: GralkorConfig = {
-  autoCapture: { enabled: true },
+  autoCapture: { enabled: true, maxThinkingChars: 2000 },
   idleTimeoutMs: 5 * 60 * 1000,
   autoRecall: { enabled: true, maxResults: 10 },
 };
@@ -39,6 +40,7 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   return {
     autoCapture: {
       enabled: raw.autoCapture?.enabled ?? defaultConfig.autoCapture.enabled,
+      maxThinkingChars: raw.autoCapture?.maxThinkingChars ?? defaultConfig.autoCapture.maxThinkingChars,
     },
     idleTimeoutMs: raw.idleTimeoutMs ?? defaultConfig.idleTimeoutMs,
     autoRecall: {
