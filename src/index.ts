@@ -107,7 +107,13 @@ function registerFullPlugin(
             sections.push(formatFacts(searchResults.facts));
           }
 
-          return sections.join("\n\n") || "No memories found.";
+          const combinedResult = sections.join("\n\n") || "No memories found.";
+
+          if (config.test) {
+            console.log(`[gralkor] [test] memory_search result:\n${combinedResult}`);
+          }
+
+          return combinedResult;
         },
       };
 
