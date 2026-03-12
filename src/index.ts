@@ -171,7 +171,7 @@ export const configSchema = {
     },
     dataDir: {
       type: "string" as const,
-      description: "Directory for backend data (venv, database). Defaults to .gralkor-data inside the plugin directory.",
+      description: "Directory for backend data (venv, database). Defaults to .gralkor-data alongside the plugin directory.",
     },
     test: {
       type: "boolean" as const,
