@@ -155,6 +155,50 @@ describe("extractMessagesFromCtx", () => {
     });
     expect(result).toBe("User: Hello John");
   });
+
+  it("handles string content in user messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: "Hello from string" },
+        { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
+      ],
+    });
+    expect(result).toBe("User: Hello from string\nAssistant: Hi there");
+  });
+
+  it("strips <gralkor-memory> from string content in user messages", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts\n</gralkor-memory>\n';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: `${xml}What is the weather?` },
+        { role: "assistant", content: [{ type: "text", text: "Sunny." }] },
+      ],
+    });
+    expect(result).toBe("User: What is the weather?\nAssistant: Sunny.");
+  });
+
+  it("extracts output_text blocks alongside text blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [
+          { type: "text", text: "Part 1" },
+          { type: "output_text", text: "Part 2" },
+        ]},
+      ],
+    });
+    expect(result).toBe("User: Hello\nAssistant: Part 1\nPart 2");
+  });
+
+  it("extracts messages with only output_text blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "output_text", text: "Response via output_text" }] },
+      ],
+    });
+    expect(result).toBe("User: Hello\nAssistant: Response via output_text");
+  });
 });
 
 describe("extractUserMessageFromPrompt", () => {
@@ -289,6 +333,33 @@ describe("extractLastUserMessageFromMessages", () => {
         { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
       ],
     })).toBe("Real message");
+  });
+
+  it("handles string content in user messages", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: "First as string" },
+        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+        { role: "user", content: "Second as string" },
+      ],
+    })).toBe("Second as string");
+  });
+
+  it("strips gralkor-memory from string content", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n';
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: `${xml}Actual question` },
+      ],
+    })).toBe("Actual question");
+  });
+
+  it("extracts output_text blocks from user messages", () => {
+    expect(extractLastUserMessageFromMessages({
+      messages: [
+        { role: "user", content: [{ type: "output_text", text: "Question via output_text" }] },
+      ],
+    })).toBe("Question via output_text");
   });
 });
 
@@ -907,6 +978,36 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
     expect(body2).toContain("Session 2");
     expect(buffers.size).toBe(0);
+  });
+
+  it("string content flows through buffer → flush → addEpisode", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
+    const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
+
+    await agentEnd({
+      messages: [
+        { role: "user", content: "Hello from string content" },
+        { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
+        { role: "user", content: "Follow-up as string" },
+        { role: "assistant", content: [{ type: "output_text", text: "Response via output_text" }] },
+      ],
+    }, agentCtx);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    await sessionEnd({}, sessionCtx);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toBe(
+      "User: Hello from string content\n" +
+      "Assistant: Hi there\n" +
+      "User: Follow-up as string\n" +
+      "Assistant: Response via output_text",
+    );
   });
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
