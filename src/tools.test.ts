@@ -1,14 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { GraphitiClient, Fact, EntityNode, Episode, Community } from "./client.js";
+import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig } from "./config.js";
 import {
   createMemoryStoreTool,
   formatFacts,
-  formatNodes,
-  formatEpisodes,
-  formatCommunities,
-  formatSearchResults,
 } from "./tools.js";
 
 function mockClient(): {
@@ -112,7 +108,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("uses provided source description", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
-    await tool.execute("call-1", { content: "Remember this", source: "user request" });
+    await tool.execute("call-1", { content: "Remember this", source_description: "user request" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
     expect(call.source_description).toBe("user request");
@@ -137,6 +133,14 @@ describe("memory_store (createMemoryStoreTool)", () => {
     expect(call.name).toMatch(/^memory-store-\d+$/);
   });
 
+  it("passes text as episode source type", async () => {
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "A reflection" });
+
+    const call = client.addEpisode.mock.calls[0][0] as { source: string };
+    expect(call.source).toBe("text");
+  });
+
   it("accepts ToolOverrides for name and description", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, {
       name: "memory_add",
@@ -154,126 +158,3 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 });
 
-function makeNode(overrides: Partial<EntityNode> = {}): EntityNode {
-  return {
-    uuid: "node-1",
-    name: "Alice",
-    summary: "A person",
-    group_id: "default",
-    created_at: "2025-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-function makeEpisode(overrides: Partial<Episode> = {}): Episode {
-  return {
-    uuid: "ep-1",
-    name: "test-episode",
-    content: "Some conversation content",
-    source_description: "auto-capture",
-    group_id: "default",
-    created_at: "2025-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-function makeCommunity(overrides: Partial<Community> = {}): Community {
-  return {
-    uuid: "comm-1",
-    name: "AI Research",
-    summary: "Topics about artificial intelligence",
-    group_id: "default",
-    created_at: "2025-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-describe("formatNodes", () => {
-  it("formats nodes with header", () => {
-    const result = formatNodes([makeNode({ name: "Alice", summary: "A developer" })]);
-    expect(result).toContain("Entities:");
-    expect(result).toContain("- Alice: A developer");
-  });
-
-  it("returns empty string when no nodes", () => {
-    expect(formatNodes([])).toBe("");
-  });
-
-  it("formats multiple nodes", () => {
-    const result = formatNodes([
-      makeNode({ name: "Alice", summary: "A developer" }),
-      makeNode({ name: "Bob", summary: "A designer" }),
-    ]);
-    expect(result).toContain("- Alice: A developer");
-    expect(result).toContain("- Bob: A designer");
-  });
-});
-
-describe("formatEpisodes", () => {
-  it("formats episodes with header", () => {
-    const result = formatEpisodes([makeEpisode({ content: "User asked about weather" })]);
-    expect(result).toContain("Episodes:");
-    expect(result).toContain("- User asked about weather");
-  });
-
-  it("returns empty string when no episodes", () => {
-    expect(formatEpisodes([])).toBe("");
-  });
-
-  it("truncates long content", () => {
-    const longContent = "A".repeat(300);
-    const result = formatEpisodes([makeEpisode({ content: longContent })]);
-    expect(result).toContain("…");
-    expect(result.length).toBeLessThan(longContent.length + 50);
-  });
-});
-
-describe("formatCommunities", () => {
-  it("formats communities with header", () => {
-    const result = formatCommunities([makeCommunity({ name: "AI", summary: "AI topics" })]);
-    expect(result).toContain("Topics:");
-    expect(result).toContain("- AI: AI topics");
-  });
-
-  it("returns empty string when no communities", () => {
-    expect(formatCommunities([])).toBe("");
-  });
-});
-
-describe("formatSearchResults", () => {
-  it("combines all non-empty sections", () => {
-    const result = formatSearchResults({
-      facts: [makeFact({ fact: "A knows B" })],
-      nodes: [makeNode({ name: "Alice", summary: "A person" })],
-      episodes: [makeEpisode({ content: "Test episode" })],
-      communities: [makeCommunity({ name: "People", summary: "People cluster" })],
-    });
-    expect(result).toContain("Facts (knowledge graph):");
-    expect(result).toContain("Entities:");
-    expect(result).toContain("Episodes:");
-    expect(result).toContain("Topics:");
-  });
-
-  it("returns fallback when all empty", () => {
-    const result = formatSearchResults({
-      facts: [],
-      nodes: [],
-      episodes: [],
-      communities: [],
-    });
-    expect(result).toBe("No graph results found.");
-  });
-
-  it("only includes non-empty sections", () => {
-    const result = formatSearchResults({
-      facts: [makeFact({ fact: "A knows B" })],
-      nodes: [],
-      episodes: [],
-      communities: [],
-    });
-    expect(result).toContain("Facts (knowledge graph):");
-    expect(result).not.toContain("Entities:");
-    expect(result).not.toContain("Episodes:");
-    expect(result).not.toContain("Topics:");
-  });
-});

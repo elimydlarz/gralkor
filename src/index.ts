@@ -4,7 +4,7 @@ import { GraphitiClient } from "./client.js";
 import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
-  formatSearchResults,
+  formatFacts,
 } from "./tools.js";
 import {
   registerHooks,
@@ -97,7 +97,7 @@ function registerFullPlugin(
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars, facts:", searchResults.facts.length, "nodes:", searchResults.nodes.length, "communities:", searchResults.communities.length);
+          console.log("[gralkor] [memory_search] results — groupId:", groupId, "— native:", nativeResult.length, "chars, facts:", searchResults.facts.length);
 
           const sections: string[] = [];
 
@@ -105,9 +105,8 @@ function registerFullPlugin(
             sections.push(nativeResult);
           }
 
-          const hasGraphResults = searchResults.facts.length > 0 || searchResults.nodes.length > 0 || searchResults.episodes.length > 0 || searchResults.communities.length > 0;
-          if (hasGraphResults) {
-            sections.push(formatSearchResults(searchResults));
+          if (searchResults.facts.length > 0) {
+            sections.push(formatFacts(searchResults.facts));
           }
 
           return sections.join("\n\n") || "No memories found.";

@@ -17,34 +17,16 @@ export interface Fact {
   created_at: string;
 }
 
-export interface EntityNode {
-  uuid: string;
-  name: string;
-  summary: string;
-  group_id: string;
-  created_at: string;
-}
-
 export interface AddEpisodeParams {
   name: string;
   episode_body: string;
   source_description: string;
   group_id: string;
-}
-
-export interface Community {
-  uuid: string;
-  name: string;
-  summary: string;
-  group_id: string;
-  created_at: string;
+  source?: "message" | "text" | "json";
 }
 
 export interface SearchResults {
   facts: Fact[];
-  nodes: EntityNode[];
-  episodes: Episode[];
-  communities: Community[];
 }
 
 export interface GraphitiClientOptions {
