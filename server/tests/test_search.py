@@ -24,9 +24,9 @@ async def test_search_returns_facts(client, mock_graphiti):
     assert len(body["facts"]) == 1
     assert body["facts"][0]["uuid"] == "e1"
     assert body["facts"][0]["fact"] == "Alice knows Bob"
-    assert body["nodes"] == []
-    assert body["episodes"] == []
-    assert body["communities"] == []
+    assert "nodes" not in body
+    assert "episodes" not in body
+    assert "communities" not in body
 
 
 @pytest.mark.asyncio
@@ -130,7 +130,7 @@ async def test_search_returns_empty_results(client, mock_graphiti):
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body == {"facts": [], "nodes": [], "episodes": [], "communities": []}
+    assert body == {"facts": []}
 
 
 @pytest.mark.asyncio

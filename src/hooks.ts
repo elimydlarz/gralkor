@@ -206,20 +206,12 @@ export function createBeforeAgentStartHandler(
         }) : Promise.resolve(null),
       ]);
 
-      console.log("[gralkor] [auto-recall] search returned", searchResults.facts.length, "facts,", searchResults.nodes.length, "nodes,", searchResults.communities.length, "communities — groupId:", groupId);
+      console.log("[gralkor] [auto-recall] search returned", searchResults.facts.length, "facts — groupId:", groupId);
 
       const sections: string[] = [];
 
       if (searchResults.facts.length > 0) {
         sections.push("Facts from knowledge graph:\n" + searchResults.facts.map((f) => `- ${f.fact}`).join("\n"));
-      }
-
-      if (searchResults.nodes.length > 0) {
-        sections.push("Entities from knowledge graph:\n" + searchResults.nodes.map((n) => `- ${n.name}: ${n.summary}`).join("\n"));
-      }
-
-      if (searchResults.communities.length > 0) {
-        sections.push("Topics from knowledge graph:\n" + searchResults.communities.map((c) => `- ${c.name}: ${c.summary}`).join("\n"));
       }
 
       if (nativeResult) {

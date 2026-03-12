@@ -194,6 +194,7 @@ class AddEpisodeRequest(BaseModel):
     source_description: str
     group_id: str
     reference_time: str | None = None
+    source: str | None = None
 
 
 class SearchRequest(BaseModel):
@@ -271,13 +272,14 @@ async def add_episode(req: AddEpisodeRequest):
         if req.reference_time
         else datetime.now(timezone.utc)
     )
+    episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
     result = await graphiti.add_episode(
         name=req.name,
         episode_body=req.episode_body,
         source_description=req.source_description,
         group_id=req.group_id,
         reference_time=ref_time,
-        source=EpisodeType.message,
+        source=episode_type,
     )
     # add_episode returns AddEpisodeResults; find the episode node
     episode = result.episode
@@ -318,9 +320,6 @@ async def search(req: SearchRequest):
     )
     return {
         "facts": [_serialize_fact(e) for e in edges],
-        "nodes": [],
-        "episodes": [],
-        "communities": [],
     }
 
 

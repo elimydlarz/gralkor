@@ -131,7 +131,7 @@ async def test_get_episodes_missing_group_id_returns_422(client):
 
 
 @pytest.mark.asyncio
-async def test_add_episode_passes_episode_type_message_as_source(client, mock_graphiti):
+async def test_add_episode_defaults_to_message_type(client, mock_graphiti):
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
@@ -144,8 +144,25 @@ async def test_add_episode_passes_episode_type_message_as_source(client, mock_gr
 
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    # EpisodeType.message is the enum value used by the server
     assert call_kwargs["source"].value == "message" or str(call_kwargs["source"]) == "EpisodeType.message"
+
+
+@pytest.mark.asyncio
+async def test_add_episode_accepts_text_source_type(client, mock_graphiti):
+    ep = make_episode()
+    mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
+
+    resp = await client.post("/episodes", json={
+        "name": "note",
+        "episode_body": "A reflection",
+        "source_description": "manual memory_store",
+        "group_id": "g1",
+        "source": "text",
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+    assert call_kwargs["source"].value == "text" or str(call_kwargs["source"]) == "EpisodeType.text"
 
 
 @pytest.mark.asyncio

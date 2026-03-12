@@ -20,10 +20,10 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 
 | Object | Type | Description |
 |---|---|---|
-| Episode | `Episode` | Captured conversation or manual store. Raw text input to the graph. |
+| Episode | `Episode` | Captured conversation or manual store. Raw text input to the graph. Has `source` (EpisodeType: `message` for auto-capture, `text` for manual `memory_add`) and `source_description` (freeform provenance string). |
 | Fact (edge) | `Fact` | Extracted relationship between entities. Has `valid_at`/`invalid_at` temporal validity. |
-| Entity (node) | `EntityNode` | Person, concept, project, or thing extracted from episodes. Has a `summary`. |
-| Community | `Community` | Cluster of related entities. Has `name` and `summary`. Built via `build-communities` endpoint. |
+| Entity (node) | (Graphiti-internal) | Person, concept, project, or thing extracted from episodes. Has a `summary`. Not exposed by our search endpoint — Graphiti's `search_()` API can return these but we use the simpler `search()` which returns only edges. |
+| Community | (Graphiti-internal) | Cluster of related entities. Has `name` and `summary`. Built via Graphiti's `build_communities()`. Not exposed by our search endpoint. |
 | Group | `string` | Partition key derived from `agentId` (falls back to `"default"`). One graph per agent. |
 | SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session. Keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on session boundary. |
 
@@ -92,7 +92,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 3. Skip if disabled or no user message.
 4. **Double-fire dedup:** `before_agent_start` fires twice per agent run (OpenClaw behavior). The handler caches the result from the 1st fire for 5 seconds; if the same query arrives within that window, it returns the cached result without making API calls. This halves per-turn search cost.
 5. Search `client.search()` (facts only — uses `graphiti.search()` edge-based hybrid) and native `memory_search` in parallel.
-6. Include facts (and any nodes/communities if present) in context. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
+6. Include facts in context. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 7. On graph failure: log warning, skip. Native failures caught independently.
 
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
@@ -125,7 +125,7 @@ Startup errors caught and logged — plugin degrades gracefully (tools/hooks see
 
 ### Communication Path
 
-Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately) → Graphiti REST API → FalkorDB. `search()` calls `POST /search` returning `{ facts, nodes: [], episodes: [], communities: [] }` (only facts populated — uses `graphiti.search()` edge-based hybrid).
+Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately) → Graphiti REST API → FalkorDB. `search()` calls `POST /search` returning `{ facts }` — uses `graphiti.search()` which returns edges (facts) only. Graphiti also has a richer `search_()` API with configurable recipes (node search, combined search with cross-encoder reranking) but we don't use it yet.
 
 **Rate-limit passthrough:** Server middleware (`rate_limit_middleware` in `main.py`) catches upstream `RateLimitError` from any LLM provider (openai, anthropic, etc.) — including errors wrapped in other exceptions — and returns HTTP 429 instead of 500. This prevents the `GraphitiClient` from retrying rate-limited requests (it only retries 5xx).
 
@@ -149,7 +149,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | auto-capture | `agent_end` buffers messages per session; flushed as single episode on `session_end` |
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph facts in parallel |
-| manual-store | `memory_add` creates episodes; Graphiti extracts structure |
+| manual-store | `memory_add` creates episodes with `source=text`; Graphiti extracts structure |
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
 | temporal-awareness | Facts have `valid_at`/`invalid_at`; Graphiti tracks knowledge changes |
