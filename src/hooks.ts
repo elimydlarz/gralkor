@@ -16,7 +16,29 @@ interface ContentBlock {
  */
 interface MessageEntry {
   role: string;
-  content: ContentBlock[];
+  content: string | ContentBlock[];
+}
+
+/**
+ * Normalize message content to a ContentBlock array.
+ *
+ * UserMessage.content may be a plain string at runtime (OpenClaw's
+ * AgentMessage union). Convert it to a single text block so downstream
+ * code can always use array methods.
+ */
+function normalizeContent(content: string | ContentBlock[] | undefined): ContentBlock[] {
+  if (!content) return [];
+  if (typeof content === "string") return [{ type: "text", text: content }];
+  return content;
+}
+
+/**
+ * Check if a content block contains extractable text.
+ * Matches both standard "text" blocks and the "output_text" variant
+ * emitted by some providers.
+ */
+function isTextBlock(block: ContentBlock): boolean {
+  return (block.type === "text" || block.type === "output_text") && !!block.text;
 }
 
 /**
@@ -95,8 +117,8 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") {
-      const text = (messages[i].content ?? [])
-        .filter((block: ContentBlock) => block.type === "text" && block.text)
+      const text = normalizeContent(messages[i].content)
+        .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
         .join("\n")
         .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
@@ -123,8 +145,8 @@ export function extractMessagesFromCtx(event: HookEvent): string {
   const parts: string[] = [];
 
   for (const msg of messages) {
-    const textParts = (msg.content ?? [])
-      .filter((block: ContentBlock) => block.type === "text" && block.text)
+    const textParts = normalizeContent(msg.content)
+      .filter(isTextBlock)
       .map((block: ContentBlock) => block.text!)
       .join("\n");
 
