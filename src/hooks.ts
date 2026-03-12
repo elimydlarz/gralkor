@@ -253,6 +253,15 @@ export interface SessionBuffer {
 
 export type SessionBufferMap = Map<string, SessionBuffer>;
 
+export type IdleTimerMap = Map<string, ReturnType<typeof setTimeout>>;
+
+export function clearIdleTimers(timers: IdleTimerMap): void {
+  for (const timer of timers.values()) {
+    clearTimeout(timer);
+  }
+  timers.clear();
+}
+
 function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): string {
   return ctx.sessionKey || ctx.agentId || "default";
 }
@@ -322,6 +331,7 @@ export function createAgentEndHandler(
   client: GraphitiClient,
   config: GralkorConfig,
   buffers: SessionBufferMap,
+  timers?: IdleTimerMap,
 ) {
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
     console.log("[gralkor] [auto-capture] agent_end fired — agentId:", ctx.agentId, "messageCount:", event.messages?.length ?? 0, "success:", event.success);
@@ -345,6 +355,28 @@ export function createAgentEndHandler(
     });
 
     console.log("[gralkor] [auto-capture] buffer updated — key:", key, "messageCount:", event.messages.length);
+
+    // Reset idle timer for this buffer key
+    if (timers) {
+      const existingTimer = timers.get(key);
+      if (existingTimer) clearTimeout(existingTimer);
+
+      const timer = setTimeout(() => {
+        timers.delete(key);
+        const buf = buffers.get(key);
+        if (!buf) {
+          console.log("[gralkor] [auto-capture] idle timeout — no buffer for key:", key, "(already flushed)");
+          return;
+        }
+        console.log("[gralkor] [auto-capture] idle timeout — flushing key:", key);
+        flushSessionBuffer(key, buf, buffers, client).catch((err) => {
+          console.warn("[gralkor] [auto-capture] idle flush failed:", err instanceof Error ? err.message : err);
+        });
+      }, config.idleTimeoutMs);
+
+      timer.unref();
+      timers.set(key, timer);
+    }
   };
 }
 
@@ -352,6 +384,7 @@ export function createAgentEndHandler(
 export function createSessionEndHandler(
   client: GraphitiClient,
   buffers: SessionBufferMap,
+  timers?: IdleTimerMap,
 ) {
   return async (_event: HookEvent, ctx: HookSessionContext): Promise<void> => {
     const key = resolveBufferKey(ctx);
@@ -359,6 +392,15 @@ export function createSessionEndHandler(
     if (!buffer) {
       console.log("[gralkor] [auto-capture] session_end — no buffer for key:", key);
       return;
+    }
+
+    // Cancel idle timer — session_end wins the race
+    if (timers) {
+      const timer = timers.get(key);
+      if (timer) {
+        clearTimeout(timer);
+        timers.delete(key);
+      }
     }
 
     console.log("[gralkor] [auto-capture] session_end — flushing key:", key);

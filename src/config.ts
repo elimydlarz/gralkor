@@ -23,6 +23,7 @@ export const GRAPHITI_PORT = 8001;
 export interface GralkorConfig {
   autoCapture: AutoCaptureConfig;
   autoRecall: AutoRecallConfig;
+  idleTimeoutMs: number;
   llm?: LlmConfig;
   embedder?: EmbedderConfig;
   dataDir?: string;
@@ -30,6 +31,7 @@ export interface GralkorConfig {
 
 export const defaultConfig: GralkorConfig = {
   autoCapture: { enabled: true },
+  idleTimeoutMs: 5 * 60 * 1000,
   autoRecall: { enabled: true, maxResults: 10 },
 };
 
@@ -38,6 +40,7 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
     autoCapture: {
       enabled: raw.autoCapture?.enabled ?? defaultConfig.autoCapture.enabled,
     },
+    idleTimeoutMs: raw.idleTimeoutMs ?? defaultConfig.idleTimeoutMs,
     autoRecall: {
       enabled: raw.autoRecall?.enabled ?? defaultConfig.autoRecall.enabled,
       maxResults:

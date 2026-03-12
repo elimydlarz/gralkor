@@ -10,9 +10,11 @@ import {
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
+  clearIdleTimers,
   type HookAgentContext,
   type SessionBufferMap,
   type SessionBuffer,
+  type IdleTimerMap,
 } from "./hooks.js";
 
 function mockClient(): {
@@ -1086,6 +1088,184 @@ describe("session_end handler", () => {
 
     // Let the fire-and-forget flush (and its retries) settle
     await new Promise((r) => setTimeout(r, 50));
+  });
+});
+
+describe("idle timeout flush", () => {
+  let client: ReturnType<typeof mockClient>;
+  let buffers: SessionBufferMap;
+  let timers: IdleTimerMap;
+  const idleConfig: GralkorConfig = {
+    ...defaultConfig,
+    idleTimeoutMs: 5 * 60 * 1000,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    client = mockClient();
+    client.addEpisode.mockResolvedValue({});
+    buffers = new Map();
+    timers = new Map();
+  });
+
+  afterEach(() => {
+    clearIdleTimers(timers);
+    buffers.clear();
+    vi.useRealTimers();
+  });
+
+  const simpleMessages = [
+    { role: "user", content: [{ type: "text", text: "Hello" }] },
+    { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
+  ];
+
+  it("flushes after idle timeout", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    await handler({ messages: simpleMessages }, { agentId: "agent-1" });
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(timers.size).toBe(1);
+
+    vi.advanceTimersByTime(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(buffers.size).toBe(0);
+    expect(timers.size).toBe(0);
+  });
+
+  it("resets timer on subsequent agent_end", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+
+    await handler({ messages: simpleMessages }, { agentId: "agent-1" });
+
+    // Advance 2 minutes, then another agent_end
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await handler({
+      messages: [
+        ...simpleMessages,
+        { role: "user", content: [{ type: "text", text: "More" }] },
+        { role: "assistant", content: [{ type: "text", text: "Sure" }] },
+      ],
+    }, { agentId: "agent-1" });
+
+    // Advance to 4 min after first (2 min after second) — no flush yet
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(client.addEpisode).not.toHaveBeenCalled();
+
+    // Advance to 5 min after second — should flush
+    vi.advanceTimersByTime(3 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toContain("More");
+  });
+
+  it("session_end wins — timer cancelled", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers, timers);
+
+    await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
+    expect(timers.size).toBe(1);
+
+    // session_end fires before timeout
+    await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(timers.size).toBe(0);
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+
+    // Advance past timeout — no second flush
+    vi.advanceTimersByTime(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("idle timeout wins — session_end no-ops", async () => {
+    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers, timers);
+
+    await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
+
+    // Idle timeout fires
+    vi.advanceTimersByTime(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+
+    // session_end fires after — should no-op (buffer already gone)
+    await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("independent timers per session", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+
+    await handler({ messages: simpleMessages }, { sessionKey: "sess-1" });
+    await handler({
+      messages: [{ role: "user", content: [{ type: "text", text: "Session 2" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2" }] }],
+    }, { sessionKey: "sess-2" });
+
+    expect(timers.size).toBe(2);
+
+    // Stagger: reset sess-2's timer by triggering another agent_end at +3min
+    vi.advanceTimersByTime(3 * 60 * 1000);
+    await handler({
+      messages: [{ role: "user", content: [{ type: "text", text: "Session 2 updated" }] },
+        { role: "assistant", content: [{ type: "text", text: "Reply 2 updated" }] }],
+    }, { sessionKey: "sess-2" });
+
+    // Advance to 5 min total — sess-1 fires, sess-2 has 2 min left
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body1).toContain("Hello");
+
+    // Advance remaining 3 min — sess-2 fires
+    vi.advanceTimersByTime(3 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
+    expect(body2).toContain("Session 2 updated");
+  });
+
+  it("clearIdleTimers cancels all", async () => {
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+
+    await handler({ messages: simpleMessages }, { sessionKey: "sess-1" });
+    await handler({ messages: simpleMessages }, { sessionKey: "sess-2" });
+    expect(timers.size).toBe(2);
+
+    clearIdleTimers(timers);
+    expect(timers.size).toBe(0);
+
+    vi.advanceTimersByTime(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
+  it("idle flush error is caught (no unhandled rejection)", async () => {
+    client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
+
+    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+
+    await handler({ messages: simpleMessages }, { agentId: "agent-1" });
+
+    vi.advanceTimersByTime(5 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The flush was attempted (addEpisode called at least once)
+    expect(client.addEpisode).toHaveBeenCalled();
   });
 });
 

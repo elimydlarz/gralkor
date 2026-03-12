@@ -98,14 +98,15 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
 1. `agent_end` fires after every agent run (each user message → response cycle). `event.messages` is the **full session message array** (`activeSession.messages` in OpenClaw) — all turns accumulated in the session, not just the current turn. However, if context-window compaction has occurred, earlier messages may be replaced with compacted summaries.
 2. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry **replaces** the previous (latest snapshot wins — correct because each `agent_end` delivers the cumulative session state).
-3. `session_end` handler flushes the buffer for the ended session via `flushSessionBuffer()`. One flush per session — no idle timers, no duplicate flushes.
-4. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
-5. Skip if disabled or empty (no text extracted).
-6. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
-7. Buffer is deleted before the API call (so errors don't leave stale entries).
-8. `addEpisode` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
+3. `agent_end` handler resets an idle timer (`setTimeout` with `unref()`) for the buffer key. If no further `agent_end` or `session_end` fires within `idleTimeoutMs` (default 5 min), the timer flushes the buffer. The timer is stored in an `IdleTimerMap` keyed by buffer key.
+4. `session_end` handler cancels any idle timer for the key, then flushes the buffer via `flushSessionBuffer()`. Race safety: both `session_end` and idle timeout check `buffers.get(key)` — if null, the other racer already flushed, so they no-op. `flushSessionBuffer` synchronously calls `buffers.delete(key)` before any `await`, making the claim atomic in single-threaded JS.
+5. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
+6. Skip if disabled or empty (no text extracted).
+7. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
+8. Buffer is deleted before the API call (so errors don't leave stale entries).
+9. `addEpisode` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
 
-**Known gap:** Only `session_end` triggers a flush. If the gateway stops without a new session starting, buffered messages are lost.
+**Unrecoverable edge case:** If the process terminates before either `session_end` or the idle timer fires, buffered messages are lost. The idle timer uses `unref()` so it doesn't block Node shutdown.
 
 ### Graph Partitioning
 
@@ -146,7 +147,8 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 |---|---|
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
-| auto-capture | `agent_end` buffers messages per session; flushed as single episode on `session_end` |
+| auto-capture | `agent_end` buffers messages per session; flushed on `session_end` or idle timeout (whichever fires first) |
+| idle-timeout-flush | Configurable idle timer (`idleTimeoutMs`, default 5 min) after last `agent_end` races `session_end`; `unref()`'d so it doesn't block shutdown |
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph facts in parallel |
 | manual-store | `memory_add` creates episodes with `source=text`; Graphiti extracts structure |
@@ -223,6 +225,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
+| `idleTimeoutMs` | number | `300000` | Idle flush timeout (ms) after last `agent_end`; races `session_end` |
 | `llm.provider` | string | `"openai"` | LLM provider (openai, anthropic, gemini, groq) |
 | `llm.model` | string | `"gpt-4.1-mini"` | LLM model name |
 | `embedder.provider` | string | `"openai"` | Embedding provider (openai, gemini) |
