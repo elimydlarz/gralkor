@@ -158,12 +158,15 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 ```json
 {
   "plugins": {
-    "config": {
+    "entries": {
       "gralkor": {
-        "autoCapture": { "enabled": true },
-        "autoRecall": { "enabled": true, "maxResults": 5 },
-        "idleTimeoutMs": 300000,
-        "dataDir": "/path/to/data"
+        "enabled": true,
+        "config": {
+          "autoCapture": { "enabled": true },
+          "autoRecall": { "enabled": true, "maxResults": 5 },
+          "idleTimeoutMs": 300000,
+          "dataDir": "/path/to/data"
+        }
       }
     }
   }
