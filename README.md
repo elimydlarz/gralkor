@@ -215,7 +215,7 @@ Python 3.12+ is not found on the system PATH. Install Python 3.12+ and restart O
 Normal — Gralkor is creating a Python virtual environment and installing dependencies via pip. This takes ~1-2 minutes. Subsequent starts reuse the venv and skip pip.
 
 **Plugin loads but all graph operations fail**
-Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM API key in `~/.openclaw/.env`.
+Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM API key in the environment.
 
 **No memories being recalled**
 - Check that `autoRecall.enabled` is `true` (it is by default)
