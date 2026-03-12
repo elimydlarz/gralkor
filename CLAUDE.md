@@ -118,7 +118,7 @@ Managed via `src/server-manager.ts`, registered as service `gralkor-server`:
 
 1. `uv sync --no-dev --frozen --directory {serverDir}` with `UV_PROJECT_ENVIRONMENT={dataDir}/venv`
 2. Force-install bundled wheels from `server/wheels/` (if any) via `uv pip install --reinstall --no-deps` — bypasses lockfile hash verification. Incompatible wheels caught gracefully.
-3. Write dynamic `config.yaml` to `dataDir` from plugin settings (`llm`/`embedder`) with defaults (`gpt-4.1-mini`, `text-embedding-3-small`). Spawn `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log`. Passes env vars (`CONFIG_PATH` pointing to generated config, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` (absence triggers embedded FalkorDBLite).
+3. Write dynamic `config.yaml` to `dataDir` from plugin settings (`llm`/`embedder`) with defaults (`gemini-3-flash-preview`, `gemini-embedding-2-preview`). Spawn `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log`. Passes env vars (`CONFIG_PATH` pointing to generated config, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` (absence triggers embedded FalkorDBLite).
 4. Poll `GET /health` every 500ms, 120s timeout. Monitor every 60s after startup.
 5. Stop: SIGTERM → 5s grace → SIGKILL.
 
@@ -226,21 +226,21 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
 | `idleTimeoutMs` | number | `300000` | Idle flush timeout (ms) after last `agent_end`; races `session_end` |
-| `llm.provider` | string | `"openai"` | LLM provider (openai, anthropic, gemini, groq) |
-| `llm.model` | string | `"gpt-4.1-mini"` | LLM model name |
-| `embedder.provider` | string | `"openai"` | Embedding provider (openai, gemini) |
-| `embedder.model` | string | `"text-embedding-3-small"` | Embedding model name |
+| `llm.provider` | string | `"gemini"` | LLM provider (gemini, openai, anthropic, groq) |
+| `llm.model` | string | `"gemini-3-flash-preview"` | LLM model name |
+| `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
+| `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model name |
 | `dataDir` | string | `{pluginDir}/.gralkor-data` | Backend data directory (venv, FalkorDB files) |
 
 ## Environment Variables
 
-- `OPENAI_API_KEY` — Default LLM + embeddings provider.
+- `GOOGLE_API_KEY` — Default provider. Gemini (fully self-contained: LLM + embeddings + reranking).
+- `OPENAI_API_KEY` — OpenAI LLM + embeddings. Also needed for embeddings if using Anthropic or Groq.
 - `ANTHROPIC_API_KEY` — Anthropic LLM (still needs `OPENAI_API_KEY` for embeddings).
-- `GOOGLE_API_KEY` — Gemini (fully self-contained: LLM + embeddings + reranking).
 - `GROQ_API_KEY` — Groq LLM (still needs `OPENAI_API_KEY` for embeddings).
 - `FALKORDB_URI` — (Optional) `redis://host:port` for legacy Docker mode.
 
-Provider configurable via plugin settings (`llm.provider`, `embedder.provider`) — a dynamic `config.yaml` is generated in `dataDir` at startup. Server manager forwards all API keys to the Python subprocess.
+Provider configurable via plugin settings (`llm.provider`, `embedder.provider`) — a dynamic `config.yaml` is generated in `dataDir` at startup with Gemini defaults. Server manager forwards all API keys to the Python subprocess.
 
 ## Dev Workflow
 
