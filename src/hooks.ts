@@ -333,17 +333,21 @@ export async function flushSessionBuffer(
   buffer: SessionBuffer,
   buffers: SessionBufferMap,
   client: GraphitiClient,
-  { retryDelayMs = 1000, maxThinkingChars }: { retryDelayMs?: number; maxThinkingChars?: number } = {},
+  { retryDelayMs = 1000, maxThinkingChars, test }: { retryDelayMs?: number; maxThinkingChars?: number; test?: boolean } = {},
 ): Promise<void> {
   const conversation = extractMessagesFromCtx({ messages: buffer.messages }, { maxThinkingChars });
   if (!conversation) {
-    console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
+    console.log(`[gralkor] auto-capture flush skip (empty) — key:${key}`);
     buffers.delete(key);
     return;
   }
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
-  console.log("[gralkor] [auto-capture] flushing episode — key:", key, "groupId:", groupId, "bodyLength:", conversation.length);
+  console.log(`[gralkor] auto-capture flushing — key:${key} groupId:${groupId} bodySize:${conversation.length}`);
+
+  if (test) {
+    console.log(`[gralkor] [test] episode body:\n${conversation}`);
+  }
 
   // Remove buffer before API call so errors don't leave stale entries
   buffers.delete(key);
@@ -360,13 +364,13 @@ export async function flushSessionBuffer(
         group_id: groupId,
       });
 
-      console.log("[gralkor] [auto-capture] episode flushed — key:", key, "groupId:", groupId);
+      console.log(`[gralkor] auto-capture flushed — key:${key}`);
       return;
     } catch (err) {
       lastError = err;
       if (attempt < maxRetries && isRetryableError(err)) {
         const delay = retryDelayMs * Math.pow(2, attempt);
-        console.warn(`[gralkor] [auto-capture] flush attempt ${attempt + 1} failed, retrying in ${delay}ms:`, err instanceof Error ? err.message : err);
+        console.warn(`[gralkor] auto-capture flush attempt ${attempt + 1} failed, retrying in ${delay}ms: ${err instanceof Error ? err.message : err}`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
         break;
