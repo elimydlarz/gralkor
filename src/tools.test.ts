@@ -156,5 +156,31 @@ describe("memory_store (createMemoryStoreTool)", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
     await expect(tool.execute("call-1", { content: "x" })).rejects.toThrow("server down");
   });
+
+  it("logs episode body in test mode", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const testConfig: GralkorConfig = { ...config, test: true };
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, testConfig, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Important insight" });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test] episode body:"),
+    );
+    expect(testLogs).toHaveLength(1);
+    expect(testLogs[0][0]).toContain("Important insight");
+    consoleSpy.mockRestore();
+  });
+
+  it("does not log episode body when test mode is off", async () => {
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    await tool.execute("call-1", { content: "Important insight" });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test]"),
+    );
+    expect(testLogs).toHaveLength(0);
+    consoleSpy.mockRestore();
+  });
 });
 
