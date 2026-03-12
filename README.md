@@ -131,7 +131,7 @@ Start chatting with your agent. Gralkor works in the background:
 
 ## Native memory search
 
-In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key in its own environment — not just in Gralkor's `.env`.
+In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key in its environment.
 
 Add a key to `~/.openclaw/.env` if you haven't already:
 
