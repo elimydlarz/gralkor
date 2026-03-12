@@ -445,7 +445,7 @@ export function createSessionEndHandler(
     const key = resolveBufferKey(ctx);
     const buffer = buffers.get(key);
     if (!buffer) {
-      console.log("[gralkor] [auto-capture] session_end — no buffer for key:", key);
+      console.log(`[gralkor] session_end — no buffer for key:${key}`);
       return;
     }
 
@@ -458,9 +458,9 @@ export function createSessionEndHandler(
       }
     }
 
-    console.log("[gralkor] [auto-capture] session_end — flushing key:", key);
-    flushSessionBuffer(key, buffer, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars }).catch((err) => {
-      console.warn("[gralkor] [auto-capture] session_end flush failed:", err instanceof Error ? err.message : err);
+    console.log(`[gralkor] session_end flush — key:${key}`);
+    flushSessionBuffer(key, buffer, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars, test: config.test }).catch((err) => {
+      console.warn("[gralkor] session_end flush failed:", err instanceof Error ? err.message : err);
     });
   };
 }
