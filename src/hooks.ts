@@ -211,21 +211,21 @@ export function createBeforeAgentStartHandler(
   let lastResultAt = 0;
 
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
-    console.log("[gralkor] [auto-recall] hook fired — agentId:", ctx.agentId, "hasPrompt:", !!event.prompt, "hasMessages:", !!event.messages);
-
     const agentId = ctx.agentId;
+    console.log(`[gralkor] auto-recall — agentId:${agentId} promptLen:${event.prompt?.length ?? 0} messages:${event.messages?.length ?? 0}`);
+
     if (setGroupId && agentId) {
       setGroupId(agentId);
     }
 
     if (!config.autoRecall.enabled) {
-      console.log("[gralkor] [auto-recall] disabled, skipping");
+      console.log(`[gralkor] auto-recall skip (disabled) — agentId:${agentId}`);
       return;
     }
 
     const userMessage = extractUserMessageFromPrompt(event);
     if (!userMessage) {
-      console.log("[gralkor] [auto-recall] no user message in prompt, skipping — promptLength:", event.prompt?.length ?? 0, "messageCount:", event.messages?.length ?? 0);
+      console.log(`[gralkor] auto-recall skip (no query) — agentId:${agentId} promptLen:${event.prompt?.length ?? 0} messages:${event.messages?.length ?? 0}`);
       return;
     }
 
@@ -233,12 +233,11 @@ export function createBeforeAgentStartHandler(
     // This prevents the double-fire from doubling API calls.
     const now = Date.now();
     if (userMessage === lastQuery && now - lastResultAt < 5_000) {
-      console.log("[gralkor] [auto-recall] returning cached result (double-fire dedup)");
+      console.log(`[gralkor] auto-recall dedup — agentId:${agentId}`);
       return lastResult;
     }
 
     const groupId = resolveGroupId({ agentId });
-    console.log("[gralkor] [auto-recall] searching — groupId:", groupId);
 
     try {
       const limit = config.autoRecall.maxResults;
@@ -248,12 +247,13 @@ export function createBeforeAgentStartHandler(
       const [searchResults, nativeResult] = await Promise.all([
         client.search(userMessage, [groupId], limit),
         nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
-          console.warn("[gralkor] [auto-recall] native search failed:", err instanceof Error ? err.message : err);
+          console.warn("[gralkor] auto-recall native failed:", err instanceof Error ? err.message : err);
           return null;
         }) : Promise.resolve(null),
       ]);
 
-      console.log("[gralkor] [auto-recall] search returned", searchResults.facts.length, "facts — groupId:", groupId);
+      const nativeLen = nativeResult?.length ?? 0;
+      console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
 
       const sections: string[] = [];
 
@@ -273,7 +273,10 @@ export function createBeforeAgentStartHandler(
       }
 
       const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`;
-      console.log("[gralkor] [auto-recall] returning prependContext — groupId:", groupId, "sections:", sections.length);
+
+      if (config.test) {
+        console.log(`[gralkor] [test] auto-recall context:\n${prependContext}`);
+      }
 
       const result = { prependContext };
       lastQuery = userMessage;
@@ -282,7 +285,7 @@ export function createBeforeAgentStartHandler(
 
       return result;
     } catch (err) {
-      console.warn("[gralkor] [auto-recall] search failed:", err instanceof Error ? err.message : err);
+      console.warn("[gralkor] auto-recall failed:", err instanceof Error ? err.message : err);
       return;
     }
   };
