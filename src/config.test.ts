@@ -10,12 +10,14 @@ import {
 describe("resolveConfig()", () => {
   it("returns defaults when called with no arguments", () => {
     const config = resolveConfig();
-    expect(config).toEqual(defaultConfig);
+    expect(config).toMatchObject(defaultConfig);
+    expect(config.test).toBe(false);
   });
 
   it("returns defaults when called with empty object", () => {
     const config = resolveConfig({});
-    expect(config).toEqual(defaultConfig);
+    expect(config).toMatchObject(defaultConfig);
+    expect(config.test).toBe(false);
   });
 
   it("exports GRAPHITI_URL constant pointing to localhost", () => {
