@@ -231,7 +231,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `llm.model` | string | `"gemini-3-flash-preview"` | LLM model name |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model name |
-| `dataDir` | string | `{pluginDir}/.gralkor-data` | Backend data directory (venv, FalkorDB files) |
+| `dataDir` | string | `{pluginDir}/../.gralkor-data` | Backend data directory (venv, FalkorDB files); lives alongside the plugin directory so uninstall/reinstall doesn't destroy it |
 | `test` | boolean | `false` | Test mode — logs full episode bodies before sending to Graphiti and full search results before returning to agent |
 
 ## Environment Variables
