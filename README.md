@@ -51,36 +51,7 @@ openclaw plugins install ./openclaw-gralkor-memory-<version>.tgz
 
 The plugin files land in `~/.openclaw/plugins/gralkor/`.
 
-### 3. Configure the LLM provider
-
-```bash
-cd ~/.openclaw/plugins/gralkor
-cp .env.example .env
-# Edit .env and set the API key for your provider
-```
-
-Graphiti needs an LLM to extract entities and relationships from conversations. Supported providers:
-
-| Provider | Env var | Notes |
-|---|---|---|
-| **Google Gemini** (default) | `GOOGLE_API_KEY` | Fully self-contained (LLM + embeddings + reranking) |
-| **OpenAI** | `OPENAI_API_KEY` | Handles LLM + embeddings out of the box |
-| **Anthropic** | `ANTHROPIC_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
-| **Groq** | `GROQ_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
-
-If you switch away from Gemini, also update `config.yaml` to set `llm.provider`, `llm.model`, `embedder.provider`, and `embedder.model`. For example, with OpenAI:
-
-```yaml
-llm:
-  provider: "openai"
-  model: "gpt-4.1-mini"
-
-embedder:
-  provider: "openai"
-  model: "text-embedding-3-small"
-```
-
-### 4. Enable the plugin
+### 3. Configure and enable the plugin
 
 Edit `~/.openclaw/openclaw.json`:
 
@@ -89,6 +60,51 @@ Edit `~/.openclaw/openclaw.json`:
   "plugins": {
     "slots": {
       "memory": "gralkor"
+    },
+    "entries": {
+      "gralkor": {
+        "enabled": true,
+        "config": {}
+      }
+    }
+  }
+}
+```
+
+### 4. Set your LLM API key
+
+Graphiti needs an LLM to extract entities and relationships from conversations. Set the API key for your provider in `~/.openclaw/.env`:
+
+```bash
+# Google Gemini (default) — fully self-contained (LLM + embeddings + reranking)
+echo 'GOOGLE_API_KEY=...' >> ~/.openclaw/.env
+```
+
+Supported providers:
+
+| Provider | Env var | Notes |
+|---|---|---|
+| **Google Gemini** (default) | `GOOGLE_API_KEY` | Fully self-contained (LLM + embeddings + reranking) |
+| **OpenAI** | `OPENAI_API_KEY` | Handles LLM + embeddings out of the box |
+| **Anthropic** | `ANTHROPIC_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
+| **Groq** | `GROQ_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
+
+To switch away from Gemini, set `llm` and `embedder` in the plugin config. For example, with OpenAI:
+
+```json
+{
+  "plugins": {
+    "slots": {
+      "memory": "gralkor"
+    },
+    "entries": {
+      "gralkor": {
+        "enabled": true,
+        "config": {
+          "llm": { "provider": "openai", "model": "gpt-4.1-mini" },
+          "embedder": { "provider": "openai", "model": "text-embedding-3-small" }
+        }
+      }
     }
   }
 }
