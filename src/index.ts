@@ -173,6 +173,11 @@ export const configSchema = {
       type: "string" as const,
       description: "Directory for backend data (venv, database). Defaults to .gralkor-data inside the plugin directory.",
     },
+    test: {
+      type: "boolean" as const,
+      default: false,
+      description: "Enable test mode — logs full episode bodies and search results for debugging.",
+    },
   },
 };
 
