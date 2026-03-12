@@ -147,6 +147,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 |---|---|
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
+| upgrade-safe-data | Default `dataDir` is `{pluginDir}/../.gralkor-data` (alongside, not inside plugin directory) so `openclaw plugins uninstall` doesn't destroy runtime data |
 | auto-capture | `agent_end` buffers messages per session; flushed on `session_end` or idle timeout (whichever fires first) |
 | idle-timeout-flush | Configurable idle timer (`idleTimeoutMs`, default 5 min) after last `agent_end` races `session_end`; `unref()`'d so it doesn't block shutdown |
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
