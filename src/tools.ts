@@ -48,9 +48,12 @@ export function createMemoryStoreTool(
       _toolCallId: string,
       args: { content: string; source_description?: string },
     ): Promise<string> {
-      console.log(`[gralkor] [${toolName}] execute — toolCallId:`, _toolCallId, "args:", JSON.stringify(args));
       const groupId = getGroupId?.() ?? "default";
-      console.log(`[gralkor] [${toolName}] storing — groupId:`, groupId, "contentLength:", args.content.length);
+      console.log(`[gralkor] ${toolName} storing — groupId:${groupId} bodySize:${args.content.length}`);
+
+      if (config.test) {
+        console.log(`[gralkor] [test] episode body:\n${args.content}`);
+      }
 
       await client.addEpisode({
         name: `memory-store-${Date.now()}`,
@@ -60,7 +63,7 @@ export function createMemoryStoreTool(
         source: "text",
       });
 
-      console.log(`[gralkor] [${toolName}] stored successfully — groupId:`, groupId);
+      console.log(`[gralkor] ${toolName} stored — groupId:${groupId}`);
       return "Stored successfully. The knowledge graph will extract entities and relationships from this content.";
     },
   };
