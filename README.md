@@ -126,15 +126,7 @@ Start chatting with your agent. Gralkor works in the background:
 
 ## Native memory search
 
-In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key in its environment.
-
-Add a key to `~/.openclaw/.env` if you haven't already:
-
-```bash
-echo 'OPENAI_API_KEY=sk-proj-...' >> ~/.openclaw/.env
-```
-
-Any of `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `VOYAGE_API_KEY`, or `MISTRAL_API_KEY` will work. Without this, native `memory_search` results will be empty (this is an upstream OpenClaw bug in FTS-only mode — the FTS table is never populated without an embedding provider).
+In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `VOYAGE_API_KEY`, or `MISTRAL_API_KEY`) in its environment. Without this, native `memory_search` results will be empty (this is an upstream OpenClaw bug in FTS-only mode — the FTS table is never populated without an embedding provider).
 
 ## CLI
 
