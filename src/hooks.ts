@@ -388,15 +388,15 @@ export function createAgentEndHandler(
   timers?: IdleTimerMap,
 ) {
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
-    console.log("[gralkor] [auto-capture] agent_end fired — agentId:", ctx.agentId, "messageCount:", event.messages?.length ?? 0, "success:", event.success);
+    console.log(`[gralkor] agent_end — agentId:${ctx.agentId} messages:${event.messages?.length ?? 0} success:${event.success}`);
 
     if (!config.autoCapture.enabled) {
-      console.log("[gralkor] [auto-capture] disabled, skipping");
+      console.log("[gralkor] agent_end skip (disabled)");
       return;
     }
 
     if (!event.messages || event.messages.length === 0) {
-      console.log("[gralkor] [auto-capture] no messages, skipping");
+      console.log(`[gralkor] agent_end skip (no messages) — agentId:${ctx.agentId}`);
       return;
     }
 
@@ -408,7 +408,7 @@ export function createAgentEndHandler(
       sessionKey: ctx.sessionKey,
     });
 
-    console.log("[gralkor] [auto-capture] buffer updated — key:", key, "messageCount:", event.messages.length);
+    console.log(`[gralkor] auto-capture buffered — key:${key} messages:${event.messages.length}`);
 
     // Reset idle timer for this buffer key
     if (timers) {
@@ -419,12 +419,12 @@ export function createAgentEndHandler(
         timers.delete(key);
         const buf = buffers.get(key);
         if (!buf) {
-          console.log("[gralkor] [auto-capture] idle timeout — no buffer for key:", key, "(already flushed)");
+          console.log(`[gralkor] auto-capture idle no-op — key:${key}`);
           return;
         }
-        console.log("[gralkor] [auto-capture] idle timeout — flushing key:", key);
-        flushSessionBuffer(key, buf, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars }).catch((err) => {
-          console.warn("[gralkor] [auto-capture] idle flush failed:", err instanceof Error ? err.message : err);
+        console.log(`[gralkor] auto-capture idle flush — key:${key}`);
+        flushSessionBuffer(key, buf, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars, test: config.test }).catch((err) => {
+          console.warn("[gralkor] auto-capture idle flush failed:", err instanceof Error ? err.message : err);
         });
       }, config.idleTimeoutMs);
 
