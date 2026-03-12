@@ -69,6 +69,16 @@ describe("resolveConfig()", () => {
     expect(config.llm).toBeUndefined();
     expect(config.embedder).toBeUndefined();
   });
+
+  it("defaults test to false", () => {
+    const config = resolveConfig({});
+    expect(config.test).toBe(false);
+  });
+
+  it("passes through test when true", () => {
+    const config = resolveConfig({ test: true });
+    expect(config.test).toBe(true);
+  });
 });
 
 describe("resolveGroupId()", () => {
