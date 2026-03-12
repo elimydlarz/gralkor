@@ -42,6 +42,13 @@ function isTextBlock(block: ContentBlock): boolean {
 }
 
 /**
+ * Check if a content block is a thinking block with content.
+ */
+function isThinkingBlock(block: ContentBlock): boolean {
+  return block.type === "thinking" && !!(block.thinking as string | undefined);
+}
+
+/**
  * Hook event — the first argument passed to hook handlers.
  *
  * before_agent_start: { prompt, messages? }
@@ -133,36 +140,54 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
  * Extract all user and assistant messages from ctx.messages (agent_end).
  *
  * Each message has role ("user"/"assistant"/"toolResult") and content (array of blocks).
- * We extract text blocks, skipping pure tool-call entries.
+ * For user messages, we extract text blocks as before.
+ * For assistant messages, we iterate blocks individually:
+ *   - text/output_text → "Assistant: {text}"
+ *   - thinking → "Assistant: (thinking: {text})" truncated to maxThinkingChars
+ *   - toolCall/toolUse/functionCall → skipped
  *
  * Returns a multi-turn conversation string:
  *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
  */
-export function extractMessagesFromCtx(event: HookEvent): string {
+export function extractMessagesFromCtx(
+  event: HookEvent,
+  { maxThinkingChars = 2000 }: { maxThinkingChars?: number } = {},
+): string {
   const messages = event.messages;
   if (!messages || !Array.isArray(messages)) return "";
 
   const parts: string[] = [];
 
   for (const msg of messages) {
-    const textParts = normalizeContent(msg.content)
-      .filter(isTextBlock)
-      .map((block: ContentBlock) => block.text!)
-      .join("\n");
-
-    if (!textParts) continue;
-
-    // Strip injected auto-recall XML from user messages to prevent feedback loop
-    const cleanText = msg.role === "user"
-      ? textParts.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "").trim()
-      : textParts;
-
-    if (!cleanText) continue;
+    const blocks = normalizeContent(msg.content);
 
     if (msg.role === "user") {
-      parts.push(`User: ${cleanText}`);
+      const textParts = blocks
+        .filter(isTextBlock)
+        .map((block: ContentBlock) => block.text!)
+        .join("\n");
+
+      if (!textParts) continue;
+
+      const cleanText = textParts
+        .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
+        .trim();
+
+      if (cleanText) {
+        parts.push(`User: ${cleanText}`);
+      }
     } else if (msg.role === "assistant") {
-      parts.push(`Assistant: ${cleanText}`);
+      for (const block of blocks) {
+        if (isThinkingBlock(block)) {
+          let thinking = block.thinking as string;
+          if (thinking.length > maxThinkingChars) {
+            thinking = thinking.slice(0, maxThinkingChars) + "...";
+          }
+          parts.push(`Assistant: (thinking: ${thinking})`);
+        } else if (isTextBlock(block)) {
+          parts.push(`Assistant: ${block.text!}`);
+        }
+      }
     }
   }
 
@@ -305,9 +330,9 @@ export async function flushSessionBuffer(
   buffer: SessionBuffer,
   buffers: SessionBufferMap,
   client: GraphitiClient,
-  { retryDelayMs = 1000 }: { retryDelayMs?: number } = {},
+  { retryDelayMs = 1000, maxThinkingChars }: { retryDelayMs?: number; maxThinkingChars?: number } = {},
 ): Promise<void> {
-  const conversation = extractMessagesFromCtx({ messages: buffer.messages });
+  const conversation = extractMessagesFromCtx({ messages: buffer.messages }, { maxThinkingChars });
   if (!conversation) {
     console.log("[gralkor] [auto-capture] flush skipped — no messages extracted, key:", key);
     buffers.delete(key);
@@ -391,7 +416,7 @@ export function createAgentEndHandler(
           return;
         }
         console.log("[gralkor] [auto-capture] idle timeout — flushing key:", key);
-        flushSessionBuffer(key, buf, buffers, client).catch((err) => {
+        flushSessionBuffer(key, buf, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars }).catch((err) => {
           console.warn("[gralkor] [auto-capture] idle flush failed:", err instanceof Error ? err.message : err);
         });
       }, config.idleTimeoutMs);
@@ -405,6 +430,7 @@ export function createAgentEndHandler(
 
 export function createSessionEndHandler(
   client: GraphitiClient,
+  config: GralkorConfig,
   buffers: SessionBufferMap,
   timers?: IdleTimerMap,
 ) {
@@ -426,7 +452,7 @@ export function createSessionEndHandler(
     }
 
     console.log("[gralkor] [auto-capture] session_end — flushing key:", key);
-    flushSessionBuffer(key, buffer, buffers, client).catch((err) => {
+    flushSessionBuffer(key, buffer, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars }).catch((err) => {
       console.warn("[gralkor] [auto-capture] session_end flush failed:", err instanceof Error ? err.message : err);
     });
   };

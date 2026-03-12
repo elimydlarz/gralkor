@@ -1,8 +1,5 @@
 {
-  "enabledPlugins": {
-    "req-mod-sync@req-mod-sync": true,
-    "trunk-sync@trunk-sync": true
-  },
+  "enabledPlugins": {},
   "extraKnownMarketplaces": {
     "trunk-sync": {
       "source": {

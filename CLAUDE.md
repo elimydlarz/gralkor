@@ -82,7 +82,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 
 **Hooks used by gralkor:** `before_agent_start` (auto-recall), `agent_end` + `session_end` (auto-capture with session buffering).
 
-`event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"toolCall"`, etc.
+`event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`, etc. Auto-capture extracts `text`/`output_text`/`thinking` blocks; tool-related blocks are skipped.
 
 ### Data Lifecycle
 
@@ -100,7 +100,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 2. `agent_end` handler buffers `event.messages` into a `SessionBufferMap` keyed by `sessionKey || agentId || "default"`. Each buffer entry **replaces** the previous (latest snapshot wins — correct because each `agent_end` delivers the cumulative session state).
 3. `agent_end` handler resets an idle timer (`setTimeout` with `unref()`) for the buffer key. If no further `agent_end` or `session_end` fires within `idleTimeoutMs` (default 5 min), the timer flushes the buffer. The timer is stored in an `IdleTimerMap` keyed by buffer key.
 4. `session_end` handler cancels any idle timer for the key, then flushes the buffer via `flushSessionBuffer()`. Race safety: both `session_end` and idle timeout check `buffers.get(key)` — if null, the other racer already flushed, so they no-op. `flushSessionBuffer` synchronously calls `buffers.delete(key)` before any `await`, making the claim atomic in single-threaded JS.
-5. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages, extracts ALL text blocks from user/assistant in sequence. Strips `<gralkor-memory>` XML from user messages. Returns a string. **Silently drops media** (images, video) — only `type === "text"` blocks.
+5. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which walks messages. For user messages: joins all `text`/`output_text` blocks and strips `<gralkor-memory>` XML. For assistant messages: iterates blocks individually — `text`/`output_text` → `Assistant: {text}`, `thinking` → `Assistant: (thinking: {text})` truncated to `maxThinkingChars` (default 2000), tool-related blocks (`toolCall`/`toolUse`/`functionCall`) skipped. **Silently drops media** (images, video).
 6. Skip if disabled or empty (no text extracted).
 7. Format as `User: ...\nAssistant: ...` multi-turn, POST to `/episodes` with `reference_time` set to wall-clock time.
 8. Buffer is deleted before the API call (so errors don't leave stale entries).
@@ -222,6 +222,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
+| `autoCapture.maxThinkingChars` | number | `2000` | Max chars per thinking block before truncation |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
 | `idleTimeoutMs` | number | `300000` | Idle flush timeout (ms) after last `agent_end`; races `session_end` |

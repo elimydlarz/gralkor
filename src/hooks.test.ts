@@ -187,7 +187,7 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Part 1\nPart 2");
+    expect(result).toBe("User: Hello\nAssistant: Part 1\nAssistant: Part 2");
   });
 
   it("extracts messages with only output_text blocks", () => {
@@ -198,6 +198,123 @@ describe("extractMessagesFromCtx", () => {
       ],
     });
     expect(result).toBe("User: Hello\nAssistant: Response via output_text");
+  });
+
+  it("emits thinking block as Assistant: (thinking: ...)", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "I should greet the user" },
+          { type: "text", text: "Hi there!" },
+        ]},
+      ],
+    });
+    expect(result).toBe(
+      "User: Hello\nAssistant: (thinking: I should greet the user)\nAssistant: Hi there!",
+    );
+  });
+
+  it("preserves order of interleaved thinking and text blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "First thought" },
+          { type: "text", text: "First response" },
+          { type: "thinking", thinking: "Second thought" },
+          { type: "text", text: "Second response" },
+        ]},
+      ],
+    });
+    expect(result).toBe(
+      "Assistant: (thinking: First thought)\nAssistant: First response\nAssistant: (thinking: Second thought)\nAssistant: Second response",
+    );
+  });
+
+  it("truncates thinking block at maxThinkingChars with ...", () => {
+    const longThinking = "A".repeat(3000);
+    const result = extractMessagesFromCtx(
+      {
+        messages: [
+          { role: "assistant", content: [
+            { type: "thinking", thinking: longThinking },
+            { type: "text", text: "Done" },
+          ]},
+        ],
+      },
+      { maxThinkingChars: 100 },
+    );
+    expect(result).toBe(
+      `Assistant: (thinking: ${"A".repeat(100)}...)\nAssistant: Done`,
+    );
+  });
+
+  it("uses default maxThinkingChars of 2000", () => {
+    const longThinking = "B".repeat(2500);
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking", thinking: longThinking },
+        ]},
+      ],
+    });
+    expect(result).toBe(
+      `Assistant: (thinking: ${"B".repeat(2000)}...)`,
+    );
+  });
+
+  it("does not truncate thinking block shorter than maxThinkingChars", () => {
+    const result = extractMessagesFromCtx(
+      {
+        messages: [
+          { role: "assistant", content: [
+            { type: "thinking", thinking: "short thought" },
+          ]},
+        ],
+      },
+      { maxThinkingChars: 100 },
+    );
+    expect(result).toBe("Assistant: (thinking: short thought)");
+  });
+
+  it("skips thinking block with no thinking field", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking" },
+          { type: "text", text: "Hello" },
+        ]},
+      ],
+    });
+    expect(result).toBe("Assistant: Hello");
+  });
+
+  it("skips thinking block with empty thinking field", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "" },
+          { type: "text", text: "Hello" },
+        ]},
+      ],
+    });
+    expect(result).toBe("Assistant: Hello");
+  });
+
+  it("emits thinking and text but skips toolCall in mixed message", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "I should check auth.ts" },
+          { type: "text", text: "Let me look at the auth module." },
+          { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
+          { type: "text", text: "Found the bug on line 42." },
+        ]},
+      ],
+    });
+    expect(result).toBe(
+      "Assistant: (thinking: I should check auth.ts)\nAssistant: Let me look at the auth module.\nAssistant: Found the bug on line 42.",
+    );
   });
 });
 
@@ -846,7 +963,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("3 turns then session_end → single episode with full conversation", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
@@ -903,7 +1020,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("3 turns then session_end → single episode", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
@@ -939,7 +1056,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("two concurrent sessions flush independently", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
 
     const ctx1 = { agentId: "agent-1", sessionKey: "sess-1" };
     const ctx2 = { agentId: "agent-1", sessionKey: "sess-2" };
@@ -982,7 +1099,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("string content flows through buffer → flush → addEpisode", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
@@ -1012,7 +1129,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Name is Eli\n</gralkor-memory>\n';
@@ -1114,6 +1231,53 @@ describe("flushSessionBuffer", () => {
     expect(client.addEpisode).toHaveBeenCalledTimes(3);
   });
 
+  it("includes thinking blocks in flushed episode", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "I should check auth.ts" },
+          { type: "text", text: "Let me look at the auth module." },
+          { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
+          { type: "text", text: "Found the bug on line 42." },
+        ]},
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episode_body:
+          "User: Fix the bug\n" +
+          "Assistant: (thinking: I should check auth.ts)\n" +
+          "Assistant: Let me look at the auth module.\n" +
+          "Assistant: Found the bug on line 42.",
+      }),
+    );
+  });
+
+  it("respects maxThinkingChars option when flushing", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "X".repeat(200) },
+          { type: "text", text: "Hi" },
+        ]},
+      ],
+      agentId: "agent-42",
+    };
+    buffers.set("key-1", buffer);
+
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { maxThinkingChars: 50 });
+
+    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    expect(body).toContain(`(thinking: ${"X".repeat(50)}...)`);
+  });
+
   it("does not retry client errors (4xx)", async () => {
     client.addEpisode.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
 
@@ -1154,7 +1318,7 @@ describe("session_end handler", () => {
       sessionKey: "session-abc",
     });
 
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
     // flush is fire-and-forget — wait for the microtask to settle
@@ -1165,7 +1329,7 @@ describe("session_end handler", () => {
   });
 
   it("does nothing when no buffer exists", async () => {
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
 
     expect(client.addEpisode).not.toHaveBeenCalled();
@@ -1183,7 +1347,7 @@ describe("session_end handler", () => {
       sessionKey: "session-abc",
     });
 
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, buffers);
+    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     // Should not throw despite flush failure
     await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
@@ -1266,7 +1430,7 @@ describe("idle timeout flush", () => {
 
   it("session_end wins — timer cancelled", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers, timers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers, timers);
 
     await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
     expect(timers.size).toBe(1);
@@ -1287,7 +1451,7 @@ describe("idle timeout flush", () => {
 
   it("idle timeout wins — session_end no-ops", async () => {
     const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, buffers, timers);
+    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers, timers);
 
     await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
 
