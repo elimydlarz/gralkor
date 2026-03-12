@@ -93,11 +93,11 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     const configPath = join(opts.dataDir, "config.yaml");
     const configYaml = [
       "llm:",
-      `  provider: "${opts.llmConfig?.provider ?? "openai"}"`,
-      `  model: "${opts.llmConfig?.model ?? "gpt-4.1-mini"}"`,
+      `  provider: "${opts.llmConfig?.provider ?? "gemini"}"`,
+      `  model: "${opts.llmConfig?.model ?? "gemini-3-flash-preview"}"`,
       "embedder:",
-      `  provider: "${opts.embedderConfig?.provider ?? "openai"}"`,
-      `  model: "${opts.embedderConfig?.model ?? "text-embedding-3-small"}"`,
+      `  provider: "${opts.embedderConfig?.provider ?? "gemini"}"`,
+      `  model: "${opts.embedderConfig?.model ?? "gemini-embedding-2-preview"}"`,
       "",
     ].join("\n");
     await writeFile(configPath, configYaml, "utf-8");

@@ -33,7 +33,7 @@ def _load_config() -> dict:
 
 
 def _build_llm_client(cfg: dict):
-    provider = cfg.get("llm", {}).get("provider", "openai")
+    provider = cfg.get("llm", {}).get("provider", "gemini")
     model = cfg.get("llm", {}).get("model")
     llm_cfg = LLMConfig(model=model) if model else None
 
@@ -57,7 +57,7 @@ def _build_llm_client(cfg: dict):
 
 
 def _build_embedder(cfg: dict):
-    provider = cfg.get("embedder", {}).get("provider", "openai")
+    provider = cfg.get("embedder", {}).get("provider", "gemini")
     model = cfg.get("embedder", {}).get("model")
 
     if provider == "gemini":

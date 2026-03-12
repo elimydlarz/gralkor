@@ -7,7 +7,7 @@ Powered by [Graphiti](https://github.com/getzep/graphiti) + [FalkorDB](https://w
 
 - OpenClaw >= 2026.1.26
 - Python 3.12+ on the system PATH
-- An LLM provider API key (one of: `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY` + `OPENAI_API_KEY`, `GROQ_API_KEY` + `OPENAI_API_KEY`)
+- An LLM provider API key (one of: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` + `OPENAI_API_KEY`, `GROQ_API_KEY` + `OPENAI_API_KEY`)
 
 ## Install
 
@@ -43,28 +43,28 @@ cd ~/.openclaw/plugins/gralkor
 cp .env.example .env
 ```
 
-Edit `.env` and set your API key. The simplest option is OpenAI (handles both LLM and embeddings):
-
-```
-OPENAI_API_KEY=sk-...
-```
-
-For Google Gemini (fully self-contained, no OpenAI key needed):
+Edit `.env` and set your API key. The simplest option is Google Gemini (fully self-contained — LLM + embeddings + reranking):
 
 ```
 GOOGLE_API_KEY=...
 ```
 
-If using Gemini, also update `config.yaml` in the same directory:
+For OpenAI (also handles both LLM and embeddings):
+
+```
+OPENAI_API_KEY=sk-...
+```
+
+If using OpenAI, also update `config.yaml` in the same directory:
 
 ```yaml
 llm:
-  provider: "gemini"
-  model: "gemini-2.5-flash"
+  provider: "openai"
+  model: "gpt-4.1-mini"
 
 embedder:
-  provider: "gemini"
-  model: "text-embedding-004"
+  provider: "openai"
+  model: "text-embedding-3-small"
 ```
 
 ### 3. Enable the plugin in OpenClaw

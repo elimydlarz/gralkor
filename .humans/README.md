@@ -55,21 +55,21 @@ Graphiti needs an LLM to extract entities and relationships from conversations. 
 
 | Provider | Env var | Notes |
 |---|---|---|
-| **OpenAI** (default) | `OPENAI_API_KEY` | Handles LLM + embeddings out of the box |
-| **Google Gemini** | `GOOGLE_API_KEY` | Fully self-contained (LLM + embeddings + reranking) |
+| **Google Gemini** (default) | `GOOGLE_API_KEY` | Fully self-contained (LLM + embeddings + reranking) |
+| **OpenAI** | `OPENAI_API_KEY` | Handles LLM + embeddings out of the box |
 | **Anthropic** | `ANTHROPIC_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
 | **Groq** | `GROQ_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
 
-If you switch away from OpenAI, also update `config.yaml` to set `llm.provider`, `llm.model`, `embedder.provider`, and `embedder.model`. For example, with Gemini:
+If you switch away from Gemini, also update `config.yaml` to set `llm.provider`, `llm.model`, `embedder.provider`, and `embedder.model`. For example, with OpenAI:
 
 ```yaml
 llm:
-  provider: "gemini"
-  model: "gemini-2.5-flash"
+  provider: "openai"
+  model: "gpt-4.1-mini"
 
 embedder:
-  provider: "gemini"
-  model: "text-embedding-004"
+  provider: "openai"
+  model: "text-embedding-3-small"
 ```
 
 ### 4. Enable the plugin

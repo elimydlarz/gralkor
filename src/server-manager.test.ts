@@ -260,12 +260,12 @@ describe("createServerManager", () => {
 
     expect(mockWriteFile).toHaveBeenCalledWith(
       "/data/config.yaml",
-      expect.stringContaining('provider: "openai"'),
+      expect.stringContaining('provider: "gemini"'),
       "utf-8",
     );
     const written = mockWriteFile.mock.calls[0][1] as string;
-    expect(written).toContain('model: "gpt-4.1-mini"');
-    expect(written).toContain('model: "text-embedding-3-small"');
+    expect(written).toContain('model: "gemini-3-flash-preview"');
+    expect(written).toContain('model: "gemini-embedding-2-preview"');
   });
 
   it("writes config.yaml with user-provided llm/embedder values", async () => {
