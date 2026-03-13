@@ -12,6 +12,8 @@ type AnyFn = (...args: any[]) => any;
  * Minimal API surface used by shared registration code (hooks, health, CLI).
  */
 export interface PluginApiBase {
+  /** Plugin-specific config from plugins.entries.<id>.config, validated against configSchema */
+  pluginConfig?: Record<string, unknown>;
   on(event: string, handler: AnyFn): void;
   registerService(service: {
     id: string;
