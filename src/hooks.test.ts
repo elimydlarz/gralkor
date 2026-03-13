@@ -316,6 +316,76 @@ describe("extractMessagesFromCtx", () => {
       "Assistant: (thinking: I should check auth.ts)\nAssistant: Let me look at the auth module.\nAssistant: Found the bug on line 42.",
     );
   });
+
+  describe("when user message is a session-start instruction", () => {
+    it("then skips the message", () => {
+      const sessionStart = "A new session was started via /new or /reset. Execute your Session Startup sequence now - read the required files before responding to the user. Then greet the user in your configured persona, if one is provided.\nCurrent time: Friday, March 13th, 2026 — 12:01 PM (UTC) / 2026-03-13 12:01 UTC";
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: sessionStart }] },
+          { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
+          { role: "user", content: [{ type: "text", text: "Hey there" }] },
+          { role: "assistant", content: [{ type: "text", text: "What's up?" }] },
+        ],
+      });
+      expect(result).toBe("Assistant: Hello!\nUser: Hey there\nAssistant: What's up?");
+    });
+
+    it("then skips even with string content", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: "A new session was started via /new" },
+          { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
+        ],
+      });
+      expect(result).toBe("Assistant: Hello!");
+    });
+  });
+
+  describe("when user message contains metadata wrappers", () => {
+    it("then strips a single metadata block and keeps the user text", () => {
+      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123", "name": "Eli"}\n```\n\nHey, enjoying tmux?';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+          { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
+        ],
+      });
+      expect(result).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
+    });
+
+    it("then strips multiple metadata blocks and keeps the user text", () => {
+      const msg = 'Conversation info (untrusted metadata):\n```json\n{"message_id": "1293", "sender": "Eli"}\n```\n\nSender (untrusted metadata):\n```json\n{"id": "123", "name": "Eli"}\n```\n\nHey, enjoying tmux?';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+          { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
+        ],
+      });
+      expect(result).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
+    });
+
+    it("then skips user message when only metadata remains", () => {
+      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123"}\n```\n\n';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+          { role: "assistant", content: [{ type: "text", text: "Response" }] },
+        ],
+      });
+      expect(result).toBe("Assistant: Response");
+    });
+
+    it("then strips metadata from string content too", () => {
+      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123"}\n```\n\nHello';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: msg },
+        ],
+      });
+      expect(result).toBe("User: Hello");
+    });
+  });
 });
 
 describe("extractUserMessageFromPrompt", () => {
