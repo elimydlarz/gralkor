@@ -183,6 +183,7 @@ export const configSchema = {
 
 export function register(api: MemoryPluginApi) {
   const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
+  console.log(`[gralkor] config: autoCapture=${config.autoCapture.enabled} autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults} idleTimeout=${config.idleTimeoutMs}ms llm=${config.llm?.provider ?? 'default'}/${config.llm?.model ?? 'default'} embedder=${config.embedder?.provider ?? 'default'}/${config.embedder?.model ?? 'default'} test=${config.test} dataDir=${config.dataDir ?? 'default'}`);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config, pluginDir);
 }
