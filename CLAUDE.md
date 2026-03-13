@@ -127,7 +127,7 @@ Startup errors caught and logged — plugin degrades gracefully (tools/hooks see
 
 ### Communication Path
 
-Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately; 30s timeout for reads, 120s `writeTimeoutMs` for `addEpisode` since Graphiti's LLM-based entity extraction is slow) → Graphiti REST API → FalkorDB. `search()` calls `POST /search` returning `{ facts }` — uses `graphiti.search()` which returns edges (facts) only. Graphiti also has a richer `search_()` API with configurable recipes (node search, combined search with cross-encoder reranking) but we don't use it yet.
+Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff for network errors and 5xx; 4xx throws immediately) → Graphiti REST API → FalkorDB. `search()` calls `POST /search` returning `{ facts }` — uses `graphiti.search()` which returns edges (facts) only. Graphiti also has a richer `search_()` API with configurable recipes (node search, combined search with cross-encoder reranking) but we don't use it yet.
 
 **Rate-limit passthrough:** Server middleware (`rate_limit_middleware` in `main.py`) catches upstream `RateLimitError` from any LLM provider (openai, anthropic, etc.) — including errors wrapped in other exceptions — and returns HTTP 429 instead of 500. This prevents the `GraphitiClient` from retrying rate-limited requests (it only retries 5xx).
 
