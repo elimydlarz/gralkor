@@ -39,6 +39,7 @@ The tool factory wraps native `memory_search` (from `api.runtime.tools`) to also
 
 ### Plugin API Contract
 
+- **`api.pluginConfig`** — `Record<string, unknown> | undefined`. The validated config object from `plugins.entries.<id>.config` in the user's OpenClaw config. This is how plugin-specific settings (e.g. `test`, `autoRecall`, `llm`) reach the plugin. **Not** passed as a second argument to `register()`.
 - **`registerTool(tool, opts?)`** — (1) Plain object `{ name, description, parameters, execute }` where `execute(toolCallId, params, signal, onUpdate)` (**not** `execute(args, ctx)` — first arg is string ID, not params). (2) Factory `(ctx) => Tool | Tool[] | null` with `opts: { names: string[] }`. Factory receives `{ config, workspaceDir, agentId, sessionKey, ... }`.
 - **`api.runtime.tools`** — Built-in tool factories: `createMemorySearchTool()`, `createMemoryGetTool()`, `registerMemoryCli()`.
 - **`api.on(event, handler)`** — Register hook handler. Prefer over `registerHook` (which requires `metadata: { name }` or crashes with `TypeError`).
