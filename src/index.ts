@@ -181,7 +181,7 @@ export const configSchema = {
   },
 };
 
-export function register(api: MemoryPluginApi & { pluginConfig?: Record<string, unknown> }) {
+export function register(api: MemoryPluginApi) {
   const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config, pluginDir);
