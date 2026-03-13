@@ -137,10 +137,35 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 }
 
 /**
+ * Clean a user message text by stripping system noise:
+ *   1. Session-start instructions ("A new session was started...")
+ *   2. Metadata wrappers ("Xxx (untrusted metadata):\n```json\n...\n```\n\n")
+ *   3. <gralkor-memory> XML blocks (feedback loop prevention)
+ *
+ * Returns cleaned text, or empty string if nothing meaningful remains.
+ */
+function cleanUserMessageText(text: string): string {
+  // Skip session-start system instructions entirely
+  if (/^A new session was started/.test(text)) return "";
+
+  // Strip all metadata wrappers (there may be multiple: Conversation info, Sender, etc.)
+  const withoutMetadata = text.replace(
+    /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
+    "",
+  );
+
+  // Strip <gralkor-memory> XML
+  return withoutMetadata
+    .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
+    .trim();
+}
+
+/**
  * Extract all user and assistant messages from ctx.messages (agent_end).
  *
  * Each message has role ("user"/"assistant"/"toolResult") and content (array of blocks).
- * For user messages, we extract text blocks as before.
+ * For user messages, we extract text blocks and clean system noise (session-start
+ * instructions, metadata wrappers, gralkor-memory XML).
  * For assistant messages, we iterate blocks individually:
  *   - text/output_text → "Assistant: {text}"
  *   - thinking → "Assistant: (thinking: {text})" truncated to maxThinkingChars
@@ -169,9 +194,7 @@ export function extractMessagesFromCtx(
 
       if (!textParts) continue;
 
-      const cleanText = textParts
-        .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
-        .trim();
+      const cleanText = cleanUserMessageText(textParts);
 
       if (cleanText) {
         parts.push(`User: ${cleanText}`);
