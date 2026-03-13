@@ -195,6 +195,37 @@ describe("register()", () => {
     expect(cmdNames).toEqual(["status", "search <group_id> <query...>", "clear <group_id>"]);
   });
 
+  it("reads plugin config from api.pluginConfig (OpenClaw contract)", async () => {
+    const { register } = await import("./index.js");
+
+    // Simulate OpenClaw passing config via api.pluginConfig, not as 2nd arg
+    const apiWithConfig = {
+      ...api,
+      pluginConfig: { test: true, autoRecall: { enabled: false } },
+    };
+
+    register(apiWithConfig);
+
+    // The memory_add tool captures config via closure — invoke it to verify
+    // test mode is active by checking console.log output
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      const storeTool = api.registerTool.mock.calls[1][0] as {
+        name: string;
+        execute: (id: string, params: { content: string }) => Promise<string>;
+      };
+      // Execute will fail (no server) but test mode logging should fire before the HTTP call
+      await storeTool.execute("test-id", { content: "test content" }).catch(() => {});
+
+      const testLogCall = consoleSpy.mock.calls.find(
+        (call) => typeof call[0] === "string" && call[0].includes("[gralkor] [test]"),
+      );
+      expect(testLogCall).toBeDefined();
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
+
   it("factory returns wrapped memory_search that combines native + graph results", async () => {
     const { register } = await import("./index.js");
 
