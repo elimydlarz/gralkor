@@ -32,17 +32,20 @@ export interface SearchResults {
 export interface GraphitiClientOptions {
   baseUrl: string;
   timeoutMs?: number;
+  writeTimeoutMs?: number;
   maxRetries?: number;
 }
 
 export class GraphitiClient {
   private baseUrl: string;
   private timeoutMs: number;
+  private writeTimeoutMs: number;
   private maxRetries: number;
 
   constructor(options: GraphitiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.writeTimeoutMs = options.writeTimeoutMs ?? 120_000;
     this.maxRetries = options.maxRetries ?? 2;
   }
 
@@ -50,12 +53,14 @@ export class GraphitiClient {
     method: string,
     path: string,
     body?: unknown,
+    options?: { timeoutMs?: number },
   ): Promise<T> {
     let lastError: Error | undefined;
+    const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       let clientError: Error | undefined;
 
       try {
