@@ -110,7 +110,7 @@ export class GraphitiClient {
     return this.request("POST", "/episodes", {
       ...params,
       reference_time: new Date().toISOString(),
-    }, { timeoutMs: this.writeTimeoutMs });
+    });
   }
 
   async search(
