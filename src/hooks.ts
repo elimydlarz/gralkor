@@ -481,9 +481,7 @@ export function createSessionEndHandler(
     }
 
     console.log(`[gralkor] session_end flush — key:${key}`);
-    flushSessionBuffer(key, buffer, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars, test: config.test }).catch((err) => {
-      console.warn("[gralkor] session_end flush failed:", err instanceof Error ? err.message : err);
-    });
+    flushSessionBuffer(key, buffer, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars, test: config.test }).catch(() => {});
   };
 }
 
