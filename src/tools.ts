@@ -6,15 +6,15 @@ export interface ToolOverrides {
   description?: string;
 }
 
+export function formatFact(f: Fact): string {
+  const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
+  const invalidAt = f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
+  return `- ${f.fact}${validAt}${invalidAt}`;
+}
+
 export function formatFacts(facts: Fact[]): string {
   if (facts.length === 0) return "No graph facts found.";
-  const lines = facts
-    .map((f) => {
-      const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
-      const invalidAt = f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-      return `- ${f.fact}${validAt}${invalidAt}`;
-    })
-    .join("\n");
+  const lines = facts.map(formatFact).join("\n");
   return `Facts (knowledge graph):\n${lines}`;
 }
 
