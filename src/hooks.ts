@@ -282,7 +282,7 @@ export function createBeforeAgentStartHandler(
       const sections: string[] = [];
 
       if (searchResults.facts.length > 0) {
-        sections.push("Facts from knowledge graph:\n" + searchResults.facts.map((f) => `- ${f.fact}`).join("\n"));
+        sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
       }
 
       if (nativeResult) {
