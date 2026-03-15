@@ -577,6 +577,27 @@ describe("before_agent_start handler", () => {
     expect(ctx_result).toContain("Facts from knowledge graph:");
   });
 
+  it("includes temporal info on recalled facts", async () => {
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [makeFact({
+        group_id: "agent-42",
+        fact: "Team uses React",
+        valid_at: "2025-01-01T00:00:00Z",
+        invalid_at: "2025-06-01T00:00:00Z",
+      })],
+    });
+
+    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const result = await handler(
+      { prompt: "What framework does the team use?" },
+      { agentId: "agent-42" },
+    );
+
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("Team uses React (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+  });
+
   it("includes native memory results when getNativeSearch is provided", async () => {
     client.search.mockResolvedValue(emptySearchResults());
     const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
