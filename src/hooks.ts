@@ -1,6 +1,7 @@
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId } from "./config.js";
+import { formatFact } from "./tools.js";
 
 /**
  * A content block inside a message entry.
