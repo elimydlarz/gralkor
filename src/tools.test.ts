@@ -45,23 +45,21 @@ describe("formatFacts", () => {
     expect(result).toContain("- remembered fact");
   });
 
-  it("shows valid_at date", () => {
-    const result = formatFacts([makeFact({ valid_at: "2025-01-01T00:00:00Z", fact: "known fact" })]);
-    expect(result).toContain("- known fact (valid from 2025-01-01T00:00:00Z)");
-  });
-
-  it("shows invalidation date", () => {
-    const result = formatFacts([makeFact({ invalid_at: "2025-06-01T00:00:00Z", fact: "old fact" })]);
-    expect(result).toContain("(invalid since 2025-06-01T00:00:00Z)");
-  });
-
-  it("shows both valid_at and invalid_at", () => {
+  it("includes all timestamps when present", () => {
     const result = formatFacts([makeFact({
+      created_at: "2025-01-01T00:00:00Z",
       valid_at: "2025-01-01T00:00:00Z",
       invalid_at: "2025-06-01T00:00:00Z",
-      fact: "outdated fact",
+      fact: "fully dated fact",
     })]);
-    expect(result).toContain("- outdated fact (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+    expect(result).toContain("- fully dated fact (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+  });
+
+  it("includes created_at even when valid_at and invalid_at are absent", () => {
+    const result = formatFacts([makeFact({ created_at: "2025-03-15T10:00:00Z", fact: "recent fact" })]);
+    expect(result).toContain("- recent fact (created 2025-03-15T10:00:00Z)");
+    expect(result).not.toContain("valid from");
+    expect(result).not.toContain("invalid since");
   });
 
   it("returns 'No graph facts found.' when empty", () => {
