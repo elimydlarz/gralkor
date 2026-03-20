@@ -10,7 +10,8 @@ export function formatFact(f: Fact): string {
   const createdAt = f.created_at ? ` (created ${f.created_at})` : "";
   const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
   const invalidAt = f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-  return `- ${f.fact}${createdAt}${validAt}${invalidAt}`;
+  const expiredAt = f.expired_at ? ` (expired ${f.expired_at})` : "";
+  return `- ${f.fact}${createdAt}${validAt}${invalidAt}${expiredAt}`;
 }
 
 export function formatFacts(facts: Fact[]): string {
