@@ -14,6 +14,7 @@ export interface Fact {
   group_id: string;
   valid_at: string | null;
   invalid_at: string | null;
+  expired_at: string | null;
   created_at: string;
 }
 
