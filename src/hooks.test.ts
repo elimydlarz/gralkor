@@ -595,7 +595,7 @@ describe("before_agent_start handler", () => {
     );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
-    expect(ctx_result).toContain("Team uses React (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+    expect(ctx_result).toContain("Team uses React (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
   });
 
   it("includes native memory results when getNativeSearch is provided", async () => {
