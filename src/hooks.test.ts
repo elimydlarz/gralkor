@@ -44,6 +44,7 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
     group_id: "default",
     valid_at: null,
     invalid_at: null,
+    expired_at: null,
     created_at: "2025-01-01T00:00:00Z",
     ...overrides,
   };
