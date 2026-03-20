@@ -21,7 +21,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 | Object | Type | Description |
 |---|---|---|
 | Episode | `Episode` | Captured conversation or manual store. Raw text input to the graph. Has `source` (EpisodeType: `message` for auto-capture, `text` for manual `memory_add`) and `source_description` (freeform provenance string). |
-| Fact (edge) | `Fact` | Extracted relationship between entities. Has `valid_at`/`invalid_at` temporal validity. |
+| Fact (edge) | `Fact` | Extracted relationship between entities. Has 4 timestamps: `created_at` (when extracted), `valid_at`/`invalid_at` (temporal validity window), `expired_at` (edge superseded). All formatted by `formatFact()` in `src/tools.ts`. |
 | Entity (node) | (Graphiti-internal) | Person, concept, project, or thing extracted from episodes. Has a `summary`. Not exposed by our search endpoint — Graphiti's `search_()` API can return these but we use the simpler `search()` which returns only edges. |
 | Community | (Graphiti-internal) | Cluster of related entities. Has `name` and `summary`. Built via Graphiti's `build_communities()`. Not exposed by our search endpoint. |
 | Group | `string` | Partition key derived from `agentId` (falls back to `"default"`). One graph per agent. |
