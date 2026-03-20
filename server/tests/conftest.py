@@ -39,6 +39,7 @@ def make_edge(
     group_id: str = "grp-1",
     valid_at: datetime | None = None,
     invalid_at: datetime | None = None,
+    expired_at: datetime | None = None,
     created_at: datetime | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
@@ -48,6 +49,7 @@ def make_edge(
         group_id=group_id,
         valid_at=valid_at or datetime(2025, 1, 1, tzinfo=timezone.utc),
         invalid_at=invalid_at,
+        expired_at=expired_at,
         created_at=created_at or datetime(2025, 1, 1, tzinfo=timezone.utc),
     )
 
