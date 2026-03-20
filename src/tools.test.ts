@@ -51,9 +51,10 @@ describe("formatFacts", () => {
       created_at: "2025-01-01T00:00:00Z",
       valid_at: "2025-01-01T00:00:00Z",
       invalid_at: "2025-06-01T00:00:00Z",
+      expired_at: "2025-07-01T00:00:00Z",
       fact: "fully dated fact",
     })]);
-    expect(result).toContain("- fully dated fact (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+    expect(result).toContain("- fully dated fact (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z) (expired 2025-07-01T00:00:00Z)");
   });
 
   it("includes created_at even when valid_at and invalid_at are absent", () => {
