@@ -21,6 +21,11 @@ export interface EmbedderConfig {
 export const GRAPHITI_URL = "http://127.0.0.1:8001";
 export const GRAPHITI_PORT = 8001;
 
+export const DEFAULT_LLM_PROVIDER = "gemini";
+export const DEFAULT_LLM_MODEL = "gemini-3-flash-preview";
+export const DEFAULT_EMBEDDER_PROVIDER = "gemini";
+export const DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview";
+
 export interface GralkorConfig {
   autoCapture: AutoCaptureConfig;
   autoRecall: AutoRecallConfig;
