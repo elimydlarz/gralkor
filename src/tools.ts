@@ -51,6 +51,11 @@ export function createMemoryStoreTool(
       _toolCallId: string,
       args: { content: string; source_description?: string },
     ): Promise<string> {
+      if (serverReady && !serverReady.isReady()) {
+        console.log(`[gralkor] ${toolName} — server starting, store skipped`);
+        return "The knowledge graph is still starting up. Please try again in a moment.";
+      }
+
       const groupId = getGroupId?.() ?? "default";
       console.log(`[gralkor] ${toolName} storing — groupId:${groupId} bodySize:${args.content.length}`);
 
