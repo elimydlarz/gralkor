@@ -145,7 +145,7 @@ function registerFullPlugin(
   api.registerTool(storeTool);
 
   // Hooks — pass getNativeSearch so auto-recall can search both backends
-  registerHooks(api, client, config, setGroupId, getNativeSearch);
+  registerHooks(api, client, config, setGroupId, getNativeSearch, serverReady);
 
   // Server manager (replaces health monitor)
   const manager = registerServerService(api, config, dir);
