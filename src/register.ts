@@ -59,6 +59,7 @@ export function registerServerService(
     async start() {
       try {
         await manager.start();
+        serverReady?.resolve();
       } catch (err) {
         console.error("[gralkor] Failed to start server:", err instanceof Error ? err.message : err);
         // Don't throw — degrade gracefully. Tools/hooks handle unreachable Graphiti.
