@@ -64,3 +64,20 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
 export function resolveGroupId(ctx: { agentId?: string }): string {
   return ctx.agentId ?? "default";
 }
+
+/**
+ * Tracks whether the Graphiti server is ready.
+ * Used to skip graph calls during startup and provide informative messages.
+ */
+export interface ReadyGate {
+  isReady(): boolean;
+  resolve(): void;
+}
+
+export function createReadyGate(): ReadyGate {
+  let ready = false;
+  return {
+    isReady: () => ready,
+    resolve: () => { ready = true; },
+  };
+}
