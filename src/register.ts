@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { GraphitiClient } from "./client.js";
-import type { GralkorConfig } from "./config.js";
+import type { GralkorConfig, ReadyGate } from "./config.js";
 import { GRAPHITI_URL, GRAPHITI_PORT } from "./config.js";
 import {
   createBeforeAgentStartHandler,
