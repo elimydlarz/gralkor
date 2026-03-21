@@ -266,11 +266,14 @@ export function createBeforeAgentStartHandler(
 
     try {
       const limit = config.autoRecall.maxResults;
+      const graphReady = !serverReady || serverReady.isReady();
 
       // Search graph and native markdown in parallel
       const nativeSearch = getNativeSearch?.();
       const [searchResults, nativeResult] = await Promise.all([
-        client.search(userMessage, [groupId], limit),
+        graphReady
+          ? client.search(userMessage, [groupId], limit)
+          : Promise.resolve({ facts: [] as import("./client.js").Fact[] }),
         nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
           console.warn("[gralkor] auto-recall native failed:", err instanceof Error ? err.message : err);
           return null;
@@ -278,9 +281,17 @@ export function createBeforeAgentStartHandler(
       ]);
 
       const nativeLen = nativeResult?.length ?? 0;
-      console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
+      if (graphReady) {
+        console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
+      } else {
+        console.log(`[gralkor] auto-recall — server starting, graph skipped — ${nativeLen} native chars — groupId:${groupId}`);
+      }
 
       const sections: string[] = [];
+
+      if (!graphReady) {
+        sections.push("Note: The knowledge graph is still starting up. Graph-based memory will be available shortly.");
+      }
 
       if (searchResults.facts.length > 0) {
         sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
