@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, GRAPHITI_URL, type GralkorConfig } from "./config.js";
+import { resolveConfig, GRAPHITI_URL, DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
   formatFacts,
