@@ -43,6 +43,9 @@ function registerFullPlugin(
   config: GralkorConfig,
   dir: string,
 ) {
+  // Server readiness gate — resolved when Graphiti is healthy
+  const serverReady = createReadyGate();
+
   // Shared group ID: hooks capture agentId, tools read it
   let currentGroupId = "default";
   const getGroupId = () => currentGroupId;
