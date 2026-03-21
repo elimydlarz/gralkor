@@ -182,5 +182,34 @@ describe("memory_store (createMemoryStoreTool)", () => {
     expect(testLogs).toHaveLength(0);
     consoleSpy.mockRestore();
   });
+
+  describe("when server is NOT ready", () => {
+    it("does not call addEpisode", async () => {
+      const gate = createReadyGate();
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      await tool.execute("call-1", { content: "Remember this" });
+
+      expect(client.addEpisode).not.toHaveBeenCalled();
+    });
+
+    it("returns informative message", async () => {
+      const gate = createReadyGate();
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      const result = await tool.execute("call-1", { content: "Remember this" });
+
+      expect(result).toContain("knowledge graph is still starting");
+    });
+  });
+
+  describe("when server IS ready", () => {
+    it("stores episode as normal", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      await tool.execute("call-1", { content: "Remember this" });
+
+      expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
