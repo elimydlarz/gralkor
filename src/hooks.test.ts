@@ -785,6 +785,80 @@ describe("before_agent_start handler", () => {
 
     expect(setGroupId).not.toHaveBeenCalled();
   });
+
+  describe("when server is NOT ready", () => {
+    it("skips graph search", async () => {
+      const gate = createReadyGate();
+      const handler = createBeforeAgentStartHandler(
+        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+      );
+      await handler(
+        { prompt: "Tell me about the project" },
+        { agentId: "agent-42" },
+      );
+
+      expect(client.search).not.toHaveBeenCalled();
+    });
+
+    it("includes server-starting note in context when native results exist", async () => {
+      const gate = createReadyGate();
+      const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
+      const getNativeSearch = () => nativeSearch;
+
+      const handler = createBeforeAgentStartHandler(
+        client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch, gate,
+      );
+      const result = await handler(
+        { prompt: "Tell me about the project" },
+        { agentId: "agent-42" },
+      );
+
+      expect(result).toHaveProperty("prependContext");
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("knowledge graph is still starting");
+      expect(ctx_result).toContain("From native memory:");
+    });
+
+    it("returns starting note even without native results", async () => {
+      const gate = createReadyGate();
+
+      const handler = createBeforeAgentStartHandler(
+        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+      );
+      const result = await handler(
+        { prompt: "Tell me about the project" },
+        { agentId: "agent-42" },
+      );
+
+      expect(result).toHaveProperty("prependContext");
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("knowledge graph is still starting");
+    });
+  });
+
+  describe("when server IS ready", () => {
+    it("searches graph as normal", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "A fact" })],
+      });
+
+      const handler = createBeforeAgentStartHandler(
+        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+      );
+      const result = await handler(
+        { prompt: "Tell me about the project" },
+        { agentId: "agent-42" },
+      );
+
+      expect(client.search).toHaveBeenCalled();
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("A fact");
+      expect(ctx_result).not.toContain("still starting");
+    });
+  });
 });
 
 describe("agent_end handler", () => {
