@@ -25,6 +25,7 @@ export function createMemoryStoreTool(
   config: GralkorConfig,
   overrides?: ToolOverrides,
   getGroupId?: () => string,
+  serverReady?: ReadyGate,
 ) {
   const toolName = overrides?.name ?? "memory_add";
   return {
