@@ -1,5 +1,5 @@
 import type { GraphitiClient, Fact } from "./client.js";
-import type { GralkorConfig } from "./config.js";
+import type { GralkorConfig, ReadyGate } from "./config.js";
 
 export interface ToolOverrides {
   name?: string;
