@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import type { LlmConfig, EmbedderConfig } from "./config.js";
+import { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type LlmConfig, type EmbedderConfig } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 
