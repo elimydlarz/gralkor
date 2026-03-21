@@ -21,11 +21,12 @@ export function registerHooks(
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
   getNativeSearch?: () => NativeSearchFn | null,
+  serverReady?: ReadyGate,
 ) {
   const buffers: SessionBufferMap = new Map();
   const timers: IdleTimerMap = new Map();
 
-  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch));
+  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch, serverReady));
   api.on("agent_end", createAgentEndHandler(client, config, buffers, timers));
   api.on("session_end", createSessionEndHandler(client, config, buffers, timers));
 }
