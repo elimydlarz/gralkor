@@ -225,6 +225,7 @@ export function createBeforeAgentStartHandler(
   config: GralkorConfig,
   setGroupId?: (id: string) => void,
   getNativeSearch?: () => NativeSearchFn | null,
+  serverReady?: ReadyGate,
 ) {
   // Deduplicate the double-fire: cache result for same query within a short window.
   // before_agent_start fires twice per agent run (OpenClaw behavior) — only the 2nd
