@@ -290,7 +290,7 @@ export function createBeforeAgentStartHandler(
       const sections: string[] = [];
 
       if (!graphReady) {
-        sections.push("Note: The knowledge graph is still starting up. Graph-based memory will be available shortly.");
+        sections.push("Note: Gralkor is still booting, but memory will be available soon.");
       }
 
       if (searchResults.facts.length > 0) {
