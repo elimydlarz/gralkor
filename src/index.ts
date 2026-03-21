@@ -147,8 +147,8 @@ function registerFullPlugin(
   // Hooks — pass getNativeSearch so auto-recall can search both backends
   registerHooks(api, client, config, setGroupId, getNativeSearch, serverReady);
 
-  // Server manager (replaces health monitor)
-  const manager = registerServerService(api, config, dir);
+  // Server manager (replaces health monitor) — resolves serverReady gate on success
+  const manager = registerServerService(api, config, dir, serverReady);
 
   // CLI — native memory commands + gralkor commands
   api.registerCli(
