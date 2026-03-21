@@ -35,6 +35,7 @@ export function registerServerService(
   api: PluginApiBase,
   config: GralkorConfig,
   pluginDir: string,
+  serverReady?: ReadyGate,
 ): ServerManager {
   const dataDir = config.dataDir ?? join(pluginDir, "..", ".gralkor-data");
   const serverDir = join(pluginDir, "server");
