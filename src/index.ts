@@ -184,7 +184,11 @@ export const configSchema = {
 export function register(api: MemoryPluginApi) {
   console.log(`[gralkor] raw pluginConfig: ${JSON.stringify(api.pluginConfig)}`);
   const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
-  console.log(`[gralkor] config: autoCapture=${config.autoCapture.enabled} autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults} idleTimeout=${config.idleTimeoutMs}ms llm=${config.llm?.provider ?? 'default'}/${config.llm?.model ?? 'default'} embedder=${config.embedder?.provider ?? 'default'}/${config.embedder?.model ?? 'default'} test=${config.test} dataDir=${config.dataDir ?? 'default'}`);
+  const llmProvider = config.llm?.provider ?? DEFAULT_LLM_PROVIDER;
+  const llmModel = config.llm?.model ?? DEFAULT_LLM_MODEL;
+  const embedderProvider = config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER;
+  const embedderModel = config.embedder?.model ?? DEFAULT_EMBEDDER_MODEL;
+  console.log(`[gralkor] config: autoCapture=${config.autoCapture.enabled} autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults} idleTimeout=${config.idleTimeoutMs}ms llm=${llmProvider}/${llmModel} embedder=${embedderProvider}/${embedderModel} test=${config.test} dataDir=${config.dataDir ?? 'default'}`);
   const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
   registerFullPlugin(api, client, config, pluginDir);
 }
