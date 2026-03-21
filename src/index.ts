@@ -90,17 +90,29 @@ function registerFullPlugin(
           const groupId = getGroupId();
           const limit = args.limit ?? 10;
 
+          const graphReady = serverReady.isReady();
+
           // Search native markdown and graph in parallel
           const [nativeRaw, searchResults] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
-            client.search(args.query, [groupId], limit),
+            graphReady
+              ? client.search(args.query, [groupId], limit)
+              : Promise.resolve({ facts: [] as import("./client.js").Fact[] }),
           ]);
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
+          if (graphReady) {
+            console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
+          } else {
+            console.log(`[gralkor] memory_search — server starting, graph skipped — ${nativeResult.length} native chars — groupId:${groupId}`);
+          }
 
           const sections: string[] = [];
+
+          if (!graphReady) {
+            sections.push("Note: Gralkor is still booting, but memory will be available soon.");
+          }
 
           if (nativeResult) {
             sections.push(nativeResult);
