@@ -815,7 +815,7 @@ describe("before_agent_start handler", () => {
 
       expect(result).toHaveProperty("prependContext");
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("knowledge graph is still starting");
+      expect(ctx_result).toContain("Gralkor is still booting");
       expect(ctx_result).toContain("From native memory:");
     });
 
@@ -832,7 +832,7 @@ describe("before_agent_start handler", () => {
 
       expect(result).toHaveProperty("prependContext");
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("knowledge graph is still starting");
+      expect(ctx_result).toContain("Gralkor is still booting");
     });
   });
 
