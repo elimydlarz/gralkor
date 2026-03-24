@@ -196,7 +196,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
       const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
       const result = await tool.execute("call-1", { content: "Remember this" });
 
-      expect(result).toContain("Gralkor is still booting");
+      expect(result).toContain(BOOTING_MSG);
     });
   });
 
