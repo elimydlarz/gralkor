@@ -92,7 +92,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
     // Write dynamic config.yaml from plugin settings (with defaults)
     const configPath = join(opts.dataDir, "config.yaml");
-    const configYaml = [
+    let configYaml = [
       "llm:",
       `  provider: "${opts.llmConfig?.provider ?? DEFAULT_LLM_PROVIDER}"`,
       `  model: "${opts.llmConfig?.model ?? DEFAULT_LLM_MODEL}"`,
