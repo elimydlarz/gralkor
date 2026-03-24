@@ -101,6 +101,9 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       `  model: "${opts.embedderConfig?.model ?? DEFAULT_EMBEDDER_MODEL}"`,
       "",
     ].join("\n");
+    if (opts.ontologyConfig) {
+      configYaml += serializeOntologyYaml(opts.ontologyConfig);
+    }
     await writeFile(configPath, configYaml, "utf-8");
 
     const env: Record<string, string> = {
