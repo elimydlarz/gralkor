@@ -498,8 +498,8 @@ async def add_episode(req: AddEpisodeRequest):
     return _serialize_episode(episode)
 
 
-@app.post("/ingest")
-async def ingest(req: IngestRequest):
+@app.post("/openclaw-messages")
+async def ingest_openclaw_messages(req: OpenclawMessagesRequest):
     ref_time = (
         datetime.fromisoformat(req.reference_time)
         if req.reference_time
