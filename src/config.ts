@@ -114,6 +114,7 @@ export interface GralkorConfig {
   idleTimeoutMs: number;
   llm?: LlmConfig;
   embedder?: EmbedderConfig;
+  ontology?: OntologyConfig;
   dataDir?: string;
   test?: boolean;
 }
