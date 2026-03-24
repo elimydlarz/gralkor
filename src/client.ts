@@ -18,13 +18,26 @@ export interface Fact {
   created_at: string;
 }
 
+/** A filtered content block for episode ingestion. */
+export interface EpisodeBlock {
+  type: "text" | "thinking";
+  text: string;
+}
+
+/** A filtered message for episode ingestion. */
+export interface EpisodeMessage {
+  role: "user" | "assistant";
+  content: EpisodeBlock[];
+}
+
 export interface AddEpisodeParams {
   name: string;
-  episode_body: string;
   source_description: string;
   group_id: string;
+  messages: EpisodeMessage[];
   source?: "message" | "text" | "json";
-  thinking_blocks?: string[];
+  /** Legacy: pre-formatted episode body (used by memory_add tool). */
+  episode_body?: string;
 }
 
 export interface SearchResults {
