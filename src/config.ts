@@ -1,6 +1,5 @@
 export interface AutoCaptureConfig {
   enabled: boolean;
-  maxThinkingChars?: number;
 }
 
 export interface AutoRecallConfig {
