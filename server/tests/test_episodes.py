@@ -39,6 +39,10 @@ async def test_add_episode_returns_serialized_episode(client, mock_graphiti):
         group_id="g1",
         reference_time=ANY,
         source=ANY,
+        entity_types=None,
+        edge_types=None,
+        edge_type_map=None,
+        excluded_entity_types=None,
     )
 
 
