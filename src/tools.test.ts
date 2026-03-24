@@ -159,7 +159,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   it("logs episode body in test mode", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const testConfig: GralkorConfig = { ...config, test: true };
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, testConfig, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, testConfig, { getGroupId });
     await tool.execute("call-1", { content: "Important insight" });
 
     const testLogs = consoleSpy.mock.calls.filter(
