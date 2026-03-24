@@ -19,6 +19,7 @@ export interface ServerManagerOptions {
   env?: Record<string, string>;
   llmConfig?: LlmConfig;
   embedderConfig?: EmbedderConfig;
+  ontologyConfig?: OntologyConfig;
 }
 
 export interface ServerManager {
