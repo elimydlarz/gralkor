@@ -1555,8 +1555,8 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body).toContain("More");
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(call.messages.some(m => m.content.some(b => b.text.includes("More")))).toBe(true);
   });
 
   it("session_end wins — timer cancelled", async () => {
