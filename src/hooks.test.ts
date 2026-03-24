@@ -51,9 +51,9 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 }
 
 describe("extractMessagesFromCtx", () => {
-  it("returns empty string when no messages", () => {
-    expect(extractMessagesFromCtx({})).toBe("");
-    expect(extractMessagesFromCtx({ messages: [] })).toBe("");
+  it("returns empty result when no messages", () => {
+    expect(extractMessagesFromCtx({})).toEqual({ episodeBody: "", thinkingPerTurn: [] });
+    expect(extractMessagesFromCtx({ messages: [] })).toEqual({ episodeBody: "", thinkingPerTurn: [] });
   });
 
   it("extracts a single user+assistant exchange", () => {
@@ -63,7 +63,8 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Hi there");
+    expect(result.episodeBody).toBe("User: Hello\nAssistant: Hi there");
+    expect(result.thinkingPerTurn).toEqual([]);
   });
 
   it("accumulates all messages in sequence", () => {
@@ -75,7 +76,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
       ],
     });
-    expect(result).toBe(
+    expect(result.episodeBody).toBe(
       "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
     );
   });
@@ -89,7 +90,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Done" }] },
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Done");
+    expect(result.episodeBody).toBe("User: Hello\nAssistant: Done");
   });
 
   it("joins multiple text blocks within one message", () => {
@@ -101,7 +102,7 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("User: Part 1\nPart 2");
+    expect(result.episodeBody).toBe("User: Part 1\nPart 2");
   });
 
   it("strips <gralkor-memory> XML from user messages", () => {
