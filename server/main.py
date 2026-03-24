@@ -180,6 +180,10 @@ def _log_falkordblite_diagnostics(error: Exception) -> None:
 # ── Graphiti singleton ────────────────────────────────────────
 
 graphiti: Graphiti | None = None
+ontology_entity_types: dict[str, type[BaseModel]] | None = None
+ontology_edge_types: dict[str, type[BaseModel]] | None = None
+ontology_edge_type_map: dict[tuple[str, str], list[str]] | None = None
+ontology_excluded: list[str] | None = None
 
 
 @asynccontextmanager
