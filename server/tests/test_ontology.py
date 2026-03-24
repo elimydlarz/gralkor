@@ -215,3 +215,116 @@ class TestBuildOntology:
             entities, _, _, _ = _build_ontology(cfg)
             assert "Preference" in entities
             assert entities["Preference"].__doc__ == "A user preference."
+
+    class TestWhenEntityHasMixedAttributeTypes:
+        """when entity has mixed attribute types"""
+
+        def test_builds_model_with_all_field_types(self):
+            """then builds model with all field types correctly"""
+            cfg = {
+                "ontology": {
+                    "entities": {
+                        "Project": {
+                            "description": "A project.",
+                            "attributes": {
+                                "language": "Primary language",
+                                "status": ["active", "paused"],
+                                "budget": {"type": "float", "description": "Budget"},
+                                "priority": {"enum": ["low", "high"], "description": "Priority"},
+                            },
+                        }
+                    }
+                }
+            }
+            entities, _, _, _ = _build_ontology(cfg)
+            hints = get_type_hints(entities["Project"])
+            assert hints["language"] is str
+            assert get_origin(hints["status"]) is Literal
+            assert hints["budget"] is float
+            assert get_origin(hints["priority"]) is Literal
+
+
+class TestYamlRoundTrip:
+    """YAML round-trip (TS serializer output → Python yaml.safe_load → _build_ontology)"""
+
+    # This YAML matches what serializeOntologyYaml() produces for a representative
+    # ontology with all attribute variants. If the TS serializer changes its output
+    # format, this test must be updated to match — that's the point: it catches
+    # serializer/consumer drift.
+    REPRESENTATIVE_YAML = """\
+ontology:
+  entities:
+    Project:
+      description: "A software project or initiative."
+      attributes:
+        language: "Primary programming language"
+        status:
+          - "active"
+          - "completed"
+          - "paused"
+        budget:
+          type: "float"
+          description: "Budget in USD"
+        priority:
+          enum:
+            - "low"
+            - "medium"
+            - "high"
+          description: "Priority level"
+    Technology:
+      description: "A technology, framework, or tool."
+      attributes:
+        category:
+          - "language"
+          - "framework"
+          - "database"
+  edges:
+    Uses:
+      description: "A project using a technology."
+      attributes:
+        version: "Version in use"
+  edgeMap:
+    "Project,Technology":
+      - "Uses"
+  excludedEntityTypes:
+    - "Generic"
+"""
+
+    @pytest.fixture
+    def parsed_config(self):
+        return yaml.safe_load(self.REPRESENTATIVE_YAML)
+
+    def test_builds_entity_models_with_correct_field_types(self, parsed_config):
+        """then builds entity models with correct field types"""
+        entities, _, _, _ = _build_ontology(parsed_config)
+        assert "Project" in entities
+        assert "Technology" in entities
+
+        project_hints = get_type_hints(entities["Project"])
+        assert project_hints["language"] is str
+        assert get_origin(project_hints["status"]) is Literal
+        assert set(get_args(project_hints["status"])) == {"active", "completed", "paused"}
+        assert project_hints["budget"] is float
+        assert get_origin(project_hints["priority"]) is Literal
+        assert set(get_args(project_hints["priority"])) == {"low", "medium", "high"}
+
+        tech_hints = get_type_hints(entities["Technology"])
+        assert get_origin(tech_hints["category"]) is Literal
+
+    def test_builds_edge_models_with_correct_field_types(self, parsed_config):
+        """then builds edge models with correct field types"""
+        _, edges, _, _ = _build_ontology(parsed_config)
+        assert "Uses" in edges
+        hints = get_type_hints(edges["Uses"])
+        assert hints["version"] is str
+
+    def test_converts_edgeMap_keys_to_tuples(self, parsed_config):
+        """then converts edgeMap keys to tuples"""
+        _, _, edge_type_map, _ = _build_ontology(parsed_config)
+        assert ("Project", "Technology") in edge_type_map
+        assert edge_type_map[("Project", "Technology")] == ["Uses"]
+
+    def test_passes_through_excludedEntityTypes(self, parsed_config):
+        """then passes through excludedEntityTypes"""
+        _, _, _, excluded = _build_ontology(parsed_config)
+        assert excluded == ["Generic"]
