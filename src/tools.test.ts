@@ -185,7 +185,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   describe("when server is NOT ready", () => {
     it("does not call addEpisode", async () => {
       const gate = createReadyGate();
-      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
       await tool.execute("call-1", { content: "Remember this" });
 
       expect(client.addEpisode).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
     it("returns informative message", async () => {
       const gate = createReadyGate();
-      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
       const result = await tool.execute("call-1", { content: "Remember this" });
 
       expect(result).toContain("Gralkor is still booting");
@@ -204,7 +204,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
     it("stores episode as normal", async () => {
       const gate = createReadyGate();
       gate.resolve();
-      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId, gate);
+      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
       await tool.execute("call-1", { content: "Remember this" });
 
       expect(client.addEpisode).toHaveBeenCalledTimes(1);
