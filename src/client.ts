@@ -34,10 +34,11 @@ export interface AddEpisodeParams {
   name: string;
   source_description: string;
   group_id: string;
-  messages: EpisodeMessage[];
-  source?: "message" | "text" | "json";
-  /** Legacy: pre-formatted episode body (used by memory_add tool). */
+  /** Structured messages for auto-capture (server formats transcript + distills thinking). */
+  messages?: EpisodeMessage[];
+  /** Pre-formatted episode body (used by memory_add tool). */
   episode_body?: string;
+  source?: "message" | "text" | "json";
 }
 
 export interface SearchResults {
