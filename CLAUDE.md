@@ -228,7 +228,6 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
-| `autoCapture.maxThinkingChars` | number | `2000` | Max chars per thinking block before truncation |
 | `autoRecall.enabled` | boolean | `true` | Inject relevant context before agent runs |
 | `autoRecall.maxResults` | number | `10` | Max facts injected as context |
 | `idleTimeoutMs` | number | `300000` | Idle flush timeout (ms) after last `agent_end`; races `session_end` |
