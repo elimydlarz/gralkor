@@ -790,7 +790,7 @@ describe("before_agent_start handler", () => {
     it("skips graph search", async () => {
       const gate = createReadyGate();
       const handler = createBeforeAgentStartHandler(
-        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
       await handler(
         { prompt: "Tell me about the project" },
@@ -803,10 +803,9 @@ describe("before_agent_start handler", () => {
     it("includes server-starting note in context when native results exist", async () => {
       const gate = createReadyGate();
       const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
-      const getNativeSearch = () => nativeSearch;
 
       const handler = createBeforeAgentStartHandler(
-        client as unknown as GraphitiClient, defaultConfig, { getNativeSearch }, gate,
+        client as unknown as GraphitiClient, defaultConfig, { getNativeSearch: () => nativeSearch, serverReady: gate },
       );
       const result = await handler(
         { prompt: "Tell me about the project" },
@@ -815,7 +814,7 @@ describe("before_agent_start handler", () => {
 
       expect(result).toHaveProperty("prependContext");
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("Gralkor is still booting");
+      expect(ctx_result).toContain(BOOTING_MSG);
       expect(ctx_result).toContain("From native memory:");
     });
 
@@ -823,7 +822,7 @@ describe("before_agent_start handler", () => {
       const gate = createReadyGate();
 
       const handler = createBeforeAgentStartHandler(
-        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
       const result = await handler(
         { prompt: "Tell me about the project" },
@@ -832,7 +831,26 @@ describe("before_agent_start handler", () => {
 
       expect(result).toHaveProperty("prependContext");
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("Gralkor is still booting");
+      expect(ctx_result).toContain(BOOTING_MSG);
+    });
+
+    it("does not cache result in dedup window", async () => {
+      const gate = createReadyGate();
+      const handler = createBeforeAgentStartHandler(
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
+      );
+      await handler({ prompt: "same query" }, { agentId: "a" });
+
+      gate.resolve();
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Real fact" })],
+      });
+      const result = await handler({ prompt: "same query" }, { agentId: "a" });
+
+      expect(client.search).toHaveBeenCalled();
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("Real fact");
     });
   });
 
@@ -846,7 +864,7 @@ describe("before_agent_start handler", () => {
       });
 
       const handler = createBeforeAgentStartHandler(
-        client as unknown as GraphitiClient, defaultConfig, undefined, undefined, gate,
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
       const result = await handler(
         { prompt: "Tell me about the project" },
@@ -856,7 +874,7 @@ describe("before_agent_start handler", () => {
       expect(client.search).toHaveBeenCalled();
       const ctx_result = (result as { prependContext: string }).prependContext;
       expect(ctx_result).toContain("A fact");
-      expect(ctx_result).not.toContain("still starting");
+      expect(ctx_result).not.toContain("booting");
     });
   });
 });
