@@ -162,47 +162,25 @@ function cleanUserMessageText(text: string): string {
 }
 
 /**
- * Result of extracting messages for episode ingestion.
- */
-export interface ExtractedMessages {
-  /** Multi-turn conversation text (User:/Assistant: lines, no thinking blocks). */
-  episodeBody: string;
-  /** Raw thinking text per agent turn (all thinking between two user messages, joined with separator). */
-  thinkingPerTurn: string[];
-}
-
-/**
- * Extract all user and assistant messages from ctx.messages (agent_end).
+ * Extract and filter messages for episode ingestion.
  *
- * Each message has role ("user"/"assistant"/"toolResult") and content (array of blocks).
- * For user messages, we extract text blocks and clean system noise (session-start
- * instructions, metadata wrappers, gralkor-memory XML).
- * For assistant messages, we iterate blocks individually:
- *   - text/output_text → "Assistant: {text}"
- *   - thinking → collected separately into thinkingPerTurn (one entry per agent turn)
- *   - toolCall/toolUse/functionCall → skipped
+ * Filters the raw OpenClaw message array down to user and assistant messages
+ * with only text/output_text/thinking blocks. Cleans user messages of system
+ * noise (session-start instructions, metadata wrappers, gralkor-memory XML).
+ * Drops toolResult messages and toolCall/toolUse/functionCall blocks entirely.
  *
- * Returns episodeBody (conversation text without thinking) and thinkingPerTurn
- * (raw thinking grouped by turn for server-side distillation).
+ * The server handles transcript formatting and thinking distillation.
  */
-export function extractMessagesFromCtx(event: HookEvent): ExtractedMessages {
+export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
   const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return { episodeBody: "", thinkingPerTurn: [] };
+  if (!messages || !Array.isArray(messages)) return [];
 
-  const parts: string[] = [];
-  const thinkingPerTurn: string[] = [];
-  let currentTurnThinking: string[] = [];
+  const result: EpisodeMessage[] = [];
 
   for (const msg of messages) {
     const blocks = normalizeContent(msg.content);
 
     if (msg.role === "user") {
-      // Flush accumulated thinking from the previous turn
-      if (currentTurnThinking.length > 0) {
-        thinkingPerTurn.push(currentTurnThinking.join("\n---\n"));
-        currentTurnThinking = [];
-      }
-
       const textParts = blocks
         .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
@@ -211,27 +189,25 @@ export function extractMessagesFromCtx(event: HookEvent): ExtractedMessages {
       if (!textParts) continue;
 
       const cleanText = cleanUserMessageText(textParts);
+      if (!cleanText) continue;
 
-      if (cleanText) {
-        parts.push(`User: ${cleanText}`);
-      }
+      result.push({ role: "user", content: [{ type: "text", text: cleanText }] });
     } else if (msg.role === "assistant") {
+      const filtered: EpisodeBlock[] = [];
       for (const block of blocks) {
         if (isThinkingBlock(block)) {
-          currentTurnThinking.push(block.thinking as string);
+          filtered.push({ type: "thinking", text: block.thinking as string });
         } else if (isTextBlock(block)) {
-          parts.push(`Assistant: ${block.text!}`);
+          filtered.push({ type: "text", text: block.text! });
         }
+      }
+      if (filtered.length > 0) {
+        result.push({ role: "assistant", content: filtered });
       }
     }
   }
 
-  // Flush any remaining thinking from the last turn
-  if (currentTurnThinking.length > 0) {
-    thinkingPerTurn.push(currentTurnThinking.join("\n---\n"));
-  }
-
-  return { episodeBody: parts.join("\n"), thinkingPerTurn };
+  return result;
 }
 
 export type NativeSearchFn = (query: string) => Promise<string>;
