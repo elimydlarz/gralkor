@@ -133,6 +133,13 @@ export class GraphitiClient {
     });
   }
 
+  async ingest(params: IngestParams): Promise<Episode> {
+    return this.request("POST", "/ingest", {
+      ...params,
+      reference_time: new Date().toISOString(),
+    });
+  }
+
   async search(
     query: string,
     groupIds: string[],
