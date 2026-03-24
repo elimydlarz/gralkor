@@ -163,18 +163,41 @@ Use `extractToolCallsFromAssistant()` from `src/agents/tool-call-id.ts` to get `
 - **User messages** — the intent, the task, what the human cares about
 - **Assistant text blocks** — reasoning, decisions, explanations, conclusions. This is where the agent contextualises everything
 
-### High value — ingest as paired units
+### The thinking block problem
 
-- **Assistant `tool_use` blocks + their matching `toolResult`** — the *what* and *why* (from `tool_use`) paired with the *outcome* (from `toolResult`). Ingesting these as pairs gives Graphiti the full action -> result arc
+Thinking blocks contain a mix of:
+1. **Genuine reasoning** — domain insights, architectural decisions, connecting concepts, conclusions about the codebase
+2. **Operational narration** — "Let me search for...", "The tool results show...", "I should use Read to..." — meta-commentary about the process of using tools
+
+When operational narration gets ingested into Graphiti, it creates facts like "Agent received search results about X" or "Agent searched for Y" — which get recalled as if they're meaningful memories, polluting future context.
+
+**Filtering by `stopReason` doesn't fully solve this.** While `stopReason: "toolUse"` messages are *mostly* operational, they also contain the agent's reasoning about *why* it's taking an action and *what* it expects to find — which are the agent's actions and decisions worth remembering. Dropping all intermediate thinking loses the narrative of what the agent did and why.
+
+**Open problem:** How to separate "I'm going to edit src/auth.ts to fix the null check because the user's error trace points here" (valuable — a decision and its rationale) from "Let me use the Read tool to check this file" (noise — operational mechanics). Both live in thinking blocks on `stopReason: "toolUse"` messages. Possible approaches:
+
+- **LLM summarization at flush time** — most accurate, but adds cost/latency/dependency on the write path
+- **Keyword heuristics** — fragile across models, constant maintenance
+- **Hybrid stopReason + length threshold** — always include `"stop"`/`"length"` thinking; for `"toolUse"` messages, only include thinking blocks above N chars (short ones tend to be "let me search...", longer ones contain real reasoning). Simple but lossy.
+
+### Tool calls — skip raw, but the actions matter
+
+Raw tool call blocks (`toolCall`/`toolUse`/`functionCall`) and their `toolResult` messages are too programmatic for this memory system — serialized arguments, raw command output, file contents dumps. **Skip these.**
+
+However, the agent's *actions* (what it did and why) are high-value. These are described in:
+- **Thinking blocks** adjacent to tool calls (see problem above)
+- **Text blocks** in intermediate and final assistant messages — when the agent narrates what it's doing ("Let me check the auth code", "Found it, here's the fix")
+
+The challenge is capturing the agent's action narrative without the raw programmatic data or meta-noise.
 
 ### Selective / summarize
 
-- **Large `toolResult` content** (file reads, long command output) — the assistant's subsequent text block usually summarizes the relevant parts. Consider truncating or skipping results over a size threshold
-- **`toolResult` where `isError: true`** — worth ingesting (failures are high-signal), but pair with the `tool_use` that caused them
+- **`toolResult` where `isError: true`** — failures are high-signal, but should be captured via the agent's text/thinking reaction to the failure, not the raw error output
+- **Large `toolResult` content** (file reads, long command output) — the assistant's subsequent text block usually summarizes the relevant parts. Skip the raw results.
 
-### Skip
+### Always skip
 
-- **Thinking blocks** — internal reasoning traces, often verbose and redundant with the text blocks
+- **Raw tool call blocks** — programmatic, not semantic
+- **Raw `toolResult` content** — the agent's text response already distils what mattered
 - **`usage` / `api` / `provider` / `model` metadata** — operational, not semantic
 - **`details` field on `toolResult`** — extended data that's stripped before the LLM sees it anyway
 - **`textSignature` / `thinkingSignature`** — provider metadata for caching, not content
