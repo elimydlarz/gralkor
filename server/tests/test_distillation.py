@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from main import _format_transcript, EpisodeMessage, EpisodeBlock
+from main import _format_transcript, ConversationMessage, ContentBlock
 
 
 def _msg(role: str, blocks: list[tuple[str, str]]) -> EpisodeMessage:
