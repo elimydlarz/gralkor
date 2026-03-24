@@ -198,6 +198,7 @@ export const configSchema = {
 
 export function register(api: MemoryPluginApi) {
   const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
+  validateOntologyConfig(config.ontology);
   if (config.test) {
     console.log(`[gralkor] raw pluginConfig: ${JSON.stringify(api.pluginConfig)}`);
   }
@@ -205,10 +206,14 @@ export function register(api: MemoryPluginApi) {
   const llmModel = config.llm?.model ?? DEFAULT_LLM_MODEL;
   const embedderProvider = config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER;
   const embedderModel = config.embedder?.model ?? DEFAULT_EMBEDDER_MODEL;
+  const ontologySummary = config.ontology
+    ? `${Object.keys(config.ontology.entities ?? {}).length} entities, ${Object.keys(config.ontology.edges ?? {}).length} edges`
+    : "none";
   console.log(
     `[gralkor] config:` +
     ` llm=${llmProvider}/${llmModel}` +
     ` embedder=${embedderProvider}/${embedderModel}` +
+    ` ontology=${ontologySummary}` +
     ` autoCapture=${config.autoCapture.enabled}` +
     ` autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults}` +
     ` idleTimeout=${config.idleTimeoutMs}ms` +
