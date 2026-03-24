@@ -482,18 +482,9 @@ async def add_episode(req: AddEpisodeRequest):
         else datetime.now(timezone.utc)
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
-
-    if req.messages:
-        llm = graphiti.llm_client if graphiti else None
-        episode_body = await _format_transcript(req.messages, llm)
-    elif req.episode_body:
-        episode_body = req.episode_body
-    else:
-        episode_body = ""
-
     result = await graphiti.add_episode(
         name=req.name,
-        episode_body=episode_body,
+        episode_body=req.episode_body,
         source_description=req.source_description,
         group_id=req.group_id,
         reference_time=ref_time,
@@ -503,7 +494,32 @@ async def add_episode(req: AddEpisodeRequest):
         edge_type_map=ontology_edge_type_map,
         excluded_entity_types=ontology_excluded,
     )
-    # add_episode returns AddEpisodeResults; find the episode node
+    episode = result.episode
+    return _serialize_episode(episode)
+
+
+@app.post("/ingest")
+async def ingest(req: IngestRequest):
+    ref_time = (
+        datetime.fromisoformat(req.reference_time)
+        if req.reference_time
+        else datetime.now(timezone.utc)
+    )
+    llm = graphiti.llm_client if graphiti else None
+    episode_body = await _format_transcript(req.messages, llm)
+
+    result = await graphiti.add_episode(
+        name=req.name,
+        episode_body=episode_body,
+        source_description=req.source_description,
+        group_id=req.group_id,
+        reference_time=ref_time,
+        source=EpisodeType.message,
+        entity_types=ontology_entity_types,
+        edge_types=ontology_edge_types,
+        edge_type_map=ontology_edge_type_map,
+        excluded_entity_types=ontology_excluded,
+    )
     episode = result.episode
     return _serialize_episode(episode)
 
