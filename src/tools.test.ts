@@ -89,7 +89,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("writes to the agent partition", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Remember this" });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
@@ -99,7 +99,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("uses manual source description by default", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Remember this" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
@@ -107,7 +107,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("uses provided source description", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Remember this", source_description: "user request" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
@@ -115,14 +115,14 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("returns success message", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     const result = await tool.execute("call-1", { content: "x" });
 
     expect(result).toContain("Stored successfully");
   });
 
   it("passes content as episode_body and generates name", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Important insight" });
 
     const call = client.addEpisode.mock.calls[0][0] as {
@@ -134,7 +134,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("passes text as episode source type", async () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "A reflection" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source: string };
@@ -153,7 +153,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   it("propagates errors when addEpisode throws", async () => {
     client.addEpisode.mockRejectedValue(new Error("server down"));
 
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await expect(tool.execute("call-1", { content: "x" })).rejects.toThrow("server down");
   });
 
@@ -173,7 +173,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("does not log episode body when test mode is off", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, undefined, getGroupId);
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Important insight" });
 
     const testLogs = consoleSpy.mock.calls.filter(
