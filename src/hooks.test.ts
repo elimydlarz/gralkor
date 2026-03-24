@@ -1145,8 +1145,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body1 = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body1).toContain("Session 1");
+    const call1 = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(call1.messages[0].content[0].text).toContain("Session 1");
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
 
@@ -1155,8 +1155,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
-    const body2 = (client.addEpisode.mock.calls[1][0] as { messages: unknown[] }).episode_body;
-    expect(body2).toContain("Session 2");
+    const call2 = client.addEpisode.mock.calls[1][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(call2.messages[0].content[0].text).toContain("Session 2");
     expect(buffers.size).toBe(0);
   });
 
