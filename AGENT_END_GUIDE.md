@@ -42,6 +42,21 @@ The user's input. Content is usually a string, but can be a content block array 
 
 `"stop"` | `"toolUse"` | `"error"` | `"aborted"` | `"length"` | `"other"`
 
+Within a single agent turn (user message → response), the transcript contains **multiple assistant messages** with different `stopReason` values as the agent loops through tool calls:
+
+```
+assistant  stopReason:"toolUse"   [thinking("..."), toolCall("bash", ...)]
+toolResult                        [text("...")]
+assistant  stopReason:"toolUse"   [thinking("..."), toolCall("read", ...)]
+toolResult                        [text("...")]
+assistant  stopReason:"stop"      [thinking("..."), text("Here's what I found")]
+```
+
+- `"toolUse"` — intermediate steps where the agent called tools and paused for results
+- `"stop"` — final response; the agent chose to stop and respond to the user
+- `"length"` — token limit hit mid-generation
+- `"error"` / `"aborted"` — generation failed or was interrupted; tool call blocks may be incomplete (no matching results)
+
 ### Content block types
 
 | Block type | Fields | Notes |
