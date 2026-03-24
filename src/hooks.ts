@@ -479,7 +479,7 @@ export function createAgentEndHandler(
           return;
         }
         console.log(`[gralkor] auto-capture idle flush — key:${key}`);
-        flushSessionBuffer(key, buf, buffers, client, { maxThinkingChars: config.autoCapture.maxThinkingChars, test: config.test }).catch(() => {});
+        flushSessionBuffer(key, buf, buffers, client, { test: config.test }).catch(() => {});
       }, config.idleTimeoutMs);
 
       timer.unref();
