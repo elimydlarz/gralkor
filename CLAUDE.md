@@ -33,7 +33,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 
 1. Read `api.pluginConfig`, pass to `resolveConfig()` which merges with defaults, passing through `llm`/`embedder` fields. Graphiti URL is hardcoded: `http://127.0.0.1:8001`.
 2. Create `GraphitiClient`, resolve `pluginDir` from `import.meta.url`.
-3. `registerFullPlugin()` creates shared state (`getGroupId`/`setGroupId`, `getNativeSearch`/`setNativeSearch`), then registers tools, hooks, server service, and CLI.
+3. `registerFullPlugin()` creates shared state (`getGroupId`/`setGroupId`, `getNativeSearch`/`setNativeSearch`, `serverReady` gate), then registers tools, hooks, server service, and CLI.
 
 The tool factory wraps native `memory_search` (from `api.runtime.tools`) to also call `client.search()` in parallel. The native search reference is shared with auto-recall via closure.
 
