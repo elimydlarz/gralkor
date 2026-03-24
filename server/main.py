@@ -225,6 +225,13 @@ async def lifespan(_app: FastAPI):
         embedder=_build_embedder(cfg),
     )
     await graphiti.build_indices_and_constraints()
+
+    ontology_entity_types, ontology_edge_types, ontology_edge_type_map, ontology_excluded = _build_ontology(cfg)
+    if ontology_entity_types or ontology_edge_types:
+        entity_names = list(ontology_entity_types or {})
+        edge_names = list(ontology_edge_types or {})
+        print(f"[gralkor] ontology: entities={entity_names} edges={edge_names}", flush=True)
+
     yield
     await graphiti.close()
 
