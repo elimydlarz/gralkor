@@ -31,7 +31,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 
 `register(api)` is synchronous (async register silently registers nothing — gateway discards the return value). OpenClaw calls `register(api)` with a **single argument** — the plugin API object. Plugin-specific config from `plugins.entries.<id>.config` is on **`api.pluginConfig`** (not a second argument). Sequence:
 
-1. Read `api.pluginConfig`, pass to `resolveConfig()` which merges with defaults, passing through `llm`/`embedder` fields. Graphiti URL is hardcoded: `http://127.0.0.1:8001`.
+1. Read `api.pluginConfig`, pass to `resolveConfig()` which merges with defaults, passing through `llm`/`embedder`/`ontology` fields. `validateOntologyConfig()` rejects reserved names (`Entity`, `Episodic`, `Community`, `Saga`) and protected attribute names. Graphiti URL is hardcoded: `http://127.0.0.1:8001`.
 2. Create `GraphitiClient`, resolve `pluginDir` from `import.meta.url`.
 3. `registerFullPlugin()` creates shared state (`getGroupId`/`setGroupId`, `getNativeSearch`/`setNativeSearch`, `serverReady` gate), then registers tools, hooks, server service, and CLI.
 
