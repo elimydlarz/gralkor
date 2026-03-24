@@ -15,7 +15,7 @@ async def test_ingest_formats_transcript_and_creates_episode(client, mock_graphi
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-    resp = await client.post("/openclaw-messages", json={
+    resp = await client.post("/ingest-messages", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
@@ -40,7 +40,7 @@ async def test_ingest_distills_thinking_into_action(client, mock_graphiti):
         "content": "Investigated and resolved the null pointer issue"
     }
 
-    resp = await client.post("/openclaw-messages", json={
+    resp = await client.post("/ingest-messages", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
@@ -68,7 +68,7 @@ async def test_ingest_distillation_failure_drops_action(client, mock_graphiti):
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
     mock_graphiti.llm_client.generate_response.side_effect = RuntimeError("LLM unavailable")
 
-    resp = await client.post("/openclaw-messages", json={
+    resp = await client.post("/ingest-messages", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
@@ -92,7 +92,7 @@ async def test_ingest_no_thinking_skips_distillation(client, mock_graphiti):
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-    resp = await client.post("/openclaw-messages", json={
+    resp = await client.post("/ingest-messages", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
