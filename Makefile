@@ -50,7 +50,8 @@ test-server:
 	cd server && uv run pytest tests/
 
 test-server-changed:
-	@cd server && uv run pytest tests/ $$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py' 'main.py' | sed -n 's|^tests/|tests/|p')
+	@cd server && files=$$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py'); \
+	if [ -n "$$files" ]; then uv run pytest $$files; else echo "No changed server test files"; fi
 
 typecheck:
 	pnpm exec tsc --noEmit
