@@ -444,6 +444,10 @@ async def add_episode(req: AddEpisodeRequest):
         group_id=req.group_id,
         reference_time=ref_time,
         source=episode_type,
+        entity_types=ontology_entity_types,
+        edge_types=ontology_edge_types,
+        edge_type_map=ontology_edge_type_map,
+        excluded_entity_types=ontology_excluded,
     )
     # add_episode returns AddEpisodeResults; find the episode node
     episode = result.episode
