@@ -136,17 +136,18 @@ function registerFullPlugin(
     { names: ["memory_search", "memory_get"] },
   );
 
-  // memory_add tool (stores to graph)
   const storeTool = createMemoryStoreTool(client, config, {
-    name: "memory_add",
-    description: "Store a thought, insight, reflection, or decision in memory. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
-  }, getGroupId, serverReady);
+    overrides: {
+      name: "memory_add",
+      description: "Store a thought, insight, reflection, or decision in memory. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
+    },
+    getGroupId,
+    serverReady,
+  });
   api.registerTool(storeTool);
 
-  // Hooks — pass getNativeSearch so auto-recall can search both backends
-  registerHooks(api, client, config, setGroupId, getNativeSearch, serverReady);
+  registerHooks(api, client, config, { setGroupId, getNativeSearch, serverReady });
 
-  // Server manager (replaces health monitor) — resolves serverReady gate on success
   const manager = registerServerService(api, config, dir, serverReady);
 
   // CLI — native memory commands + gralkor commands
