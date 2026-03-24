@@ -110,7 +110,7 @@ function registerFullPlugin(
           const sections: string[] = [];
 
           if (!graphReady) {
-            sections.push("Note: Gralkor is still booting, but memory will be available soon.");
+            sections.push(`Note: ${BOOTING_MSG}`);
           }
 
           if (nativeResult) {
