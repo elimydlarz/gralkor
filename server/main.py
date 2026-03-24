@@ -281,21 +281,39 @@ class AddEpisodeRequest(BaseModel):
     source: str | None = None
 
 
-class EpisodeBlock(BaseModel):
-    type: str  # "text" or "thinking"
+class ContentBlock(BaseModel):
+    """A content block within a conversation message.
+
+    Supported types:
+    - "text": Natural language content (user input or assistant response).
+    - "thinking": Internal reasoning trace from the assistant. The server
+      distills these into concise action summaries before ingestion.
+    """
+    type: str
     text: str
 
 
-class EpisodeMessage(BaseModel):
-    role: str  # "user" or "assistant"
-    content: list[EpisodeBlock]
+class ConversationMessage(BaseModel):
+    """A single message in a conversation transcript.
+
+    role: "user" for human input, "assistant" for agent output.
+    content: Ordered list of content blocks. A message may contain
+             multiple blocks (e.g. thinking followed by text).
+    """
+    role: str
+    content: list[ContentBlock]
 
 
-class OpenclawMessagesRequest(BaseModel):
+class IngestMessagesRequest(BaseModel):
+    """Ingest a structured conversation for knowledge graph extraction.
+
+    The server formats the transcript, distills thinking blocks into
+    action summaries, and creates an episode in the knowledge graph.
+    """
     name: str
     source_description: str
     group_id: str
-    messages: list[EpisodeMessage]
+    messages: list[ConversationMessage]
     reference_time: str | None = None
 
 
