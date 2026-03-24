@@ -292,3 +292,39 @@ async def test_add_episode_distillation_failure_drops_action(client, mock_graphi
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
     assert "(action:" not in call_kwargs["episode_body"]
+
+
+@pytest.mark.asyncio
+async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti):
+    """When ontology globals are set, they are forwarded to add_episode."""
+
+    class FakeEntity(BaseModel):
+        role: str
+
+    try:
+        main_mod.ontology_entity_types = {"Person": FakeEntity}
+        main_mod.ontology_edge_types = None
+        main_mod.ontology_edge_type_map = {("Person", "Project"): ["WorksOn"]}
+        main_mod.ontology_excluded = ["Generic"]
+
+        ep = make_episode()
+        mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
+
+        resp = await client.post("/episodes", json={
+            "name": "chat",
+            "episode_body": "body",
+            "source_description": "src",
+            "group_id": "g1",
+        })
+
+        assert resp.status_code == 200
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["entity_types"] == {"Person": FakeEntity}
+        assert call_kwargs["edge_types"] is None
+        assert call_kwargs["edge_type_map"] == {("Person", "Project"): ["WorksOn"]}
+        assert call_kwargs["excluded_entity_types"] == ["Generic"]
+    finally:
+        main_mod.ontology_entity_types = None
+        main_mod.ontology_edge_types = None
+        main_mod.ontology_edge_type_map = None
+        main_mod.ontology_excluded = None
