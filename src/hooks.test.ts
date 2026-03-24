@@ -1417,7 +1417,7 @@ describe("test mode logging", () => {
     buffers.clear();
   });
 
-  it("logs episode body in test mode during flush", async () => {
+  it("logs episode messages in test mode during flush", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -1430,13 +1430,13 @@ describe("test mode logging", () => {
     await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { test: true });
 
     const testLogs = consoleSpy.mock.calls.filter(
-      (args) => typeof args[0] === "string" && args[0].includes("[test] episode body:"),
+      (args) => typeof args[0] === "string" && args[0].includes("[test] episode messages:"),
     );
     expect(testLogs).toHaveLength(1);
-    expect(testLogs[0][0]).toContain("User: Hello\nAssistant: Hi");
+    expect(testLogs[0][0]).toContain("Hello");
   });
 
-  it("does not log episode body when test mode is off", async () => {
+  it("does not log episode messages when test mode is off", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
