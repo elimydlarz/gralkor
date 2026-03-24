@@ -1247,7 +1247,10 @@ describe("flushSessionBuffer", () => {
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     expect(client.addEpisode).toHaveBeenCalledWith(
       expect.objectContaining({
-        episode_body: "User: Hello\nAssistant: Hi",
+        messages: [
+          { role: "user", content: [{ type: "text", text: "Hello" }] },
+          { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+        ],
         source_description: "auto-capture",
         group_id: "agent-42",
       }),
