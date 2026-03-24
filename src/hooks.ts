@@ -162,6 +162,16 @@ function cleanUserMessageText(text: string): string {
 }
 
 /**
+ * Result of extracting messages for episode ingestion.
+ */
+export interface ExtractedMessages {
+  /** Multi-turn conversation text (User:/Assistant: lines, no thinking blocks). */
+  episodeBody: string;
+  /** Raw thinking text per agent turn (all thinking between two user messages, joined with separator). */
+  thinkingPerTurn: string[];
+}
+
+/**
  * Extract all user and assistant messages from ctx.messages (agent_end).
  *
  * Each message has role ("user"/"assistant"/"toolResult") and content (array of blocks).
@@ -169,25 +179,30 @@ function cleanUserMessageText(text: string): string {
  * instructions, metadata wrappers, gralkor-memory XML).
  * For assistant messages, we iterate blocks individually:
  *   - text/output_text → "Assistant: {text}"
- *   - thinking → "Assistant: (thinking: {text})" truncated to maxThinkingChars
+ *   - thinking → collected separately into thinkingPerTurn (one entry per agent turn)
  *   - toolCall/toolUse/functionCall → skipped
  *
- * Returns a multi-turn conversation string:
- *   "User: ...\nAssistant: ...\nUser: ...\nAssistant: ..."
+ * Returns episodeBody (conversation text without thinking) and thinkingPerTurn
+ * (raw thinking grouped by turn for server-side distillation).
  */
-export function extractMessagesFromCtx(
-  event: HookEvent,
-  { maxThinkingChars = 2000 }: { maxThinkingChars?: number } = {},
-): string {
+export function extractMessagesFromCtx(event: HookEvent): ExtractedMessages {
   const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return "";
+  if (!messages || !Array.isArray(messages)) return { episodeBody: "", thinkingPerTurn: [] };
 
   const parts: string[] = [];
+  const thinkingPerTurn: string[] = [];
+  let currentTurnThinking: string[] = [];
 
   for (const msg of messages) {
     const blocks = normalizeContent(msg.content);
 
     if (msg.role === "user") {
+      // Flush accumulated thinking from the previous turn
+      if (currentTurnThinking.length > 0) {
+        thinkingPerTurn.push(currentTurnThinking.join("\n---\n"));
+        currentTurnThinking = [];
+      }
+
       const textParts = blocks
         .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
@@ -203,11 +218,7 @@ export function extractMessagesFromCtx(
     } else if (msg.role === "assistant") {
       for (const block of blocks) {
         if (isThinkingBlock(block)) {
-          let thinking = block.thinking as string;
-          if (thinking.length > maxThinkingChars) {
-            thinking = thinking.slice(0, maxThinkingChars) + "...";
-          }
-          parts.push(`Assistant: (thinking: ${thinking})`);
+          currentTurnThinking.push(block.thinking as string);
         } else if (isTextBlock(block)) {
           parts.push(`Assistant: ${block.text!}`);
         }
@@ -215,7 +226,12 @@ export function extractMessagesFromCtx(
     }
   }
 
-  return parts.join("\n");
+  // Flush any remaining thinking from the last turn
+  if (currentTurnThinking.length > 0) {
+    thinkingPerTurn.push(currentTurnThinking.join("\n---\n"));
+  }
+
+  return { episodeBody: parts.join("\n"), thinkingPerTurn };
 }
 
 export type NativeSearchFn = (query: string) => Promise<string>;
