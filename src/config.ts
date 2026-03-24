@@ -65,10 +65,8 @@ export function resolveGroupId(ctx: { agentId?: string }): string {
   return ctx.agentId ?? "default";
 }
 
-/**
- * Tracks whether the Graphiti server is ready.
- * Used to skip graph calls during startup and provide informative messages.
- */
+export const BOOTING_MSG = "Gralkor is still booting, but memory will be available soon.";
+
 export interface ReadyGate {
   isReady(): boolean;
   resolve(): void;
