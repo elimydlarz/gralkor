@@ -333,7 +333,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "What's up?" }] },
         ],
       });
-      expect(result).toBe("Assistant: Hello!\nUser: Hey there\nAssistant: What's up?");
+      expect(result.episodeBody).toBe("Assistant: Hello!\nUser: Hey there\nAssistant: What's up?");
     });
 
     it("then skips even with string content", () => {
@@ -343,7 +343,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
         ],
       });
-      expect(result).toBe("Assistant: Hello!");
+      expect(result.episodeBody).toBe("Assistant: Hello!");
     });
   });
 
@@ -356,7 +356,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
         ],
       });
-      expect(result).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
+      expect(result.episodeBody).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
     });
 
     it("then strips multiple metadata blocks and keeps the user text", () => {
@@ -367,7 +367,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
         ],
       });
-      expect(result).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
+      expect(result.episodeBody).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
     });
 
     it("then skips user message when only metadata remains", () => {
@@ -378,7 +378,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "Response" }] },
         ],
       });
-      expect(result).toBe("Assistant: Response");
+      expect(result.episodeBody).toBe("Assistant: Response");
     });
 
     it("then strips metadata from string content too", () => {
@@ -388,7 +388,7 @@ describe("extractMessagesFromCtx", () => {
           { role: "user", content: msg },
         ],
       });
-      expect(result).toBe("User: Hello");
+      expect(result.episodeBody).toBe("User: Hello");
     });
   });
 });
