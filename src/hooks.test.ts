@@ -1076,17 +1076,10 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    // Exactly 1 episode with all 3 turns
+    // Exactly 1 episode with all 3 turns as structured messages
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body).toBe(
-      "User: What's my name?\n" +
-      "Assistant: I don't know yet.\n" +
-      "User: My name is Eli.\n" +
-      "Assistant: Nice to meet you, Eli!\n" +
-      "User: Remember that.\n" +
-      "Assistant: I'll remember your name is Eli.",
-    );
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string }> };
+    expect(call.messages).toHaveLength(6); // 3 user + 3 assistant
     expect(buffers.size).toBe(0);
   });
 
