@@ -1419,7 +1419,7 @@ describe("flushSessionBuffer", () => {
     expect(client.addEpisode).toHaveBeenCalledTimes(3);
   });
 
-  it("includes thinking blocks in flushed episode", async () => {
+  it("passes thinking_blocks to addEpisode when present", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
@@ -1440,30 +1440,27 @@ describe("flushSessionBuffer", () => {
       expect.objectContaining({
         episode_body:
           "User: Fix the bug\n" +
-          "Assistant: (thinking: I should check auth.ts)\n" +
           "Assistant: Let me look at the auth module.\n" +
           "Assistant: Found the bug on line 42.",
+        thinking_blocks: ["I should check auth.ts"],
       }),
     );
   });
 
-  it("respects maxThinkingChars option when flushing", async () => {
+  it("omits thinking_blocks when no thinking present", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [
-          { type: "thinking", thinking: "X".repeat(200) },
-          { type: "text", text: "Hi" },
-        ]},
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
       ],
       agentId: "agent-42",
     };
     buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { maxThinkingChars: 50 });
+    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
 
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
-    expect(body).toContain(`(thinking: ${"X".repeat(50)}...)`);
+    const callArg = client.addEpisode.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArg.thinking_blocks).toBeUndefined();
   });
 
   it("does not retry client errors (4xx)", async () => {
