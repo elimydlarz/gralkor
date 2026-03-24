@@ -365,18 +365,18 @@ export async function flushSessionBuffer(
   client: GraphitiClient,
   { retryDelayMs = 1000, test }: { retryDelayMs?: number; test?: boolean } = {},
 ): Promise<void> {
-  const { episodeBody, thinkingPerTurn } = extractMessagesFromCtx({ messages: buffer.messages });
-  if (!episodeBody) {
+  const filtered = extractMessagesFromCtx({ messages: buffer.messages });
+  if (filtered.length === 0) {
     console.log(`[gralkor] auto-capture flush skip (empty) — key:${key}`);
     buffers.delete(key);
     return;
   }
 
   const groupId = resolveGroupId({ agentId: buffer.agentId });
-  console.log(`[gralkor] auto-capture flushing — key:${key} groupId:${groupId} bodySize:${episodeBody.length} thinkingTurns:${thinkingPerTurn.length}`);
+  console.log(`[gralkor] auto-capture flushing — key:${key} groupId:${groupId} messages:${filtered.length}`);
 
   if (test) {
-    console.log(`[gralkor] [test] episode body:\n${episodeBody}`);
+    console.log(`[gralkor] [test] episode messages:\n${JSON.stringify(filtered, null, 2)}`);
   }
 
   // Remove buffer before API call so errors don't leave stale entries
@@ -389,10 +389,9 @@ export async function flushSessionBuffer(
     try {
       await client.addEpisode({
         name: `conversation-${Date.now()}`,
-        episode_body: episodeBody,
         source_description: "auto-capture",
         group_id: groupId,
-        thinking_blocks: thinkingPerTurn.length > 0 ? thinkingPerTurn : undefined,
+        messages: filtered,
       });
 
       console.log(`[gralkor] auto-capture flushed — key:${key}`);
