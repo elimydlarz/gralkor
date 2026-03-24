@@ -104,3 +104,33 @@ async def test_ingest_no_thinking_skips_distillation(client, mock_graphiti):
 
     assert resp.status_code == 200
     mock_graphiti.llm_client.generate_response.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_missing_required_field_returns_422(client):
+    """Missing required fields return 422."""
+    resp = await client.post("/ingest-messages", json={
+        "name": "chat",
+        # messages missing
+        "source_description": "auto-capture",
+        "group_id": "g1",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_ingest_empty_messages_creates_empty_episode(client, mock_graphiti):
+    """Empty messages array produces empty episode body."""
+    ep = make_episode()
+    mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
+
+    resp = await client.post("/ingest-messages", json={
+        "name": "chat",
+        "source_description": "auto-capture",
+        "group_id": "g1",
+        "messages": [],
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+    assert call_kwargs["episode_body"] == ""
