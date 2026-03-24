@@ -51,9 +51,9 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 }
 
 describe("extractMessagesFromCtx", () => {
-  it("returns empty result when no messages", () => {
-    expect(extractMessagesFromCtx({})).toEqual({ episodeBody: "", thinkingPerTurn: [] });
-    expect(extractMessagesFromCtx({ messages: [] })).toEqual({ episodeBody: "", thinkingPerTurn: [] });
+  it("returns empty array when no messages", () => {
+    expect(extractMessagesFromCtx({})).toEqual([]);
+    expect(extractMessagesFromCtx({ messages: [] })).toEqual([]);
   });
 
   it("extracts a single user+assistant exchange", () => {
@@ -63,25 +63,13 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
       ],
     });
-    expect(result.episodeBody).toBe("User: Hello\nAssistant: Hi there");
-    expect(result.thinkingPerTurn).toEqual([]);
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello" }] },
+      { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
+    ]);
   });
 
-  it("accumulates all messages in sequence", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First question" }] },
-        { role: "assistant", content: [{ type: "text", text: "First answer" }] },
-        { role: "user", content: [{ type: "text", text: "Second question" }] },
-        { role: "assistant", content: [{ type: "text", text: "Second answer" }] },
-      ],
-    });
-    expect(result.episodeBody).toBe(
-      "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
-    );
-  });
-
-  it("skips messages with no text content", () => {
+  it("skips toolCall blocks and toolResult messages", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -90,10 +78,13 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Done" }] },
       ],
     });
-    expect(result.episodeBody).toBe("User: Hello\nAssistant: Done");
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello" }] },
+      { role: "assistant", content: [{ type: "text", text: "Done" }] },
+    ]);
   });
 
-  it("joins multiple text blocks within one message", () => {
+  it("joins multiple text blocks within one user message", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "user", content: [
@@ -102,107 +93,12 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result.episodeBody).toBe("User: Part 1\nPart 2");
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Part 1\nPart 2" }] },
+    ]);
   });
 
-  it("strips <gralkor-memory> XML from user messages", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>\n';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: `${xml}What is the weather?` }] },
-        { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: What is the weather?\nAssistant: It's sunny.");
-  });
-
-  it("skips user message that is only <gralkor-memory> XML", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: xml }] },
-        { role: "assistant", content: [{ type: "text", text: "Response" }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("Assistant: Response");
-  });
-
-  it("does not strip <gralkor-memory> from assistant messages", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nSome content\n</gralkor-memory>';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "assistant", content: [{ type: "text", text: xml }] },
-      ],
-    });
-    expect(result.episodeBody).toBe(`Assistant: ${xml}`);
-  });
-
-  it("strips multiple <gralkor-memory> blocks from a single user message", () => {
-    const xml1 = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts block 1\n</gralkor-memory>\n';
-    const xml2 = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts block 2\n</gralkor-memory>\n';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: `${xml1}${xml2}Tell me more` }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: Tell me more");
-  });
-
-  it("handles <gralkor-memory> with nested newlines and special characters in facts", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- User\'s name is "John O\'Brien"\n- Project uses <React> & TypeScript\n\nEntities from knowledge graph:\n- John: A developer who works on the project\n</gralkor-memory>\n';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: `${xml}Hello John` }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: Hello John");
-  });
-
-  it("handles string content in user messages", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: "Hello from string" },
-        { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: Hello from string\nAssistant: Hi there");
-  });
-
-  it("strips <gralkor-memory> from string content in user messages", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts\n</gralkor-memory>\n';
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: `${xml}What is the weather?` },
-        { role: "assistant", content: [{ type: "text", text: "Sunny." }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: What is the weather?\nAssistant: Sunny.");
-  });
-
-  it("extracts output_text blocks alongside text blocks", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [
-          { type: "text", text: "Part 1" },
-          { type: "output_text", text: "Part 2" },
-        ]},
-      ],
-    });
-    expect(result.episodeBody).toBe("User: Hello\nAssistant: Part 1\nAssistant: Part 2");
-  });
-
-  it("extracts messages with only output_text blocks", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [{ type: "output_text", text: "Response via output_text" }] },
-      ],
-    });
-    expect(result.episodeBody).toBe("User: Hello\nAssistant: Response via output_text");
-  });
-
-  it("separates thinking blocks into thinkingPerTurn", () => {
+  it("includes thinking blocks in assistant messages", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -212,71 +108,47 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result.episodeBody).toBe("User: Hello\nAssistant: Hi there!");
-    expect(result.thinkingPerTurn).toEqual(["I should greet the user"]);
-  });
-
-  it("concatenates multiple thinking blocks within a turn with separator", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
-        { role: "assistant", content: [
-          { type: "thinking", thinking: "First thought" },
-          { type: "text", text: "First response" },
-          { type: "thinking", thinking: "Second thought" },
-          { type: "text", text: "Second response" },
-        ]},
-      ],
-    });
-    expect(result.episodeBody).toBe(
-      "User: Fix the bug\nAssistant: First response\nAssistant: Second response",
-    );
-    expect(result.thinkingPerTurn).toEqual(["First thought\n---\nSecond thought"]);
-  });
-
-  it("groups thinking blocks per agent turn", () => {
-    const result = extractMessagesFromCtx({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First question" }] },
-        { role: "assistant", content: [
-          { type: "thinking", thinking: "Thought about first question" },
-          { type: "text", text: "First answer" },
-        ]},
-        { role: "user", content: [{ type: "text", text: "Second question" }] },
-        { role: "assistant", content: [
-          { type: "thinking", thinking: "Thought about second question" },
-          { type: "text", text: "Second answer" },
-        ]},
-      ],
-    });
-    expect(result.episodeBody).toBe(
-      "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
-    );
-    expect(result.thinkingPerTurn).toEqual([
-      "Thought about first question",
-      "Thought about second question",
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello" }] },
+      { role: "assistant", content: [
+        { type: "thinking", text: "I should greet the user" },
+        { type: "text", text: "Hi there!" },
+      ]},
     ]);
   });
 
-  it("collects thinking across multiple assistant messages in one turn", () => {
+  it("keeps text and thinking, drops toolCall in mixed message", () => {
     const result = extractMessagesFromCtx({
       messages: [
-        { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
-        // Intermediate: agent calls a tool
         { role: "assistant", content: [
-          { type: "thinking", thinking: "Let me investigate" },
+          { type: "thinking", thinking: "I should check auth.ts" },
+          { type: "text", text: "Let me look at the auth module." },
           { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
-        ]},
-        { role: "toolResult", content: [{ type: "text", text: "file contents" }] },
-        // Final: agent responds
-        { role: "assistant", content: [
-          { type: "thinking", thinking: "Found the null check issue" },
-          { type: "text", text: "Fixed it!" },
+          { type: "text", text: "Found the bug on line 42." },
         ]},
       ],
     });
-    expect(result.episodeBody).toBe("User: Fix the bug\nAssistant: Fixed it!");
-    expect(result.thinkingPerTurn).toEqual(["Let me investigate\n---\nFound the null check issue"]);
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "thinking", text: "I should check auth.ts" },
+        { type: "text", text: "Let me look at the auth module." },
+        { type: "text", text: "Found the bug on line 42." },
+      ]},
+    ]);
+  });
+
+  it("drops assistant messages with only toolCall blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
+        ]},
+        { role: "assistant", content: [{ type: "text", text: "Done" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Done" }] },
+    ]);
   });
 
   it("skips thinking block with no thinking field", () => {
@@ -288,8 +160,9 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result.episodeBody).toBe("Assistant: Hello");
-    expect(result.thinkingPerTurn).toEqual([]);
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Hello" }] },
+    ]);
   });
 
   it("skips thinking block with empty thinking field", () => {
@@ -301,73 +174,90 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result.episodeBody).toBe("Assistant: Hello");
-    expect(result.thinkingPerTurn).toEqual([]);
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Hello" }] },
+    ]);
   });
 
-  it("excludes thinking from episodeBody but keeps text, skips toolCall", () => {
+  it("extracts output_text blocks as text type", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "assistant", content: [
-          { type: "thinking", thinking: "I should check auth.ts" },
-          { type: "text", text: "Let me look at the auth module." },
-          { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
-          { type: "text", text: "Found the bug on line 42." },
+          { type: "text", text: "Part 1" },
+          { type: "output_text", text: "Part 2" },
         ]},
       ],
     });
-    expect(result.episodeBody).toBe(
-      "Assistant: Let me look at the auth module.\nAssistant: Found the bug on line 42.",
-    );
-    expect(result.thinkingPerTurn).toEqual(["I should check auth.ts"]);
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "text", text: "Part 1" },
+        { type: "text", text: "Part 2" },
+      ]},
+    ]);
+  });
+
+  it("strips <gralkor-memory> XML from user messages", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts\n</gralkor-memory>\n';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: `${xml}What is the weather?` }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+    ]);
+  });
+
+  it("skips user message that is only <gralkor-memory> XML", () => {
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts\n</gralkor-memory>';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: xml }] },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Response" }] },
+    ]);
+  });
+
+  it("handles string content in user messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: "Hello from string" },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello from string" }] },
+    ]);
   });
 
   describe("when user message is a session-start instruction", () => {
     it("then skips the message", () => {
-      const sessionStart = "A new session was started via /new or /reset. Execute your Session Startup sequence now - read the required files before responding to the user. Then greet the user in your configured persona, if one is provided.\nCurrent time: Friday, March 13th, 2026 — 12:01 PM (UTC) / 2026-03-13 12:01 UTC";
+      const sessionStart = "A new session was started via /new or /reset. Execute your Session Startup sequence now";
       const result = extractMessagesFromCtx({
         messages: [
           { role: "user", content: [{ type: "text", text: sessionStart }] },
           { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
-          { role: "user", content: [{ type: "text", text: "Hey there" }] },
-          { role: "assistant", content: [{ type: "text", text: "What's up?" }] },
         ],
       });
-      expect(result.episodeBody).toBe("Assistant: Hello!\nUser: Hey there\nAssistant: What's up?");
-    });
-
-    it("then skips even with string content", () => {
-      const result = extractMessagesFromCtx({
-        messages: [
-          { role: "user", content: "A new session was started via /new" },
-          { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
-        ],
-      });
-      expect(result.episodeBody).toBe("Assistant: Hello!");
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
+      ]);
     });
   });
 
   describe("when user message contains metadata wrappers", () => {
-    it("then strips a single metadata block and keeps the user text", () => {
-      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123", "name": "Eli"}\n```\n\nHey, enjoying tmux?';
+    it("then strips metadata and keeps the user text", () => {
+      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123"}\n```\n\nHey, enjoying tmux?';
       const result = extractMessagesFromCtx({
         messages: [
           { role: "user", content: [{ type: "text", text: msg }] },
-          { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
         ],
       });
-      expect(result.episodeBody).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
-    });
-
-    it("then strips multiple metadata blocks and keeps the user text", () => {
-      const msg = 'Conversation info (untrusted metadata):\n```json\n{"message_id": "1293", "sender": "Eli"}\n```\n\nSender (untrusted metadata):\n```json\n{"id": "123", "name": "Eli"}\n```\n\nHey, enjoying tmux?';
-      const result = extractMessagesFromCtx({
-        messages: [
-          { role: "user", content: [{ type: "text", text: msg }] },
-          { role: "assistant", content: [{ type: "text", text: "Sure am!" }] },
-        ],
-      });
-      expect(result.episodeBody).toBe("User: Hey, enjoying tmux?\nAssistant: Sure am!");
+      expect(result).toEqual([
+        { role: "user", content: [{ type: "text", text: "Hey, enjoying tmux?" }] },
+      ]);
     });
 
     it("then skips user message when only metadata remains", () => {
@@ -378,17 +268,9 @@ describe("extractMessagesFromCtx", () => {
           { role: "assistant", content: [{ type: "text", text: "Response" }] },
         ],
       });
-      expect(result.episodeBody).toBe("Assistant: Response");
-    });
-
-    it("then strips metadata from string content too", () => {
-      const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123"}\n```\n\nHello';
-      const result = extractMessagesFromCtx({
-        messages: [
-          { role: "user", content: msg },
-        ],
-      });
-      expect(result.episodeBody).toBe("User: Hello");
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ]);
     });
   });
 });
