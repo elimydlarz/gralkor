@@ -355,7 +355,7 @@ def _serialize_community(c: CommunityNode) -> dict[str, Any]:
     }
 
 
-# ── Thinking distillation ─────────────────────────────────────
+# ── Transcript formatting & thinking distillation ─────────────
 
 logger = logging.getLogger(__name__)
 
@@ -398,33 +398,67 @@ async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list
     return list(await asyncio.gather(*[_safe_distill(t) for t in thinking_blocks]))
 
 
-def _inject_action_summaries(episode_body: str, summaries: list[str]) -> str:
-    """Inject (action: ...) lines into episode_body before each turn's first Assistant: line.
+async def _format_transcript(
+    msgs: list[EpisodeMessage],
+    llm_client: Any | None,
+) -> str:
+    """Format structured messages into a transcript, distilling thinking into action summaries.
 
-    Tracks turns by counting User: lines. Each summary is paired with a turn index.
+    Groups thinking blocks per turn (all thinking between two user messages),
+    distills each group into a single (action: ...) line via LLM, and formats
+    the transcript as:
+        User: ...
+        Assistant: (action: ...)
+        Assistant: ...
     """
-    lines = episode_body.split("\n")
-    result: list[str] = []
+    # Group thinking per turn and build transcript parts (without thinking)
+    turns_thinking: list[list[str]] = []  # one list of thinking texts per turn
+    current_thinking: list[str] = []
+    parts: list[tuple[str, str]] = []  # (role_prefix, text) pairs
+
+    for msg in msgs:
+        if msg.role == "user":
+            # Flush thinking from previous turn
+            if current_thinking:
+                turns_thinking.append(current_thinking)
+                current_thinking = []
+            for block in msg.content:
+                if block.type == "text":
+                    parts.append(("user", block.text))
+        elif msg.role == "assistant":
+            for block in msg.content:
+                if block.type == "thinking":
+                    current_thinking.append(block.text)
+                elif block.type == "text":
+                    parts.append(("assistant", block.text))
+
+    # Flush remaining thinking
+    if current_thinking:
+        turns_thinking.append(current_thinking)
+
+    # Distill thinking into action summaries
+    summaries: list[str] = []
+    if turns_thinking and llm_client:
+        joined = ["\n---\n".join(blocks) for blocks in turns_thinking]
+        summaries = await _distill_thinking(llm_client, joined)
+
+    # Build transcript with action summaries injected
+    lines: list[str] = []
     turn_index = -1
-    injected_for_turn: set[int] = set()
+    injected: set[int] = set()
 
-    for line in lines:
-        if line.startswith("User:"):
+    for role, text in parts:
+        if role == "user":
             turn_index += 1
+            lines.append(f"User: {text}")
+        elif role == "assistant":
+            # Inject action summary before first assistant line of this turn
+            if turn_index >= 0 and turn_index not in injected and turn_index < len(summaries) and summaries[turn_index]:
+                lines.append(f"Assistant: (action: {summaries[turn_index]})")
+                injected.add(turn_index)
+            lines.append(f"Assistant: {text}")
 
-        if (
-            line.startswith("Assistant:")
-            and turn_index >= 0
-            and turn_index not in injected_for_turn
-            and turn_index < len(summaries)
-            and summaries[turn_index]
-        ):
-            result.append(f"Assistant: (action: {summaries[turn_index]})")
-            injected_for_turn.add(turn_index)
-
-        result.append(line)
-
-    return "\n".join(result)
+    return "\n".join(lines)
 
 
 # ── Endpoints ─────────────────────────────────────────────────
