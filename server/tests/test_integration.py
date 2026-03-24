@@ -130,11 +130,14 @@ async def test_ingest_messages_with_thinking_distillation(tmp_path, monkeypatch)
 
     app = MagicMock()
     async with main_mod.lifespan(app):
-        # Mock only the LLM client (distillation needs it, everything else is real)
+        # Mock LLM (distillation) and embedder (episode ingestion calls embeddings)
+        # Everything else is real: FalkorDB, Graphiti, FastAPI
         main_mod.graphiti.llm_client = AsyncMock()
         main_mod.graphiti.llm_client.generate_response = AsyncMock(
             return_value={"content": "Investigated and resolved the auth bug"}
         )
+        main_mod.graphiti.embedder = AsyncMock()
+        main_mod.graphiti.embedder.create = AsyncMock(return_value=[[0.1] * 1024])
 
         transport = ASGITransport(app=main_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
