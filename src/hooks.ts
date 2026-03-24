@@ -220,13 +220,18 @@ export function extractMessagesFromCtx(
 
 export type NativeSearchFn = (query: string) => Promise<string>;
 
+export interface RecallOpts {
+  setGroupId?: (id: string) => void;
+  getNativeSearch?: () => NativeSearchFn | null;
+  serverReady?: ReadyGate;
+}
+
 export function createBeforeAgentStartHandler(
   client: GraphitiClient,
   config: GralkorConfig,
-  setGroupId?: (id: string) => void,
-  getNativeSearch?: () => NativeSearchFn | null,
-  serverReady?: ReadyGate,
+  opts: RecallOpts = {},
 ) {
+  const { setGroupId, getNativeSearch, serverReady } = opts;
   // Deduplicate the double-fire: cache result for same query within a short window.
   // before_agent_start fires twice per agent run (OpenClaw behavior) — only the 2nd
   // fire's prependContext is used, but both trigger expensive searches. We cache the
