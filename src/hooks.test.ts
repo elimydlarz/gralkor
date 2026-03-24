@@ -797,8 +797,11 @@ describe("agent_end handler", () => {
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: I don't have access to weather data.");
+    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
+    expect(call.messages).toEqual([
+      { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+      { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
+    ]);
   });
 
   it("captures multi-turn conversations on flush", async () => {
@@ -815,10 +818,8 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toBe(
-      "User: What is the weather?\nAssistant: It's sunny.\nUser: And tomorrow?\nAssistant: Rain expected.",
-    );
+    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
+    expect(call.messages).toHaveLength(4);
   });
 
   it("uses agent's group_id partition", async () => {
