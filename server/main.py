@@ -349,9 +349,15 @@ async def add_episode(req: AddEpisodeRequest):
         else datetime.now(timezone.utc)
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
+
+    episode_body = req.episode_body
+    if req.thinking_blocks and graphiti and graphiti.llm_client:
+        summaries = await _distill_thinking(graphiti.llm_client, req.thinking_blocks)
+        episode_body = _inject_action_summaries(episode_body, summaries)
+
     result = await graphiti.add_episode(
         name=req.name,
-        episode_body=req.episode_body,
+        episode_body=episode_body,
         source_description=req.source_description,
         group_id=req.group_id,
         reference_time=ref_time,
