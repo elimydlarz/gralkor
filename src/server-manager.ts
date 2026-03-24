@@ -197,6 +197,87 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
   return { start, stop, isRunning };
 }
 
+function yamlQuote(s: string): string {
+  if (/[:#{}[\]|>&*!%@`]/.test(s) || s !== s.trim()) {
+    return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return `"${s}"`;
+}
+
+function serializeAttrValue(attr: OntologyAttributeValue, indent: string): string {
+  if (typeof attr === "string") {
+    return ` ${yamlQuote(attr)}`;
+  }
+  if (Array.isArray(attr)) {
+    return "\n" + attr.map((v) => `${indent}  - ${yamlQuote(v)}`).join("\n");
+  }
+  if ("enum" in attr) {
+    const lines = [
+      `\n${indent}  enum:`,
+      ...attr.enum.map((v) => `${indent}    - ${yamlQuote(v)}`),
+      `${indent}  description: ${yamlQuote(attr.description)}`,
+    ];
+    return lines.join("\n");
+  }
+  // { type, description }
+  return [
+    "",
+    `${indent}  type: ${yamlQuote(attr.type)}`,
+    `${indent}  description: ${yamlQuote(attr.description)}`,
+  ].join("\n");
+}
+
+function serializeTypeDefs(
+  defs: Record<string, { description: string; attributes?: Record<string, OntologyAttributeValue> }>,
+  indent: string,
+): string[] {
+  const lines: string[] = [];
+  for (const [name, def] of Object.entries(defs)) {
+    lines.push(`${indent}${name}:`);
+    lines.push(`${indent}  description: ${yamlQuote(def.description)}`);
+    if (def.attributes && Object.keys(def.attributes).length > 0) {
+      lines.push(`${indent}  attributes:`);
+      for (const [attr, val] of Object.entries(def.attributes)) {
+        lines.push(`${indent}    ${attr}:${serializeAttrValue(val, `${indent}    `)}`);
+      }
+    }
+  }
+  return lines;
+}
+
+export function serializeOntologyYaml(ontology: OntologyConfig): string {
+  const lines: string[] = ["ontology:"];
+
+  if (ontology.entities && Object.keys(ontology.entities).length > 0) {
+    lines.push("  entities:");
+    lines.push(...serializeTypeDefs(ontology.entities, "    "));
+  }
+
+  if (ontology.edges && Object.keys(ontology.edges).length > 0) {
+    lines.push("  edges:");
+    lines.push(...serializeTypeDefs(ontology.edges, "    "));
+  }
+
+  if (ontology.edgeMap && Object.keys(ontology.edgeMap).length > 0) {
+    lines.push("  edgeMap:");
+    for (const [key, values] of Object.entries(ontology.edgeMap)) {
+      lines.push(`    ${yamlQuote(key)}:`);
+      for (const v of values) {
+        lines.push(`      - ${yamlQuote(v)}`);
+      }
+    }
+  }
+
+  if (ontology.excludedEntityTypes && ontology.excludedEntityTypes.length > 0) {
+    lines.push("  excludedEntityTypes:");
+    for (const name of ontology.excludedEntityTypes) {
+      lines.push(`    - ${yamlQuote(name)}`);
+    }
+  }
+
+  return lines.join("\n") + "\n";
+}
+
 async function waitForHealth(port: number): Promise<void> {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
 
