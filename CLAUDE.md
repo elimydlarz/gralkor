@@ -122,9 +122,10 @@ Managed via `src/server-manager.ts`, registered as service `gralkor-server`:
 2. Force-install bundled wheels from `server/wheels/` (if any) via `uv pip install --reinstall --no-deps` — bypasses lockfile hash verification. Incompatible wheels caught gracefully.
 3. Write dynamic `config.yaml` to `dataDir` from plugin settings (`llm`/`embedder`) with defaults (`gemini-3-flash-preview`, `gemini-embedding-2-preview`). Spawn `{venvPython} -m uvicorn main:app --host 127.0.0.1 --port 8001 --no-access-log`. Passes env vars (`CONFIG_PATH` pointing to generated config, `FALKORDB_DATA_DIR`, LLM API keys). Does NOT set `FALKORDB_URI` (absence triggers embedded FalkorDBLite).
 4. Poll `GET /health` every 500ms, 120s timeout. Monitor every 60s after startup.
-5. Stop: SIGTERM → 5s grace → SIGKILL.
+5. On healthy: `serverReady.resolve()` — unblocks graph calls in tools and hooks.
+6. Stop: SIGTERM → 5s grace → SIGKILL.
 
-Startup errors caught and logged — plugin degrades gracefully (tools/hooks see Graphiti as unreachable). First start slow (~1-2 min for uv sync); subsequent starts fast.
+Startup errors caught and logged — plugin degrades gracefully via `ReadyGate` (graph calls skipped with informative message until server is healthy). First start slow (~1-2 min for uv sync); subsequent starts fast.
 
 ### Communication Path
 
