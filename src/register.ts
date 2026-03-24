@@ -6,7 +6,7 @@ import {
   createBeforeAgentStartHandler,
   createAgentEndHandler,
   createSessionEndHandler,
-  type NativeSearchFn,
+  type RecallOpts,
   type SessionBufferMap,
   type IdleTimerMap,
 } from "./hooks.js";
@@ -19,14 +19,12 @@ export function registerHooks(
   api: PluginApiBase,
   client: GraphitiClient,
   config: GralkorConfig,
-  setGroupId?: (id: string) => void,
-  getNativeSearch?: () => NativeSearchFn | null,
-  serverReady?: ReadyGate,
+  opts: RecallOpts = {},
 ) {
   const buffers: SessionBufferMap = new Map();
   const timers: IdleTimerMap = new Map();
 
-  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, setGroupId, getNativeSearch, serverReady));
+  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, opts));
   api.on("agent_end", createAgentEndHandler(client, config, buffers, timers));
   api.on("session_end", createSessionEndHandler(client, config, buffers, timers));
 }
