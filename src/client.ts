@@ -24,6 +24,7 @@ export interface AddEpisodeParams {
   source_description: string;
   group_id: string;
   source?: "message" | "text" | "json";
+  thinking_blocks?: string[];
 }
 
 export interface SearchResults {
