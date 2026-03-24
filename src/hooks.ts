@@ -1,6 +1,6 @@
-import type { GraphitiClient } from "./client.js";
+import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { resolveGroupId, type ReadyGate } from "./config.js";
+import { resolveGroupId, BOOTING_MSG, type ReadyGate } from "./config.js";
 import { formatFact } from "./tools.js";
 
 /**
