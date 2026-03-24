@@ -605,7 +605,7 @@ describe("before_agent_start handler", () => {
     const getNativeSearch = () => nativeSearch;
 
     const handler = createBeforeAgentStartHandler(
-      client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
+      client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
@@ -624,7 +624,7 @@ describe("before_agent_start handler", () => {
     const getNativeSearch = () => nativeSearch;
 
     const handler = createBeforeAgentStartHandler(
-      client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
+      client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
@@ -640,7 +640,7 @@ describe("before_agent_start handler", () => {
     const getNativeSearch = () => null;
 
     const handler = createBeforeAgentStartHandler(
-      client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
+      client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
@@ -657,7 +657,7 @@ describe("before_agent_start handler", () => {
     const getNativeSearch = () => nativeSearch;
 
     const handler = createBeforeAgentStartHandler(
-      client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch,
+      client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
@@ -806,7 +806,7 @@ describe("before_agent_start handler", () => {
       const getNativeSearch = () => nativeSearch;
 
       const handler = createBeforeAgentStartHandler(
-        client as unknown as GraphitiClient, defaultConfig, undefined, getNativeSearch, gate,
+        client as unknown as GraphitiClient, defaultConfig, { getNativeSearch }, gate,
       );
       const result = await handler(
         { prompt: "Tell me about the project" },
