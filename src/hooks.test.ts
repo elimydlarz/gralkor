@@ -1112,10 +1112,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body).toContain("Hello");
-    expect(body).toContain("Bye");
-    expect(body).toContain("Goodbye!");
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string }> };
+    expect(call.messages).toHaveLength(4); // latest snapshot: 2 user + 2 assistant
     expect(buffers.size).toBe(0);
   });
 
