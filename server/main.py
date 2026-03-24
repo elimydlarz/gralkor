@@ -188,7 +188,7 @@ ontology_excluded: list[str] | None = None
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global graphiti
+    global graphiti, ontology_entity_types, ontology_edge_types, ontology_edge_type_map, ontology_excluded
     cfg = _load_config()
 
     falkordb_uri = os.getenv("FALKORDB_URI")
