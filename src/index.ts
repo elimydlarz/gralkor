@@ -92,12 +92,11 @@ function registerFullPlugin(
 
           const graphReady = serverReady.isReady();
 
-          // Search native markdown and graph in parallel
           const [nativeRaw, searchResults] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
             graphReady
               ? client.search(args.query, [groupId], limit)
-              : Promise.resolve({ facts: [] as import("./client.js").Fact[] }),
+              : Promise.resolve({ facts: [] as Fact[] }),
           ]);
 
           const nativeResult = unwrapToolResult(nativeRaw);
