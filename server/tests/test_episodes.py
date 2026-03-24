@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from unittest.mock import ANY
 
 import pytest
+from pydantic import BaseModel
 
+import main as main_mod
 from .conftest import make_episode
 
 
