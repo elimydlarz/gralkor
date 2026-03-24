@@ -23,7 +23,7 @@ function mockClient(): {
   return {
     health: vi.fn(),
     addEpisode: vi.fn(),
-    ingest: vi.fn(),
+    ingestMessages: vi.fn(),
     search: vi.fn(),
     getEpisodes: vi.fn(),
     deleteEpisode: vi.fn(),
