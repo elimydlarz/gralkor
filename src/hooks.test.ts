@@ -113,7 +113,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "It's sunny." }] },
       ],
     });
-    expect(result).toBe("User: What is the weather?\nAssistant: It's sunny.");
+    expect(result.episodeBody).toBe("User: What is the weather?\nAssistant: It's sunny.");
   });
 
   it("skips user message that is only <gralkor-memory> XML", () => {
@@ -124,7 +124,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
       ],
     });
-    expect(result).toBe("Assistant: Response");
+    expect(result.episodeBody).toBe("Assistant: Response");
   });
 
   it("does not strip <gralkor-memory> from assistant messages", () => {
@@ -134,7 +134,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: xml }] },
       ],
     });
-    expect(result).toBe(`Assistant: ${xml}`);
+    expect(result.episodeBody).toBe(`Assistant: ${xml}`);
   });
 
   it("strips multiple <gralkor-memory> blocks from a single user message", () => {
@@ -145,7 +145,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml1}${xml2}Tell me more` }] },
       ],
     });
-    expect(result).toBe("User: Tell me more");
+    expect(result.episodeBody).toBe("User: Tell me more");
   });
 
   it("handles <gralkor-memory> with nested newlines and special characters in facts", () => {
@@ -155,7 +155,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "user", content: [{ type: "text", text: `${xml}Hello John` }] },
       ],
     });
-    expect(result).toBe("User: Hello John");
+    expect(result.episodeBody).toBe("User: Hello John");
   });
 
   it("handles string content in user messages", () => {
@@ -165,7 +165,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Hi there" }] },
       ],
     });
-    expect(result).toBe("User: Hello from string\nAssistant: Hi there");
+    expect(result.episodeBody).toBe("User: Hello from string\nAssistant: Hi there");
   });
 
   it("strips <gralkor-memory> from string content in user messages", () => {
@@ -176,7 +176,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Sunny." }] },
       ],
     });
-    expect(result).toBe("User: What is the weather?\nAssistant: Sunny.");
+    expect(result.episodeBody).toBe("User: What is the weather?\nAssistant: Sunny.");
   });
 
   it("extracts output_text blocks alongside text blocks", () => {
@@ -189,7 +189,7 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Part 1\nAssistant: Part 2");
+    expect(result.episodeBody).toBe("User: Hello\nAssistant: Part 1\nAssistant: Part 2");
   });
 
   it("extracts messages with only output_text blocks", () => {
@@ -199,7 +199,7 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "output_text", text: "Response via output_text" }] },
       ],
     });
-    expect(result).toBe("User: Hello\nAssistant: Response via output_text");
+    expect(result.episodeBody).toBe("User: Hello\nAssistant: Response via output_text");
   });
 
   it("emits thinking block as Assistant: (thinking: ...)", () => {
