@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import get_type_hints, Literal, get_args, get_origin
 
 import pytest
+import yaml
 from pydantic import BaseModel
 
 from main import _build_ontology
