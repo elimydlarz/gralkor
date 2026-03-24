@@ -32,13 +32,17 @@ export interface EpisodeMessage {
 
 export interface AddEpisodeParams {
   name: string;
+  episode_body: string;
   source_description: string;
   group_id: string;
-  /** Structured messages for auto-capture (server formats transcript + distills thinking). */
-  messages?: EpisodeMessage[];
-  /** Pre-formatted episode body (used by memory_add tool). */
-  episode_body?: string;
   source?: "message" | "text" | "json";
+}
+
+export interface IngestParams {
+  name: string;
+  source_description: string;
+  group_id: string;
+  messages: EpisodeMessage[];
 }
 
 export interface SearchResults {
