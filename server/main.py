@@ -291,7 +291,7 @@ class EpisodeMessage(BaseModel):
     content: list[EpisodeBlock]
 
 
-class IngestRequest(BaseModel):
+class OpenclawMessagesRequest(BaseModel):
     name: str
     source_description: str
     group_id: str
