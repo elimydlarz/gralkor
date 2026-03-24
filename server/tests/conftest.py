@@ -115,6 +115,10 @@ def mock_graphiti():
     g.build_communities.return_value = (["community-1"], ["edge-1", "edge-2"])
     g.close.return_value = None
 
+    # LLM client for thinking distillation
+    g.llm_client = AsyncMock()
+    g.llm_client.generate_response = AsyncMock(return_value={"content": "Investigated and resolved the issue"})
+
     return g
 
 
