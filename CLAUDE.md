@@ -83,7 +83,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 
 **Hooks used by gralkor:** `before_agent_start` (auto-recall), `agent_end` + `session_end` (auto-capture with session buffering).
 
-`event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`, etc. Auto-capture extracts `text`/`output_text`/`thinking` blocks; tool-related blocks are skipped.
+`event.messages[].content` is an array of `{ type, text?, ... }` objects (not JSON string). Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`, etc. Auto-capture extracts `text`/`output_text` blocks into the episode body and collects `thinking` blocks separately for server-side distillation; tool-related blocks are skipped.
 
 ### Data Lifecycle
 
