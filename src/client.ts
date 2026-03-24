@@ -134,7 +134,7 @@ export class GraphitiClient {
   }
 
   async ingestMessages(params: IngestMessagesParams): Promise<Episode> {
-    return this.request("POST", "/openclaw-messages", {
+    return this.request("POST", "/ingest-messages", {
       ...params,
       reference_time: new Date().toISOString(),
     });
