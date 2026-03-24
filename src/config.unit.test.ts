@@ -148,3 +148,19 @@ describe("validateOntologyConfig()", () => {
     });
   });
 });
+
+describe("resolveConfig()", () => {
+  describe("when ontology is provided", () => {
+    it("then passes it through unchanged", () => {
+      const config = resolveConfig({ ontology: VALID_ONTOLOGY });
+      expect(config.ontology).toBe(VALID_ONTOLOGY);
+    });
+  });
+
+  describe("when ontology is not provided", () => {
+    it("then defaults to undefined", () => {
+      const config = resolveConfig({});
+      expect(config.ontology).toBeUndefined();
+    });
+  });
+});
