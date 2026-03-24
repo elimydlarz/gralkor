@@ -387,7 +387,7 @@ export async function flushSessionBuffer(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      await client.ingest({
+      await client.ingestMessages({
         name: `conversation-${Date.now()}`,
         source_description: "auto-capture",
         group_id: groupId,
