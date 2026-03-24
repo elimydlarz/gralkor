@@ -924,7 +924,7 @@ describe("agent_end handler", () => {
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { episode_body: string };
+    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
     expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
     expect(call.episode_body).not.toContain("gralkor-memory");
   });
@@ -1077,7 +1077,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
     // Exactly 1 episode with all 3 turns
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body).toBe(
       "User: What's my name?\n" +
       "Assistant: I don't know yet.\n" +
@@ -1118,7 +1118,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body).toContain("Hello");
     expect(body).toContain("Bye");
     expect(body).toContain("Goodbye!");
@@ -1153,7 +1153,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body1 = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body1).toContain("Session 1");
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
@@ -1163,7 +1163,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
-    const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
+    const body2 = (client.addEpisode.mock.calls[1][0] as { messages: unknown[] }).episode_body;
     expect(body2).toContain("Session 2");
     expect(buffers.size).toBe(0);
   });
@@ -1189,7 +1189,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body).toBe(
       "User: Hello from string content\n" +
       "Assistant: Hi there\n" +
@@ -1226,7 +1226,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body).not.toContain("gralkor-memory");
     expect(body).toBe(
       "User: What's my name?\n" +
@@ -1567,7 +1567,7 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body).toContain("More");
   });
 
@@ -1634,7 +1634,7 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body1 = (client.addEpisode.mock.calls[0][0] as { episode_body: string }).episode_body;
+    const body1 = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
     expect(body1).toContain("Hello");
 
     // Advance remaining 3 min — sess-2 fires
@@ -1642,7 +1642,7 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(2);
-    const body2 = (client.addEpisode.mock.calls[1][0] as { episode_body: string }).episode_body;
+    const body2 = (client.addEpisode.mock.calls[1][0] as { messages: unknown[] }).episode_body;
     expect(body2).toContain("Session 2 updated");
   });
 
