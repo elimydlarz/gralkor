@@ -164,6 +164,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | temporal-awareness | Facts carry `created_at`, `valid_at`/`invalid_at`, `expired_at`; all 4 timestamps shown in tool results and auto-recall via `formatFact()` |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
 | error-propagation | Auto-capture flush retries transient errors (3 retries, exponential backoff); final error propagates to callers |
+| custom-ontology | User-declared entity/edge types in plugin config (`ontology`). TypeScript validates config (reserved names, protected attrs, edgeMap cross-refs), serializes to `config.yaml`. Python server builds dynamic Pydantic models at startup via `_build_ontology()` and passes to every `graphiti.add_episode()`. Attributes are required (not Optional) to gate entity extraction. Supports string, enum (array → `Literal`), typed object, and enum-with-description forms. Reserved entity names: `Entity`, `Episodic`, `Community`, `Saga`. |
 
 ### Cross-functional
 
