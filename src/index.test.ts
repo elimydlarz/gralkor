@@ -241,4 +241,23 @@ describe("register()", () => {
     // memory_get should be unwrapped
     expect(getTool.name).toBe("memory_get");
   });
+
+  describe("when ontology config is invalid", () => {
+    it("then throws validation error", async () => {
+      const { register } = await import("./index.js");
+
+      const apiWithBadOntology = {
+        ...api,
+        pluginConfig: {
+          ontology: {
+            entities: {
+              Entity: { description: "Reserved name" },
+            },
+          },
+        },
+      };
+
+      expect(() => register(apiWithBadOntology)).toThrow("Entity");
+    });
+  });
 });
