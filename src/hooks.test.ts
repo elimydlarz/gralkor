@@ -202,7 +202,7 @@ describe("extractMessagesFromCtx", () => {
     expect(result.episodeBody).toBe("User: Hello\nAssistant: Response via output_text");
   });
 
-  it("emits thinking block as Assistant: (thinking: ...)", () => {
+  it("separates thinking blocks into thinkingPerTurn", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -212,14 +212,14 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe(
-      "User: Hello\nAssistant: (thinking: I should greet the user)\nAssistant: Hi there!",
-    );
+    expect(result.episodeBody).toBe("User: Hello\nAssistant: Hi there!");
+    expect(result.thinkingPerTurn).toEqual(["I should greet the user"]);
   });
 
-  it("preserves order of interleaved thinking and text blocks", () => {
+  it("concatenates multiple thinking blocks within a turn with separator", () => {
     const result = extractMessagesFromCtx({
       messages: [
+        { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
         { role: "assistant", content: [
           { type: "thinking", thinking: "First thought" },
           { type: "text", text: "First response" },
@@ -228,55 +228,55 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe(
-      "Assistant: (thinking: First thought)\nAssistant: First response\nAssistant: (thinking: Second thought)\nAssistant: Second response",
+    expect(result.episodeBody).toBe(
+      "User: Fix the bug\nAssistant: First response\nAssistant: Second response",
     );
+    expect(result.thinkingPerTurn).toEqual(["First thought\n---\nSecond thought"]);
   });
 
-  it("truncates thinking block at maxThinkingChars with ...", () => {
-    const longThinking = "A".repeat(3000);
-    const result = extractMessagesFromCtx(
-      {
-        messages: [
-          { role: "assistant", content: [
-            { type: "thinking", thinking: longThinking },
-            { type: "text", text: "Done" },
-          ]},
-        ],
-      },
-      { maxThinkingChars: 100 },
-    );
-    expect(result).toBe(
-      `Assistant: (thinking: ${"A".repeat(100)}...)\nAssistant: Done`,
-    );
-  });
-
-  it("uses default maxThinkingChars of 2000", () => {
-    const longThinking = "B".repeat(2500);
+  it("groups thinking blocks per agent turn", () => {
     const result = extractMessagesFromCtx({
       messages: [
+        { role: "user", content: [{ type: "text", text: "First question" }] },
         { role: "assistant", content: [
-          { type: "thinking", thinking: longThinking },
+          { type: "thinking", thinking: "Thought about first question" },
+          { type: "text", text: "First answer" },
+        ]},
+        { role: "user", content: [{ type: "text", text: "Second question" }] },
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "Thought about second question" },
+          { type: "text", text: "Second answer" },
         ]},
       ],
     });
-    expect(result).toBe(
-      `Assistant: (thinking: ${"B".repeat(2000)}...)`,
+    expect(result.episodeBody).toBe(
+      "User: First question\nAssistant: First answer\nUser: Second question\nAssistant: Second answer",
     );
+    expect(result.thinkingPerTurn).toEqual([
+      "Thought about first question",
+      "Thought about second question",
+    ]);
   });
 
-  it("does not truncate thinking block shorter than maxThinkingChars", () => {
-    const result = extractMessagesFromCtx(
-      {
-        messages: [
-          { role: "assistant", content: [
-            { type: "thinking", thinking: "short thought" },
-          ]},
-        ],
-      },
-      { maxThinkingChars: 100 },
-    );
-    expect(result).toBe("Assistant: (thinking: short thought)");
+  it("collects thinking across multiple assistant messages in one turn", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
+        // Intermediate: agent calls a tool
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "Let me investigate" },
+          { type: "toolCall", name: "Read", input: { path: "auth.ts" } },
+        ]},
+        { role: "toolResult", content: [{ type: "text", text: "file contents" }] },
+        // Final: agent responds
+        { role: "assistant", content: [
+          { type: "thinking", thinking: "Found the null check issue" },
+          { type: "text", text: "Fixed it!" },
+        ]},
+      ],
+    });
+    expect(result.episodeBody).toBe("User: Fix the bug\nAssistant: Fixed it!");
+    expect(result.thinkingPerTurn).toEqual(["Let me investigate\n---\nFound the null check issue"]);
   });
 
   it("skips thinking block with no thinking field", () => {
@@ -288,7 +288,8 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("Assistant: Hello");
+    expect(result.episodeBody).toBe("Assistant: Hello");
+    expect(result.thinkingPerTurn).toEqual([]);
   });
 
   it("skips thinking block with empty thinking field", () => {
@@ -300,10 +301,11 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe("Assistant: Hello");
+    expect(result.episodeBody).toBe("Assistant: Hello");
+    expect(result.thinkingPerTurn).toEqual([]);
   });
 
-  it("emits thinking and text but skips toolCall in mixed message", () => {
+  it("excludes thinking from episodeBody but keeps text, skips toolCall", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "assistant", content: [
@@ -314,9 +316,10 @@ describe("extractMessagesFromCtx", () => {
         ]},
       ],
     });
-    expect(result).toBe(
-      "Assistant: (thinking: I should check auth.ts)\nAssistant: Let me look at the auth module.\nAssistant: Found the bug on line 42.",
+    expect(result.episodeBody).toBe(
+      "Assistant: Let me look at the auth module.\nAssistant: Found the bug on line 42.",
     );
+    expect(result.thinkingPerTurn).toEqual(["I should check auth.ts"]);
   });
 
   describe("when user message is a session-start instruction", () => {
