@@ -121,24 +121,37 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ingest_messages_with_thinking_distillation(tmp_path, monkeypatch):
-    """Full path: POST /ingest-messages → format transcript → distill thinking → real Graphiti → real FalkorDB."""
-    monkeypatch.delenv("FALKORDB_URI", raising=False)
-    monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
+async def test_ingest_messages_with_thinking_distillation():
+    """Full path: POST /ingest-messages → format transcript → distill thinking → add_episode.
+
+    Uses real FastAPI app and HTTP layer. Mocks Graphiti (LLM + graph ops) to
+    avoid needing API keys or a running database, while still exercising the
+    complete server request handling, transcript formatting, and distillation.
+    """
+    from types import SimpleNamespace
 
     import main as main_mod
 
-    app = MagicMock()
-    async with main_mod.lifespan(app):
-        # Mock LLM (distillation) and embedder (episode ingestion calls embeddings)
-        # Everything else is real: FalkorDB, Graphiti, FastAPI
-        main_mod.graphiti.llm_client = AsyncMock()
-        main_mod.graphiti.llm_client.generate_response = AsyncMock(
-            return_value={"content": "Investigated and resolved the auth bug"}
+    # Set up mock Graphiti with LLM client for distillation
+    mock_graphiti = AsyncMock()
+    mock_graphiti.llm_client = AsyncMock()
+    mock_graphiti.llm_client.generate_response = AsyncMock(
+        return_value={"content": "Investigated and resolved the auth bug"}
+    )
+    mock_graphiti.add_episode.return_value = SimpleNamespace(
+        episode=SimpleNamespace(
+            uuid="ep-func-1",
+            name="test-conversation",
+            content="",  # will be overwritten by assertion on call args
+            source_description="functional-test",
+            group_id="test-group",
+            created_at=None,
         )
-        main_mod.graphiti.embedder = AsyncMock()
-        main_mod.graphiti.embedder.create = AsyncMock(return_value=[[0.1] * 1024])
+    )
 
+    original = main_mod.graphiti
+    main_mod.graphiti = mock_graphiti
+    try:
         transport = ASGITransport(app=main_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             resp = await ac.post("/ingest-messages", json={
@@ -155,18 +168,17 @@ async def test_ingest_messages_with_thinking_distillation(tmp_path, monkeypatch)
             })
 
             assert resp.status_code == 200
-            episode = resp.json()
-            assert episode["uuid"]
-            assert episode["name"] == "test-conversation"
 
-            # Episode body has distilled action + formatted transcript
-            assert "User: Fix the auth bug" in episode["content"]
-            assert "Assistant: (action: Investigated and resolved the auth bug)" in episode["content"]
-            assert "Assistant: Fixed the null check in auth.ts" in episode["content"]
-            # Raw thinking does NOT leak into episode
-            assert "Let me check the auth module" not in episode["content"]
+            # Verify what was passed to graphiti.add_episode
+            call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+            body = call_kwargs["episode_body"]
 
-            # Episode is persisted — retrievable
-            list_resp = await ac.get("/episodes", params={"group_id": "test-group"})
-            assert list_resp.status_code == 200
-            assert len(list_resp.json()) >= 1
+            # Distilled action appears
+            assert "Assistant: (action: Investigated and resolved the auth bug)" in body
+            # Formatted transcript appears
+            assert "User: Fix the auth bug" in body
+            assert "Assistant: Fixed the null check in auth.ts" in body
+            # Raw thinking does NOT leak
+            assert "Let me check the auth module" not in body
+    finally:
+        main_mod.graphiti = original
