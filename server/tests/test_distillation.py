@@ -9,8 +9,8 @@ import pytest
 from main import _format_transcript, ConversationMessage, ContentBlock
 
 
-def _msg(role: str, blocks: list[tuple[str, str]]) -> EpisodeMessage:
-    return EpisodeMessage(role=role, content=[EpisodeBlock(type=t, text=txt) for t, txt in blocks])
+def _msg(role: str, blocks: list[tuple[str, str]]) -> ConversationMessage:
+    return ConversationMessage(role=role, content=[ContentBlock(type=t, text=txt) for t, txt in blocks])
 
 
 @pytest.mark.asyncio
