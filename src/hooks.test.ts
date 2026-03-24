@@ -1181,13 +1181,10 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body).toBe(
-      "User: Hello from string content\n" +
-      "Assistant: Hi there\n" +
-      "User: Follow-up as string\n" +
-      "Assistant: Response via output_text",
-    );
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(call.messages).toHaveLength(4);
+    expect(call.messages[0].content[0].text).toBe("Hello from string content");
+    expect(call.messages[3].content[0].text).toBe("Response via output_text");
   });
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
