@@ -1215,14 +1215,10 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    const body = (client.addEpisode.mock.calls[0][0] as { messages: unknown[] }).episode_body;
-    expect(body).not.toContain("gralkor-memory");
-    expect(body).toBe(
-      "User: What's my name?\n" +
-      "Assistant: Your name is Eli.\n" +
-      "User: And my last name?\n" +
-      "Assistant: I don't know your last name.",
-    );
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    const userTexts = call.messages.filter(m => m.role === "user").map(m => m.content[0].text);
+    expect(userTexts).toEqual(["What's my name?", "And my last name?"]);
+    expect(JSON.stringify(call.messages)).not.toContain("gralkor-memory");
   });
 });
 
