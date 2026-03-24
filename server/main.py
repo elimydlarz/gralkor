@@ -478,10 +478,13 @@ async def add_episode(req: AddEpisodeRequest):
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
 
-    episode_body = req.episode_body
-    if req.thinking_blocks and graphiti and graphiti.llm_client:
-        summaries = await _distill_thinking(graphiti.llm_client, req.thinking_blocks)
-        episode_body = _inject_action_summaries(episode_body, summaries)
+    if req.messages:
+        llm = graphiti.llm_client if graphiti else None
+        episode_body = await _format_transcript(req.messages, llm)
+    elif req.episode_body:
+        episode_body = req.episode_body
+    else:
+        episode_body = ""
 
     result = await graphiti.add_episode(
         name=req.name,
