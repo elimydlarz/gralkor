@@ -143,8 +143,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("accepts ToolOverrides for name and description", () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, {
-      name: "memory_add",
-      description: "Custom store description",
+      overrides: { name: "memory_add", description: "Custom store description" },
     });
     expect(tool.name).toBe("memory_add");
     expect(tool.description).toBe("Custom store description");
