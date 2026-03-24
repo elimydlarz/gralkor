@@ -238,6 +238,10 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model name |
 | `dataDir` | string | `{pluginDir}/../.gralkor-data` | Backend data directory (venv, FalkorDB files); lives alongside the plugin directory so uninstall/reinstall doesn't destroy it |
+| `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types with description and attributes |
+| `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types with description and attributes |
+| `ontology.edgeMap` | `Record<string, string[]>` | — | Maps `"EntityA,EntityB"` → allowed edge types |
+| `ontology.excludedEntityTypes` | `string[]` | — | Entity types to exclude from extraction |
 | `test` | boolean | `false` | Test mode — logs full episode bodies before sending to Graphiti and full search results before returning to agent |
 
 ## Environment Variables
