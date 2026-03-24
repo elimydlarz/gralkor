@@ -173,6 +173,131 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 
 Each agent gets its own graph partition automatically (based on `agentId`). No configuration needed — different agents won't see each other's knowledge.
 
+## Custom entity and relationship types
+
+By default, Graphiti extracts generic entities and connects them with generic `RELATES_TO` relationships. This works well out of the box — you don't need to configure anything for Gralkor to be useful.
+
+If you want more structured extraction, you can define custom entity and relationship types. Graphiti will classify entities into your types, extract structured attributes, and create typed relationships between them.
+
+### Entities only (start here)
+
+The simplest useful ontology defines just entity types. Relationships will still be created, using Graphiti's default `RELATES_TO` type.
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "gralkor": {
+        "enabled": true,
+        "config": {
+          "ontology": {
+            "entities": {
+              "Project": {
+                "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
+                "attributes": {
+                  "status": ["active", "completed", "paused"],
+                  "language": "Primary programming language used in the project"
+                }
+              },
+              "Technology": {
+                "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
+                "attributes": {
+                  "category": ["language", "framework", "database", "infrastructure", "tool"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Adding relationships
+
+To control how entities are connected, add `edges` (relationship types) and `edgeMap` (which entity pairs they apply to):
+
+```json
+{
+  "ontology": {
+    "entities": {
+      "Project": {
+        "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
+        "attributes": {
+          "status": ["active", "completed", "paused"],
+          "language": "Primary programming language used in the project"
+        }
+      },
+      "Technology": {
+        "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
+        "attributes": {
+          "category": ["language", "framework", "database", "infrastructure", "tool"]
+        }
+      }
+    },
+    "edges": {
+      "Uses": {
+        "description": "A project actively using a technology in its stack. Look for statements about tech choices, dependencies, or implementation details that indicate a project relies on a specific technology.",
+        "attributes": {
+          "version": "Version of the technology in use, if mentioned"
+        }
+      }
+    },
+    "edgeMap": {
+      "Project,Technology": ["Uses"]
+    }
+  }
+}
+```
+
+Without `edgeMap`, all edge types can connect any entity pair. With `edgeMap`, relationships are constrained to specific pairs — entity pairs not listed fall back to `RELATES_TO`.
+
+### Attribute format
+
+Attributes control what Graphiti extracts for each entity or relationship. They are **required fields** — if the LLM can't populate them from the text, it won't extract that entity type at all. This makes attributes the primary mechanism for gating extraction quality.
+
+| Format | Example | Generated type | Gating strength |
+|---|---|---|---|
+| String | `"language": "Primary programming language"` | Required `str` field | Weak — any text satisfies it |
+| Enum (array) | `"status": ["active", "completed", "paused"]` | Required `Literal` enum | Strong — must pick a valid value |
+| Typed object | `"budget": { "type": "float", "description": "Budget in USD" }` | Required typed field | Medium — must be valid type |
+| Enum with description | `"priority": { "enum": ["low", "high"], "description": "Priority level" }` | Required `Literal` enum | Strong |
+
+Supported types for the object form: `string`, `int`, `float`, `bool`, `datetime`.
+
+### Writing good descriptions
+
+Descriptions are the most important part of your ontology — they tell the LLM what to look for. Write them like extraction instructions, not dictionary definitions.
+
+**Weak** (dictionary definition):
+```
+"A software project."
+```
+
+**Strong** (extraction instructions):
+```
+"A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team."
+```
+
+The more specific your description, the better Graphiti will distinguish between entity types and avoid false positives.
+
+### Excluding entity types
+
+To prevent Graphiti from extracting certain default entity types:
+
+```json
+{
+  "ontology": {
+    "excludedEntityTypes": ["SomeType"]
+  }
+}
+```
+
+### Reserved names
+
+The following entity names are used internally by Graphiti and cannot be used: `Entity`, `Episodic`, `Community`, `Saga`.
+
 ## Data storage
 
 By default, all data lives in `.gralkor-data/` alongside the plugin directory (i.e. `{pluginDir}/../.gralkor-data/`):
