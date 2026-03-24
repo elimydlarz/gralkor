@@ -772,7 +772,7 @@ describe("agent_end handler", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     buffers = new Map();
   });
 
@@ -790,15 +790,15 @@ describe("agent_end handler", () => {
     });
 
     // Not flushed yet
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
     expect(buffers.size).toBe(1);
 
     // Flush via flushSessionBuffer
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: unknown[] };
     expect(call.messages).toEqual([
       { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
       { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
@@ -819,7 +819,7 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
+    const call = client.ingest.mock.calls[0][0] as { messages: unknown[] };
     expect(call.messages).toHaveLength(4);
   });
 
@@ -838,7 +838,7 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledWith(
+    expect(client.ingest).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "agent-42" }),
     );
   });
@@ -858,7 +858,7 @@ describe("agent_end handler", () => {
     });
 
     expect(buffers.size).toBe(0);
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
   });
 
   it("skips when no messages", async () => {
@@ -868,11 +868,11 @@ describe("agent_end handler", () => {
     });
 
     expect(buffers.size).toBe(0);
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
   });
 
   it("propagates errors when Graphiti is unreachable on flush (after retries)", async () => {
-    client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingest.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({
@@ -886,7 +886,7 @@ describe("agent_end handler", () => {
     await expect(
       flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     ).rejects.toThrow("ECONNREFUSED");
-    expect(client.addEpisode).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
+    expect(client.ingest).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
   });
 
   it("formats episode body with auto-capture metadata on flush", async () => {
@@ -901,7 +901,7 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    const call = client.addEpisode.mock.calls[0][0] as {
+    const call = client.ingest.mock.calls[0][0] as {
       messages: unknown[];
       source_description: string;
       name: string;
@@ -924,8 +924,8 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     const userText = call.messages.find(m => m.role === "user")!.content[0].text;
     expect(userText).toBe("What is the weather?");
     expect(userText).not.toContain("gralkor-memory");
@@ -943,7 +943,7 @@ describe("agent_end handler", () => {
     const [key, buffer] = [...buffers.entries()][0];
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledWith(
+    expect(client.ingest).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "default" }),
     );
   });
@@ -970,7 +970,7 @@ describe("agent_end handler", () => {
     expect(buffers.size).toBe(1);
     const buffer = buffers.values().next().value!;
     expect(buffer.messages).toHaveLength(4);
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
   });
 
   it("uses sessionKey as buffer key when available", async () => {
@@ -1026,7 +1026,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     buffers = new Map();
   });
 
@@ -1071,15 +1071,15 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     }, agentCtx);
 
     // No episodes created yet
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
 
     // Session ends (flush is fire-and-forget)
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
     // Exactly 1 episode with all 3 turns as structured messages
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string }> };
     expect(call.messages).toHaveLength(6); // 3 user + 3 assistant
     expect(buffers.size).toBe(0);
   });
@@ -1106,14 +1106,14 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
       ],
     }, agentCtx);
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
 
     // New session starts → previous session ends (flush is fire-and-forget)
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string }> };
     expect(call.messages).toHaveLength(4); // latest snapshot: 2 user + 2 assistant
     expect(buffers.size).toBe(0);
   });
@@ -1145,8 +1145,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, { ...ctx1, sessionId: "sid-1" });
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call1 = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call1 = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call1.messages[0].content[0].text).toContain("Session 1");
     expect(buffers.size).toBe(1);
     expect(buffers.has("sess-2")).toBe(true);
@@ -1155,8 +1155,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, { ...ctx2, sessionId: "sid-2" });
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(2);
-    const call2 = client.addEpisode.mock.calls[1][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(client.ingest).toHaveBeenCalledTimes(2);
+    const call2 = client.ingest.mock.calls[1][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call2.messages[0].content[0].text).toContain("Session 2");
     expect(buffers.size).toBe(0);
   });
@@ -1176,13 +1176,13 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
       ],
     }, agentCtx);
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
 
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call.messages).toHaveLength(4);
     expect(call.messages[0].content[0].text).toBe("Hello from string content");
     expect(call.messages[3].content[0].text).toBe("Response via output_text");
@@ -1216,7 +1216,7 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     await sessionEnd({}, sessionCtx);
     await new Promise((r) => setTimeout(r, 0));
 
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     const userTexts = call.messages.filter(m => m.role === "user").map(m => m.content[0].text);
     expect(userTexts).toEqual(["What's my name?", "And my last name?"]);
     expect(JSON.stringify(call.messages)).not.toContain("gralkor-memory");
@@ -1229,7 +1229,7 @@ describe("flushSessionBuffer", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     buffers = new Map();
   });
 
@@ -1245,8 +1245,8 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    expect(client.addEpisode).toHaveBeenCalledWith(
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: [
           { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -1267,12 +1267,12 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
     expect(buffers.size).toBe(0);
   });
 
   it("retries transient errors and succeeds", async () => {
-    client.addEpisode
+    client.ingest
       .mockRejectedValueOnce(new Error("ECONNREFUSED"))
       .mockRejectedValueOnce(new Error("AbortError"))
       .mockResolvedValueOnce({});
@@ -1288,7 +1288,7 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 });
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(3);
+    expect(client.ingest).toHaveBeenCalledTimes(3);
   });
 
   it("sends structured messages with thinking blocks to addEpisode", async () => {
@@ -1308,7 +1308,7 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
 
-    expect(client.addEpisode).toHaveBeenCalledWith(
+    expect(client.ingest).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: [
           { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
@@ -1323,7 +1323,7 @@ describe("flushSessionBuffer", () => {
   });
 
   it("does not retry client errors (4xx)", async () => {
-    client.addEpisode.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
+    client.ingest.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
 
     const buffer: SessionBuffer = {
       messages: [
@@ -1337,7 +1337,7 @@ describe("flushSessionBuffer", () => {
     await expect(
       flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     ).rejects.toThrow("422");
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
   });
 
 });
@@ -1348,7 +1348,7 @@ describe("session_end handler", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     buffers = new Map();
   });
 
@@ -1368,7 +1368,7 @@ describe("session_end handler", () => {
     // flush is fire-and-forget — wait for the microtask to settle
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
     expect(buffers.size).toBe(0);
   });
 
@@ -1376,11 +1376,11 @@ describe("session_end handler", () => {
     const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
     await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
   });
 
   it("does not throw when flush fails", async () => {
-    client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingest.mockRejectedValue(new Error("ECONNREFUSED"));
 
     buffers.set("session-abc", {
       messages: [
@@ -1407,7 +1407,7 @@ describe("test mode logging", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     client.search.mockResolvedValue(emptySearchResults());
     buffers = new Map();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1500,7 +1500,7 @@ describe("idle timeout flush", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     client = mockClient();
-    client.addEpisode.mockResolvedValue({});
+    client.ingest.mockResolvedValue({});
     buffers = new Map();
     timers = new Map();
   });
@@ -1520,13 +1520,13 @@ describe("idle timeout flush", () => {
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
     expect(timers.size).toBe(1);
 
     vi.advanceTimersByTime(5 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
     expect(buffers.size).toBe(0);
     expect(timers.size).toBe(0);
   });
@@ -1549,14 +1549,14 @@ describe("idle timeout flush", () => {
     // Advance to 4 min after first (2 min after second) — no flush yet
     vi.advanceTimersByTime(2 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
 
     // Advance to 5 min after second — should flush
     vi.advanceTimersByTime(3 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    expect(client.ingest).toHaveBeenCalledTimes(1);
+    const call = client.ingest.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call.messages.some(m => m.content.some(b => b.text.includes("More")))).toBe(true);
   });
 
@@ -1572,13 +1572,13 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(timers.size).toBe(0);
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
 
     // Advance past timeout — no second flush
     vi.advanceTimersByTime(5 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
   });
 
   it("idle timeout wins — session_end no-ops", async () => {
@@ -1591,13 +1591,13 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(5 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
 
     // session_end fires after — should no-op (buffer already gone)
     await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
   });
 
   it("independent timers per session", async () => {
@@ -1622,13 +1622,13 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(2 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingest).toHaveBeenCalledTimes(1);
 
     // Advance remaining 3 min — sess-2 fires
     vi.advanceTimersByTime(3 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).toHaveBeenCalledTimes(2);
+    expect(client.ingest).toHaveBeenCalledTimes(2);
   });
 
   it("clearIdleTimers cancels all", async () => {
@@ -1644,11 +1644,11 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(5 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.addEpisode).not.toHaveBeenCalled();
+    expect(client.ingest).not.toHaveBeenCalled();
   });
 
   it("idle flush error is caught (no unhandled rejection)", async () => {
-    client.addEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingest.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
 
@@ -1658,7 +1658,7 @@ describe("idle timeout flush", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     // The flush was attempted (addEpisode called at least once)
-    expect(client.addEpisode).toHaveBeenCalled();
+    expect(client.ingest).toHaveBeenCalled();
   });
 });
 
