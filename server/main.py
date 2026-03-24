@@ -74,6 +74,77 @@ def _build_embedder(cfg: dict):
     return OpenAIEmbedder(ecfg)
 
 
+_TYPE_MAP: dict[str, type] = {
+    "string": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "datetime": datetime,
+}
+
+
+def _build_type_defs(
+    defs: dict[str, Any],
+) -> dict[str, type[BaseModel]]:
+    """Build Pydantic models from ontology type definitions."""
+    models: dict[str, type[BaseModel]] = {}
+    for name, defn in defs.items():
+        fields: dict[str, Any] = {}
+        for attr_name, attr_val in (defn.get("attributes") or {}).items():
+            if isinstance(attr_val, str):
+                fields[attr_name] = (str, Field(description=attr_val))
+            elif isinstance(attr_val, list):
+                lit_type = Literal[tuple(attr_val)]  # type: ignore[valid-type]
+                fields[attr_name] = (lit_type, Field())
+            elif isinstance(attr_val, dict):
+                if "enum" in attr_val:
+                    lit_type = Literal[tuple(attr_val["enum"])]  # type: ignore[valid-type]
+                    fields[attr_name] = (lit_type, Field(description=attr_val.get("description", "")))
+                else:
+                    py_type = _TYPE_MAP[attr_val["type"]]
+                    fields[attr_name] = (py_type, Field(description=attr_val.get("description", "")))
+        model = create_model(name, **fields)
+        model.__doc__ = defn.get("description", "")
+        models[name] = model
+    return models
+
+
+def _build_ontology(
+    cfg: dict,
+) -> tuple[
+    dict[str, type[BaseModel]] | None,
+    dict[str, type[BaseModel]] | None,
+    dict[tuple[str, str], list[str]] | None,
+    list[str] | None,
+]:
+    """Build ontology from config. Returns (entity_types, edge_types, edge_type_map, excluded)."""
+    raw = cfg.get("ontology")
+    if not raw:
+        return None, None, None, None
+
+    entity_defs = raw.get("entities") or {}
+    edge_defs = raw.get("edges") or {}
+    edge_map_raw = raw.get("edgeMap") or {}
+    excluded_raw = raw.get("excludedEntityTypes")
+
+    entity_types = _build_type_defs(entity_defs) if entity_defs else None
+    edge_types = _build_type_defs(edge_defs) if edge_defs else None
+
+    edge_type_map: dict[tuple[str, str], list[str]] | None = None
+    if edge_map_raw:
+        edge_type_map = {}
+        for key, values in edge_map_raw.items():
+            parts = key.split(",")
+            edge_type_map[(parts[0], parts[1])] = values
+
+    excluded = list(excluded_raw) if excluded_raw else None
+
+    if not entity_types and not edge_types and not edge_type_map and not excluded:
+        return None, None, None, None
+
+    return entity_types, edge_types, edge_type_map, excluded
+
+
 def _log_falkordblite_diagnostics(error: Exception) -> None:
     """Log diagnostic info when FalkorDBLite fails to start."""
     import platform
