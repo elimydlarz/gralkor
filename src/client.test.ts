@@ -285,6 +285,73 @@ describe("addEpisode()", () => {
   });
 });
 
+describe("ingestMessages()", () => {
+  it("sends POST to /ingest-messages with structured messages", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
+
+    await client.ingestMessages({
+      name: "test",
+      source_description: "auto-capture",
+      group_id: "g1",
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+    });
+
+    const [url, opts] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8000/ingest-messages");
+    expect(opts.method).toBe("POST");
+
+    const body = JSON.parse(opts.body);
+    expect(body.name).toBe("test");
+    expect(body.messages).toHaveLength(2);
+    expect(body.group_id).toBe("g1");
+  });
+
+  it("defaults reference_time to current ISO timestamp", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
+
+    const before = new Date().toISOString();
+    await client.ingestMessages({
+      name: "test",
+      source_description: "src",
+      group_id: "g1",
+      messages: [{ role: "user", content: [{ type: "text", text: "Hi" }] }],
+    });
+    const after = new Date().toISOString();
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.reference_time >= before).toBe(true);
+    expect(body.reference_time <= after).toBe(true);
+  });
+
+  it("includes thinking blocks in messages payload", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
+
+    await client.ingestMessages({
+      name: "test",
+      source_description: "src",
+      group_id: "g1",
+      messages: [
+        { role: "assistant", content: [
+          { type: "thinking", text: "Let me think..." },
+          { type: "text", text: "Done" },
+        ]},
+      ],
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.messages[0].content).toEqual([
+      { type: "thinking", text: "Let me think..." },
+      { type: "text", text: "Done" },
+    ]);
+  });
+});
+
 describe("search()", () => {
   it("sends POST to /search with correct body", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
