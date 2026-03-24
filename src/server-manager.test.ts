@@ -289,6 +289,50 @@ describe("createServerManager", () => {
     expect(written).toContain('model: "text-embedding-004"');
   });
 
+  it("writes config.yaml with ontology section when provided", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+      ontologyConfig: {
+        entities: {
+          Project: {
+            description: "A project.",
+            attributes: { status: ["active", "paused"] },
+          },
+        },
+      },
+    });
+
+    await manager.start();
+
+    const written = mockWriteFile.mock.calls[0][1] as string;
+    expect(written).toContain("ontology:");
+    expect(written).toContain("  entities:");
+    expect(written).toContain("    Project:");
+  });
+
+  it("omits ontology section when not configured", async () => {
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    const written = mockWriteFile.mock.calls[0][1] as string;
+    expect(written).not.toContain("ontology:");
+  });
+
   it("stop sends SIGTERM to the process", async () => {
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
