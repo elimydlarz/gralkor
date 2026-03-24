@@ -166,7 +166,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 
 | Requirement | Implementation |
 |---|---|
-| graceful-degradation | Server startup errors caught/logged; auto-recall skips on graph errors; tools throw so agent sees failure |
+| graceful-degradation | Server startup errors caught/logged. `ReadyGate` (`src/config.ts`) tracks server health — created in `registerFullPlugin()`, resolved when service `start()` succeeds. Before ready: auto-recall/`memory_search` skip graph (still run native), `memory_add` returns informative message. After ready: normal operation. On graph failure post-ready: auto-recall logs warning and skips; tools throw so agent sees failure |
 | docker-compat | `FALKORDB_URI` env var triggers legacy TCP mode |
 | observability | `[gralkor]`-prefixed logs: concise single-line events with inline metrics (counts, sizes), skip reasons, errors. Startup always logs resolved config (providers, features, settings). No user content logged in normal mode. Test mode (`test: true`) additionally logs raw pluginConfig, full episode bodies, and search results. Uvicorn access logs disabled. |
 | retry-backoff | Two retry layers: `GraphitiClient` retries network/5xx up to 2 times (500ms/1s); `flushSessionBuffer` retries transient errors up to 3 times (1s/2s/4s exponential). 4xx errors not retried at either layer. Final retry exhaustion logged with `console.error` before propagating. |
