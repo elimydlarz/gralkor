@@ -272,6 +272,15 @@ async def rate_limit_middleware(request, call_next):
 # ── Request / response models ────────────────────────────────
 
 
+class AddEpisodeRequest(BaseModel):
+    name: str
+    episode_body: str
+    source_description: str
+    group_id: str
+    reference_time: str | None = None
+    source: str | None = None
+
+
 class EpisodeBlock(BaseModel):
     type: str  # "text" or "thinking"
     text: str
@@ -282,16 +291,12 @@ class EpisodeMessage(BaseModel):
     content: list[EpisodeBlock]
 
 
-class AddEpisodeRequest(BaseModel):
+class IngestRequest(BaseModel):
     name: str
     source_description: str
     group_id: str
+    messages: list[EpisodeMessage]
     reference_time: str | None = None
-    source: str | None = None
-    # Structured messages from auto-capture (server formats transcript + distills thinking)
-    messages: list[EpisodeMessage] | None = None
-    # Legacy: pre-formatted episode body (used by memory_add tool)
-    episode_body: str | None = None
 
 
 class SearchRequest(BaseModel):
