@@ -259,7 +259,17 @@ make test-server                      # pytest only (no Docker needed)
 make setup-server                     # first time: sync server venv with uv
 ```
 
-TDD: write failing tests first, then implement. Test output uses tree reporters (vitest `tree`, pytest `-v`).
+TDD: write failing tests first, then implement. Test output uses tree reporters (vitest `tree`, pytest `--spec` via pytest-spec).
+
+### Test Commands
+
+| Command | Scope | Reporter |
+|---|---|---|
+| `make test` | All tests (plugin + server) | tree |
+| `make test-plugin` | TypeScript (vitest) | tree |
+| `make test-server` | Python (pytest) | spec (tree-style) |
+| `make test-server-changed` | Changed Python test files only | spec |
+| `pnpm exec vitest run --changed` | Changed TypeScript tests only | tree |
 
 ## Building & Deploying
 
