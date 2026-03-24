@@ -38,7 +38,7 @@ export interface AddEpisodeParams {
   source?: "message" | "text" | "json";
 }
 
-export interface IngestParams {
+export interface IngestMessagesParams {
   name: string;
   source_description: string;
   group_id: string;
