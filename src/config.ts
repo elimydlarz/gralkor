@@ -45,7 +45,6 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   return {
     autoCapture: {
       enabled: raw.autoCapture?.enabled ?? defaultConfig.autoCapture.enabled,
-      maxThinkingChars: raw.autoCapture?.maxThinkingChars ?? defaultConfig.autoCapture.maxThinkingChars,
     },
     idleTimeoutMs: raw.idleTimeoutMs ?? defaultConfig.idleTimeoutMs,
     autoRecall: {
