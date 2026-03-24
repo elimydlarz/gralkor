@@ -767,7 +767,7 @@ describe("before_agent_start handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
+    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
     await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -780,7 +780,7 @@ describe("before_agent_start handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, setGroupId);
+    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
     await handler({ prompt: "Tell me about the project architecture" });
 
     expect(setGroupId).not.toHaveBeenCalled();
