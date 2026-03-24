@@ -1,5 +1,6 @@
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
+import { BOOTING_MSG } from "./config.js";
 
 export interface ToolOverrides {
   name?: string;
@@ -20,13 +21,18 @@ export function formatFacts(facts: Fact[]): string {
   return `Facts (knowledge graph):\n${lines}`;
 }
 
+export interface StoreToolOpts {
+  overrides?: ToolOverrides;
+  getGroupId?: () => string;
+  serverReady?: ReadyGate;
+}
+
 export function createMemoryStoreTool(
   client: GraphitiClient,
   config: GralkorConfig,
-  overrides?: ToolOverrides,
-  getGroupId?: () => string,
-  serverReady?: ReadyGate,
+  opts: StoreToolOpts = {},
 ) {
+  const { overrides, getGroupId, serverReady } = opts;
   const toolName = overrides?.name ?? "memory_add";
   return {
     name: toolName,
