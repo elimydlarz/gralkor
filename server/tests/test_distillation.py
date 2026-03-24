@@ -127,3 +127,58 @@ async def test_multiple_assistant_messages_per_turn():
         "Assistant: (action: Did the thing)\n"
         "Assistant: Done"
     )
+
+
+@pytest.mark.asyncio
+async def test_empty_messages():
+    result = await _format_transcript([], None)
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_assistant_before_any_user():
+    """Assistant message before first user message — no turn index, no action."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Did something"})
+
+    msgs = [
+        _msg("assistant", [("thinking", "Startup thinking"), ("text", "Hello, I'm ready")]),
+        _msg("user", [("text", "Great")]),
+        _msg("assistant", [("text", "How can I help?")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    # Pre-user assistant text should appear, thinking distilled for that "turn"
+    assert "Assistant: Hello, I'm ready" in result
+    assert "User: Great" in result
+    assert "Assistant: How can I help?" in result
+
+
+@pytest.mark.asyncio
+async def test_thinking_only_no_text():
+    """Assistant message with only thinking blocks and no text."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Investigated the issue"})
+
+    msgs = [
+        _msg("user", [("text", "Fix the bug")]),
+        _msg("assistant", [("thinking", "I need to investigate")]),
+        _msg("assistant", [("text", "Found and fixed it")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "Assistant: (action: Investigated the issue)" in result
+    assert "Assistant: Found and fixed it" in result
+
+
+@pytest.mark.asyncio
+async def test_whitespace_only_thinking_skipped():
+    """Whitespace-only thinking should not trigger distillation."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Should not appear"})
+
+    msgs = [
+        _msg("user", [("text", "Hello")]),
+        _msg("assistant", [("thinking", "   \n  "), ("text", "Hi")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "(action:" not in result
+    llm.generate_response.assert_not_called()
