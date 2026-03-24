@@ -261,6 +261,78 @@ def _serialize_community(c: CommunityNode) -> dict[str, Any]:
     }
 
 
+# ── Thinking distillation ─────────────────────────────────────
+
+logger = logging.getLogger(__name__)
+
+_DISTILL_SYSTEM_PROMPT = (
+    "You are a concise summarizer. Given an AI agent's internal thinking from a "
+    "conversation turn, produce a single sentence describing what the agent did and why. "
+    "Focus on decisions, actions taken, and outcomes. "
+    "Omit operational details like tool names, file reading, or searching. "
+    "Write in past tense. Output only the summary sentence, nothing else."
+)
+
+
+async def _distill_one(llm_client: Any, thinking: str) -> str:
+    """Distill a single turn's thinking into an action summary."""
+    from graphiti_core.prompts.models import Message
+
+    messages = [
+        Message(role="system", content=_DISTILL_SYSTEM_PROMPT),
+        Message(role="user", content=thinking),
+    ]
+    result = await llm_client.generate_response(messages, max_tokens=150)
+    return result.get("content", "").strip()
+
+
+async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list[str]:
+    """Distill thinking blocks into action summaries, one per turn.
+
+    Returns a list parallel to thinking_blocks. Failed entries are empty strings.
+    """
+
+    async def _safe_distill(thinking: str) -> str:
+        if not thinking.strip():
+            return ""
+        try:
+            return await _distill_one(llm_client, thinking)
+        except Exception as e:
+            logger.warning("Thinking distillation failed: %s", e)
+            return ""
+
+    return list(await asyncio.gather(*[_safe_distill(t) for t in thinking_blocks]))
+
+
+def _inject_action_summaries(episode_body: str, summaries: list[str]) -> str:
+    """Inject (action: ...) lines into episode_body before each turn's first Assistant: line.
+
+    Tracks turns by counting User: lines. Each summary is paired with a turn index.
+    """
+    lines = episode_body.split("\n")
+    result: list[str] = []
+    turn_index = -1
+    injected_for_turn: set[int] = set()
+
+    for line in lines:
+        if line.startswith("User:"):
+            turn_index += 1
+
+        if (
+            line.startswith("Assistant:")
+            and turn_index >= 0
+            and turn_index not in injected_for_turn
+            and turn_index < len(summaries)
+            and summaries[turn_index]
+        ):
+            result.append(f"Assistant: (action: {summaries[turn_index]})")
+            injected_for_turn.add(turn_index)
+
+        result.append(line)
+
+    return "\n".join(result)
+
+
 # ── Endpoints ─────────────────────────────────────────────────
 
 
