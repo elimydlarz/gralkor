@@ -901,11 +901,11 @@ describe("agent_end handler", () => {
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
     const call = client.addEpisode.mock.calls[0][0] as {
-      episode_body: string;
+      messages: unknown[];
       source_description: string;
       name: string;
     };
-    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny today.");
+    expect(call.messages).toHaveLength(2);
     expect(call.source_description).toBe("auto-capture");
     expect(call.name).toMatch(/^conversation-\d+$/);
   });
@@ -924,9 +924,10 @@ describe("agent_end handler", () => {
     await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
-    const call = client.addEpisode.mock.calls[0][0] as { messages: unknown[] };
-    expect(call.episode_body).toBe("User: What is the weather?\nAssistant: It's sunny.");
-    expect(call.episode_body).not.toContain("gralkor-memory");
+    const call = client.addEpisode.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
+    const userText = call.messages.find(m => m.role === "user")!.content[0].text;
+    expect(userText).toBe("What is the weather?");
+    expect(userText).not.toContain("gralkor-memory");
   });
 
   it("falls back to 'default' group when agentId is missing", async () => {
