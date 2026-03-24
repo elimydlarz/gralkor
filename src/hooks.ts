@@ -273,12 +273,11 @@ export function createBeforeAgentStartHandler(
       const limit = config.autoRecall.maxResults;
       const graphReady = !serverReady || serverReady.isReady();
 
-      // Search graph and native markdown in parallel
       const nativeSearch = getNativeSearch?.();
       const [searchResults, nativeResult] = await Promise.all([
         graphReady
           ? client.search(userMessage, [groupId], limit)
-          : Promise.resolve({ facts: [] as import("./client.js").Fact[] }),
+          : Promise.resolve({ facts: [] as Fact[] }),
         nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
           console.warn("[gralkor] auto-recall native failed:", err instanceof Error ? err.message : err);
           return null;
