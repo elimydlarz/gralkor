@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateOntologyConfig } from "./config.js";
+import { validateOntologyConfig, resolveConfig } from "./config.js";
 import type { OntologyConfig } from "./config.js";
 
 const VALID_ONTOLOGY: OntologyConfig = {
