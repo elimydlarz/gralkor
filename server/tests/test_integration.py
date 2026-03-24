@@ -118,3 +118,52 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
             resp = await ac.get("/health")
             assert resp.status_code == 200
             assert resp.json() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_ingest_messages_with_thinking_distillation(tmp_path, monkeypatch):
+    """Full path: POST /ingest-messages → format transcript → distill thinking → real Graphiti → real FalkorDB."""
+    monkeypatch.delenv("FALKORDB_URI", raising=False)
+    monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
+
+    import main as main_mod
+
+    app = MagicMock()
+    async with main_mod.lifespan(app):
+        # Mock only the LLM client (distillation needs it, everything else is real)
+        main_mod.graphiti.llm_client = AsyncMock()
+        main_mod.graphiti.llm_client.generate_response = AsyncMock(
+            return_value={"content": "Investigated and resolved the auth bug"}
+        )
+
+        transport = ASGITransport(app=main_mod.app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/ingest-messages", json={
+                "name": "test-conversation",
+                "source_description": "functional-test",
+                "group_id": "test-group",
+                "messages": [
+                    {"role": "user", "content": [{"type": "text", "text": "Fix the auth bug"}]},
+                    {"role": "assistant", "content": [
+                        {"type": "thinking", "text": "Let me check the auth module..."},
+                        {"type": "text", "text": "Fixed the null check in auth.ts"},
+                    ]},
+                ],
+            })
+
+            assert resp.status_code == 200
+            episode = resp.json()
+            assert episode["uuid"]
+            assert episode["name"] == "test-conversation"
+
+            # Episode body has distilled action + formatted transcript
+            assert "User: Fix the auth bug" in episode["content"]
+            assert "Assistant: (action: Investigated and resolved the auth bug)" in episode["content"]
+            assert "Assistant: Fixed the null check in auth.ts" in episode["content"]
+            # Raw thinking does NOT leak into episode
+            assert "Let me check the auth module" not in episode["content"]
+
+            # Episode is persisted — retrievable
+            list_resp = await ac.get("/episodes", params={"group_id": "test-group"})
+            assert list_resp.status_code == 200
+            assert len(list_resp.json()) >= 1
