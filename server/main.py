@@ -197,6 +197,7 @@ class AddEpisodeRequest(BaseModel):
     group_id: str
     reference_time: str | None = None
     source: str | None = None
+    thinking_blocks: list[str] | None = None
 
 
 class SearchRequest(BaseModel):
