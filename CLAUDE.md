@@ -104,7 +104,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 4. `session_end` handler cancels any idle timer for the key, then flushes the buffer via `flushSessionBuffer()`. Race safety: both `session_end` and idle timeout check `buffers.get(key)` — if null, the other racer already flushed, so they no-op. `flushSessionBuffer` synchronously calls `buffers.delete(key)` before any `await`, making the claim atomic in single-threaded JS.
 5. `flushSessionBuffer()` calls `extractMessagesFromCtx()` which filters messages into structured `EpisodeMessage[]`. For user messages: joins `text`/`output_text` blocks, cleans system noise via `cleanUserMessageText()` (session-start instructions dropped, metadata wrappers stripped, `<gralkor-memory>` XML removed). For assistant messages: keeps `text`/`output_text` and `thinking` blocks, drops tool-related blocks. Drops `toolResult` messages entirely. **Silently drops media** (images, video).
 6. Skip if disabled or empty (no messages after filtering).
-7. POST to `/openclaw-messages` with structured `messages` array and `reference_time`. The server formats the transcript and distills thinking (see below).
+7. POST to `/ingest-messages` with structured `messages` array and `reference_time`. The server formats the transcript and distills thinking (see below).
 8. **Server-side transcript formatting + thinking distillation:** `_format_transcript()` groups thinking blocks per turn, distills each group into a single-sentence action summary via the configured LLM in parallel, then builds the transcript with `Assistant: (action: {summary})` lines injected before each turn's first assistant text. If distillation fails for a turn, the action line is silently dropped. The resulting text is passed to `graphiti.add_episode()`.
 9. Buffer is deleted before the API call (so errors don't leave stale entries).
 10. `ingestMessages` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
@@ -153,7 +153,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
 | upgrade-safe-data | Default `dataDir` is `{pluginDir}/../.gralkor-data` (alongside, not inside plugin directory) so `openclaw plugins uninstall` doesn't destroy runtime data |
 | auto-capture | `agent_end` buffers messages per session; flushed on `session_end` or idle timeout (whichever fires first) |
-| thinking-distillation | Server-side: `POST /openclaw-messages` receives structured messages, groups thinking per turn, distills each into a single `(action: ...)` summary via LLM, formats transcript, and creates episode. Failures silently dropped. |
+| thinking-distillation | Server-side: `POST /ingest-messages` receives structured messages, groups thinking per turn, distills each into a single `(action: ...)` summary via LLM, formats transcript, and creates episode. Failures silently dropped. |
 | idle-timeout-flush | Configurable idle timer (`idleTimeoutMs`, default 5 min) after last `agent_end` races `session_end`; `unref()`'d so it doesn't block shutdown |
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph facts in parallel |
