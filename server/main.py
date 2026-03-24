@@ -422,7 +422,7 @@ async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list
 
 
 async def _format_transcript(
-    msgs: list[EpisodeMessage],
+    msgs: list[ConversationMessage],
     llm_client: Any | None,
 ) -> str:
     """Format structured messages into a transcript, distilling thinking into action summaries.
