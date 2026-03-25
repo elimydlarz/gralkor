@@ -102,6 +102,9 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       `  model: "${opts.embedderConfig?.model ?? DEFAULT_EMBEDDER_MODEL}"`,
       "",
     ].join("\n");
+    if (opts.test) {
+      configYaml += "test: true\n";
+    }
     if (opts.ontologyConfig) {
       configYaml += serializeOntologyYaml(opts.ontologyConfig);
     }
