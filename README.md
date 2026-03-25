@@ -353,6 +353,19 @@ Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM A
 - Conversations where the first user message starts with `/` are skipped by design
 - Empty conversations (no extractable text) are skipped
 
+**Agent doesn't have the `memory_add` tool**
+OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools by default. `memory_add` is a plugin tool, so it gets filtered out when a profile is active. To enable it, add it to `alsoAllow` in your `openclaw.json`:
+
+```json
+{
+  "tools": {
+    "alsoAllow": ["memory_add"]
+  }
+}
+```
+
+You can also allow all Gralkor tools with `"alsoAllow": ["gralkor"]` or all plugin tools with `"alsoAllow": ["group:plugins"]`. Note that `memory_add` is not required for Gralkor to work — auto-capture already stores everything your agent hears, says, thinks, and does. `memory_add` is only needed if you want the agent to selectively store specific insights or conclusions on its own.
+
 **`memory_search` returns empty in memory mode**
 Native memory indexing needs an embedding provider key in the OpenClaw gateway's environment. See the "Native memory search" section above.
 
