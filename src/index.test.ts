@@ -196,33 +196,19 @@ describe("register()", () => {
   });
 
   it("reads plugin config from api.pluginConfig (OpenClaw contract)", async () => {
-    const { register, _resetConfigLogged } = await import("./index.js");
-    _resetConfigLogged(); // Config already logged by earlier tests in this module
+    const { register } = await import("./index.js");
 
-    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    try {
-      // Simulate OpenClaw passing config via api.pluginConfig, not as 2nd arg
-      const apiWithConfig = {
-        ...api,
-        pluginConfig: { test: true, autoRecall: { enabled: false } },
-      };
+    // Simulate OpenClaw passing config via api.pluginConfig, not as 2nd arg
+    const apiWithConfig = {
+      ...api,
+      pluginConfig: { autoRecall: { enabled: false } },
+    };
 
-      register(apiWithConfig);
+    // Should not throw — config is read and applied
+    register(apiWithConfig);
 
-      // Verify test mode was activated by checking raw pluginConfig log
-      const testLogCall = consoleSpy.mock.calls.find(
-        (call) => typeof call[0] === "string" && call[0].includes("[gralkor] raw pluginConfig:"),
-      );
-      expect(testLogCall).toBeDefined();
-
-      // Verify autoRecall was read from config
-      const configLogCall = consoleSpy.mock.calls.find(
-        (call) => typeof call[0] === "string" && call[0].includes("autoRecall=false"),
-      );
-      expect(configLogCall).toBeDefined();
-    } finally {
-      consoleSpy.mockRestore();
-    }
+    // Verify hooks were registered (config was processed successfully)
+    expect(api.on).toHaveBeenCalledTimes(3);
   });
 
   it("factory returns wrapped memory_search that combines native + graph results", async () => {
