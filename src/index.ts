@@ -100,12 +100,13 @@ function registerFullPlugin(
           ]);
 
           const nativeResult = unwrapToolResult(nativeRaw);
+          const hasNative = hasNativeResults(nativeResult);
 
-          console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
+          console.log(`[gralkor] memory_search result — graph: ${searchResults.facts.length} facts, native: ${hasNative ? "found" : "none"} — groupId:${groupId}`);
 
           const sections: string[] = [];
 
-          if (nativeResult) {
+          if (hasNative) {
             sections.push(nativeResult);
           }
 
