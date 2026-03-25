@@ -227,7 +227,10 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
         if (isThinkingBlock(block)) {
           filtered.push({ type: "thinking", text: block.thinking as string });
         } else if (isTextBlock(block)) {
-          filtered.push({ type: "text", text: block.text! });
+          const text = cleanAssistantText(block.text!);
+          if (text) {
+            filtered.push({ type: "text", text });
+          }
         }
       }
       if (filtered.length > 0) {
