@@ -263,28 +263,21 @@ export function createBeforeAgentStartHandler(
 
     try {
       const limit = config.autoRecall.maxResults;
-      const graphReady = !serverReady || serverReady.isReady();
+
+      if (serverReady && !serverReady.isReady()) {
+        throw new Error("[gralkor] auto-recall failed: server is not ready");
+      }
 
       const nativeSearch = getNativeSearch?.();
       const [searchResults, nativeResult] = await Promise.all([
-        graphReady
-          ? client.search(userMessage, [groupId], limit)
-          : Promise.resolve({ facts: [] as Fact[] }),
+        client.search(userMessage, [groupId], limit),
         nativeSearch ? nativeSearch(userMessage) : Promise.resolve(null),
       ]);
 
       const nativeLen = nativeResult?.length ?? 0;
-      if (graphReady) {
-        console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
-      } else {
-        console.log(`[gralkor] auto-recall — server starting, graph skipped — ${nativeLen} native chars — groupId:${groupId}`);
-      }
+      console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
 
       const sections: string[] = [];
-
-      if (!graphReady) {
-        sections.push(`Note: ${BOOTING_MSG}`);
-      }
 
       if (searchResults.facts.length > 0) {
         sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
