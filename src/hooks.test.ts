@@ -261,15 +261,13 @@ describe("extractMessagesFromCtx", () => {
       ]);
     });
 
-    it("then strips the Current time line but keeps real content", () => {
+    it("then drops the entire message even if other content follows", () => {
       const result = extractMessagesFromCtx({
         messages: [
           { role: "user", content: [{ type: "text", text: "Current time: Wednesday, March 25th, 2026\nWhat's the weather?" }] },
         ],
       });
-      expect(result).toEqual([
-        { role: "user", content: [{ type: "text", text: "What's the weather?" }] },
-      ]);
+      expect(result).toEqual([]);
     });
   });
 
