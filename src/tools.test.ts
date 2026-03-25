@@ -73,6 +73,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   let client: ReturnType<typeof mockClient>;
 
   beforeEach(() => {
+    resetReadyGate();
     client = mockClient();
     client.addEpisode.mockResolvedValue({});
   });
