@@ -248,6 +248,76 @@ describe("extractMessagesFromCtx", () => {
     });
   });
 
+  describe("when user message is a Current time line", () => {
+    it("then skips the message", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: "Current time: Wednesday, March 25th, 2026 — 20:37 (Asia/Bangkok) / 2026-03-25 13:37 UTC" }] },
+          { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Hello!" }] },
+      ]);
+    });
+
+    it("then strips the Current time line but keeps real content", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: "Current time: Wednesday, March 25th, 2026\nWhat's the weather?" }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "user", content: [{ type: "text", text: "What's the weather?" }] },
+      ]);
+    });
+  });
+
+  describe("when assistant message is a session notification", () => {
+    it("then skips the session-started notification", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "assistant", content: [{ type: "text", text: "✅ New session started · model: anthropic/claude-opus-4-6" }] },
+          { role: "user", content: [{ type: "text", text: "Hello" }] },
+          { role: "assistant", content: [{ type: "text", text: "Hey!" }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hey!" }] },
+      ]);
+    });
+
+    it("then skips notification without emoji", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "assistant", content: [{ type: "text", text: "New session started · model: openai/gpt-4o" }] },
+          { role: "assistant", content: [{ type: "text", text: "Real response" }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Real response" }] },
+      ]);
+    });
+
+    it("then keeps real content in assistant messages with mixed blocks", () => {
+      const result = extractMessagesFromCtx({
+        messages: [
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "✅ New session started · model: anthropic/claude-opus-4-6" },
+              { type: "text", text: "Hello, how can I help?" },
+            ],
+          },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Hello, how can I help?" }] },
+      ]);
+    });
+  });
+
   describe("when user message contains metadata wrappers", () => {
     it("then strips metadata and keeps the user text", () => {
       const msg = 'Sender (untrusted metadata):\n```json\n{"id": "123"}\n```\n\nHey, enjoying tmux?';
