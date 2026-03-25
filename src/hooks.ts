@@ -166,25 +166,25 @@ function cleanAssistantText(text: string): string {
 }
 
 /**
- * Clean a user message text by stripping system noise at three levels:
- *   1. Message-level: entire message dropped if it matches MESSAGE_NOISE_PATTERNS
- *   2. Block-level: metadata wrappers and gralkor-memory XML stripped
- *   3. Line-level: system-injected lines matching LINE_NOISE_PATTERNS stripped
+ * Detect and reject system-injected user messages.
  *
- * Returns cleaned text, or empty string if nothing meaningful remains.
+ * Messages matching USER_NOISE_PATTERNS are dropped entirely — no attempt
+ * to salvage content. Metadata wrappers and gralkor-memory XML are unwrapped
+ * because they surround real user content.
+ *
+ * Returns cleaned text, or empty string if the message is system noise.
  */
 function cleanUserMessageText(text: string): string {
-  // Message-level: drop entirely if the message is system noise
-  if (MESSAGE_NOISE_PATTERNS.some((p) => p.test(text))) return "";
+  if (USER_NOISE_PATTERNS.some((p) => p.test(text))) return "";
 
-  // Block-level: strip multi-line noise patterns
-  let cleaned = text;
-  for (const pattern of BLOCK_NOISE_PATTERNS) {
-    cleaned = cleaned.replace(pattern, "");
-  }
+  // Unwrap metadata wrappers (they surround real user content)
+  let cleaned = text.replace(
+    /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
+    "",
+  );
 
-  // Line-level: strip individual system-injected lines
-  cleaned = stripNoiseLines(cleaned);
+  // Remove gralkor-memory XML (feedback loop prevention)
+  cleaned = cleaned.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
 
   return cleaned.trim();
 }
