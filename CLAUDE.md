@@ -126,7 +126,7 @@ Managed via `src/server-manager.ts`, registered as service `gralkor-server`:
 5. On healthy: `serverReady.resolve()` — module-level flag, persists across plugin reloads.
 6. Stop: SIGTERM → 5s grace → SIGKILL.
 
-Startup errors caught and logged — plugin degrades gracefully via `ReadyGate` (graph calls skipped with informative message until server is healthy). First start slow (~1-2 min for uv sync); subsequent starts fast.
+Startup errors propagate (fail-fast). `ReadyGate` is module-level — resolved once by the first service `start()`, persists across the 4+ plugin reloads OpenClaw does per event. First start slow (~1-2 min for uv sync); subsequent starts fast.
 
 ### Communication Path
 
