@@ -14,6 +14,18 @@ def _clean_env(monkeypatch):
     monkeypatch.delenv("FALKORDB_URI", raising=False)
 
 
+def _make_graphiti_mock(*, has_indices=True):
+    """Create a Graphiti mock with configurable index state."""
+    mock = AsyncMock()
+    if has_indices:
+        # Simulate existing indices: (records, header, stats)
+        mock.driver.execute_query.return_value = ([{"label": "Entity"}], [], [])
+    else:
+        # No indices yet: empty records list
+        mock.driver.execute_query.return_value = ([], [], [])
+    return mock
+
+
 @pytest.mark.asyncio
 async def test_embedded_mode_when_no_falkordb_uri(tmp_path, monkeypatch):
     """When FALKORDB_URI is not set, lifespan uses embedded FalkorDBLite."""
@@ -23,7 +35,7 @@ async def test_embedded_mode_when_no_falkordb_uri(tmp_path, monkeypatch):
     mock_async_db = MagicMock()
     mock_driver_cls = MagicMock()
     mock_graphiti_cls = MagicMock()
-    mock_graphiti_instance = AsyncMock()
+    mock_graphiti_instance = _make_graphiti_mock()
     mock_graphiti_cls.return_value = mock_graphiti_instance
 
     with (
