@@ -148,17 +148,32 @@ export function resolveGroupId(ctx: { agentId?: string }): string {
   return ctx.agentId ?? "default";
 }
 
-export const BOOTING_MSG = "Gralkor is still booting, but memory will be available soon.";
-
 export interface ReadyGate {
   isReady(): boolean;
   resolve(): void;
 }
 
+/**
+ * Module-level ready gate — shared across all plugin instances within the
+ * same process. This is critical because OpenClaw reloads the plugin 4+
+ * times per event, each creating a new instance. If the gate were per-
+ * instance, only the instance whose service `start()` ran would have a
+ * resolved gate; hooks/tools from newer instances would see `false` and
+ * silently skip graph calls even though the server is running fine.
+ *
+ * By making it module-level, the first `start()` resolves it and all
+ * subsequent reloads inherit the resolved state.
+ */
+let moduleReady = false;
+
 export function createReadyGate(): ReadyGate {
-  let ready = false;
   return {
-    isReady: () => ready,
-    resolve: () => { ready = true; },
+    isReady: () => moduleReady,
+    resolve: () => { moduleReady = true; },
   };
+}
+
+/** Reset ready state. Only used in tests. */
+export function resetReadyGate(): void {
+  moduleReady = false;
 }
