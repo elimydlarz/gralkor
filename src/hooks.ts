@@ -470,7 +470,10 @@ export function createAgentEndHandler(
           return;
         }
         console.log(`[gralkor] auto-capture idle flush — key:${key}`);
-        flushSessionBuffer(key, buf, buffers, client, { test: config.test }).catch(() => {});
+        flushSessionBuffer(key, buf, buffers, client, { test: config.test }).catch((err) => {
+          console.error(`[gralkor] auto-capture idle flush failed — key:${key}:`, err instanceof Error ? err.message : err);
+          throw err;
+        });
       }, config.idleTimeoutMs);
 
       timer.unref();
