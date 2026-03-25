@@ -271,8 +271,9 @@ TDD: write failing tests first, then implement. Test output uses tree reporters 
 
 | Command | Scope | Reporter |
 |---|---|---|
-| `make test` | All tests (plugin + server) | tree |
-| `make test-plugin` | TypeScript (vitest) | tree |
+| `make test` | All tests (plugin + functional + server) | tree |
+| `make test-plugin` | TypeScript unit tests (vitest) | tree |
+| `make test-functional` | TypeScript functional tests (`test/functional/`) | tree |
 | `make test-server` | Python (pytest) | spec (tree-style) |
 | `make test-server-changed` | Changed Python test files only | spec |
 | `pnpm exec vitest run --changed` | Changed TypeScript tests only | tree |
