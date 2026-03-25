@@ -182,7 +182,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
 | message-filtering | Auto-capture skips empty conversations (no text extracted) |
-| capture-hygiene | System messages detected and dropped via pattern lists in `src/hooks.ts`: `SYSTEM_MESSAGE_PATTERNS` drops entire user-role messages (session-start instructions, `Current time:` metadata), `SYSTEM_ASSISTANT_PATTERNS` drops assistant text blocks (session notifications like `✅ New session started`). Separately, metadata wrappers (`(untrusted metadata)` JSON blocks) are unwrapped to expose real user text, and `<gralkor-memory>` XML is removed to prevent feedback loops. New runtime-injected patterns go in the pattern lists. |
+| capture-hygiene | System messages detected and dropped via `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts` — a single pattern list checked against both user and assistant content. Catches session-start instructions, `Current time:` metadata, `✅ New session started` notifications. New runtime-injected patterns go in this list. Separately, metadata wrappers (`(untrusted metadata)` JSON blocks) are unwrapped to expose real user text, and `<gralkor-memory>` XML is removed to prevent feedback loops. |
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
 | bundled-arm64-wheel | `make pack` builds falkordblite wheel for linux/arm64 via Docker; server manager force-installs after `uv sync` |
