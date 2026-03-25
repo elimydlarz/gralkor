@@ -439,7 +439,13 @@ export function createAgentEndHandler(
       sessionKey: ctx.sessionKey,
     });
 
-    console.log(`[gralkor] auto-capture buffered — key:${key} messages:${event.messages.length}`);
+    const userCount = event.messages.filter(m => m.role === "user").length;
+    const assistantCount = event.messages.filter(m => m.role === "assistant").length;
+    const thinkingBlocks = event.messages
+      .filter(m => m.role === "assistant")
+      .reduce((sum, m) => sum + normalizeContent(m.content).filter(isThinkingBlock).length, 0);
+
+    console.log(`[gralkor] auto-capture buffered — key:${key} total:${event.messages.length} user:${userCount} assistant:${assistantCount} thinkingBlocks:${thinkingBlocks}`);
 
     // Reset idle timer for this buffer key
     if (timers) {
