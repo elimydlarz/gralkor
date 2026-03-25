@@ -212,7 +212,7 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
         if (isThinkingBlock(block)) {
           filtered.push({ type: "thinking", text: block.thinking as string });
         } else if (isTextBlock(block)) {
-          if (!isSystemAssistantBlock(block.text!)) {
+          if (!isSystemMessage(block.text!)) {
             filtered.push({ type: "text", text: block.text! });
           }
         }
