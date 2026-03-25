@@ -51,6 +51,7 @@ export function registerServerService(
     llmConfig: config.llm,
     embedderConfig: config.embedder,
     ontologyConfig: config.ontology,
+    test: config.test,
   });
 
   api.registerService({
