@@ -210,6 +210,19 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
   return result;
 }
 
+/**
+ * Check if a native search result has actual content vs. metadata-only JSON with empty results.
+ */
+export function hasNativeResults(nativeResult: string | null): boolean {
+  if (!nativeResult) return false;
+  try {
+    const parsed = JSON.parse(nativeResult);
+    return Array.isArray(parsed.results) && parsed.results.length > 0;
+  } catch {
+    return nativeResult.trim().length > 0;
+  }
+}
+
 export type NativeSearchFn = (query: string) => Promise<string>;
 
 export interface RecallOpts {
