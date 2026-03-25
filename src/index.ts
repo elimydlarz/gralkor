@@ -90,28 +90,20 @@ function registerFullPlugin(
           const groupId = getGroupId();
           const limit = args.limit ?? 10;
 
-          const graphReady = serverReady.isReady();
+          if (!serverReady.isReady()) {
+            throw new Error("[gralkor] memory_search failed: server is not ready");
+          }
 
           const [nativeRaw, searchResults] = await Promise.all([
             originalExecute(toolCallId, args, signal, onUpdate),
-            graphReady
-              ? client.search(args.query, [groupId], limit)
-              : Promise.resolve({ facts: [] as Fact[] }),
+            client.search(args.query, [groupId], limit),
           ]);
 
           const nativeResult = unwrapToolResult(nativeRaw);
 
-          if (graphReady) {
-            console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
-          } else {
-            console.log(`[gralkor] memory_search — server starting, graph skipped — ${nativeResult.length} native chars — groupId:${groupId}`);
-          }
+          console.log(`[gralkor] memory_search result — ${searchResults.facts.length} facts, ${nativeResult.length} native chars — groupId:${groupId}`);
 
           const sections: string[] = [];
-
-          if (!graphReady) {
-            sections.push(`Note: ${BOOTING_MSG}`);
-          }
 
           if (nativeResult) {
             sections.push(nativeResult);
