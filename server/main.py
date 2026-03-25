@@ -533,6 +533,7 @@ async def add_episode(req: AddEpisodeRequest):
 
 @app.post("/ingest-messages")
 async def ingest_messages(req: IngestMessagesRequest):
+    logger.info("[gralkor] ingest-messages — group:%s messages:%d", req.group_id, len(req.messages))
     ref_time = (
         datetime.fromisoformat(req.reference_time)
         if req.reference_time
@@ -541,6 +542,10 @@ async def ingest_messages(req: IngestMessagesRequest):
     llm = graphiti.llm_client if graphiti else None
     episode_body = await _format_transcript(req.messages, llm)
 
+    logger.info("[gralkor] episode body — chars:%d lines:%d", len(episode_body), episode_body.count('\n') + 1)
+    logger.debug("[gralkor] episode body:\n%s", episode_body)
+
+    t0 = time.monotonic()
     result = await graphiti.add_episode(
         name=req.name,
         episode_body=episode_body,
@@ -553,7 +558,10 @@ async def ingest_messages(req: IngestMessagesRequest):
         edge_type_map=ontology_edge_type_map,
         excluded_entity_types=ontology_excluded,
     )
+    duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
+    logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
+    logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
     return _serialize_episode(episode)
 
 
