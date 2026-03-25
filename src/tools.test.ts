@@ -183,20 +183,14 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   describe("when server is NOT ready", () => {
-    it("does not call addEpisode", async () => {
+    it("throws when server is not ready", async () => {
       const gate = createReadyGate();
       const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
-      await tool.execute("call-1", { content: "Remember this" });
 
+      await expect(tool.execute("call-1", { content: "Remember this" })).rejects.toThrow(
+        "[gralkor] memory_add failed: server is not ready",
+      );
       expect(client.addEpisode).not.toHaveBeenCalled();
-    });
-
-    it("returns informative message", async () => {
-      const gate = createReadyGate();
-      const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
-      const result = await tool.execute("call-1", { content: "Remember this" });
-
-      expect(result).toContain(BOOTING_MSG);
     });
   });
 
