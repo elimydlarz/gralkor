@@ -138,31 +138,56 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 }
 
 /**
- * Clean a user message text by stripping system noise:
- *   1. Session-start instructions ("A new session was started...")
- *   2. "Current time:" lines (system-injected timestamp metadata)
- *   3. Metadata wrappers ("Xxx (untrusted metadata):\n```json\n...\n```\n\n")
- *   4. <gralkor-memory> XML blocks (feedback loop prevention)
+ * Patterns that indicate an entire message is system noise — if the message
+ * starts with any of these, the whole message is dropped. Order matters:
+ * earlier patterns are checked first.
+ */
+const MESSAGE_NOISE_PATTERNS: RegExp[] = [
+  /^A new session was started\b/,
+];
+
+/**
+ * Patterns that indicate individual lines are system-injected metadata.
+ * These lines are stripped but the rest of the message is kept.
+ */
+const LINE_NOISE_PATTERNS: RegExp[] = [
+  /^Current time:/i,
+];
+
+/**
+ * Multi-line block patterns stripped from user messages.
+ * Applied as global replace (order: metadata wrappers, then gralkor XML).
+ */
+const BLOCK_NOISE_PATTERNS: RegExp[] = [
+  /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
+  /<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g,
+];
+
+/**
+ * Clean a user message text by stripping system noise at three levels:
+ *   1. Message-level: entire message dropped if it matches MESSAGE_NOISE_PATTERNS
+ *   2. Block-level: metadata wrappers and gralkor-memory XML stripped
+ *   3. Line-level: system-injected lines matching LINE_NOISE_PATTERNS stripped
  *
  * Returns cleaned text, or empty string if nothing meaningful remains.
  */
 function cleanUserMessageText(text: string): string {
-  // Skip session-start system instructions entirely
-  if (/^A new session was started/.test(text)) return "";
+  // Message-level: drop entirely if the message is system noise
+  if (MESSAGE_NOISE_PATTERNS.some((p) => p.test(text))) return "";
 
-  // Skip "Current time:" system metadata lines
-  if (/^Current time:/i.test(text)) return "";
+  // Block-level: strip multi-line noise patterns
+  let cleaned = text;
+  for (const pattern of BLOCK_NOISE_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
 
-  // Strip all metadata wrappers (there may be multiple: Conversation info, Sender, etc.)
-  const withoutMetadata = text.replace(
-    /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
-    "",
-  );
+  // Line-level: strip individual system-injected lines
+  cleaned = cleaned
+    .split("\n")
+    .filter((line) => !LINE_NOISE_PATTERNS.some((p) => p.test(line)))
+    .join("\n");
 
-  // Strip <gralkor-memory> XML
-  return withoutMetadata
-    .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
-    .trim();
+  return cleaned.trim();
 }
 
 /**
