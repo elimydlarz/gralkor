@@ -140,14 +140,18 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 /**
  * Clean a user message text by stripping system noise:
  *   1. Session-start instructions ("A new session was started...")
- *   2. Metadata wrappers ("Xxx (untrusted metadata):\n```json\n...\n```\n\n")
- *   3. <gralkor-memory> XML blocks (feedback loop prevention)
+ *   2. "Current time:" lines (system-injected timestamp metadata)
+ *   3. Metadata wrappers ("Xxx (untrusted metadata):\n```json\n...\n```\n\n")
+ *   4. <gralkor-memory> XML blocks (feedback loop prevention)
  *
  * Returns cleaned text, or empty string if nothing meaningful remains.
  */
 function cleanUserMessageText(text: string): string {
   // Skip session-start system instructions entirely
   if (/^A new session was started/.test(text)) return "";
+
+  // Skip "Current time:" system metadata lines
+  if (/^Current time:/i.test(text)) return "";
 
   // Strip all metadata wrappers (there may be multiple: Conversation info, Sender, etc.)
   const withoutMetadata = text.replace(
