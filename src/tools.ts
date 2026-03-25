@@ -1,6 +1,5 @@
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
-import { BOOTING_MSG } from "./config.js";
 
 export interface ToolOverrides {
   name?: string;
