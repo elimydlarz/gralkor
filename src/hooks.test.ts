@@ -525,8 +525,10 @@ describe("before_agent_start handler", () => {
       { prompt: "Tell me about something" },
     );
 
-    // Both sources empty → no context injected
-    expect(result).toBeUndefined();
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("No facts found.");
+    expect(ctx_result).toContain("No native results.");
+    expect(ctx_result).not.toContain('"results":[]');
   });
 
   it("combines facts and native results", async () => {
