@@ -65,7 +65,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       ["sync", "--no-dev", "--frozen", "--directory", opts.serverDir],
       { env: syncEnv, timeout: 300_000 },
     );
-    console.log("[gralkor] Python environment ready");
+    console.log("[gralkor] boot: python env ready");
 
     // Force-install bundled wheels to override broken PyPI packages.
     // UV_FIND_LINKS doesn't work with `uv sync --frozen` (lockfile hash
