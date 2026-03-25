@@ -152,6 +152,14 @@ const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Returns true if the text is a system-injected message.
+ */
+function isSystemMessage(text: string): boolean {
+  const trimmed = text.trim();
+  return !trimmed || SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(trimmed));
+}
+
+/**
  * Detect system-injected user messages and extract real user content.
  *
  * Messages matching SYSTEM_MESSAGE_PATTERNS are dropped entirely.
@@ -161,7 +169,7 @@ const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
  * Returns the user's text, or empty string if the message is a system message.
  */
 function cleanUserMessageText(text: string): string {
-  if (SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(text))) return "";
+  if (isSystemMessage(text)) return "";
 
   // Unwrap metadata wrappers (they surround real user content)
   let cleaned = text.replace(
