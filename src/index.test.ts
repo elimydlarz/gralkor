@@ -196,7 +196,8 @@ describe("register()", () => {
   });
 
   it("reads plugin config from api.pluginConfig (OpenClaw contract)", async () => {
-    const { register } = await import("./index.js");
+    const { register, _resetConfigLogged } = await import("./index.js");
+    _resetConfigLogged(); // Config already logged by earlier tests in this module
 
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     try {
