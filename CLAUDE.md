@@ -206,8 +206,8 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 │   ├── client.ts                     # GraphitiClient — HTTP wrapper with retry
 │   ├── server-manager.ts             # Python process lifecycle
 │   ├── types.ts                      # PluginApiBase, MemoryPluginApi interfaces
-│   ├── config.ts                     # constants, config types, resolveConfig(), resolveGroupId(), validateOntologyConfig()
-│   └── *.test.ts                     # co-located tests (vitest)
+│   ├── config.ts                     # constants, config types, resolveConfig(), resolveGroupId(), validateOntologyConfig(), ReadyGate (module-level)
+│   └── *.test.ts                     # co-located unit tests (vitest)
 │
 ├── resources/memory/
 │   ├── package.json                  # @susu-eng/gralkor npm package config
