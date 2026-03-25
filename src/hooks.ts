@@ -287,22 +287,22 @@ export function createBeforeAgentStartHandler(
         nativeSearch ? nativeSearch(userMessage) : Promise.resolve(null),
       ]);
 
-      const hasNative = hasNativeResults(nativeResult);
-      console.log(`[gralkor] auto-recall result — graph: ${searchResults.facts.length} facts, native: ${hasNative ? "found" : "none"} — groupId:${groupId}`);
+      const factCount = searchResults.facts.length;
+      const nativeCount = countNativeResults(nativeResult);
+      console.log(`[gralkor] auto-recall result — graph: ${factCount} facts, native: ${nativeCount} results — groupId:${groupId}`);
 
       const sections: string[] = [];
 
-      if (searchResults.facts.length > 0) {
+      if (factCount > 0) {
         sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
+      } else {
+        sections.push("No facts found.");
       }
 
-      if (hasNative && nativeResult) {
+      if (nativeCount > 0 && nativeResult) {
         sections.push("From native memory:\n" + nativeResult);
-      }
-
-      if (sections.length === 0) {
-        lastQuery = userMessage; lastResult = undefined; lastResultAt = now;
-        return;
+      } else {
+        sections.push("No native results.");
       }
 
       const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`;
