@@ -95,7 +95,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 5. **Server readiness check:** If `serverReady.isReady()` is false, auto-recall and tools throw an error (fail-fast). The `ReadyGate` is module-level so it persists across plugin reloads within the same process.
 6. Search `client.search()` (facts only — uses `graphiti.search()` edge-based hybrid) and native `memory_search` in parallel.
 7. Include facts in context. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
-8. On graph failure: log warning, skip. Native failures caught independently.
+8. On graph or native failure: error propagates to caller (fail-fast).
 
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
 1. `agent_end` fires after every agent run (each user message → response cycle). `event.messages` is the **full session message array** (`activeSession.messages` in OpenClaw) — all turns accumulated in the session, not just the current turn. However, if context-window compaction has occurred, earlier messages may be replaced with compacted summaries.
