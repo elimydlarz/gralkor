@@ -1,4 +1,4 @@
-import type { GraphitiClient, Fact, EpisodeMessage, EpisodeBlock } from "./client.js";
+import type { GraphitiClient, EpisodeMessage, EpisodeBlock } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { resolveGroupId, type ReadyGate } from "./config.js";
 import { formatFact } from "./tools.js";
