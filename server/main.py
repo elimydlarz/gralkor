@@ -472,7 +472,13 @@ async def _format_transcript(
     summaries: list[str] = []
     if turns_thinking and llm_client:
         joined = ["\n---\n".join(blocks) for blocks in turns_thinking]
+        sizes = [sum(len(b) for b in blocks) for blocks in turns_thinking]
+        logger.info("[gralkor] thinking distillation — groups:%d sizes:%s totalChars:%d", len(turns_thinking), sizes, sum(sizes))
+        logger.debug("[gralkor] thinking pre-distill:\n%s", "\n===\n".join(joined))
         summaries = await _distill_thinking(llm_client, joined)
+        succeeded = sum(1 for s in summaries if s)
+        logger.info("[gralkor] thinking distilled — %d/%d succeeded", succeeded, len(summaries))
+        logger.debug("[gralkor] thinking post-distill: %s", summaries)
 
     # Build transcript with action summaries injected
     lines: list[str] = []
