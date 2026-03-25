@@ -12,6 +12,7 @@ import {
   registerCli,
 } from "./register.js";
 import type { NativeSearchFn } from "./hooks.js";
+import { hasNativeResults } from "./hooks.js";
 import type { MemoryPluginApi } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
