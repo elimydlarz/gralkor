@@ -224,11 +224,16 @@ async def lifespan(_app: FastAPI):
         llm_client=_build_llm_client(cfg),
         embedder=_build_embedder(cfg),
     )
-    print("[gralkor] building indices and constraints...", flush=True)
-    t0_idx = time.monotonic()
-    await graphiti.build_indices_and_constraints()
-    idx_ms = (time.monotonic() - t0_idx) * 1000
-    print(f"[gralkor] indices ready — {idx_ms:.0f}ms", flush=True)
+    # Only build indices on first boot; skip if they already exist.
+    existing = await graphiti.driver.execute_query("CALL db.indexes()")
+    if existing and existing[0]:
+        print(f"[gralkor] indices already exist ({len(existing[0])} found), skipping build", flush=True)
+    else:
+        print("[gralkor] building indices and constraints...", flush=True)
+        t0_idx = time.monotonic()
+        await graphiti.build_indices_and_constraints()
+        idx_ms = (time.monotonic() - t0_idx) * 1000
+        print(f"[gralkor] indices ready — {idx_ms:.0f}ms", flush=True)
 
     # Configure logging level: DEBUG in test mode for full data visibility
     log_level = logging.DEBUG if cfg.get("test") else logging.INFO
