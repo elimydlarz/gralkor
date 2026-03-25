@@ -205,7 +205,6 @@ async def lifespan(_app: FastAPI):
         driver = FalkorDriver(host=host, port=port)
     else:
         # Default: embedded FalkorDBLite (no Docker needed)
-        import logging
         logging.getLogger("redislite").setLevel(logging.DEBUG)
 
         from redislite.async_falkordb_client import AsyncFalkorDB
