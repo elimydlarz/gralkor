@@ -227,6 +227,14 @@ async def lifespan(_app: FastAPI):
     )
     await graphiti.build_indices_and_constraints()
 
+    # Configure logging level: DEBUG in test mode for full data visibility
+    log_level = logging.DEBUG if cfg.get("test") else logging.INFO
+    logger.setLevel(log_level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(handler)
+
     ontology_entity_types, ontology_edge_types, ontology_edge_type_map, ontology_excluded = _build_ontology(cfg)
     if ontology_entity_types or ontology_edge_types:
         entity_names = list(ontology_entity_types or {})
