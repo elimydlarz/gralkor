@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { defaultConfig, createReadyGate } from "./config.js";
+import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
 import {
   createMemoryStoreTool,
   formatFacts,
