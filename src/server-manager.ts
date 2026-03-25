@@ -59,7 +59,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       UV_PROJECT_ENVIRONMENT: venvDir,
     };
 
-    console.log("[gralkor] Syncing Python environment with uv...");
+    console.log("[gralkor] boot: syncing python env...");
     await execFileAsync(
       "uv",
       ["sync", "--no-dev", "--frozen", "--directory", opts.serverDir],
