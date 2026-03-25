@@ -92,7 +92,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 2. Capture `ctx.agentId` into shared group ID state.
 3. Skip if disabled or no user message.
 4. **Double-fire dedup:** `before_agent_start` fires twice per agent run (OpenClaw behavior). The handler caches the result from the 1st fire for 5 seconds; if the same query arrives within that window, it returns the cached result without making API calls. This halves per-turn search cost.
-5. **Server readiness check:** If `serverReady.isReady()` is false, graph search is skipped entirely (no fetch attempt). Context includes *"Gralkor is still booting, but memory will be available soon."* Native search still runs. Same gate used by `memory_search` and `memory_add` tools.
+5. **Server readiness check:** If `serverReady.isReady()` is false, auto-recall and tools throw an error (fail-fast). The `ReadyGate` is module-level so it persists across plugin reloads within the same process.
 6. Search `client.search()` (facts only — uses `graphiti.search()` edge-based hybrid) and native `memory_search` in parallel.
 7. Include facts in context. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 8. On graph failure: log warning, skip. Native failures caught independently.
