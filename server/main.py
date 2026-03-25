@@ -582,6 +582,7 @@ async def ingest_messages(req: IngestMessagesRequest):
 
 @app.get("/episodes")
 async def get_episodes(group_id: str, limit: int = 10):
+    _ensure_driver_graph([group_id])
     episodes = await graphiti.retrieve_episodes(
         reference_time=datetime.now(timezone.utc),
         last_n=limit,
