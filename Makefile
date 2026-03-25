@@ -46,6 +46,9 @@ test: test-plugin test-functional test-server
 test-plugin:
 	pnpm exec vitest run
 
+test-functional:
+	pnpm exec vitest run --config test/functional/vitest.config.ts
+
 test-server:
 	cd server && uv run pytest tests/
 
