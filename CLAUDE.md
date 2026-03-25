@@ -215,6 +215,8 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 │
 ├── scripts/pack.sh                   # builds deployment tarball (arm64 wheel via Docker)
 │
+├── test/functional/                  # functional tests (multi-load resilience, etc.)
+│
 ├── server/                           # Graphiti REST API (Python/FastAPI)
 │   ├── main.py                       # FastAPI app (embedded FalkorDBLite or TCP)
 │   ├── pyproject.toml / uv.lock      # uv project config + lockfile
