@@ -509,12 +509,16 @@ async def health():
 
 @app.post("/episodes")
 async def add_episode(req: AddEpisodeRequest):
+    logger.info("[gralkor] add-episode — group:%s name:%s bodyChars:%d source:%s",
+                req.group_id, req.name, len(req.episode_body), req.source or "message")
+    logger.debug("[gralkor] add-episode body:\n%s", req.episode_body)
     ref_time = (
         datetime.fromisoformat(req.reference_time)
         if req.reference_time
         else datetime.now(timezone.utc)
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
+    t0 = time.monotonic()
     result = await graphiti.add_episode(
         name=req.name,
         episode_body=req.episode_body,
@@ -527,7 +531,10 @@ async def add_episode(req: AddEpisodeRequest):
         edge_type_map=ontology_edge_type_map,
         excluded_entity_types=ontology_excluded,
     )
+    duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
+    logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
+    logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
     return _serialize_episode(episode)
 
 
