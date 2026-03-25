@@ -616,7 +616,7 @@ describe("before_agent_start handler", () => {
     expect(query).toContain("architecture");
   });
 
-  it("returns undefined when no results from any source", async () => {
+  it("shows explicit empty messages when no results from any source", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
@@ -625,7 +625,9 @@ describe("before_agent_start handler", () => {
       { agentId: "agent-42" },
     );
 
-    expect(result).toBeUndefined();
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("No facts found.");
+    expect(ctx_result).toContain("gralkor-memory");
   });
 
   it("throws when Graphiti is unreachable", async () => {
