@@ -304,6 +304,7 @@ make pack                             # deployment tarball (requires Docker for 
 - Graphiti requires an LLM API key — server starts without one but all operations fail
 - `AbortError` observed in auto-capture despite no `AbortSignal` — from Node HTTP layer (connection reset, process SIGTERM), not gateway
 - Native `memory_search` returns empty without embedding provider configured (upstream OpenClaw bug — see Native Memory Indexing)
+- **`memory_add` blocked by tool profiles:** OpenClaw's `coding` profile generates an allowlist of core tools only (`memory_search`, `memory_get` are core; `memory_add` is a plugin tool). The tool policy pipeline (`filterToolsByPolicy`) blocks any tool not in the allowlist — so `memory_add` silently disappears. Workaround: users must add `"alsoAllow": ["memory_add"]` (or `"gralkor"` or `"group:plugins"`) to their `tools` config. This is a two-layer issue: layer 1 (`resolvePluginTools`) passes non-optional plugin tools through; layer 2 (`applyToolPolicyPipeline`) filters all tools against the profile allowlist and kills `memory_add`.
 
 ## Server Tests
 
