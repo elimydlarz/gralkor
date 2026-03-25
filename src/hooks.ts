@@ -166,6 +166,18 @@ const BLOCK_NOISE_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Strip individual lines matching LINE_NOISE_PATTERNS from text.
+ * Shared between cleanUserMessageText (auto-capture) and
+ * extractUserMessageFromPrompt (auto-recall).
+ */
+function stripNoiseLines(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => !LINE_NOISE_PATTERNS.some((p) => p.test(line)))
+    .join("\n");
+}
+
+/**
  * Patterns for assistant text blocks that are system notifications, not
  * real agent output. If the trimmed text matches, the block is dropped.
  */
