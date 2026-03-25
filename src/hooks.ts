@@ -140,47 +140,16 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 }
 
 /**
- * Patterns that indicate an entire message is system noise — if the message
- * starts with any of these, the whole message is dropped. Order matters:
- * earlier patterns are checked first.
+ * System noise detectors — messages matching these are dropped entirely.
+ * Applied to user messages (after joining text blocks) and assistant text
+ * blocks respectively. When a new runtime-injected pattern appears, add
+ * it here rather than writing bespoke stripping logic.
  */
-const MESSAGE_NOISE_PATTERNS: RegExp[] = [
+const USER_NOISE_PATTERNS: RegExp[] = [
   /^A new session was started\b/,
-];
-
-/**
- * Patterns that indicate individual lines are system-injected metadata.
- * These lines are stripped but the rest of the message is kept.
- */
-const LINE_NOISE_PATTERNS: RegExp[] = [
   /^Current time:/i,
 ];
 
-/**
- * Multi-line block patterns stripped from user messages.
- * Applied as global replace (order: metadata wrappers, then gralkor XML).
- */
-const BLOCK_NOISE_PATTERNS: RegExp[] = [
-  /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
-  /<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g,
-];
-
-/**
- * Strip individual lines matching LINE_NOISE_PATTERNS from text.
- * Shared between cleanUserMessageText (auto-capture) and
- * extractUserMessageFromPrompt (auto-recall).
- */
-function stripNoiseLines(text: string): string {
-  return text
-    .split("\n")
-    .filter((line) => !LINE_NOISE_PATTERNS.some((p) => p.test(line)))
-    .join("\n");
-}
-
-/**
- * Patterns for assistant text blocks that are system notifications, not
- * real agent output. If the trimmed text matches, the block is dropped.
- */
 const ASSISTANT_NOISE_PATTERNS: RegExp[] = [
   /^✅?\s*New session started\b/,
 ];
