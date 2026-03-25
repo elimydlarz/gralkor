@@ -442,6 +442,7 @@ describe("before_agent_start handler", () => {
   let client: ReturnType<typeof mockClient>;
 
   beforeEach(() => {
+    resetReadyGate();
     client = mockClient();
   });
 
