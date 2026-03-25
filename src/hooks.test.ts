@@ -1327,7 +1327,7 @@ describe("session_end handler", () => {
   });
 
   it("propagates error when flush fails", async () => {
-    client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingestMessages.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
 
     buffers.set("session-abc", {
       messages: [
@@ -1342,7 +1342,7 @@ describe("session_end handler", () => {
 
     await expect(
       handler({}, { sessionId: "sid-1", sessionKey: "session-abc" }),
-    ).rejects.toThrow("ECONNREFUSED");
+    ).rejects.toThrow("422");
   });
 });
 
