@@ -1326,7 +1326,7 @@ describe("session_end handler", () => {
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
-  it("does not throw when flush fails", async () => {
+  it("propagates error when flush fails", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
 
     buffers.set("session-abc", {
@@ -1339,11 +1339,10 @@ describe("session_end handler", () => {
     });
 
     const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    // Should not throw despite flush failure
-    await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
-    // Let the fire-and-forget flush (and its retries) settle
-    await new Promise((r) => setTimeout(r, 50));
+    await expect(
+      handler({}, { sessionId: "sid-1", sessionKey: "session-abc" }),
+    ).rejects.toThrow("ECONNREFUSED");
   });
 });
 
