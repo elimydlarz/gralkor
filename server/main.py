@@ -235,18 +235,6 @@ async def lifespan(_app: FastAPI):
         idx_ms = (time.monotonic() - t0_idx) * 1000
         print(f"[gralkor] indices ready — {idx_ms:.0f}ms", flush=True)
 
-    # Warmup: run a no-op search to force FalkorDBLite to load HNSW vector
-    # data from disk into memory. Without this, searches return empty results
-    # until the first add_episode (or similar) triggers lazy index loading.
-    try:
-        t0_warmup = time.monotonic()
-        await graphiti.search(query="warmup", group_ids=["__warmup__"], num_results=1)
-        warmup_ms = (time.monotonic() - t0_warmup) * 1000
-        print(f"[gralkor] vector index warmup — {warmup_ms:.0f}ms", flush=True)
-    except Exception as e:
-        warmup_ms = (time.monotonic() - t0_warmup) * 1000
-        print(f"[gralkor] vector index warmup — {warmup_ms:.0f}ms (error ignored: {e})", flush=True)
-
     # Configure logging level: DEBUG in test mode for full data visibility
     log_level = logging.DEBUG if cfg.get("test") else logging.INFO
     logger.setLevel(log_level)
