@@ -197,12 +197,10 @@ export function register(api: MemoryPluginApi) {
   const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
   validateOntologyConfig(config.ontology);
 
-  // Only log config when it changes (OpenClaw reloads plugins 4+ times per event)
-  const configFingerprint = JSON.stringify(api.pluginConfig ?? {});
-  if (configFingerprint !== lastConfigFingerprint) {
-    lastConfigFingerprint = configFingerprint;
+  if (!configLogged) {
+    configLogged = true;
     if (config.test) {
-      console.log(`[gralkor] raw pluginConfig: ${configFingerprint}`);
+      console.log(`[gralkor] raw pluginConfig: ${JSON.stringify(api.pluginConfig)}`);
     }
     const llmProvider = config.llm?.provider ?? DEFAULT_LLM_PROVIDER;
     const llmModel = config.llm?.model ?? DEFAULT_LLM_MODEL;
