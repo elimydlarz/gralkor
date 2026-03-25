@@ -106,10 +106,7 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
 
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  const afterMetadata = afterSession.replace(metadataPattern, "");
-
-  // Strip line-level noise (Current time, etc.)
-  const fromPrompt = stripNoiseLines(afterMetadata).trim();
+  const fromPrompt = afterSession.replace(metadataPattern, "").trim();
   if (fromPrompt) return fromPrompt;
 
   // Fallback: prompt was only metadata with no user text after it.
