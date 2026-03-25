@@ -137,42 +137,42 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 }
 
 /**
- * System noise detectors — messages matching these are dropped entirely.
- * Applied to user messages (after joining text blocks) and assistant text
- * blocks respectively. When a new runtime-injected pattern appears, add
- * it here rather than writing bespoke stripping logic.
+ * System message detectors — messages matching these are dropped entirely.
+ * OpenClaw injects system content under user/assistant roles (session
+ * notifications, timestamps, startup instructions). These patterns detect
+ * those injections so extractMessagesFromCtx can drop them before ingestion.
+ *
+ * When a new runtime-injected pattern appears, add it to the appropriate
+ * list rather than writing bespoke stripping logic.
  */
-const USER_NOISE_PATTERNS: RegExp[] = [
+const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
   /^A new session was started\b/,
   /^Current time:/i,
 ];
 
-const ASSISTANT_NOISE_PATTERNS: RegExp[] = [
+const SYSTEM_ASSISTANT_PATTERNS: RegExp[] = [
   /^✅?\s*New session started\b/,
 ];
 
 /**
- * Clean an assistant text block by dropping system notifications.
- * Returns the text unchanged if it's real content, or empty string if noise.
+ * Returns true if the assistant text block is a system notification.
  */
-function cleanAssistantText(text: string): string {
+function isSystemAssistantBlock(text: string): boolean {
   const trimmed = text.trim();
-  if (!trimmed) return "";
-  if (ASSISTANT_NOISE_PATTERNS.some((p) => p.test(trimmed))) return "";
-  return text;
+  return !trimmed || SYSTEM_ASSISTANT_PATTERNS.some((p) => p.test(trimmed));
 }
 
 /**
- * Detect and reject system-injected user messages.
+ * Detect system-injected user messages and extract real user content.
  *
- * Messages matching USER_NOISE_PATTERNS are dropped entirely — no attempt
- * to salvage content. Metadata wrappers and gralkor-memory XML are unwrapped
- * because they surround real user content.
+ * Messages matching SYSTEM_MESSAGE_PATTERNS are dropped entirely.
+ * Metadata wrappers and gralkor-memory XML are unwrapped because they
+ * surround real user content.
  *
- * Returns cleaned text, or empty string if the message is system noise.
+ * Returns the user's text, or empty string if the message is a system message.
  */
 function cleanUserMessageText(text: string): string {
-  if (USER_NOISE_PATTERNS.some((p) => p.test(text))) return "";
+  if (SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(text))) return "";
 
   // Unwrap metadata wrappers (they surround real user content)
   let cleaned = text.replace(
