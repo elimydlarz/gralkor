@@ -153,7 +153,10 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
     // Wait for server to become healthy
     await waitForHealth(opts.port);
-    console.log("[gralkor] Server is healthy");
+    console.log("[gralkor] boot: server healthy");
+
+    const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
+    console.log(`[gralkor] boot: ready (${bootDuration}s)`);
 
     // Start health monitor
     monitorTimer = setInterval(async () => {
