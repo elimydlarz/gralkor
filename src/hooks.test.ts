@@ -506,6 +506,29 @@ describe("before_agent_start handler", () => {
     expect(nativeSearch).toHaveBeenCalled();
   });
 
+  it("treats native metadata JSON with empty results as no results", async () => {
+    client.search.mockResolvedValue(emptySearchResults());
+    const emptyNativeJson = JSON.stringify({
+      results: [],
+      provider: "openai",
+      model: "text-embedding-3-small",
+      citations: "auto",
+      mode: "hybrid",
+    });
+    const nativeSearch = vi.fn().mockResolvedValue(emptyNativeJson);
+    const getNativeSearch = () => nativeSearch;
+
+    const handler = createBeforeAgentStartHandler(
+      client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
+    );
+    const result = await handler(
+      { prompt: "Tell me about something" },
+    );
+
+    // Both sources empty → no context injected
+    expect(result).toBeUndefined();
+  });
+
   it("combines facts and native results", async () => {
     client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const nativeSearch = vi.fn().mockResolvedValue("Native data");
