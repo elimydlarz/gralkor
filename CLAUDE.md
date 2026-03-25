@@ -115,6 +115,8 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 
 Tools don't receive agent context (OpenClaw calls `execute(toolCallId, params)` — no ctx). The `before_agent_start` hook captures `ctx.agentId` via `setGroupId`, tools read via `getGroupId`. `resolveGroupId(ctx)` in `src/config.ts` handles this for hooks/CLI.
 
+**FalkorDB named graphs:** graphiti-core's FalkorDB driver maps each `group_id` to a separate FalkorDB named graph. `FalkorDriver(database='default_db')` is the default; `add_episode(group_id='main')` clones the driver via `self.driver.clone(database='main')` and mutates `self.clients.driver` (graphiti.py:887-889). This means `execute_query` calls `self.client.select_graph('main')` — a physically separate graph from `'default_db'`. However, `graphiti.search()` does **not** perform this routing — it uses whatever graph the driver currently targets. On fresh boot the driver targets `'default_db'` (empty), so searches return 0 results until the first `add_episode` switches it. The server's `_ensure_driver_graph()` in `main.py` applies the same routing for read paths.
+
 ### Server Manager Lifecycle
 
 Managed via `src/server-manager.ts`, registered as service `gralkor-server`:
