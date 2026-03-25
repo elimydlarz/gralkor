@@ -538,7 +538,7 @@ describe("before_agent_start handler", () => {
     expect(ctx_result).not.toContain("From native memory:");
   });
 
-  it("degrades gracefully when native search fails", async () => {
+  it("throws when native search fails", async () => {
     client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const nativeSearch = vi.fn().mockRejectedValue(new Error("native error"));
     const getNativeSearch = () => nativeSearch;
@@ -546,13 +546,10 @@ describe("before_agent_start handler", () => {
     const handler = createBeforeAgentStartHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
-    const result = await handler(
-      { prompt: "Tell me about the project architecture" },
-    );
 
-    const ctx_result = (result as { prependContext: string }).prependContext;
-    expect(ctx_result).toContain("Facts from knowledge graph:");
-    expect(ctx_result).not.toContain("From native memory:");
+    await expect(
+      handler({ prompt: "Tell me about the project architecture" }),
+    ).rejects.toThrow("native error");
   });
 
   it("skips when autoRecall is disabled", async () => {
