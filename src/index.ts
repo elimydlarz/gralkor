@@ -19,6 +19,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const pluginDir = join(__dirname, ".."); // dist/ → plugin root
 
+// Dedup config logging across the 4+ register() calls OpenClaw makes per event
+let lastConfigFingerprint: string | null = null;
+
 /**
  * Unwrap native tool execute result to a plain string.
  * Native tools return { content: [{ type: "text", text: "..." }, ...] }
