@@ -215,10 +215,7 @@ function cleanUserMessageText(text: string): string {
   }
 
   // Line-level: strip individual system-injected lines
-  cleaned = cleaned
-    .split("\n")
-    .filter((line) => !LINE_NOISE_PATTERNS.some((p) => p.test(line)))
-    .join("\n");
+  cleaned = stripNoiseLines(cleaned);
 
   return cleaned.trim();
 }
