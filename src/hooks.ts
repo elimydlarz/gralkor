@@ -164,6 +164,25 @@ const BLOCK_NOISE_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Patterns for assistant text blocks that are system notifications, not
+ * real agent output. If the trimmed text matches, the block is dropped.
+ */
+const ASSISTANT_NOISE_PATTERNS: RegExp[] = [
+  /^✅?\s*New session started\b/,
+];
+
+/**
+ * Clean an assistant text block by dropping system notifications.
+ * Returns the text unchanged if it's real content, or empty string if noise.
+ */
+function cleanAssistantText(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if (ASSISTANT_NOISE_PATTERNS.some((p) => p.test(trimmed))) return "";
+  return text;
+}
+
+/**
  * Clean a user message text by stripping system noise at three levels:
  *   1. Message-level: entire message dropped if it matches MESSAGE_NOISE_PATTERNS
  *   2. Block-level: metadata wrappers and gralkor-memory XML stripped
