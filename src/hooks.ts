@@ -315,8 +315,8 @@ export function createBeforeAgentStartHandler(
 
       return result;
     } catch (err) {
-      console.warn("[gralkor] auto-recall failed:", err instanceof Error ? err.message : err);
-      return;
+      console.error("[gralkor] auto-recall failed:", err instanceof Error ? err.message : err);
+      throw err;
     }
   };
 }
