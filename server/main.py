@@ -598,14 +598,24 @@ def _sanitize_query(query: str) -> str:
 
 @app.post("/search")
 async def search(req: SearchRequest):
-    edges = await graphiti.search(
-        query=_sanitize_query(req.query),
-        group_ids=req.group_ids,
-        num_results=req.num_results,
-    )
-    return {
-        "facts": [_serialize_fact(e) for e in edges],
-    }
+    logger.info("[gralkor] search — query:%d chars group_ids:%s num_results:%d",
+                len(req.query), req.group_ids, req.num_results)
+    t0 = time.monotonic()
+    try:
+        edges = await graphiti.search(
+            query=_sanitize_query(req.query),
+            group_ids=req.group_ids,
+            num_results=req.num_results,
+        )
+    except Exception as e:
+        duration_ms = (time.monotonic() - t0) * 1000
+        logger.error("[gralkor] search failed — %.0fms: %s", duration_ms, e)
+        raise
+    duration_ms = (time.monotonic() - t0) * 1000
+    result = [_serialize_fact(e) for e in edges]
+    logger.info("[gralkor] search result — %d facts %.0fms", len(edges), duration_ms)
+    logger.debug("[gralkor] search facts: %s", result)
+    return {"facts": result}
 
 
 @app.delete("/edges/{uuid}")
