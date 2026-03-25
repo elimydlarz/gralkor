@@ -160,7 +160,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | manual-store | `memory_add` creates episodes with `source=text`; Graphiti extracts structure |
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
-| test-mode | `test: true` in config logs full episode bodies (outbound) and search results (inbound) at plugin boundaries for debugging |
+| test-mode | Two-tier logging. Normal mode: metadata only (counts, sizes, timings, type breakdowns) — no user content. Test mode (`test: true`): additionally logs full data at both layers. TS side uses `[gralkor] [test]` console.log for raw pluginConfig, episode messages, search results, auto-recall context. Python server uses `logger.debug` (level set from `test` in config.yaml): episode bodies, thinking pre/post distillation, Graphiti results. |
 | temporal-awareness | Facts carry `created_at`, `valid_at`/`invalid_at`, `expired_at`; all 4 timestamps shown in tool results and auto-recall via `formatFact()` |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
 | error-propagation | Auto-capture flush retries transient errors (3 retries, exponential backoff); final error propagates to callers |
