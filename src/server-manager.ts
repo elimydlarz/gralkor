@@ -20,6 +20,7 @@ export interface ServerManagerOptions {
   llmConfig?: LlmConfig;
   embedderConfig?: EmbedderConfig;
   ontologyConfig?: OntologyConfig;
+  test?: boolean;
 }
 
 export interface ServerManager {
