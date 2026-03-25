@@ -150,6 +150,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | Requirement | Implementation |
 |---|---|
 | self-managing-backend | Plugin spawns Graphiti as managed Python subprocess with embedded FalkorDBLite; requires `uv` on PATH |
+| lazy-index-build | Server checks `CALL db.indexes()` at boot; only runs `build_indices_and_constraints()` on fresh databases with no existing indices. Subsequent boots skip the 13 sequential CREATE INDEX queries. |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
 | upgrade-safe-data | Default `dataDir` is `{pluginDir}/../.gralkor-data` (alongside, not inside plugin directory) so `openclaw plugins uninstall` doesn't destroy runtime data |
 | auto-capture | `agent_end` buffers messages per session; flushed on `session_end` or idle timeout (whichever fires first) |
