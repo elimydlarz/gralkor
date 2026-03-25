@@ -602,16 +602,17 @@ describe("before_agent_start handler", () => {
     expect(result).toBeUndefined();
   });
 
-  it("degrades silently when Graphiti is unreachable", async () => {
+  it("throws when Graphiti is unreachable", async () => {
     client.search.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler(
-      { prompt: "Tell me about the project architecture" },
-      { agentId: "agent-42" },
-    );
 
-    expect(result).toBeUndefined();
+    await expect(
+      handler(
+        { prompt: "Tell me about the project architecture" },
+        { agentId: "agent-42" },
+      ),
+    ).rejects.toThrow("ECONNREFUSED");
   });
 
   it("respects maxResults config", async () => {
