@@ -106,7 +106,10 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
 
   // Strip metadata wrapper if present
   const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  const fromPrompt = afterSession.replace(metadataPattern, "").trim();
+  const afterMetadata = afterSession.replace(metadataPattern, "");
+
+  // Strip line-level noise (Current time, etc.)
+  const fromPrompt = stripNoiseLines(afterMetadata).trim();
   if (fromPrompt) return fromPrompt;
 
   // Fallback: prompt was only metadata with no user text after it.
@@ -128,10 +131,9 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
       const text = normalizeContent(messages[i].content)
         .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
-        .join("\n")
-        .replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "")
-        .trim();
-      if (text) return text;
+        .join("\n");
+      const cleaned = cleanUserMessageText(text);
+      if (cleaned) return cleaned;
     }
   }
   return "";
