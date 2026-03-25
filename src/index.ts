@@ -21,6 +21,8 @@ const pluginDir = join(__dirname, ".."); // dist/ → plugin root
 
 // OpenClaw calls register() 4+ times per event; only log config once
 let configLogged = false;
+/** @internal Reset for tests only */
+export function _resetConfigLogged() { configLogged = false; }
 
 /**
  * Unwrap native tool execute result to a plain string.
