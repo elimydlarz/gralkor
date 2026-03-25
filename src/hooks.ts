@@ -270,10 +270,7 @@ export function createBeforeAgentStartHandler(
         graphReady
           ? client.search(userMessage, [groupId], limit)
           : Promise.resolve({ facts: [] as Fact[] }),
-        nativeSearch ? nativeSearch(userMessage).catch((err: unknown) => {
-          console.warn("[gralkor] auto-recall native failed:", err instanceof Error ? err.message : err);
-          return null;
-        }) : Promise.resolve(null),
+        nativeSearch ? nativeSearch(userMessage) : Promise.resolve(null),
       ]);
 
       const nativeLen = nativeResult?.length ?? 0;
