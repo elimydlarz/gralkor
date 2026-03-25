@@ -288,7 +288,7 @@ export function createBeforeAgentStartHandler(
       }
 
       if (sections.length === 0) {
-        if (graphReady) { lastQuery = userMessage; lastResult = undefined; lastResultAt = now; }
+        lastQuery = userMessage; lastResult = undefined; lastResultAt = now;
         return;
       }
 
@@ -299,9 +299,7 @@ export function createBeforeAgentStartHandler(
       }
 
       const result = { prependContext };
-      // Only cache when graph was actually searched — a "booting" result would
-      // suppress real facts if the server becomes ready within the dedup window.
-      if (graphReady) { lastQuery = userMessage; lastResult = result; lastResultAt = now; }
+      lastQuery = userMessage; lastResult = result; lastResultAt = now;
 
       return result;
     } catch (err) {
