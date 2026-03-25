@@ -58,8 +58,7 @@ export function createMemoryStoreTool(
       args: { content: string; source_description?: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
-        console.log(`[gralkor] ${toolName} — server starting, store skipped`);
-        return BOOTING_MSG;
+        throw new Error(`[gralkor] ${toolName} failed: server is not ready`);
       }
 
       const groupId = getGroupId?.() ?? "default";
