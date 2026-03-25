@@ -605,6 +605,24 @@ def _sanitize_query(query: str) -> str:
     return query.replace("`", " ")
 
 
+def _ensure_driver_graph(group_ids: list[str] | None) -> None:
+    """Route graphiti's driver to the correct FalkorDB named graph.
+
+    graphiti-core's add_episode() clones the driver when group_id differs from
+    the current database (graphiti.py:887-889), but search() does not.  On fresh
+    boot the driver targets 'default_db' — an empty graph — so searches return
+    nothing until the first add_episode switches it.  This helper applies the
+    same routing for read paths.
+    """
+    if not group_ids:
+        return
+    target = group_ids[0]
+    if target != graphiti.driver._database:
+        graphiti.driver = graphiti.driver.clone(database=target)
+        graphiti.clients.driver = graphiti.driver
+        print(f"[gralkor] driver graph routed: {target}", flush=True)
+
+
 @app.post("/search")
 async def search(req: SearchRequest):
     logger.info("[gralkor] search — query:%d chars group_ids:%s num_results:%d",
