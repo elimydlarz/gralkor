@@ -161,7 +161,8 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph facts in parallel. Native results with empty `results: []` metadata JSON are filtered out (`hasNativeResults()` in `src/hooks.ts`). Same filter used by auto-recall. |
 | manual-store | `memory_add` creates episodes with `source=text`; Graphiti extracts structure |
-| agent-partitioning | `group_id` from `agentId` isolates each agent's graph |
+| agent-partitioning | `group_id` from `agentId` isolates each agent's graph. graphiti-core's FalkorDB driver maps each group_id to a separate named graph (see Graph Partitioning). |
+| graph-routing | Server-side `_ensure_driver_graph()` in `main.py` routes the graphiti driver to the correct FalkorDB named graph before read operations. Required because graphiti-core's `add_episode()` clones the driver per group_id but `search()` does not — without this fix, searches return empty on fresh boot until the first `add_episode` switches the driver. |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
 | test-mode | Two-tier logging. Normal mode: metadata only (counts, sizes, timings, type breakdowns) — no user content. Test mode (`test: true`): additionally logs full data at both layers. TS side uses `[gralkor] [test]` console.log for raw pluginConfig, episode messages, search results, auto-recall context. Python server uses `logger.debug` (level set from `test` in config.yaml): episode bodies, thinking pre/post distillation, Graphiti results. |
 | temporal-awareness | Facts carry `created_at`, `valid_at`/`invalid_at`, `expired_at`; all 4 timestamps shown in tool results and auto-recall via `formatFact()` |
