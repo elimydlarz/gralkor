@@ -68,7 +68,7 @@ async def test_legacy_mode_when_falkordb_uri_set(monkeypatch):
 
     mock_driver_cls = MagicMock()
     mock_graphiti_cls = MagicMock()
-    mock_graphiti_instance = AsyncMock()
+    mock_graphiti_instance = _make_graphiti_mock()
     mock_graphiti_cls.return_value = mock_graphiti_instance
 
     with (
@@ -95,7 +95,7 @@ async def test_legacy_mode_parses_host_only_uri(monkeypatch):
 
     mock_driver_cls = MagicMock()
     mock_graphiti_cls = MagicMock()
-    mock_graphiti_instance = AsyncMock()
+    mock_graphiti_instance = _make_graphiti_mock()
     mock_graphiti_cls.return_value = mock_graphiti_instance
 
     with (
@@ -112,3 +112,53 @@ async def test_legacy_mode_parses_host_only_uri(monkeypatch):
             pass
 
         mock_driver_cls.assert_called_once_with(host="falkordb", port=6379)
+
+
+@pytest.mark.asyncio
+async def test_skips_index_build_when_indices_exist(monkeypatch):
+    """When indices already exist, lifespan skips build_indices_and_constraints."""
+    monkeypatch.setenv("FALKORDB_URI", "redis://host:6379")
+
+    mock_graphiti_instance = _make_graphiti_mock(has_indices=True)
+    mock_graphiti_cls = MagicMock(return_value=mock_graphiti_instance)
+
+    with (
+        patch("main._load_config", return_value={}),
+        patch("main._build_llm_client", return_value=MagicMock()),
+        patch("main._build_embedder", return_value=MagicMock()),
+        patch("main.FalkorDriver", MagicMock()),
+        patch("main.Graphiti", mock_graphiti_cls),
+    ):
+        import main as main_mod
+        app = MagicMock()
+
+        async with main_mod.lifespan(app):
+            pass
+
+        mock_graphiti_instance.driver.execute_query.assert_called_once_with("CALL db.indexes()")
+        mock_graphiti_instance.build_indices_and_constraints.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_builds_indices_on_fresh_db(monkeypatch):
+    """When no indices exist (fresh DB), lifespan calls build_indices_and_constraints."""
+    monkeypatch.setenv("FALKORDB_URI", "redis://host:6379")
+
+    mock_graphiti_instance = _make_graphiti_mock(has_indices=False)
+    mock_graphiti_cls = MagicMock(return_value=mock_graphiti_instance)
+
+    with (
+        patch("main._load_config", return_value={}),
+        patch("main._build_llm_client", return_value=MagicMock()),
+        patch("main._build_embedder", return_value=MagicMock()),
+        patch("main.FalkorDriver", MagicMock()),
+        patch("main.Graphiti", mock_graphiti_cls),
+    ):
+        import main as main_mod
+        app = MagicMock()
+
+        async with main_mod.lifespan(app):
+            pass
+
+        mock_graphiti_instance.driver.execute_query.assert_called_once_with("CALL db.indexes()")
+        mock_graphiti_instance.build_indices_and_constraints.assert_called_once()
