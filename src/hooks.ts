@@ -395,14 +395,16 @@ export async function flushSessionBuffer(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      const flushStart = Date.now();
       await client.ingestMessages({
         name: `conversation-${Date.now()}`,
         source_description: "auto-capture",
         group_id: groupId,
         messages: filtered,
       });
+      const flushDuration = Date.now() - flushStart;
 
-      console.log(`[gralkor] auto-capture flushed — key:${key}`);
+      console.log(`[gralkor] auto-capture flushed — key:${key} duration:${flushDuration}ms`);
       return;
     } catch (err) {
       lastError = err;
