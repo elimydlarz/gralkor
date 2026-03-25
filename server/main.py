@@ -609,6 +609,12 @@ def _sanitize_query(query: str) -> str:
 async def search(req: SearchRequest):
     logger.info("[gralkor] search — query:%d chars group_ids:%s num_results:%d",
                 len(req.query), req.group_ids, req.num_results)
+    # graphiti.add_episode() clones the driver to target the correct FalkorDB
+    # named graph (database=group_id), but graphiti.search() does not — it just
+    # uses whatever graph the driver currently points at. Before the first
+    # add_episode, the driver targets 'default_db' (an empty graph), so all
+    # searches return 0 results. Fix: route to the correct graph here.
+    _ensure_driver_graph(req.group_ids)
     t0 = time.monotonic()
     try:
         edges = await graphiti.search(
