@@ -211,15 +211,18 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
 }
 
 /**
- * Check if a native search result has actual content vs. metadata-only JSON with empty results.
+ * Count actual results in a native search response.
+ * Native memory_search returns JSON with metadata even when results are empty:
+ *   { "results": [], "provider": "...", ... }
+ * For non-JSON strings, returns 1 if non-empty (opaque content).
  */
-export function hasNativeResults(nativeResult: string | null): boolean {
-  if (!nativeResult) return false;
+export function countNativeResults(nativeResult: string | null): number {
+  if (!nativeResult) return 0;
   try {
     const parsed = JSON.parse(nativeResult);
-    return Array.isArray(parsed.results) && parsed.results.length > 0;
+    return Array.isArray(parsed.results) ? parsed.results.length : 0;
   } catch {
-    return nativeResult.trim().length > 0;
+    return nativeResult.trim().length > 0 ? 1 : 0;
   }
 }
 
