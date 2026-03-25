@@ -35,6 +35,8 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
   async function start(): Promise<void> {
     if (proc) return;
+    const bootStart = Date.now();
+    console.log("[gralkor] boot: starting...");
 
     await mkdir(opts.dataDir, { recursive: true });
 
