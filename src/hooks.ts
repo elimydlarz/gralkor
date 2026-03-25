@@ -287,8 +287,8 @@ export function createBeforeAgentStartHandler(
         nativeSearch ? nativeSearch(userMessage) : Promise.resolve(null),
       ]);
 
-      const nativeLen = nativeResult?.length ?? 0;
-      console.log(`[gralkor] auto-recall result — ${searchResults.facts.length} facts, ${nativeLen} native chars — groupId:${groupId}`);
+      const hasNative = hasNativeResults(nativeResult);
+      console.log(`[gralkor] auto-recall result — graph: ${searchResults.facts.length} facts, native: ${hasNative ? "found" : "none"} — groupId:${groupId}`);
 
       const sections: string[] = [];
 
@@ -296,7 +296,7 @@ export function createBeforeAgentStartHandler(
         sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
       }
 
-      if (nativeResult) {
+      if (hasNative && nativeResult) {
         sections.push("From native memory:\n" + nativeResult);
       }
 
