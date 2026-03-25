@@ -137,30 +137,19 @@ export function extractLastUserMessageFromMessages(event: HookEvent): string {
 }
 
 /**
- * System message detectors — messages matching these are dropped entirely.
+ * System message detectors — content matching any pattern is dropped entirely.
  * OpenClaw injects system content under user/assistant roles (session
  * notifications, timestamps, startup instructions). These patterns detect
  * those injections so extractMessagesFromCtx can drop them before ingestion.
  *
- * When a new runtime-injected pattern appears, add it to the appropriate
- * list rather than writing bespoke stripping logic.
+ * When a new runtime-injected pattern appears, add it here rather than
+ * writing bespoke stripping logic.
  */
 const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
   /^A new session was started\b/,
   /^Current time:/i,
-];
-
-const SYSTEM_ASSISTANT_PATTERNS: RegExp[] = [
   /^✅?\s*New session started\b/,
 ];
-
-/**
- * Returns true if the assistant text block is a system notification.
- */
-function isSystemAssistantBlock(text: string): boolean {
-  const trimmed = text.trim();
-  return !trimmed || SYSTEM_ASSISTANT_PATTERNS.some((p) => p.test(trimmed));
-}
 
 /**
  * Detect system-injected user messages and extract real user content.
