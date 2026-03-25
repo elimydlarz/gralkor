@@ -242,7 +242,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types with description and attributes |
 | `ontology.edgeMap` | `Record<string, string[]>` | — | Maps `"EntityA,EntityB"` → allowed edge types |
 | `ontology.excludedEntityTypes` | `string[]` | — | Entity types to exclude from extraction |
-| `test` | boolean | `false` | Test mode — logs full episode bodies before sending to Graphiti and full search results before returning to agent |
+| `test` | boolean | `false` | Test mode — TS logs full episode messages, search results, auto-recall context; Python server logs at DEBUG (episode bodies, thinking pre/post distillation, Graphiti results). Passed to server via config.yaml. |
 
 ## Environment Variables
 
