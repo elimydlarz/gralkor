@@ -715,10 +715,10 @@ async def search(req: SearchRequest):
         raise
     duration_ms = (time.monotonic() - t0) * 1000
     prioritized = _prioritize_facts(edges, req.num_results)
-    expired_count = sum(1 for e in prioritized if e.expired_at is not None)
+    valid_count = sum(1 for e in prioritized if e.invalid_at is None)
     result = [_serialize_fact(e) for e in prioritized]
-    logger.info("[gralkor] search result — %d facts (%d valid, %d expired) from %d fetched %.0fms",
-                len(prioritized), len(prioritized) - expired_count, expired_count, len(edges), duration_ms)
+    logger.info("[gralkor] search result — %d facts (%d valid, %d non-valid) from %d fetched %.0fms",
+                len(prioritized), valid_count, len(prioritized) - valid_count, len(edges), duration_ms)
     logger.debug("[gralkor] search facts: %s", result)
     return {"facts": result}
 
