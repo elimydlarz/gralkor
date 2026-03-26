@@ -170,6 +170,35 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | error-propagation | Auto-capture flush retries transient errors (3 retries, exponential backoff); final error propagates to callers |
 | episode-idempotency | Client generates `crypto.randomUUID()` per `addEpisode`/`ingestMessages` call (before retry loop) as required `idempotency_key`. Server-side in-memory store with 5-min TTL deduplicates retries — returns cached result without calling `graphiti.add_episode()`. |
 | custom-ontology | User-declared entity/edge types in plugin config (`ontology`). TypeScript validates config (reserved names, protected attrs, edgeMap cross-refs), serializes to `config.yaml`. Python server builds dynamic Pydantic models at startup via `_build_ontology()` and passes to every `graphiti.add_episode()`. Attributes are required (not Optional) to gate entity extraction. Supports string, enum (array → `Literal`), typed object, and enum-with-description forms. Reserved entity names: `Entity`, `Episodic`, `Community`, `Saga`. |
+| fact-prioritization | Server-side `_prioritize_facts()` in `/search` reserves slots for valid facts, fills remainder by relevance. Over-fetches 2x from Graphiti to widen candidate pool. See test tree below. |
+
+#### fact-prioritization
+
+```
+_prioritize_facts
+  when all facts are valid (no invalid_at)
+    then all facts returned up to limit
+    and original relevance order preserved
+  when mix of valid and invalid facts
+    then reserved slots (70% of limit) filled with valid facts first
+    and remaining slots filled by original relevance order (valid or invalid)
+    and total never exceeds limit
+  when fewer valid facts than reserved slots
+    then all valid facts placed in reserved slots
+    and remaining slots filled with non-valid facts by relevance
+  when all facts are invalid
+    then invalid facts returned up to limit (no empty results)
+  when invalid_at is set but expired_at is also set (superseded)
+    then treated same as any invalid fact (invalid_at is the signal)
+  when more candidates than limit (over-fetch scenario)
+    then valid facts from beyond original limit can displace invalid facts
+
+/search endpoint
+  when searching
+    then over-fetches 2x num_results from Graphiti
+    and applies _prioritize_facts before returning
+    and logs valid/non-valid breakdown
+```
 
 ### Cross-functional
 
