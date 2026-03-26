@@ -168,6 +168,7 @@ async def test_add_episode_accepts_text_source_type(client, mock_graphiti):
         "source_description": "manual memory_store",
         "group_id": "g1",
         "source": "text",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 200
