@@ -118,7 +118,7 @@ describe("extractMessagesFromCtx", () => {
     ]);
   });
 
-  it("keeps text and thinking, drops toolCall in mixed message", () => {
+  it("keeps text, thinking, and toolCall in mixed message", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "assistant", content: [
@@ -133,6 +133,7 @@ describe("extractMessagesFromCtx", () => {
       { role: "assistant", content: [
         { type: "thinking", text: "I should check auth.ts" },
         { type: "text", text: "Let me look at the auth module." },
+        { type: "tool_use", text: 'Tool: Read\nInput: {"path":"auth.ts"}' },
         { type: "text", text: "Found the bug on line 42." },
       ]},
     ]);
