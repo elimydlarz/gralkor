@@ -1517,24 +1517,24 @@ describe("test mode logging", () => {
 
 describe("idle timeout flush", () => {
   let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
-  let timers: IdleTimerMap;
+  let debouncer: DebouncedFlush<SessionBuffer>;
+  const IDLE_MS = 5 * 60 * 1000;
   const idleConfig: GralkorConfig = {
     ...defaultConfig,
-    idleTimeoutMs: 5 * 60 * 1000,
+    idleTimeoutMs: IDLE_MS,
   };
 
   beforeEach(() => {
     vi.useFakeTimers();
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    buffers = new Map();
-    timers = new Map();
+    debouncer = new DebouncedFlush<SessionBuffer>(IDLE_MS, (key, buf) =>
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
+    );
   });
 
   afterEach(() => {
-    clearIdleTimers(timers);
-    buffers.clear();
+    debouncer.dispose();
     vi.useRealTimers();
   });
 
@@ -1544,22 +1544,22 @@ describe("idle timeout flush", () => {
   ];
 
   it("flushes after idle timeout", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const handler = createAgentEndHandler(idleConfig, debouncer);
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
     expect(client.ingestMessages).not.toHaveBeenCalled();
-    expect(timers.size).toBe(1);
+    expect(debouncer.timerCount).toBe(1);
 
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    expect(buffers.size).toBe(0);
-    expect(timers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
+    expect(debouncer.timerCount).toBe(0);
   });
 
   it("resets timer on subsequent agent_end", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const handler = createAgentEndHandler(idleConfig, debouncer);
 
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
@@ -1588,47 +1588,45 @@ describe("idle timeout flush", () => {
   });
 
   it("session_end wins — timer cancelled", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers, timers);
+    const agentEnd = createAgentEndHandler(idleConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
 
     await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
-    expect(timers.size).toBe(1);
+    expect(debouncer.timerCount).toBe(1);
 
     // session_end fires before timeout
     await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
-    await vi.advanceTimersByTimeAsync(0);
 
-    expect(timers.size).toBe(0);
+    expect(debouncer.timerCount).toBe(0);
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
 
     // Advance past timeout — no second flush
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
   });
 
   it("idle timeout wins — session_end no-ops", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers, timers);
+    const agentEnd = createAgentEndHandler(idleConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
 
     await agentEnd({ messages: simpleMessages }, { agentId: "agent-1", sessionKey: "sess-1" });
 
     // Idle timeout fires
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
 
     // session_end fires after — should no-op (buffer already gone)
     await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
-    await vi.advanceTimersByTimeAsync(0);
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
   });
 
   it("independent timers per session", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const handler = createAgentEndHandler(idleConfig, debouncer);
 
     await handler({ messages: simpleMessages }, { sessionKey: "sess-1" });
     await handler({
@@ -1636,7 +1634,7 @@ describe("idle timeout flush", () => {
         { role: "assistant", content: [{ type: "text", text: "Reply 2" }] }],
     }, { sessionKey: "sess-2" });
 
-    expect(timers.size).toBe(2);
+    expect(debouncer.timerCount).toBe(2);
 
     // Stagger: reset sess-2's timer by triggering another agent_end at +3min
     vi.advanceTimersByTime(3 * 60 * 1000);
@@ -1658,17 +1656,17 @@ describe("idle timeout flush", () => {
     expect(client.ingestMessages).toHaveBeenCalledTimes(2);
   });
 
-  it("clearIdleTimers cancels all", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+  it("dispose cancels all timers", async () => {
+    const handler = createAgentEndHandler(idleConfig, debouncer);
 
     await handler({ messages: simpleMessages }, { sessionKey: "sess-1" });
     await handler({ messages: simpleMessages }, { sessionKey: "sess-2" });
-    expect(timers.size).toBe(2);
+    expect(debouncer.timerCount).toBe(2);
 
-    clearIdleTimers(timers);
-    expect(timers.size).toBe(0);
+    debouncer.dispose();
+    expect(debouncer.timerCount).toBe(0);
 
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(client.ingestMessages).not.toHaveBeenCalled();
@@ -1677,11 +1675,11 @@ describe("idle timeout flush", () => {
   it("idle flush error is caught (no unhandled rejection)", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, idleConfig, buffers, timers);
+    const handler = createAgentEndHandler(idleConfig, debouncer);
 
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
-    vi.advanceTimersByTime(5 * 60 * 1000);
+    vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
     // The flush was attempted (addEpisode called at least once)
