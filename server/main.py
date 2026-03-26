@@ -591,6 +591,12 @@ async def add_episode(req: AddEpisodeRequest):
 
 @app.post("/ingest-messages")
 async def ingest_messages(req: IngestMessagesRequest):
+    cached = _idempotency_check(req.idempotency_key)
+    if cached is not None:
+        logger.info("[gralkor] ingest-messages idempotent hit — key:%s uuid:%s",
+                    req.idempotency_key, cached.get("uuid"))
+        return cached
+
     logger.info("[gralkor] ingest-messages — group:%s messages:%d", req.group_id, len(req.messages))
     ref_time = (
         datetime.fromisoformat(req.reference_time)
@@ -620,7 +626,9 @@ async def ingest_messages(req: IngestMessagesRequest):
     episode = result.episode
     logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
     logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
-    return _serialize_episode(episode)
+    serialized = _serialize_episode(episode)
+    _idempotency_store_result(req.idempotency_key, serialized)
+    return serialized
 
 
 @app.get("/episodes")
