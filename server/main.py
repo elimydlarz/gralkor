@@ -517,8 +517,8 @@ async def _format_transcript(
         logger.debug("[gralkor] behaviour pre-distill:\n%s", "\n===\n".join(joined))
         summaries = await _distill_thinking(llm_client, joined)
         succeeded = sum(1 for s in summaries if s)
-        logger.info("[gralkor] thinking distilled — %d/%d succeeded", succeeded, len(summaries))
-        logger.debug("[gralkor] thinking post-distill: %s", summaries)
+        logger.info("[gralkor] behaviour distilled — %d/%d succeeded", succeeded, len(summaries))
+        logger.debug("[gralkor] behaviour post-distill: %s", summaries)
 
     # Build transcript with behaviour summaries injected
     lines: list[str] = []
