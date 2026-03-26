@@ -500,7 +500,7 @@ async def _format_transcript(
         elif role == "assistant":
             # Inject action summary before first assistant line of this turn
             if turn_index >= 0 and turn_index not in injected and turn_index < len(summaries) and summaries[turn_index]:
-                lines.append(f"Assistant: (action: {summaries[turn_index]})")
+                lines.append(f"Assistant: (behaviour: {summaries[turn_index]})")
                 injected.add(turn_index)
             lines.append(f"Assistant: {text}")
 
