@@ -432,10 +432,10 @@ logger = logging.getLogger(__name__)
 
 _DISTILL_SYSTEM_PROMPT = (
     "You are a distillery for agentic thought and action. Given an AI agent's internal "
-    "thinking from a conversation turn, capture the thoughts and actions the agent took "
-    "and contextualise them within the dialog. Write one to three sentences — no filler, "
-    "maximum distillation. Focus on reasoning, decisions, and outcomes — not operational "
-    "details like tool names, file reading, or searching. "
+    "thinking and tool usage from a conversation turn, capture the reasoning and actions "
+    "the agent took and contextualise them within the dialog. Write one to three sentences "
+    "— no filler, maximum distillation. Focus on reasoning, decisions, actions taken "
+    "(including which tools were used and why), and outcomes. "
     "Write in first person, past tense. Output only the distilled text, nothing else."
 )
 
