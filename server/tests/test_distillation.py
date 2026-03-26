@@ -245,6 +245,36 @@ async def test_tool_use_only_turn_gets_behaviour():
 
 
 @pytest.mark.asyncio
+async def test_behaviour_aligned_to_correct_turn():
+    """When early turns have no behaviour, summaries must appear at the turn that has them."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Searched memory"})
+
+    msgs = [
+        _msg("user", [("text", "Hello")]),
+        _msg("assistant", [("text", "Hi")]),
+        _msg("user", [("text", "What about X?")]),
+        _msg("assistant", [("text", "Sure")]),
+        _msg("user", [("text", "Find it")]),
+        _msg("assistant", [
+            ("tool_use", 'Tool: search\nInput: {"q":"X"}'),
+            ("text", "Found it"),
+        ]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    lines = result.split("\n")
+    # Behaviour summary must NOT appear in turns 1 or 2 (no behaviour there)
+    assert lines[0] == "User: Hello"
+    assert lines[1] == "Assistant: Hi"
+    assert lines[2] == "User: What about X?"
+    assert lines[3] == "Assistant: Sure"
+    # Behaviour summary must appear in turn 3 (where the tool_use is)
+    assert lines[4] == "User: Find it"
+    assert lines[5] == "Assistant: (behaviour: Searched memory)"
+    assert lines[6] == "Assistant: Found it"
+
+
+@pytest.mark.asyncio
 async def test_tool_blocks_not_in_transcript_lines():
     """Tool blocks should be consumed by distillation, not appear as raw transcript lines."""
     llm = AsyncMock()
