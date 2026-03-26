@@ -251,6 +251,8 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
       for (const block of blocks) {
         if (isThinkingBlock(block)) {
           filtered.push({ type: "thinking", text: block.thinking as string });
+        } else if (isToolBlock(block)) {
+          filtered.push({ type: "tool_use", text: serializeToolBlock(block) });
         } else if (isTextBlock(block)) {
           if (!isSystemMessage(block.text!)) {
             filtered.push({ type: "text", text: block.text! });
@@ -259,6 +261,17 @@ export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
       }
       if (filtered.length > 0) {
         result.push({ role: "assistant", content: filtered });
+      }
+    } else if (msg.role === "toolResult") {
+      const textParts = blocks
+        .filter(isTextBlock)
+        .map((block: ContentBlock) => block.text!)
+        .join("\n");
+      if (textParts) {
+        result.push({
+          role: "assistant",
+          content: [{ type: "tool_result", text: truncateText(textParts, TOOL_RESULT_TRUNCATE_LIMIT) }],
+        });
       }
     }
   }
