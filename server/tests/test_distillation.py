@@ -182,3 +182,83 @@ async def test_whitespace_only_thinking_skipped():
     result = await _format_transcript(msgs, llm)
     assert "(behaviour:" not in result
     llm.generate_response.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_tool_use_blocks_included_in_distillation():
+    """tool_use blocks should be grouped with thinking for distillation."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Read auth.ts and fixed the bug"})
+
+    msgs = [
+        _msg("user", [("text", "Fix the bug")]),
+        _msg("assistant", [
+            ("thinking", "I should check auth.ts"),
+            ("tool_use", 'Tool: Read\nInput: {"path":"auth.ts"}'),
+            ("text", "Fixed it!"),
+        ]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "Assistant: (behaviour: Read auth.ts and fixed the bug)" in result
+    assert "Assistant: Fixed it!" in result
+    # Verify the distillation input contains both thinking and tool use
+    call_args = llm.generate_response.call_args[0][0]
+    distill_input = call_args[1].content  # user message to LLM
+    assert "I should check auth.ts" in distill_input
+    assert "Tool: Read" in distill_input
+
+
+@pytest.mark.asyncio
+async def test_tool_result_blocks_included_in_distillation():
+    """tool_result blocks should be grouped with thinking for distillation."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Read the file and found the issue"})
+
+    msgs = [
+        _msg("user", [("text", "Fix it")]),
+        _msg("assistant", [("tool_use", 'Tool: Read\nInput: {"path":"auth.ts"}')]),
+        _msg("assistant", [("tool_result", "function authenticate() { return null; }")]),
+        _msg("assistant", [("text", "Found the bug")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "Assistant: (behaviour: Read the file and found the issue)" in result
+    call_args = llm.generate_response.call_args[0][0]
+    distill_input = call_args[1].content
+    assert "Tool: Read" in distill_input
+    assert "authenticate" in distill_input
+
+
+@pytest.mark.asyncio
+async def test_tool_use_only_turn_gets_behaviour():
+    """A turn with only tool_use blocks (no thinking) should still get a behaviour summary."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Searched the codebase"})
+
+    msgs = [
+        _msg("user", [("text", "Find the auth code")]),
+        _msg("assistant", [("tool_use", 'Tool: Grep\nInput: {"query":"authenticate"}')]),
+        _msg("assistant", [("text", "Found it in auth.ts")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "Assistant: (behaviour: Searched the codebase)" in result
+    assert "Assistant: Found it in auth.ts" in result
+
+
+@pytest.mark.asyncio
+async def test_tool_blocks_not_in_transcript_lines():
+    """Tool blocks should be consumed by distillation, not appear as raw transcript lines."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": "Did stuff"})
+
+    msgs = [
+        _msg("user", [("text", "Do it")]),
+        _msg("assistant", [
+            ("tool_use", 'Tool: Read\nInput: {"path":"x.ts"}'),
+            ("tool_result", "file contents here"),
+            ("text", "Done"),
+        ]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "Tool: Read" not in result
+    assert "file contents here" not in result
+    assert "Assistant: Done" in result
