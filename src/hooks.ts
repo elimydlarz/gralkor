@@ -557,9 +557,12 @@ export function createAgentEndHandler(
 
     const userCount = event.messages.filter(m => m.role === "user").length;
     const assistantCount = event.messages.filter(m => m.role === "assistant").length;
-    const thinkingBlocks = event.messages
+    const assistantBlocksRaw = event.messages
       .filter(m => m.role === "assistant")
-      .reduce((sum, m) => sum + normalizeContent(m.content).filter(isThinkingBlock).length, 0);
+      .flatMap(m => normalizeContent(m.content));
+    const thinkingBlocks = assistantBlocksRaw.filter(isThinkingBlock).length;
+    const toolBlocks = assistantBlocksRaw.filter(isToolBlock).length;
+    const toolResultCount = event.messages.filter(m => m.role === "toolResult").length;
 
     debouncer.set(key, {
       messages: event.messages,
@@ -567,7 +570,7 @@ export function createAgentEndHandler(
       sessionKey: ctx.sessionKey,
     });
 
-    console.log(`[gralkor] auto-capture buffered — key:${key} total:${event.messages.length} user:${userCount} assistant:${assistantCount} thinkingBlocks:${thinkingBlocks}`);
+    console.log(`[gralkor] auto-capture buffered — key:${key} total:${event.messages.length} user:${userCount} assistant:${assistantCount} thinkingBlocks:${thinkingBlocks} toolBlocks:${toolBlocks} toolResults:${toolResultCount}`);
   };
 }
 
