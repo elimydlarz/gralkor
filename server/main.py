@@ -338,7 +338,7 @@ class ContentBlock(BaseModel):
     Supported types:
     - "text": Natural language content (user input or assistant response).
     - "thinking": Internal reasoning trace from the assistant. The server
-      distills these into concise action summaries before ingestion.
+      distills these into concise behaviour summaries before ingestion.
     """
     type: str
     text: str
@@ -359,7 +359,7 @@ class IngestMessagesRequest(BaseModel):
     """Ingest a structured conversation for knowledge graph extraction.
 
     The server formats the transcript, distills thinking blocks into
-    action summaries, and creates an episode in the knowledge graph.
+    behaviour summaries, and creates an episode in the knowledge graph.
     """
     name: str
     source_description: str
@@ -456,7 +456,7 @@ async def _distill_one(llm_client: Any, thinking: str) -> str:
 
 
 async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list[str]:
-    """Distill thinking blocks into action summaries, one per turn.
+    """Distill thinking blocks into behaviour summaries, one per turn.
 
     Returns a list parallel to thinking_blocks. Failed entries are empty strings.
     """
@@ -477,7 +477,7 @@ async def _format_transcript(
     msgs: list[ConversationMessage],
     llm_client: Any | None,
 ) -> str:
-    """Format structured messages into a transcript, distilling thinking into action summaries.
+    """Format structured messages into a transcript, distilling thinking into behaviour summaries.
 
     Groups thinking blocks per turn (all thinking between two user messages),
     distills each group into a single (action: ...) line via LLM, and formats
@@ -511,7 +511,7 @@ async def _format_transcript(
     if current_thinking:
         turns_thinking.append(current_thinking)
 
-    # Distill thinking into action summaries
+    # Distill thinking into behaviour summaries
     summaries: list[str] = []
     if turns_thinking and llm_client:
         joined = ["\n---\n".join(blocks) for blocks in turns_thinking]
@@ -523,7 +523,7 @@ async def _format_transcript(
         logger.info("[gralkor] thinking distilled — %d/%d succeeded", succeeded, len(summaries))
         logger.debug("[gralkor] thinking post-distill: %s", summaries)
 
-    # Build transcript with action summaries injected
+    # Build transcript with behaviour summaries injected
     lines: list[str] = []
     turn_index = -1
     injected: set[int] = set()
