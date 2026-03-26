@@ -83,7 +83,7 @@ async def test_ingest_distillation_failure_drops_behaviour(client, mock_graphiti
 
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    assert "(action:" not in call_kwargs["episode_body"]
+    assert "(behaviour:" not in call_kwargs["episode_body"]
 
 
 @pytest.mark.asyncio
