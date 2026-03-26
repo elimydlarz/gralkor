@@ -448,7 +448,7 @@ async def _distill_one(llm_client: Any, thinking: str) -> str:
         Message(role="system", content=_DISTILL_SYSTEM_PROMPT),
         Message(role="user", content=thinking),
     ]
-    result = await llm_client.generate_response(messages, max_tokens=150)
+    result = await llm_client.generate_response(messages, max_tokens=300)
     return result.get("content", "").strip()
 
 
