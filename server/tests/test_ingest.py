@@ -62,8 +62,8 @@ async def test_ingest_distills_thinking_into_behaviour(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
-async def test_ingest_distillation_failure_drops_action(client, mock_graphiti):
-    """If distillation fails, episode is still created without action line."""
+async def test_ingest_distillation_failure_drops_behaviour(client, mock_graphiti):
+    """If distillation fails, episode is still created without behaviour line."""
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
     mock_graphiti.llm_client.generate_response.side_effect = RuntimeError("LLM unavailable")
