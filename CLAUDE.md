@@ -164,7 +164,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | agent-partitioning | `group_id` from `agentId` isolates each agent's graph. graphiti-core's FalkorDB driver maps each group_id to a separate named graph (see Graph Partitioning). |
 | graph-routing | Server-side `_ensure_driver_graph()` in `main.py` routes the graphiti driver to the correct FalkorDB named graph before read operations. Required because graphiti-core's `add_episode()` clones the driver per group_id but `search()` does not — without this fix, searches return empty on fresh boot until the first `add_episode` switches the driver. |
 | cli-diagnostics | `gralkor status/search/clear` under `openclaw plugins`; group ID always required |
-| test-mode | Two-tier logging. Normal mode: metadata only (counts, sizes, timings, type breakdowns) — no user content. Test mode (`test: true`): additionally logs full data at both layers. TS side uses `[gralkor] [test]` console.log for raw pluginConfig, episode messages, search results, auto-recall context. Python server uses `logger.debug` (level set from `test` in config.yaml): episode bodies, thinking pre/post distillation, Graphiti results. |
+| test-mode | Two-tier logging. Normal mode: metadata only (counts, sizes, timings, type breakdowns) — no user content. Test mode (`test: true`): additionally logs full data at both layers. TS side uses `[gralkor] [test]` console.log for raw pluginConfig, episode messages, search results, auto-recall context. Python server uses `logger.debug` (level set from `test` in config.yaml): episode bodies, behaviour pre/post distillation, Graphiti results. |
 | temporal-awareness | Facts carry `created_at`, `valid_at`/`invalid_at`, `expired_at`; all 4 timestamps shown in tool results and auto-recall via `formatFact()` |
 | native-delegation | `memory_search`/`memory_get` delegate to OpenClaw runtime via `api.runtime.tools` |
 | error-propagation | Auto-capture flush retries transient errors (3 retries, exponential backoff); final error propagates to callers |
@@ -249,7 +249,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types with description and attributes |
 | `ontology.edgeMap` | `Record<string, string[]>` | — | Maps `"EntityA,EntityB"` → allowed edge types |
 | `ontology.excludedEntityTypes` | `string[]` | — | Entity types to exclude from extraction |
-| `test` | boolean | `false` | Test mode — TS logs full episode messages, search results, auto-recall context; Python server logs at DEBUG (episode bodies, thinking pre/post distillation, Graphiti results). Passed to server via config.yaml. |
+| `test` | boolean | `false` | Test mode — TS logs full episode messages, search results, auto-recall context; Python server logs at DEBUG (episode bodies, behaviour pre/post distillation, Graphiti results). Passed to server via config.yaml. |
 
 ## Environment Variables
 
