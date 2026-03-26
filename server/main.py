@@ -495,7 +495,7 @@ async def _format_transcript(
     turns: list[Turn] = [Turn()]
     for msg in msgs:
         if msg.role == "user":
-            turns.append(Turn([], [], []))
+            turns.append(Turn())
             for block in msg.content:
                 if block.type == "text":
                     turns[-1].user_lines.append(block.text)
