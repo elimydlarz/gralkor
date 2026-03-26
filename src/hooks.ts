@@ -491,13 +491,14 @@ export async function flushSessionBuffer(
   const groupId = resolveGroupId({ agentId: buffer.agentId });
   const userFiltered = filtered.filter(m => m.role === "user").length;
   const assistantFiltered = filtered.filter(m => m.role === "assistant").length;
-  const thinkingBlockCount = filtered
-    .filter(m => m.role === "assistant")
-    .reduce((sum, m) => sum + m.content.filter(b => b.type === "thinking").length, 0);
+  const assistantBlocks = filtered.filter(m => m.role === "assistant").flatMap(m => m.content);
+  const thinkingBlockCount = assistantBlocks.filter(b => b.type === "thinking").length;
+  const toolUseBlockCount = assistantBlocks.filter(b => b.type === "tool_use").length;
+  const toolResultBlockCount = assistantBlocks.filter(b => b.type === "tool_result").length;
   const textBlockCount = filtered.reduce((sum, m) => sum + m.content.filter(b => b.type === "text").length, 0);
   const totalChars = filtered.reduce((sum, m) => sum + m.content.reduce((s, b) => s + b.text.length, 0), 0);
 
-  console.log(`[gralkor] auto-capture flushing — key:${key} groupId:${groupId} messages:${filtered.length} (user:${userFiltered} assistant:${assistantFiltered} textBlocks:${textBlockCount} thinkingBlocks:${thinkingBlockCount} chars:${totalChars})`);
+  console.log(`[gralkor] auto-capture flushing — key:${key} groupId:${groupId} messages:${filtered.length} (user:${userFiltered} assistant:${assistantFiltered} textBlocks:${textBlockCount} thinkingBlocks:${thinkingBlockCount} toolUseBlocks:${toolUseBlockCount} toolResultBlocks:${toolResultBlockCount} chars:${totalChars})`);
 
   if (test) {
     console.log(`[gralkor] [test] episode messages:\n${JSON.stringify(filtered, null, 2)}`);
