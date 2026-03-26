@@ -57,7 +57,7 @@ async def test_search_default_num_results(client, mock_graphiti):
 
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.search.call_args.kwargs
-    assert call_kwargs["num_results"] == 10
+    assert call_kwargs["num_results"] == 20  # 2x over-fetch for fact prioritization
 
 
 @pytest.mark.asyncio
