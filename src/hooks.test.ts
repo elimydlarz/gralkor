@@ -68,17 +68,19 @@ describe("extractMessagesFromCtx", () => {
     ]);
   });
 
-  it("skips toolCall blocks and toolResult messages", () => {
+  it("includes toolCall blocks as tool_use and toolResult messages as tool_result", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [{ type: "toolCall" }] },
+        { role: "assistant", content: [{ type: "toolCall", name: "Read", input: { path: "auth.ts" } }] },
         { role: "toolResult", content: [{ type: "text", text: "tool output" }] },
         { role: "assistant", content: [{ type: "text", text: "Done" }] },
       ],
     });
     expect(result).toEqual([
       { role: "user", content: [{ type: "text", text: "Hello" }] },
+      { role: "assistant", content: [{ type: "tool_use", text: 'Tool: Read\nInput: {"path":"auth.ts"}' }] },
+      { role: "assistant", content: [{ type: "tool_result", text: "tool output" }] },
       { role: "assistant", content: [{ type: "text", text: "Done" }] },
     ]);
   });
