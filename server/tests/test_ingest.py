@@ -32,8 +32,8 @@ async def test_ingest_formats_transcript_and_creates_episode(client, mock_graphi
 
 
 @pytest.mark.asyncio
-async def test_ingest_distills_thinking_into_action(client, mock_graphiti):
-    """Thinking blocks are distilled into action summaries via LLM."""
+async def test_ingest_distills_thinking_into_behaviour(client, mock_graphiti):
+    """Thinking blocks are distilled into behaviour summaries via LLM."""
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
     mock_graphiti.llm_client.generate_response.return_value = {
