@@ -36,7 +36,7 @@ async def test_multi_turn():
 
 
 @pytest.mark.asyncio
-async def test_distills_thinking_into_action():
+async def test_distills_thinking_into_behaviour():
     llm = AsyncMock()
     llm.generate_response = AsyncMock(return_value={"content": "Resolved the null pointer"})
 
