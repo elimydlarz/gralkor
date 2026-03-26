@@ -809,20 +809,24 @@ describe("before_agent_start handler", () => {
 
 describe("agent_end handler", () => {
   let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
+  let debouncer: DebouncedFlush<SessionBuffer>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    buffers = new Map();
+    debouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
+    );
   });
 
   afterEach(() => {
-    buffers.clear();
+    debouncer.dispose();
+    vi.useRealTimers();
   });
 
   it("buffers messages and flushes on boundary", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -832,11 +836,10 @@ describe("agent_end handler", () => {
 
     // Not flushed yet
     expect(client.ingestMessages).not.toHaveBeenCalled();
-    expect(buffers.size).toBe(1);
+    expect(debouncer.pendingCount).toBe(1);
 
-    // Flush via flushSessionBuffer
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    // Flush via debouncer
+    await debouncer.flush("default");
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     const call = client.ingestMessages.mock.calls[0][0] as { messages: unknown[] };
@@ -847,7 +850,7 @@ describe("agent_end handler", () => {
   });
 
   it("captures multi-turn conversations on flush", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -857,15 +860,14 @@ describe("agent_end handler", () => {
       ],
     });
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    await debouncer.flush("default");
 
     const call = client.ingestMessages.mock.calls[0][0] as { messages: unknown[] };
     expect(call.messages).toHaveLength(4);
   });
 
   it("uses agent's group_id partition", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler(
       {
         messages: [
@@ -876,8 +878,7 @@ describe("agent_end handler", () => {
       { agentId: "agent-42" },
     );
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    await debouncer.flush("agent-42");
 
     expect(client.ingestMessages).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "agent-42" }),
@@ -890,7 +891,7 @@ describe("agent_end handler", () => {
       autoCapture: { enabled: false },
     };
 
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, config, buffers);
+    const handler = createAgentEndHandler(config, debouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -898,24 +899,27 @@ describe("agent_end handler", () => {
       ],
     });
 
-    expect(buffers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
   it("skips when no messages", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler({
       messages: [],
     });
 
-    expect(buffers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
   it("propagates errors when Graphiti is unreachable on flush (after retries)", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
+    const errorDebouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
+    );
 
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, errorDebouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -923,15 +927,13 @@ describe("agent_end handler", () => {
       ],
     });
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await expect(
-      flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
-    ).rejects.toThrow("ECONNREFUSED");
+    await expect(errorDebouncer.flush("default")).rejects.toThrow("ECONNREFUSED");
     expect(client.ingestMessages).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
+    errorDebouncer.dispose();
   });
 
   it("formats episode body with auto-capture metadata on flush", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
@@ -939,8 +941,7 @@ describe("agent_end handler", () => {
       ],
     });
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    await debouncer.flush("default");
 
     const call = client.ingestMessages.mock.calls[0][0] as {
       messages: unknown[];
@@ -953,7 +954,7 @@ describe("agent_end handler", () => {
   });
 
   it("strips <gralkor-memory> XML from user messages before storing", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts from knowledge graph:\n- The sky is blue\n</gralkor-memory>\n';
     await handler({
       messages: [
@@ -962,8 +963,7 @@ describe("agent_end handler", () => {
       ],
     });
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    await debouncer.flush("default");
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
@@ -973,7 +973,7 @@ describe("agent_end handler", () => {
   });
 
   it("falls back to 'default' group when agentId is missing", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: "This is a long enough message to pass the filter" }] },
@@ -981,8 +981,7 @@ describe("agent_end handler", () => {
       ],
     });
 
-    const [key, buffer] = [...buffers.entries()][0];
-    await flushSessionBuffer(key, buffer, buffers, client as unknown as GraphitiClient);
+    await debouncer.flush("default");
 
     expect(client.ingestMessages).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "default" }),
@@ -990,7 +989,7 @@ describe("agent_end handler", () => {
   });
 
   it("replaces buffer on subsequent agent_end calls (not append)", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
 
     await handler({
       messages: [
@@ -1008,14 +1007,12 @@ describe("agent_end handler", () => {
       ],
     });
 
-    expect(buffers.size).toBe(1);
-    const buffer = buffers.values().next().value!;
-    expect(buffer.messages).toHaveLength(4);
+    expect(debouncer.pendingCount).toBe(1);
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
   it("uses sessionKey as buffer key when available", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler(
       {
         messages: [
@@ -1026,12 +1023,12 @@ describe("agent_end handler", () => {
       { agentId: "agent-42", sessionKey: "session-abc" },
     );
 
-    expect(buffers.has("session-abc")).toBe(true);
-    expect(buffers.has("agent-42")).toBe(false);
+    expect(debouncer.has("session-abc")).toBe(true);
+    expect(debouncer.has("agent-42")).toBe(false);
   });
 
   it("uses agentId as buffer key when sessionKey is absent", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     await handler(
       {
         messages: [
@@ -1042,11 +1039,11 @@ describe("agent_end handler", () => {
       { agentId: "agent-42" },
     );
 
-    expect(buffers.has("agent-42")).toBe(true);
+    expect(debouncer.has("agent-42")).toBe(true);
   });
 
   it("separates buffers for different sessions", async () => {
-    const handler = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
 
     await handler(
       { messages: [{ role: "user", content: [{ type: "text", text: "Session 1" }] }] },
@@ -1057,7 +1054,7 @@ describe("agent_end handler", () => {
       { sessionKey: "session-2" },
     );
 
-    expect(buffers.size).toBe(2);
+    expect(debouncer.pendingCount).toBe(2);
   });
 });
 
