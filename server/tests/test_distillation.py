@@ -47,7 +47,7 @@ async def test_distills_thinking_into_action():
     result = await _format_transcript(msgs, llm)
     assert result == (
         "User: Fix the bug\n"
-        "Assistant: (action: Resolved the null pointer)\n"
+        "Assistant: (behaviour: Resolved the null pointer)\n"
         "Assistant: Fixed it!"
     )
 
@@ -75,7 +75,7 @@ async def test_distillation_failure_drops_action():
     ]
     result = await _format_transcript(msgs, llm)
     assert result == "User: Fix it\nAssistant: Done"
-    assert "(action:" not in result
+    assert "(behaviour:" not in result
 
 
 @pytest.mark.asyncio
@@ -107,8 +107,8 @@ async def test_multi_turn_distillation():
         _msg("assistant", [("thinking", "T2"), ("text", "A2")]),
     ]
     result = await _format_transcript(msgs, llm)
-    assert "Assistant: (action: Action 1)" in result
-    assert "Assistant: (action: Action 2)" in result
+    assert "Assistant: (behaviour: Action 1)" in result
+    assert "Assistant: (behaviour: Action 2)" in result
 
 
 @pytest.mark.asyncio
@@ -124,7 +124,7 @@ async def test_multiple_assistant_messages_per_turn():
     result = await _format_transcript(msgs, llm)
     assert result == (
         "User: Do something\n"
-        "Assistant: (action: Did the thing)\n"
+        "Assistant: (behaviour: Did the thing)\n"
         "Assistant: Done"
     )
 
@@ -165,7 +165,7 @@ async def test_thinking_only_no_text():
         _msg("assistant", [("text", "Found and fixed it")]),
     ]
     result = await _format_transcript(msgs, llm)
-    assert "Assistant: (action: Investigated the issue)" in result
+    assert "Assistant: (behaviour: Investigated the issue)" in result
     assert "Assistant: Found and fixed it" in result
 
 
@@ -180,5 +180,5 @@ async def test_whitespace_only_thinking_skipped():
         _msg("assistant", [("thinking", "   \n  "), ("text", "Hi")]),
     ]
     result = await _format_transcript(msgs, llm)
-    assert "(action:" not in result
+    assert "(behaviour:" not in result
     llm.generate_response.assert_not_called()
