@@ -667,26 +667,27 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
         print(f"[gralkor] driver graph routed: {target}", flush=True)
 
 
-def _prioritize_facts(edges: list[EntityEdge], limit: int) -> list[EntityEdge]:
-    """Prioritize facts: valid first, then expired, then invalid last.
+def _prioritize_facts(
+    edges: list[EntityEdge], limit: int, reserved_ratio: float = 0.7,
+) -> list[EntityEdge]:
+    """Reserve slots for valid facts, fill the rest by relevance.
 
-    - Valid: no invalid_at — currently true, highest priority
-    - Expired: has expired_at but no invalid_at — superseded, part of an
-      active trail (the graph kept evolving this relationship)
-    - Invalid: has invalid_at, no expired_at — marked as no longer true
-      with no successor, least useful
+    First ~70% of slots are reserved for valid facts (no invalid_at).
+    Remaining slots are filled from whatever Graphiti ranked highest
+    among the leftovers — valid or not — preserving relevance scoring.
     """
-    valid = []
-    expired = []
-    invalid = []
+    reserved_count = max(1, round(limit * reserved_ratio))
+
+    reserved: list[EntityEdge] = []
+    rest: list[EntityEdge] = []
     for e in edges:
-        if e.invalid_at is not None and e.expired_at is None:
-            invalid.append(e)
-        elif e.expired_at is not None:
-            expired.append(e)
+        if len(reserved) < reserved_count and e.invalid_at is None:
+            reserved.append(e)
         else:
-            valid.append(e)
-    return (valid + expired + invalid)[:limit]
+            rest.append(e)
+
+    remainder_count = limit - len(reserved)
+    return reserved + rest[:remainder_count]
 
 
 @app.post("/search")
