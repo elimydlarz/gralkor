@@ -333,8 +333,11 @@ class ContentBlock(BaseModel):
 
     Supported types:
     - "text": Natural language content (user input or assistant response).
-    - "thinking": Internal reasoning trace from the assistant. The server
-      distills these into concise behaviour summaries before ingestion.
+    - "thinking": Internal reasoning trace from the assistant.
+    - "tool_use": Serialized tool call (tool name + input).
+    - "tool_result": Truncated tool output.
+    The server groups thinking, tool_use, and tool_result blocks for
+    behaviour distillation before ingestion.
     """
     type: str
     text: str
