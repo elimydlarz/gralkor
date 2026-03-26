@@ -20,7 +20,7 @@ export interface Fact {
 
 /** A filtered content block for episode ingestion. */
 export interface EpisodeBlock {
-  type: "text" | "thinking";
+  type: "text" | "thinking" | "tool_use" | "tool_result";
   text: string;
 }
 
