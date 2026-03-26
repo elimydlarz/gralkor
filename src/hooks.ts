@@ -220,7 +220,8 @@ function cleanUserMessageText(text: string): string {
  * Filters the raw OpenClaw message array down to user and assistant messages
  * with only text/output_text/thinking blocks. Cleans user messages of system
  * noise (session-start instructions, metadata wrappers, gralkor-memory XML).
- * Drops toolResult messages and toolCall/toolUse/functionCall blocks entirely.
+ * Serializes toolCall/toolUse/functionCall blocks as tool_use blocks.
+ * Converts toolResult messages to assistant messages with truncated tool_result blocks.
  *
  * The server handles transcript formatting and thinking distillation.
  */
