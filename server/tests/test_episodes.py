@@ -259,6 +259,7 @@ async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti
             "episode_body": "body",
             "source_description": "src",
             "group_id": "g1",
+            "idempotency_key": "test-key",
         })
 
         assert resp.status_code == 200
