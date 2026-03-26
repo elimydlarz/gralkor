@@ -244,8 +244,22 @@ describe("extractMessagesFromCtx", () => {
     ]);
   });
 
-  it("truncates toolResult text at 1000 chars", () => {
-    const longText = "x".repeat(1500);
+  it("does not truncate toolResult text at or below 1000 chars", () => {
+    const exactText = "x".repeat(1000);
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "toolResult", content: [{ type: "text", text: exactText }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_result", text: exactText },
+      ]},
+    ]);
+  });
+
+  it("truncates toolResult text above 1000 chars", () => {
+    const longText = "x".repeat(1001);
     const result = extractMessagesFromCtx({
       messages: [
         { role: "toolResult", content: [{ type: "text", text: longText }] },
@@ -254,6 +268,21 @@ describe("extractMessagesFromCtx", () => {
     expect(result).toEqual([
       { role: "assistant", content: [
         { type: "tool_result", text: "x".repeat(1000) + "... (truncated)" },
+      ]},
+    ]);
+  });
+
+  it("uses 'unknown' for tool blocks with no name", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "toolCall", input: { query: "test" } },
+        ]},
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_use", text: 'Tool: unknown\nInput: {"query":"test"}' },
       ]},
     ]);
   });
