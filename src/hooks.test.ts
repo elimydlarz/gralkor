@@ -1261,15 +1261,13 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
 describe("flushSessionBuffer", () => {
   let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
 
   beforeEach(() => {
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    buffers = new Map();
   });
 
-  it("flushes buffer and removes it from the map", async () => {
+  it("flushes buffer", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -1277,9 +1275,8 @@ describe("flushSessionBuffer", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     expect(client.ingestMessages).toHaveBeenCalledWith(
@@ -1292,19 +1289,16 @@ describe("flushSessionBuffer", () => {
         group_id: "agent-42",
       }),
     );
-    expect(buffers.size).toBe(0);
   });
 
   it("skips flush when extracted conversation is empty", async () => {
     const buffer: SessionBuffer = {
       messages: [],
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
     expect(client.ingestMessages).not.toHaveBeenCalled();
-    expect(buffers.size).toBe(0);
   });
 
   it("retries transient errors and succeeds", async () => {
@@ -1320,9 +1314,8 @@ describe("flushSessionBuffer", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 });
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 });
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(3);
   });
@@ -1340,9 +1333,8 @@ describe("flushSessionBuffer", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient);
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
     expect(client.ingestMessages).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1368,10 +1360,9 @@ describe("flushSessionBuffer", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
     await expect(
-      flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
+      flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     ).rejects.toThrow("422");
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
   });
