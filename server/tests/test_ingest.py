@@ -56,7 +56,7 @@ async def test_ingest_distills_thinking_into_behaviour(client, mock_graphiti):
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
     body = call_kwargs["episode_body"]
-    assert "Assistant: (action: Investigated and resolved the null pointer issue)" in body
+    assert "Assistant: (behaviour: Investigated and resolved the null pointer issue)" in body
     assert "Assistant: Fixed it!" in body
     mock_graphiti.llm_client.generate_response.assert_called_once()
 
