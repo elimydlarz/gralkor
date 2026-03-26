@@ -36,6 +36,7 @@ export interface AddEpisodeParams {
   source_description: string;
   group_id: string;
   source?: "message" | "text" | "json";
+  idempotency_key?: string;
 }
 
 export interface IngestMessagesParams {
@@ -43,6 +44,7 @@ export interface IngestMessagesParams {
   source_description: string;
   group_id: string;
   messages: EpisodeMessage[];
+  idempotency_key?: string;
 }
 
 export interface SearchResults {
