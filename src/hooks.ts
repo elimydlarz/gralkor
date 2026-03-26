@@ -379,7 +379,11 @@ export function createBeforeAgentStartHandler(
         sections.push("No native results.");
       }
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n</gralkor-memory>`;
+      const instructions =
+        "Before responding, search memory 2-3 times in parallel with different queries to surface relevant context " +
+        "(e.g. key entities or people mentioned, the topic being discussed, related projects or goals).";
+
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n\n${instructions}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall context:\n${prependContext}`);
