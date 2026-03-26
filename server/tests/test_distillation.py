@@ -137,7 +137,7 @@ async def test_empty_messages():
 
 @pytest.mark.asyncio
 async def test_assistant_before_any_user():
-    """Assistant message before first user message — no turn index, no action."""
+    """Assistant message before first user message — no turn index, no behaviour."""
     llm = AsyncMock()
     llm.generate_response = AsyncMock(return_value={"content": "Did something"})
 
