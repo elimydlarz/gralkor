@@ -499,7 +499,7 @@ async def _format_transcript(
                     parts.append(("user", block.text))
         elif msg.role == "assistant":
             for block in msg.content:
-                if block.type == "thinking":
+                if block.type in ("thinking", "tool_use", "tool_result"):
                     current_thinking.append(block.text)
                 elif block.type == "text":
                     parts.append(("assistant", block.text))
