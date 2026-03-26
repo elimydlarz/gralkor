@@ -275,6 +275,65 @@ async def test_behaviour_aligned_to_correct_turn():
 
 
 @pytest.mark.asyncio
+async def test_behaviour_aligned_across_many_empty_turns():
+    """Multiple consecutive turns without behaviour must not shift later summaries."""
+    call_count = 0
+
+    async def mock_generate(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return {"content": f"Action {call_count}"}
+
+    llm = AsyncMock()
+    llm.generate_response = mock_generate
+
+    msgs = [
+        _msg("user", [("text", "Q1")]),
+        _msg("assistant", [("text", "A1")]),
+        _msg("user", [("text", "Q2")]),
+        _msg("assistant", [("text", "A2")]),
+        _msg("user", [("text", "Q3")]),
+        _msg("assistant", [("text", "A3")]),
+        _msg("user", [("text", "Q4")]),
+        _msg("assistant", [("thinking", "T4"), ("text", "A4")]),
+        _msg("user", [("text", "Q5")]),
+        _msg("assistant", [("tool_use", "Tool: X"), ("text", "A5")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    lines = result.split("\n")
+    # Turns 1-3 have no behaviour — no injection
+    assert lines[0] == "User: Q1"
+    assert lines[1] == "Assistant: A1"
+    assert lines[2] == "User: Q2"
+    assert lines[3] == "Assistant: A2"
+    assert lines[4] == "User: Q3"
+    assert lines[5] == "Assistant: A3"
+    # Turn 4 has thinking — gets Action 1
+    assert lines[6] == "User: Q4"
+    assert lines[7] == "Assistant: (behaviour: Action 1)"
+    assert lines[8] == "Assistant: A4"
+    # Turn 5 has tool_use — gets Action 2
+    assert lines[9] == "User: Q5"
+    assert lines[10] == "Assistant: (behaviour: Action 2)"
+    assert lines[11] == "Assistant: A5"
+
+
+@pytest.mark.asyncio
+async def test_llm_empty_content_drops_behaviour():
+    """When LLM returns empty content, behaviour line is dropped."""
+    llm = AsyncMock()
+    llm.generate_response = AsyncMock(return_value={"content": ""})
+
+    msgs = [
+        _msg("user", [("text", "Fix it")]),
+        _msg("assistant", [("thinking", "pondering..."), ("text", "Done")]),
+    ]
+    result = await _format_transcript(msgs, llm)
+    assert "(behaviour:" not in result
+    assert "Assistant: Done" in result
+
+
+@pytest.mark.asyncio
 async def test_tool_blocks_not_in_transcript_lines():
     """Tool blocks should be consumed by distillation, not appear as raw transcript lines."""
     llm = AsyncMock()
