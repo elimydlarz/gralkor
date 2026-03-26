@@ -267,13 +267,32 @@ describe("extractMessagesFromCtx", () => {
     expect(result).toEqual([]);
   });
 
-  it("maps toolResult messages to assistant role", () => {
+  it("joins multiple text blocks in toolResult messages", () => {
     const result = extractMessagesFromCtx({
       messages: [
-        { role: "toolResult", content: [{ type: "text", text: "result data" }] },
+        { role: "toolResult", content: [
+          { type: "text", text: "line 1" },
+          { type: "text", text: "line 2" },
+        ]},
       ],
     });
-    expect(result[0].role).toBe("assistant");
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "tool_result", text: "line 1\nline 2" }] },
+    ]);
+  });
+
+  it("drops system messages from assistant text blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "text", text: "Current time: Thursday, March 26th" },
+          { type: "text", text: "Here is the answer" },
+        ]},
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Here is the answer" }] },
+    ]);
   });
 
   it("strips <gralkor-memory> XML from user messages", () => {
