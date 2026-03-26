@@ -6,6 +6,27 @@ Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware
 
 When an agent converses with a user, Gralkor automatically extracts entities and relationships into a knowledge graph, and recalls relevant facts in future conversations — no manual prompt engineering required.
 
+## Why Gralkor
+
+After two years of building with every AI memory system out there — vector databases, graph databases, chunking strategies, custom retrieval pipelines — one thing became clear: **the problem was never storage or retrieval. It was representation.**
+
+**Graphs, not Markdown files.** The AI ecosystem's fixation on Markdown-based memory is baffling. Graphs have been the right data structure for representing knowledge since long before LLMs existed. Your code is a graph (syntax trees). Your filesystem is a graph. The web is a graph. Relationships between entities are naturally graph-shaped, and trying to flatten them into Markdown files with vector embeddings is fighting the structure of the problem. [Graphiti](https://github.com/getzep/graphiti) combines a knowledge graph with vector search — you get structured relationships *and* semantic retrieval, not one or the other. Facts carry temporal validity: when they became true, when they stopped being true, when they were superseded. This is not another chunking strategy or embedding experiment. It is a fundamentally different data structure for what an agent knows.
+
+**Maximum context at ingestion.** Most memory systems save isolated question-answer pairs or summarized snippets. Gralkor captures the full multi-turn conversation — every message in the session — and feeds it to Graphiti as a single episode. It does this by monitoring OpenClaw lifecycle events (`agent_end`, `session_end`) and debouncing writes so the graph sees the complete picture, not fragmented snapshots. The difference matters: Graphiti's entity and relationship extraction works dramatically better when it has full conversational context rather than disconnected fragments.
+
+**Remembering behaviour, not just dialog.** When your agent reasons through a problem — weighing options, rejecting approaches, arriving at a conclusion — that thinking process is as valuable as the final answer. Gralkor distills the agent's thinking blocks into first-person behavioural summaries and weaves them into the episode transcript before ingestion. The graph doesn't just know what was said; it knows how the agent arrived there. This adds roughly 20% to token cost during ingestion. No other memory system captures this dimension.
+
+**Recursion through reflection.** A knowledge graph is a living structure. The most powerful thing you can do with it is point the agent back at its own memory — let it reflect on what it knows, identify contradictions, synthesize higher-order insights, and write those back. Gralkor doesn't prescribe how you do this. Instead, it provides the platform: a structured, temporally-aware graph that the agent can both read from and write to. Pair it with an OpenClaw cron job and you have a cognitive architecture where the agent periodically reviews and refines its own knowledge:
+
+```bash
+# Example: schedule the agent to reflect on its memory every 6 hours
+openclaw cron add --every 6h --prompt "Search your memory for recent facts. \
+Look for contradictions, outdated information, or patterns worth consolidating. \
+Use memory_add to store any new insights."
+```
+
+This is where it gets interesting. The graph gives you a substrate for experimentation — reflection strategies, knowledge consolidation, cross-session reasoning — that flat retrieval systems simply cannot support.
+
 ## What it does
 
 Gralkor replaces the native memory plugin entirely, taking the memory slot.
