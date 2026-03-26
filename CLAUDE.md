@@ -25,7 +25,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core` with three too
 | Entity (node) | (Graphiti-internal) | Person, concept, project, or thing extracted from episodes. Has a `summary`. Not exposed by our search endpoint — Graphiti's `search_()` API can return these but we use the simpler `search()` which returns only edges. |
 | Community | (Graphiti-internal) | Cluster of related entities. Has `name` and `summary`. Built via Graphiti's `build_communities()`. Not exposed by our search endpoint. |
 | Group | `string` | Partition key derived from `agentId` (falls back to `"default"`). One graph per agent. |
-| SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session. Keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on session boundary. |
+| SessionBuffer | `SessionBuffer` | In-memory buffer holding latest `messages` snapshot for a session. Managed by `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. Flushed as episode on idle timeout or session boundary (whichever first). |
 
 ### Plugin Registration
 
