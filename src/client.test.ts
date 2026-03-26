@@ -283,6 +283,41 @@ describe("addEpisode()", () => {
     expect(body.reference_time >= before).toBe(true);
     expect(body.reference_time <= after).toBe(true);
   });
+
+  it("includes an idempotency_key in the request body", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
+
+    await client.addEpisode({
+      name: "test",
+      episode_body: "body",
+      source_description: "src",
+      group_id: "g1",
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.idempotency_key).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+  });
+
+  it("sends the same idempotency_key on each retry attempt", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: "fail" }, 500))
+      .mockResolvedValueOnce(jsonResponse({ uuid: "ep-1" }));
+
+    await client.addEpisode({
+      name: "test",
+      episode_body: "body",
+      source_description: "src",
+      group_id: "g1",
+    });
+
+    const body1 = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const body2 = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(body1.idempotency_key).toBe(body2.idempotency_key);
+  });
 });
 
 describe("ingestMessages()", () => {
