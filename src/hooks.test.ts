@@ -7,14 +7,12 @@ import {
   createAgentEndHandler,
   createSessionEndHandler,
   flushSessionBuffer,
+  DebouncedFlush,
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
-  clearIdleTimers,
   type HookAgentContext,
-  type SessionBufferMap,
   type SessionBuffer,
-  type IdleTimerMap,
 } from "./hooks.js";
 
 function mockClient(): {
