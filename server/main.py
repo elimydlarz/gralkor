@@ -487,12 +487,12 @@ async def _format_transcript(
 
     @dataclass
     class Turn:
-        user_lines: list[str]
-        behaviour: list[str]
-        assistant_lines: list[str]
+        user_lines: list[str] = field(default_factory=list)
+        behaviour: list[str] = field(default_factory=list)
+        assistant_lines: list[str] = field(default_factory=list)
 
     # Parse messages into turns
-    turns: list[Turn] = [Turn([], [], [])]
+    turns: list[Turn] = [Turn()]
     for msg in msgs:
         if msg.role == "user":
             turns.append(Turn([], [], []))
