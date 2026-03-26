@@ -1434,20 +1434,17 @@ describe("session_end handler", () => {
 
 describe("test mode logging", () => {
   let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
     client.search.mockResolvedValue(emptySearchResults());
-    buffers = new Map();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
-    buffers.clear();
   });
 
   it("logs episode messages in test mode during flush", async () => {
@@ -1458,9 +1455,8 @@ describe("test mode logging", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { test: true });
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { test: true });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test] episode messages:"),
@@ -1477,9 +1473,8 @@ describe("test mode logging", () => {
       ],
       agentId: "agent-42",
     };
-    buffers.set("key-1", buffer);
 
-    await flushSessionBuffer("key-1", buffer, buffers, client as unknown as GraphitiClient, { test: false });
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { test: false });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test]"),
