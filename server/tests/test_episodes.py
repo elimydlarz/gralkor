@@ -60,6 +60,7 @@ async def test_add_episode_uses_reference_time_when_provided(client, mock_graphi
         "source_description": "src",
         "group_id": "g1",
         "reference_time": "2025-06-15T12:00:00+00:00",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 200
