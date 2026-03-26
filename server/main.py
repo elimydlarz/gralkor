@@ -329,7 +329,7 @@ class AddEpisodeRequest(BaseModel):
     group_id: str
     reference_time: str | None = None
     source: str | None = None
-    idempotency_key: str | None = None
+    idempotency_key: str
 
 
 class ContentBlock(BaseModel):
