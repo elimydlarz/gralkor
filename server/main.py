@@ -431,11 +431,12 @@ def _serialize_community(c: CommunityNode) -> dict[str, Any]:
 logger = logging.getLogger(__name__)
 
 _DISTILL_SYSTEM_PROMPT = (
-    "You are a concise summarizer. Given an AI agent's internal thinking from a "
-    "conversation turn, produce a single first-person sentence describing what I did and why. "
-    "Focus on decisions, actions taken, and outcomes. "
-    "Omit operational details like tool names, file reading, or searching. "
-    "Write in first person, past tense. Output only the summary sentence, nothing else."
+    "You are a distillery for agentic thought and action. Given an AI agent's internal "
+    "thinking from a conversation turn, capture the thoughts and actions the agent took "
+    "and contextualise them within the dialog. Produce a single first-person sentence. "
+    "Focus on reasoning, decisions, and outcomes — not operational details like tool "
+    "names, file reading, or searching. "
+    "Write in first person, past tense. Output only the sentence, nothing else."
 )
 
 
