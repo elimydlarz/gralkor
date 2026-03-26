@@ -1372,17 +1372,15 @@ describe("session_end handler", () => {
   let debouncer: DebouncedFlush<SessionBuffer>;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    debouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
     );
   });
 
   afterEach(() => {
     debouncer.dispose();
-    vi.useRealTimers();
   });
 
   it("flushes buffer for the ended session", async () => {
