@@ -23,6 +23,7 @@ async def test_add_episode_returns_serialized_episode(client, mock_graphiti):
         "episode_body": "hi there",
         "source_description": "test",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 200
