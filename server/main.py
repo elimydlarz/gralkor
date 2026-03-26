@@ -479,64 +479,55 @@ async def _format_transcript(
 ) -> str:
     """Format structured messages into a transcript, distilling behaviour into summaries.
 
-    Groups thinking, tool_use, and tool_result blocks per turn (all between two
-    user messages), distills each group into a single (behaviour: ...) line via
-    LLM, and formats the transcript as:
-        User: ...
-        Assistant: (behaviour: ...)
-        Assistant: ...
+    Each turn is a user message followed by assistant responses until the next
+    user message. Behaviour blocks (thinking, tool_use, tool_result) are distilled
+    into a single (behaviour: ...) line injected before the turn's assistant text.
     """
-    # Group thinking per turn and build transcript parts (without thinking)
-    turns_thinking: list[list[str]] = []  # one list of thinking texts per turn
-    current_thinking: list[str] = []
-    parts: list[tuple[str, str]] = []  # (role_prefix, text) pairs
 
+    @dataclass
+    class Turn:
+        user_lines: list[str]
+        behaviour: list[str]
+        assistant_lines: list[str]
+
+    # Parse messages into turns
+    turns: list[Turn] = [Turn([], [], [])]
     for msg in msgs:
         if msg.role == "user":
-            # Flush thinking from previous turn
-            if current_thinking:
-                turns_thinking.append(current_thinking)
-                current_thinking = []
+            turns.append(Turn([], [], []))
             for block in msg.content:
                 if block.type == "text":
-                    parts.append(("user", block.text))
+                    turns[-1].user_lines.append(block.text)
         elif msg.role == "assistant":
             for block in msg.content:
                 if block.type in ("thinking", "tool_use", "tool_result"):
-                    current_thinking.append(block.text)
+                    turns[-1].behaviour.append(block.text)
                 elif block.type == "text":
-                    parts.append(("assistant", block.text))
+                    turns[-1].assistant_lines.append(block.text)
 
-    # Flush remaining thinking
-    if current_thinking:
-        turns_thinking.append(current_thinking)
-
-    # Distill thinking into behaviour summaries
-    summaries: list[str] = []
-    if turns_thinking and llm_client:
-        joined = ["\n---\n".join(blocks) for blocks in turns_thinking]
-        sizes = [sum(len(b) for b in blocks) for blocks in turns_thinking]
-        logger.info("[gralkor] behaviour distillation — groups:%d sizes:%s totalChars:%d", len(turns_thinking), sizes, sum(sizes))
-        logger.debug("[gralkor] behaviour pre-distill:\n%s", "\n===\n".join(joined))
-        summaries = await _distill_thinking(llm_client, joined)
-        succeeded = sum(1 for s in summaries if s)
-        logger.info("[gralkor] behaviour distilled — %d/%d succeeded", succeeded, len(summaries))
+    # Distill behaviour blocks (only for turns that have them)
+    to_distill = [(i, "\n---\n".join(t.behaviour)) for i, t in enumerate(turns) if t.behaviour]
+    summaries: dict[int, str] = {}
+    if to_distill and llm_client:
+        texts = [text for _, text in to_distill]
+        sizes = [len(text) for text in texts]
+        logger.info("[gralkor] behaviour distillation — groups:%d sizes:%s totalChars:%d", len(texts), sizes, sum(sizes))
+        logger.debug("[gralkor] behaviour pre-distill:\n%s", "\n===\n".join(texts))
+        results = await _distill_thinking(llm_client, texts)
+        for (i, _), result in zip(to_distill, results):
+            if result:
+                summaries[i] = result
+        logger.info("[gralkor] behaviour distilled — %d/%d succeeded", len(summaries), len(texts))
         logger.debug("[gralkor] behaviour post-distill: %s", summaries)
 
-    # Build transcript with behaviour summaries injected
+    # Format transcript
     lines: list[str] = []
-    turn_index = -1
-    injected: set[int] = set()
-
-    for role, text in parts:
-        if role == "user":
-            turn_index += 1
+    for i, turn in enumerate(turns):
+        for text in turn.user_lines:
             lines.append(f"User: {text}")
-        elif role == "assistant":
-            # Inject behaviour summary before first assistant line of this turn
-            if turn_index >= 0 and turn_index not in injected and turn_index < len(summaries) and summaries[turn_index]:
-                lines.append(f"Assistant: (behaviour: {summaries[turn_index]})")
-                injected.add(turn_index)
+        if i in summaries:
+            lines.append(f"Assistant: (behaviour: {summaries[i]})")
+        for text in turn.assistant_lines:
             lines.append(f"Assistant: {text}")
 
     return "\n".join(lines)
