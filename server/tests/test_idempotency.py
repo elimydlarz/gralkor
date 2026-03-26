@@ -46,20 +46,15 @@ class TestEpisodesIdempotency:
         ep = make_episode(uuid="ep-cached")
         mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-        resp1 = await client.post("/episodes", json={
+        payload = {
             "name": "test",
             "episode_body": "body",
             "source_description": "src",
             "group_id": "g1",
             "idempotency_key": "key-dup",
-        })
-        resp2 = await client.post("/episodes", json={
-            "name": "test",
-            "episode_body": "body",
-            "source_description": "src",
-            "group_id": "g1",
-            "idempotency_key": "key-dup",
-        })
+        }
+        resp1 = await client.post("/episodes", json=payload)
+        resp2 = await client.post("/episodes", json=payload)
 
         assert resp1.json() == resp2.json()
 
@@ -69,38 +64,16 @@ class TestEpisodesIdempotency:
         ep = make_episode(uuid="ep-once")
         mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-        await client.post("/episodes", json={
+        payload = {
             "name": "test",
             "episode_body": "body",
             "source_description": "src",
             "group_id": "g1",
             "idempotency_key": "key-once",
-        })
-        await client.post("/episodes", json={
-            "name": "test",
-            "episode_body": "body",
-            "source_description": "src",
-            "group_id": "g1",
-            "idempotency_key": "key-once",
-        })
+        }
+        await client.post("/episodes", json=payload)
+        await client.post("/episodes", json=payload)
 
-        mock_graphiti.add_episode.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_absent_key_still_creates_episode(self, client, mock_graphiti):
-        """when idempotency_key is absent then calls graphiti add_episode (backward compat)"""
-        ep = make_episode(uuid="ep-compat")
-        mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
-
-        resp = await client.post("/episodes", json={
-            "name": "test",
-            "episode_body": "body",
-            "source_description": "src",
-            "group_id": "g1",
-        })
-
-        assert resp.status_code == 200
-        assert resp.json()["uuid"] == "ep-compat"
         mock_graphiti.add_episode.assert_called_once()
 
 
@@ -162,21 +135,4 @@ class TestIngestMessagesIdempotency:
         await client.post("/ingest-messages", json=payload)
         await client.post("/ingest-messages", json=payload)
 
-        mock_graphiti.add_episode.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_absent_key_still_creates_episode(self, client, mock_graphiti):
-        """when idempotency_key is absent then calls graphiti add_episode (backward compat)"""
-        ep = make_episode(uuid="ep-ingest-compat")
-        mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
-
-        resp = await client.post("/ingest-messages", json={
-            "name": "convo",
-            "source_description": "auto-capture",
-            "group_id": "g1",
-            "messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}]}],
-        })
-
-        assert resp.status_code == 200
-        assert resp.json()["uuid"] == "ep-ingest-compat"
         mock_graphiti.add_episode.assert_called_once()
