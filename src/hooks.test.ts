@@ -1200,8 +1200,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   });
 
   it("string content flows through buffer → flush → addEpisode", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const agentEnd = createAgentEndHandler(defaultConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
@@ -1217,7 +1217,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     expect(client.ingestMessages).not.toHaveBeenCalled();
 
     await sessionEnd({}, sessionCtx);
-    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
