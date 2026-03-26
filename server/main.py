@@ -668,15 +668,25 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
 
 
 def _prioritize_facts(edges: list[EntityEdge], limit: int) -> list[EntityEdge]:
-    """Prioritize valid facts over expired ones.
+    """Prioritize facts: valid first, then expired, then invalid last.
 
-    Expired facts (expired_at set) have been superseded by newer facts.
-    They may still be relevant as historical context, but valid facts
-    should fill available slots first.
+    - Valid: no invalid_at — currently true, highest priority
+    - Expired: has expired_at but no invalid_at — superseded, part of an
+      active trail (the graph kept evolving this relationship)
+    - Invalid: has invalid_at, no expired_at — marked as no longer true
+      with no successor, least useful
     """
-    valid = [e for e in edges if e.expired_at is None]
-    expired = [e for e in edges if e.expired_at is not None]
-    return (valid + expired)[:limit]
+    valid = []
+    expired = []
+    invalid = []
+    for e in edges:
+        if e.invalid_at is not None and e.expired_at is None:
+            invalid.append(e)
+        elif e.expired_at is not None:
+            expired.append(e)
+        else:
+            valid.append(e)
+    return (valid + expired + invalid)[:limit]
 
 
 @app.post("/search")
