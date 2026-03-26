@@ -480,10 +480,10 @@ async def _format_transcript(
     """Format structured messages into a transcript, distilling thinking into behaviour summaries.
 
     Groups thinking blocks per turn (all thinking between two user messages),
-    distills each group into a single (action: ...) line via LLM, and formats
+    distills each group into a single (behaviour: ...) line via LLM, and formats
     the transcript as:
         User: ...
-        Assistant: (action: ...)
+        Assistant: (behaviour: ...)
         Assistant: ...
     """
     # Group thinking per turn and build transcript parts (without thinking)
