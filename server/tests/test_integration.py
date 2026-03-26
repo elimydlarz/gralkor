@@ -158,7 +158,7 @@ async def test_ingest_messages_with_thinking_distillation():
                 "name": "test-conversation",
                 "source_description": "functional-test",
                 "group_id": "test-group",
-                "idempotency_key": "test-key",
+                "idempotency_key": "integration-distillation-test",
                 "messages": [
                     {"role": "user", "content": [{"type": "text", "text": "Fix the auth bug"}]},
                     {"role": "assistant", "content": [
