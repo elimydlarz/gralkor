@@ -293,10 +293,8 @@ _idempotency_store: dict[str, tuple[dict[str, Any], float]] = {}
 _IDEMPOTENCY_TTL = 300  # 5 minutes
 
 
-def _idempotency_check(key: str | None) -> dict[str, Any] | None:
+def _idempotency_check(key: str) -> dict[str, Any] | None:
     """Return cached episode if key exists and is not expired, else None."""
-    if not key:
-        return None
     entry = _idempotency_store.get(key)
     if entry is None:
         return None
@@ -306,10 +304,8 @@ def _idempotency_check(key: str | None) -> dict[str, Any] | None:
     return None
 
 
-def _idempotency_store_result(key: str | None, result: dict[str, Any]) -> None:
+def _idempotency_store_result(key: str, result: dict[str, Any]) -> None:
     """Cache the result under the idempotency key with TTL."""
-    if not key:
-        return
     _idempotency_store[key] = (result, time.monotonic() + _IDEMPOTENCY_TTL)
     # Lazy cleanup when store grows large
     if len(_idempotency_store) > 100:
