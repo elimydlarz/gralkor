@@ -401,10 +401,10 @@ logger = logging.getLogger(__name__)
 
 _DISTILL_SYSTEM_PROMPT = (
     "You are a concise summarizer. Given an AI agent's internal thinking from a "
-    "conversation turn, produce a single sentence describing what the agent did and why. "
+    "conversation turn, produce a single first-person sentence describing what I did and why. "
     "Focus on decisions, actions taken, and outcomes. "
     "Omit operational details like tool names, file reading, or searching. "
-    "Write in past tense. Output only the summary sentence, nothing else."
+    "Write in first person, past tense. Output only the summary sentence, nothing else."
 )
 
 
