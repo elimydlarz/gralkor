@@ -359,17 +359,6 @@ export interface SessionBuffer {
   sessionKey?: string;
 }
 
-export type SessionBufferMap = Map<string, SessionBuffer>;
-
-export type IdleTimerMap = Map<string, ReturnType<typeof setTimeout>>;
-
-export function clearIdleTimers(timers: IdleTimerMap): void {
-  for (const timer of timers.values()) {
-    clearTimeout(timer);
-  }
-  timers.clear();
-}
-
 function resolveBufferKey(ctx: { sessionKey?: string; agentId?: string }): string {
   return ctx.sessionKey || ctx.agentId || "default";
 }
@@ -383,20 +372,74 @@ function isRetryableError(err: unknown): boolean {
 }
 
 /**
- * Flush a single session buffer → episode, then delete it from the map.
- * Called by session_end handler. Retries up to 3 times with exponential backoff.
+ * Keyed debouncer: stores a value per key and flushes it after idle timeout.
+ * Each `set()` resets the timer. `flush()` forces immediate delivery.
+ * At most one flush per key — whichever fires first (idle or explicit) wins.
+ */
+export class DebouncedFlush<T> {
+  private entries = new Map<string, T>();
+  private timers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor(
+    private delayMs: number,
+    private onFlush: (key: string, value: T) => Promise<void>,
+  ) {}
+
+  set(key: string, value: T): void {
+    this.entries.set(key, value);
+    const existing = this.timers.get(key);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.timers.delete(key);
+      const val = this.entries.get(key);
+      if (!val) return;
+      this.entries.delete(key);
+      this.onFlush(key, val).catch(() => {});
+    }, this.delayMs);
+    timer.unref();
+    this.timers.set(key, timer);
+  }
+
+  async flush(key: string): Promise<void> {
+    const timer = this.timers.get(key);
+    if (timer) { clearTimeout(timer); this.timers.delete(key); }
+    const val = this.entries.get(key);
+    if (!val) return;
+    this.entries.delete(key);
+    await this.onFlush(key, val);
+  }
+
+  has(key: string): boolean {
+    return this.entries.has(key);
+  }
+
+  get pendingCount(): number {
+    return this.entries.size;
+  }
+
+  get timerCount(): number {
+    return this.timers.size;
+  }
+
+  dispose(): void {
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear();
+    this.entries.clear();
+  }
+}
+
+/**
+ * Flush a session buffer → episode. Retries up to 3 times with exponential backoff.
  */
 export async function flushSessionBuffer(
   key: string,
   buffer: SessionBuffer,
-  buffers: SessionBufferMap,
   client: GraphitiClient,
   { retryDelayMs = 1000, test }: { retryDelayMs?: number; test?: boolean } = {},
 ): Promise<void> {
   const filtered = extractMessagesFromCtx({ messages: buffer.messages });
   if (filtered.length === 0) {
     console.log(`[gralkor] auto-capture flush skip (empty) — key:${key}`);
-    buffers.delete(key);
     return;
   }
 
@@ -414,9 +457,6 @@ export async function flushSessionBuffer(
   if (test) {
     console.log(`[gralkor] [test] episode messages:\n${JSON.stringify(filtered, null, 2)}`);
   }
-
-  // Remove buffer before API call so errors don't leave stale entries
-  buffers.delete(key);
 
   const maxRetries = 3;
   let lastError: unknown;
@@ -451,10 +491,8 @@ export async function flushSessionBuffer(
 }
 
 export function createAgentEndHandler(
-  client: GraphitiClient,
   config: GralkorConfig,
-  buffers: SessionBufferMap,
-  timers?: IdleTimerMap,
+  debouncer: DebouncedFlush<SessionBuffer>,
 ) {
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
     console.log(`[gralkor] agent_end — agentId:${ctx.agentId} messages:${event.messages?.length ?? 0} success:${event.success}`);
@@ -471,71 +509,35 @@ export function createAgentEndHandler(
 
     const key = resolveBufferKey(ctx);
 
-    buffers.set(key, {
-      messages: event.messages,
-      agentId: ctx.agentId,
-      sessionKey: ctx.sessionKey,
-    });
-
     const userCount = event.messages.filter(m => m.role === "user").length;
     const assistantCount = event.messages.filter(m => m.role === "assistant").length;
     const thinkingBlocks = event.messages
       .filter(m => m.role === "assistant")
       .reduce((sum, m) => sum + normalizeContent(m.content).filter(isThinkingBlock).length, 0);
 
+    debouncer.set(key, {
+      messages: event.messages,
+      agentId: ctx.agentId,
+      sessionKey: ctx.sessionKey,
+    });
+
     console.log(`[gralkor] auto-capture buffered — key:${key} total:${event.messages.length} user:${userCount} assistant:${assistantCount} thinkingBlocks:${thinkingBlocks}`);
-
-    // Reset idle timer for this buffer key
-    if (timers) {
-      const existingTimer = timers.get(key);
-      if (existingTimer) clearTimeout(existingTimer);
-
-      const timer = setTimeout(() => {
-        timers.delete(key);
-        const buf = buffers.get(key);
-        if (!buf) {
-          console.log(`[gralkor] auto-capture idle no-op — key:${key}`);
-          return;
-        }
-        console.log(`[gralkor] auto-capture idle flush — key:${key}`);
-        flushSessionBuffer(key, buf, buffers, client, { test: config.test }).catch((err) => {
-          console.error(`[gralkor] auto-capture idle flush failed — key:${key}:`, err instanceof Error ? err.message : err);
-          throw err;
-        });
-      }, config.idleTimeoutMs);
-
-      timer.unref();
-      timers.set(key, timer);
-    }
   };
 }
 
 
 export function createSessionEndHandler(
-  client: GraphitiClient,
-  config: GralkorConfig,
-  buffers: SessionBufferMap,
-  timers?: IdleTimerMap,
+  debouncer: DebouncedFlush<SessionBuffer>,
 ) {
   return async (_event: HookEvent, ctx: HookSessionContext): Promise<void> => {
     const key = resolveBufferKey(ctx);
-    const buffer = buffers.get(key);
-    if (!buffer) {
+    if (!debouncer.has(key)) {
       console.log(`[gralkor] session_end — no buffer for key:${key}`);
       return;
     }
 
-    // Cancel idle timer — session_end wins the race
-    if (timers) {
-      const timer = timers.get(key);
-      if (timer) {
-        clearTimeout(timer);
-        timers.delete(key);
-      }
-    }
-
     console.log(`[gralkor] session_end flush — key:${key}`);
-    await flushSessionBuffer(key, buffer, buffers, client, { test: config.test });
+    await debouncer.flush(key);
   };
 }
 
