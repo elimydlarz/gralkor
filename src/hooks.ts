@@ -44,9 +44,11 @@ function isTextBlock(block: ContentBlock): boolean {
 
 /**
  * Check if a content block is a thinking block with content.
+ * OpenClaw may place thinking text in `block.thinking` (Anthropic native)
+ * or `block.text` (normalised). Check both to avoid silent drops.
  */
 function isThinkingBlock(block: ContentBlock): boolean {
-  return block.type === "thinking" && !!(block.thinking as string | undefined);
+  return block.type === "thinking" && !!((block.thinking as string | undefined) || block.text);
 }
 
 /**
