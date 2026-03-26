@@ -552,6 +552,12 @@ async def health():
 
 @app.post("/episodes")
 async def add_episode(req: AddEpisodeRequest):
+    cached = _idempotency_check(req.idempotency_key)
+    if cached is not None:
+        logger.info("[gralkor] add-episode idempotent hit — key:%s uuid:%s",
+                    req.idempotency_key, cached.get("uuid"))
+        return cached
+
     logger.info("[gralkor] add-episode — group:%s name:%s bodyChars:%d source:%s",
                 req.group_id, req.name, len(req.episode_body), req.source or "message")
     logger.debug("[gralkor] add-episode body:\n%s", req.episode_body)
@@ -578,7 +584,9 @@ async def add_episode(req: AddEpisodeRequest):
     episode = result.episode
     logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
     logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
-    return _serialize_episode(episode)
+    serialized = _serialize_episode(episode)
+    _idempotency_store_result(req.idempotency_key, serialized)
+    return serialized
 
 
 @app.post("/ingest-messages")
