@@ -129,7 +129,7 @@ export class GraphitiClient {
   async addEpisode(params: AddEpisodeParams): Promise<Episode> {
     return this.request("POST", "/episodes", {
       ...params,
-      idempotency_key: params.idempotency_key ?? crypto.randomUUID(),
+      idempotency_key: crypto.randomUUID(),
       reference_time: new Date().toISOString(),
     });
   }
@@ -137,7 +137,7 @@ export class GraphitiClient {
   async ingestMessages(params: IngestMessagesParams): Promise<Episode> {
     return this.request("POST", "/ingest-messages", {
       ...params,
-      idempotency_key: params.idempotency_key ?? crypto.randomUUID(),
+      idempotency_key: crypto.randomUUID(),
       reference_time: new Date().toISOString(),
     });
   }
