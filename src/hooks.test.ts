@@ -1063,17 +1063,15 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   let debouncer: DebouncedFlush<SessionBuffer>;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    debouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
     );
   });
 
   afterEach(() => {
     debouncer.dispose();
-    vi.useRealTimers();
   });
 
   it("3 turns then session_end → single episode with full conversation", async () => {
