@@ -453,7 +453,7 @@ async def _distill_one(llm_client: Any, thinking: str) -> str:
 
 
 async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list[str]:
-    """Distill thinking blocks into behaviour summaries, one per turn.
+    """Distill behaviour blocks (thinking + tool use) into summaries, one per turn.
 
     Returns a list parallel to thinking_blocks. Failed entries are empty strings.
     """
