@@ -22,12 +22,13 @@ export function registerHooks(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
-  const buffers: SessionBufferMap = new Map();
-  const timers: IdleTimerMap = new Map();
+  const debouncer = new DebouncedFlush<SessionBuffer>(config.idleTimeoutMs, (key, buf) =>
+    flushSessionBuffer(key, buf, client, { test: config.test }),
+  );
 
   api.on("before_agent_start", createBeforeAgentStartHandler(client, config, opts));
-  api.on("agent_end", createAgentEndHandler(client, config, buffers, timers));
-  api.on("session_end", createSessionEndHandler(client, config, buffers, timers));
+  api.on("agent_end", createAgentEndHandler(config, debouncer));
+  api.on("session_end", createSessionEndHandler(debouncer));
 }
 
 export function registerServerService(
