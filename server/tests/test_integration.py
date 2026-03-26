@@ -173,8 +173,8 @@ async def test_ingest_messages_with_thinking_distillation():
             call_kwargs = mock_graphiti.add_episode.call_args.kwargs
             body = call_kwargs["episode_body"]
 
-            # Distilled action appears
-            assert "Assistant: (action: Investigated and resolved the auth bug)" in body
+            # Distilled behaviour appears
+            assert "Assistant: (behaviour: Investigated and resolved the auth bug)" in body
             # Formatted transcript appears
             assert "User: Fix the auth bug" in body
             assert "Assistant: Fixed the null check in auth.ts" in body
