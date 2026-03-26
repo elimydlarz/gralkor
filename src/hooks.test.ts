@@ -1077,8 +1077,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   });
 
   it("3 turns then session_end → single episode with full conversation", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const agentEnd = createAgentEndHandler(defaultConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
 
@@ -1115,15 +1115,14 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     // No episodes created yet
     expect(client.ingestMessages).not.toHaveBeenCalled();
 
-    // Session ends (flush is fire-and-forget)
+    // Session ends
     await sessionEnd({}, sessionCtx);
-    await new Promise((r) => setTimeout(r, 0));
 
     // Exactly 1 episode with all 3 turns as structured messages
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string }> };
     expect(call.messages).toHaveLength(6); // 3 user + 3 assistant
-    expect(buffers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
   });
 
   it("3 turns then session_end → single episode", async () => {
