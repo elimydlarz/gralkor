@@ -65,7 +65,7 @@ async def test_no_thinking_skips_distillation():
 
 
 @pytest.mark.asyncio
-async def test_distillation_failure_drops_action():
+async def test_distillation_failure_drops_behaviour():
     llm = AsyncMock()
     llm.generate_response = AsyncMock(side_effect=RuntimeError("LLM down"))
 
