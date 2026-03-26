@@ -129,6 +129,7 @@ async def client(mock_graphiti):
 
     original = main_mod.graphiti
     main_mod.graphiti = mock_graphiti
+    main_mod._idempotency_store.clear()
     transport = ASGITransport(app=main_mod.app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
