@@ -1226,8 +1226,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   });
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const agentEnd = createAgentEndHandler(defaultConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
     const agentCtx = { agentId: "agent-1", sessionKey: "sess-1" };
     const sessionCtx = { agentId: "agent-1", sessionId: "sid-1", sessionKey: "sess-1" };
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Name is Eli\n</gralkor-memory>\n';
@@ -1251,7 +1251,6 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     }, agentCtx);
 
     await sessionEnd({}, sessionCtx);
-    await new Promise((r) => setTimeout(r, 0));
 
     const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     const userTexts = call.messages.filter(m => m.role === "user").map(m => m.content[0].text);
