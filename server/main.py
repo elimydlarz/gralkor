@@ -366,7 +366,7 @@ class IngestMessagesRequest(BaseModel):
     group_id: str
     messages: list[ConversationMessage]
     reference_time: str | None = None
-    idempotency_key: str | None = None
+    idempotency_key: str
 
 
 class SearchRequest(BaseModel):
