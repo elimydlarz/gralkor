@@ -474,11 +474,11 @@ async def _format_transcript(
     msgs: list[ConversationMessage],
     llm_client: Any | None,
 ) -> str:
-    """Format structured messages into a transcript, distilling thinking into behaviour summaries.
+    """Format structured messages into a transcript, distilling behaviour into summaries.
 
-    Groups thinking blocks per turn (all thinking between two user messages),
-    distills each group into a single (behaviour: ...) line via LLM, and formats
-    the transcript as:
+    Groups thinking, tool_use, and tool_result blocks per turn (all between two
+    user messages), distills each group into a single (behaviour: ...) line via
+    LLM, and formats the transcript as:
         User: ...
         Assistant: (behaviour: ...)
         Assistant: ...
