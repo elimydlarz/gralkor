@@ -467,7 +467,7 @@ async def _distill_thinking(llm_client: Any, thinking_blocks: list[str]) -> list
         try:
             return await _distill_one(llm_client, thinking)
         except Exception as e:
-            logger.warning("Thinking distillation failed: %s", e)
+            logger.warning("Behaviour distillation failed: %s", e)
             return ""
 
     return list(await asyncio.gather(*[_safe_distill(t) for t in thinking_blocks]))
