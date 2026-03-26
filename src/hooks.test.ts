@@ -1159,8 +1159,8 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
   });
 
   it("two concurrent sessions flush independently", async () => {
-    const agentEnd = createAgentEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
-    const sessionEnd = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const agentEnd = createAgentEndHandler(defaultConfig, debouncer);
+    const sessionEnd = createSessionEndHandler(debouncer);
 
     const ctx1 = { agentId: "agent-1", sessionKey: "sess-1" };
     const ctx2 = { agentId: "agent-1", sessionKey: "sess-2" };
@@ -1179,26 +1179,24 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
       ],
     }, ctx2);
 
-    expect(buffers.size).toBe(2);
+    expect(debouncer.pendingCount).toBe(2);
 
-    // End session 1 only (flush is fire-and-forget)
+    // End session 1 only
     await sessionEnd({}, { ...ctx1, sessionId: "sid-1" });
-    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
     const call1 = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call1.messages[0].content[0].text).toContain("Session 1");
-    expect(buffers.size).toBe(1);
-    expect(buffers.has("sess-2")).toBe(true);
+    expect(debouncer.pendingCount).toBe(1);
+    expect(debouncer.has("sess-2")).toBe(true);
 
-    // End session 2 (flush is fire-and-forget)
+    // End session 2
     await sessionEnd({}, { ...ctx2, sessionId: "sid-2" });
-    await new Promise((r) => setTimeout(r, 0));
 
     expect(client.ingestMessages).toHaveBeenCalledTimes(2);
     const call2 = client.ingestMessages.mock.calls[1][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
     expect(call2.messages[0].content[0].text).toContain("Session 2");
-    expect(buffers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
   });
 
   it("string content flows through buffer → flush → addEpisode", async () => {
