@@ -1371,16 +1371,25 @@ describe("flushSessionBuffer", () => {
 
 describe("session_end handler", () => {
   let client: ReturnType<typeof mockClient>;
-  let buffers: SessionBufferMap;
+  let debouncer: DebouncedFlush<SessionBuffer>;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     client = mockClient();
     client.ingestMessages.mockResolvedValue({});
-    buffers = new Map();
+    debouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
+    );
+  });
+
+  afterEach(() => {
+    debouncer.dispose();
+    vi.useRealTimers();
   });
 
   it("flushes buffer for the ended session", async () => {
-    buffers.set("session-abc", {
+    // Populate via debouncer.set (simulating what agent_end would do)
+    debouncer.set("session-abc", {
       messages: [
         { role: "user", content: [{ type: "text", text: "Conversation" }] },
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
@@ -1389,18 +1398,15 @@ describe("session_end handler", () => {
       sessionKey: "session-abc",
     });
 
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createSessionEndHandler(debouncer);
     await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
-    // flush is fire-and-forget — wait for the microtask to settle
-    await new Promise((r) => setTimeout(r, 0));
-
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    expect(buffers.size).toBe(0);
+    expect(debouncer.pendingCount).toBe(0);
   });
 
   it("does nothing when no buffer exists", async () => {
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createSessionEndHandler(debouncer);
     await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
 
     expect(client.ingestMessages).not.toHaveBeenCalled();
@@ -1409,7 +1415,7 @@ describe("session_end handler", () => {
   it("propagates error when flush fails", async () => {
     client.ingestMessages.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
 
-    buffers.set("session-abc", {
+    debouncer.set("session-abc", {
       messages: [
         { role: "user", content: [{ type: "text", text: "Conversation" }] },
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
@@ -1418,7 +1424,7 @@ describe("session_end handler", () => {
       sessionKey: "session-abc",
     });
 
-    const handler = createSessionEndHandler(client as unknown as GraphitiClient, defaultConfig, buffers);
+    const handler = createSessionEndHandler(debouncer);
 
     await expect(
       handler({}, { sessionId: "sid-1", sessionKey: "session-abc" }),
