@@ -443,7 +443,7 @@ _DISTILL_SYSTEM_PROMPT = (
 
 
 async def _distill_one(llm_client: Any, thinking: str) -> str:
-    """Distill a single turn's thinking into an action summary."""
+    """Distill a single turn's thinking into an behaviour summary."""
     from graphiti_core.prompts.models import Message
 
     messages = [
@@ -532,7 +532,7 @@ async def _format_transcript(
             turn_index += 1
             lines.append(f"User: {text}")
         elif role == "assistant":
-            # Inject action summary before first assistant line of this turn
+            # Inject behaviour summary before first assistant line of this turn
             if turn_index >= 0 and turn_index not in injected and turn_index < len(summaries) and summaries[turn_index]:
                 lines.append(f"Assistant: (behaviour: {summaries[turn_index]})")
                 injected.add(turn_index)
