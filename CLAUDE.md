@@ -105,10 +105,9 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 6. Skip if disabled or empty (no messages after filtering).
 7. POST to `/ingest-messages` with structured `messages` array and `reference_time`. The server formats the transcript and distills thinking (see below).
 8. **Server-side transcript formatting + thinking distillation:** `_format_transcript()` groups thinking blocks per turn, distills each group into a single first-person behaviour summary via the configured LLM in parallel, then builds the transcript with `Assistant: (behaviour: {summary})` lines injected before each turn's first assistant text. If distillation fails for a turn, the behaviour line is silently dropped. The resulting text is passed to `graphiti.add_episode()`.
-9. Buffer is deleted before the API call (so errors don't leave stale entries).
-10. `ingestMessages` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
+9. `flushSessionBuffer` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
 
-**Unrecoverable edge case:** If the process terminates before either `session_end` or the idle timer fires, buffered messages are lost. The idle timer uses `unref()` so it doesn't block Node shutdown.
+**Unrecoverable edge case:** If the process terminates before either `session_end` or the idle timer fires, buffered messages are lost. Idle timers use `unref()` so they don't block Node shutdown.
 
 ### Graph Partitioning
 
