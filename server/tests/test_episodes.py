@@ -76,6 +76,7 @@ async def test_add_episode_defaults_reference_time_to_utc_now(client, mock_graph
         "episode_body": "body",
         "source_description": "src",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 200
@@ -94,6 +95,7 @@ async def test_add_episode_missing_required_field_returns_422(client):
         # episode_body missing
         "source_description": "src",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
     assert resp.status_code == 422
 
@@ -146,6 +148,7 @@ async def test_add_episode_defaults_to_message_type(client, mock_graphiti):
         "episode_body": "body",
         "source_description": "src",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 200
@@ -223,6 +226,7 @@ async def test_add_episode_rate_limit_returns_429(client, mock_graphiti):
         "episode_body": "body",
         "source_description": "src",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
 
     assert resp.status_code == 429
