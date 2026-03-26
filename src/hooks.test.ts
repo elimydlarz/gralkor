@@ -1322,7 +1322,7 @@ describe("flushSessionBuffer", () => {
     expect(client.ingestMessages).toHaveBeenCalledTimes(3);
   });
 
-  it("sends structured messages with thinking blocks to addEpisode", async () => {
+  it("sends structured messages with thinking and tool_use blocks to ingestMessages", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
@@ -1345,6 +1345,7 @@ describe("flushSessionBuffer", () => {
           { role: "assistant", content: [
             { type: "thinking", text: "I should check auth.ts" },
             { type: "text", text: "Let me look at the auth module." },
+            { type: "tool_use", text: 'Tool: Read\nInput: {"path":"auth.ts"}' },
             { type: "text", text: "Found the bug on line 42." },
           ]},
         ],
