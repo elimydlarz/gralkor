@@ -915,7 +915,7 @@ describe("agent_end handler", () => {
 
   it("propagates errors when Graphiti is unreachable on flush (after retries)", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
-    const errorDebouncer = new DebouncedFlush<SessionBuffer>(Infinity, (key, buf) =>
+    const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     );
 
