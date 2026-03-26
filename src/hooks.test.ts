@@ -199,6 +199,83 @@ describe("extractMessagesFromCtx", () => {
     ]);
   });
 
+  it("serializes toolUse blocks as tool_use", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "toolUse", name: "Bash", input: { command: "ls" } },
+        ]},
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_use", text: 'Tool: Bash\nInput: {"command":"ls"}' },
+      ]},
+    ]);
+  });
+
+  it("serializes functionCall blocks as tool_use using arguments field", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "functionCall", name: "search", arguments: { query: "foo" } },
+        ]},
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_use", text: 'Tool: search\nInput: {"query":"foo"}' },
+      ]},
+    ]);
+  });
+
+  it("serializes tool blocks without input", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "assistant", content: [
+          { type: "toolCall", name: "Read" },
+        ]},
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_use", text: "Tool: Read" },
+      ]},
+    ]);
+  });
+
+  it("truncates toolResult text at 1000 chars", () => {
+    const longText = "x".repeat(1500);
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "toolResult", content: [{ type: "text", text: longText }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [
+        { type: "tool_result", text: "x".repeat(1000) + "... (truncated)" },
+      ]},
+    ]);
+  });
+
+  it("drops toolResult messages with no text content", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "toolResult", content: [{ type: "image", data: "..." }] },
+      ],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("maps toolResult messages to assistant role", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "toolResult", content: [{ type: "text", text: "result data" }] },
+      ],
+    });
+    expect(result[0].role).toBe("assistant");
+  });
+
   it("strips <gralkor-memory> XML from user messages", () => {
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts\n</gralkor-memory>\n';
     const result = extractMessagesFromCtx({
