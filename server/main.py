@@ -441,7 +441,7 @@ _DISTILL_SYSTEM_PROMPT = (
 
 
 async def _distill_one(llm_client: Any, thinking: str) -> str:
-    """Distill a single turn's thinking into an behaviour summary."""
+    """Distill a single turn's behaviour (thinking + tool use) into a summary."""
     from graphiti_core.prompts.models import Message
 
     messages = [
