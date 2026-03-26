@@ -188,6 +188,7 @@ async def test_add_episode_backend_error_propagates(client, mock_graphiti):
             "episode_body": "body",
             "source_description": "src",
             "group_id": "g1",
+            "idempotency_key": "test-key",
         })
 
 
