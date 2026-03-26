@@ -49,6 +49,37 @@ function isThinkingBlock(block: ContentBlock): boolean {
   return block.type === "thinking" && !!(block.thinking as string | undefined);
 }
 
+/** Tool block type names used by OpenClaw providers. */
+const TOOL_BLOCK_TYPES = new Set(["toolCall", "toolUse", "functionCall"]);
+
+/**
+ * Check if a content block is a tool call block.
+ */
+function isToolBlock(block: ContentBlock): boolean {
+  return TOOL_BLOCK_TYPES.has(block.type);
+}
+
+/**
+ * Serialize a tool call block into a human-readable text representation.
+ */
+function serializeToolBlock(block: ContentBlock): string {
+  const name = (block.name as string) || "unknown";
+  const input = block.input ?? block.arguments ?? block.params;
+  const inputStr = input ? JSON.stringify(input) : "";
+  return inputStr ? `Tool: ${name}\nInput: ${inputStr}` : `Tool: ${name}`;
+}
+
+/** Maximum characters for tool result text before truncation. */
+const TOOL_RESULT_TRUNCATE_LIMIT = 1000;
+
+/**
+ * Truncate text to a character limit, appending an indicator if truncated.
+ */
+function truncateText(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  return text.slice(0, limit) + "... (truncated)";
+}
+
 /**
  * Hook event — the first argument passed to hook handlers.
  *
