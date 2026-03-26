@@ -667,6 +667,18 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
         print(f"[gralkor] driver graph routed: {target}", flush=True)
 
 
+def _prioritize_facts(edges: list[EntityEdge], limit: int) -> list[EntityEdge]:
+    """Prioritize valid facts over expired ones.
+
+    Expired facts (expired_at set) have been superseded by newer facts.
+    They may still be relevant as historical context, but valid facts
+    should fill available slots first.
+    """
+    valid = [e for e in edges if e.expired_at is None]
+    expired = [e for e in edges if e.expired_at is not None]
+    return (valid + expired)[:limit]
+
+
 @app.post("/search")
 async def search(req: SearchRequest):
     logger.info("[gralkor] search — query:%d chars group_ids:%s num_results:%d",
@@ -678,19 +690,24 @@ async def search(req: SearchRequest):
     # searches return 0 results. Fix: route to the correct graph here.
     _ensure_driver_graph(req.group_ids)
     t0 = time.monotonic()
+    # Over-fetch to compensate for expired facts that will be deprioritized.
+    fetch_limit = req.num_results * 2
     try:
         edges = await graphiti.search(
             query=_sanitize_query(req.query),
             group_ids=req.group_ids,
-            num_results=req.num_results,
+            num_results=fetch_limit,
         )
     except Exception as e:
         duration_ms = (time.monotonic() - t0) * 1000
         logger.error("[gralkor] search failed — %.0fms: %s", duration_ms, e)
         raise
     duration_ms = (time.monotonic() - t0) * 1000
-    result = [_serialize_fact(e) for e in edges]
-    logger.info("[gralkor] search result — %d facts %.0fms", len(edges), duration_ms)
+    prioritized = _prioritize_facts(edges, req.num_results)
+    expired_count = sum(1 for e in prioritized if e.expired_at is not None)
+    result = [_serialize_fact(e) for e in prioritized]
+    logger.info("[gralkor] search result — %d facts (%d valid, %d expired) from %d fetched %.0fms",
+                len(prioritized), len(prioritized) - expired_count, expired_count, len(edges), duration_ms)
     logger.debug("[gralkor] search facts: %s", result)
     return {"facts": result}
 
