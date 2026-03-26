@@ -19,6 +19,7 @@ async def test_ingest_formats_transcript_and_creates_episode(client, mock_graphi
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
             {"role": "assistant", "content": [{"type": "text", "text": "Fixed it!"}]},
@@ -44,6 +45,7 @@ async def test_ingest_distills_thinking_into_behaviour(client, mock_graphiti):
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
             {"role": "assistant", "content": [
@@ -72,6 +74,7 @@ async def test_ingest_distillation_failure_drops_behaviour(client, mock_graphiti
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
             {"role": "assistant", "content": [
@@ -96,6 +99,7 @@ async def test_ingest_no_thinking_skips_distillation(client, mock_graphiti):
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
         "messages": [
             {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
             {"role": "assistant", "content": [{"type": "text", "text": "Hi"}]},
@@ -114,6 +118,7 @@ async def test_ingest_missing_required_field_returns_422(client):
         # messages missing
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
     })
     assert resp.status_code == 422
 
@@ -128,6 +133,7 @@ async def test_ingest_empty_messages_creates_empty_episode(client, mock_graphiti
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
+        "idempotency_key": "test-key",
         "messages": [],
     })
 
