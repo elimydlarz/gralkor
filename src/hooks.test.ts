@@ -139,7 +139,7 @@ describe("extractMessagesFromCtx", () => {
     ]);
   });
 
-  it("drops assistant messages with only toolCall blocks", () => {
+  it("keeps assistant messages with only toolCall blocks", () => {
     const result = extractMessagesFromCtx({
       messages: [
         { role: "assistant", content: [
@@ -149,6 +149,7 @@ describe("extractMessagesFromCtx", () => {
       ],
     });
     expect(result).toEqual([
+      { role: "assistant", content: [{ type: "tool_use", text: 'Tool: Read\nInput: {"path":"auth.ts"}' }] },
       { role: "assistant", content: [{ type: "text", text: "Done" }] },
     ]);
   });
