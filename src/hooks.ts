@@ -61,6 +61,8 @@ function isToolBlock(block: ContentBlock): boolean {
 
 /**
  * Serialize a tool call block into a human-readable text representation.
+ * Field names vary by provider: Anthropic uses `input`, OpenAI uses `arguments`,
+ * and some providers use `params`.
  */
 function serializeToolBlock(block: ContentBlock): string {
   const name = (block.name as string) || "unknown";
