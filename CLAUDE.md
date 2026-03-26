@@ -157,7 +157,7 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | upgrade-safe-data | Default `dataDir` is `{pluginDir}/../.gralkor-data` (alongside, not inside plugin directory) so `openclaw plugins uninstall` doesn't destroy runtime data |
 | auto-capture | `agent_end` buffers messages per session; flushed on `session_end` or idle timeout (whichever fires first) |
 | thinking-distillation | Server-side: `POST /ingest-messages` receives structured messages, groups thinking per turn, distills each into a first-person `(behaviour: ...)` summary via LLM, formats transcript, and creates episode. Failures silently dropped. |
-| idle-timeout-flush | Configurable idle timer (`idleTimeoutMs`, default 5 min) after last `agent_end` races `session_end`; `unref()`'d so it doesn't block shutdown |
+| idle-timeout-flush | `DebouncedFlush<SessionBuffer>` with configurable `idleTimeoutMs` (default 5 min); `agent_end` calls `set()` (debounce), `session_end` calls `flush()` (force); `unref()`'d timers don't block shutdown |
 | auto-recall | `before_agent_start` searches graph facts + native Markdown in parallel, injects combined results. Double-fire deduped (5s cache). |
 | unified-search | `memory_search` combines native Markdown + graph facts in parallel. Native results with empty `results: []` metadata JSON are filtered out (`hasNativeResults()` in `src/hooks.ts`). Same filter used by auto-recall. |
 | manual-store | `memory_add` creates episodes with `source=text`; Graphiti extracts structure |
