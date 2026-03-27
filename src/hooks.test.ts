@@ -3,7 +3,7 @@ import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
 import {
-  createBeforeAgentStartHandler,
+  createBeforePromptBuildHandler,
   createAgentEndHandler,
   createSessionEndHandler,
   flushSessionBuffer,
@@ -647,7 +647,7 @@ describe("before_agent_start handler", () => {
       facts: [makeFact({ group_id: "agent-42", fact: "Project uses microservices" })],
     });
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -672,7 +672,7 @@ describe("before_agent_start handler", () => {
       })],
     });
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
       { prompt: "What framework does the team use?" },
       { agentId: "agent-42" },
@@ -687,7 +687,7 @@ describe("before_agent_start handler", () => {
     const nativeSearch = vi.fn().mockResolvedValue("Native result: project notes");
     const getNativeSearch = () => nativeSearch;
 
-    const handler = createBeforeAgentStartHandler(
+    const handler = createBeforePromptBuildHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
@@ -713,7 +713,7 @@ describe("before_agent_start handler", () => {
     const nativeSearch = vi.fn().mockResolvedValue(emptyNativeJson);
     const getNativeSearch = () => nativeSearch;
 
-    const handler = createBeforeAgentStartHandler(
+    const handler = createBeforePromptBuildHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
@@ -731,7 +731,7 @@ describe("before_agent_start handler", () => {
     const nativeSearch = vi.fn().mockResolvedValue("Native data");
     const getNativeSearch = () => nativeSearch;
 
-    const handler = createBeforeAgentStartHandler(
+    const handler = createBeforePromptBuildHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
@@ -747,7 +747,7 @@ describe("before_agent_start handler", () => {
     client.search.mockResolvedValue({ ...emptySearchResults(), facts: [makeFact({ fact: "A fact" })] });
     const getNativeSearch = () => null;
 
-    const handler = createBeforeAgentStartHandler(
+    const handler = createBeforePromptBuildHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
@@ -764,7 +764,7 @@ describe("before_agent_start handler", () => {
     const nativeSearch = vi.fn().mockRejectedValue(new Error("native error"));
     const getNativeSearch = () => nativeSearch;
 
-    const handler = createBeforeAgentStartHandler(
+    const handler = createBeforePromptBuildHandler(
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
 
@@ -779,7 +779,7 @@ describe("before_agent_start handler", () => {
       autoRecall: { enabled: false, maxResults: 5 },
     };
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -790,7 +790,7 @@ describe("before_agent_start handler", () => {
   });
 
   it("skips when no user message in context", async () => {
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler({}, { agentId: "agent-42" });
 
     expect(result).toBeUndefined();
@@ -800,7 +800,7 @@ describe("before_agent_start handler", () => {
   it("searches using key terms from user message", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -814,7 +814,7 @@ describe("before_agent_start handler", () => {
   it("shows explicit empty messages when no results from any source", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -828,7 +828,7 @@ describe("before_agent_start handler", () => {
   it("throws when Graphiti is unreachable", async () => {
     client.search.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
 
     await expect(
       handler(
@@ -845,7 +845,7 @@ describe("before_agent_start handler", () => {
       autoRecall: { enabled: true, maxResults: 3 },
     };
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
     await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -861,7 +861,7 @@ describe("before_agent_start handler", () => {
   it("passes full user message as search query", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -875,7 +875,7 @@ describe("before_agent_start handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
     await handler(
       { prompt: "Tell me about the project architecture" },
       { agentId: "agent-42" },
@@ -888,7 +888,7 @@ describe("before_agent_start handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setGroupId = vi.fn();
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
     await handler({ prompt: "Tell me about the project architecture" });
 
     expect(setGroupId).not.toHaveBeenCalled();
@@ -897,7 +897,7 @@ describe("before_agent_start handler", () => {
   describe("when server is NOT ready", () => {
     it("throws when server is not ready", async () => {
       const gate = createReadyGate();
-      const handler = createBeforeAgentStartHandler(
+      const handler = createBeforePromptBuildHandler(
         client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
 
@@ -920,7 +920,7 @@ describe("before_agent_start handler", () => {
         facts: [makeFact({ fact: "A fact" })],
       });
 
-      const handler = createBeforeAgentStartHandler(
+      const handler = createBeforePromptBuildHandler(
         client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
       const result = await handler(
@@ -1615,7 +1615,7 @@ describe("test mode logging", () => {
     });
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
     await handler({ prompt: "What color is the sky?" }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
@@ -1631,7 +1631,7 @@ describe("test mode logging", () => {
       facts: [makeFact({ fact: "Sky is blue" })],
     });
 
-    const handler = createBeforeAgentStartHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler({ prompt: "What color is the sky?" }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
