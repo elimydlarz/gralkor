@@ -84,10 +84,7 @@ function registerFullPlugin(
       const wrappedSearchTool = {
         ...memorySearchTool,
         description:
-          "Search memory for relevant context. Use specific, focused queries. " +
-          "For best results, call 2-3 searches in parallel with different angles " +
-          "(e.g. entities/people mentioned, the topic or domain, related projects or goals). " +
-          "Each query surfaces different facets of the knowledge graph.",
+          "Search memory for relevant context. Use specific, focused queries.",
         async execute(
           toolCallId: string,
           args: { query: string; limit?: number },
