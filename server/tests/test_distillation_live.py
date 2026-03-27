@@ -1,6 +1,6 @@
 """Live distillation tests — calls real LLM to verify prompt quality.
 
-Requires GOOGLE_API_KEY (default provider). Run with:
+Requires GOOGLE_API_KEY or OPENAI_API_KEY. Run with:
     cd server && uv run pytest tests/test_distillation_live.py -v -s
 
 Each case loads behaviour blocks from fixtures/distillation_cases.json,
@@ -31,19 +31,31 @@ def _build_input(blocks: list[dict]) -> str:
     return "\n---\n".join(b["text"] for b in blocks)
 
 
+class _OpenAITextClient:
+    """Thin wrapper around OpenAI that doesn't force JSON mode."""
+
+    def __init__(self, model: str = "gpt-4o-mini"):
+        from openai import AsyncOpenAI
+        self._client = AsyncOpenAI()
+        self._model = model
+
+    async def generate_response(self, messages, max_tokens=300, **kwargs):
+        resp = await self._client.chat.completions.create(
+            model=self._model,
+            messages=[{"role": m.role, "content": m.content} for m in messages],
+            max_tokens=max_tokens,
+        )
+        return {"content": resp.choices[0].message.content or ""}
+
+
 @pytest.fixture(scope="module")
 def llm_client():
     """Build a real LLM client from env. Skip if no API key."""
-    # Try providers in order of preference for testing
     if os.environ.get("GOOGLE_API_KEY"):
-        cfg = {"llm": {"provider": "gemini", "model": "gemini-2.0-flash"}}
-    elif os.environ.get("OPENAI_API_KEY"):
-        cfg = {"llm": {"provider": "openai"}}
-    elif os.environ.get("ANTHROPIC_API_KEY"):
-        cfg = {"llm": {"provider": "anthropic"}}
-    else:
-        pytest.skip("No LLM API key available (set GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY)")
-    return _build_llm_client(cfg)
+        return _build_llm_client({"llm": {"provider": "gemini", "model": "gemini-2.0-flash"}})
+    if os.environ.get("OPENAI_API_KEY"):
+        return _OpenAITextClient()
+    pytest.skip("No LLM API key (set GOOGLE_API_KEY or OPENAI_API_KEY)")
 
 
 CASES = _load_cases()
