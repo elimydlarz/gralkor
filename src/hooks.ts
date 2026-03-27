@@ -275,7 +275,7 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
       if (filtered.length > 0) {
         result.push({ role: "assistant", content: filtered });
       }
-    } else if (msg.role === "toolResult") {
+    } else if (msg.role === "toolResult" || msg.role === "tool") {
       const textParts = blocks
         .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
