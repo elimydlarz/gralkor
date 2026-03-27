@@ -517,15 +517,15 @@ export function createAgentEndHandler(
   config: GralkorConfig,
   debouncer: DebouncedFlush<SessionBuffer>,
 ) {
-  return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<void> => {
-    console.log(`[gralkor] agent_end — agentId:${ctx.agentId} messages:${event.messages?.length ?? 0} success:${event.success}`);
+  return async (event: AgentEndEvent, ctx: HookAgentContext = {}): Promise<void> => {
+    console.log(`[gralkor] agent_end — agentId:${ctx.agentId} messages:${event.messages.length} success:${event.success}`);
 
     if (!config.autoCapture.enabled) {
       console.log("[gralkor] agent_end skip (disabled)");
       return;
     }
 
-    if (!event.messages || event.messages.length === 0) {
+    if (event.messages.length === 0) {
       console.log(`[gralkor] agent_end skip (no messages) — agentId:${ctx.agentId}`);
       return;
     }
