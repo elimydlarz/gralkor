@@ -636,7 +636,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -678,7 +678,7 @@ describe("before_prompt_build handler", () => {
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
     );
 
     expect(result).toHaveProperty("prependContext");
@@ -722,7 +722,7 @@ describe("before_prompt_build handler", () => {
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
     );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
@@ -738,7 +738,7 @@ describe("before_prompt_build handler", () => {
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
     );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
@@ -756,7 +756,7 @@ describe("before_prompt_build handler", () => {
     );
 
     await expect(
-      handler({ prompt: "Tell me about the project architecture" }),
+      handler({ prompt: "Tell me about the project architecture", messages: [] }),
     ).rejects.toThrow("native error");
   });
 
@@ -768,7 +768,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -789,7 +789,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -803,7 +803,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     const result = await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -819,7 +819,7 @@ describe("before_prompt_build handler", () => {
 
     await expect(
       handler(
-        { prompt: "Tell me about the project architecture" },
+        { prompt: "Tell me about the project architecture", messages: [] },
         { agentId: "agent-42" },
       ),
     ).rejects.toThrow("ECONNREFUSED");
@@ -834,7 +834,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
     await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -850,7 +850,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
     await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -864,7 +864,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
     await handler(
-      { prompt: "Tell me about the project architecture" },
+      { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
@@ -876,7 +876,7 @@ describe("before_prompt_build handler", () => {
     const setGroupId = vi.fn();
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
-    await handler({ prompt: "Tell me about the project architecture" });
+    await handler({ prompt: "Tell me about the project architecture", messages: [] });
 
     expect(setGroupId).not.toHaveBeenCalled();
   });
