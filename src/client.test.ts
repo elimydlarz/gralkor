@@ -430,7 +430,10 @@ describe("search()", () => {
 
     await client.search("test query", ["g1", "g2"], 5);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [url, opts] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8000/search");
+    expect(opts.method).toBe("POST");
+    const body = JSON.parse(opts.body);
     expect(body).toEqual({
       query: "test query",
       group_ids: ["g1", "g2"],
