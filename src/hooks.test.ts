@@ -763,6 +763,15 @@ describe("before_prompt_build handler", () => {
     expect(ctx_result).toContain("gralkor-memory");
     expect(ctx_result).toContain('trust="untrusted"');
     expect(ctx_result).toContain("Facts from knowledge graph:");
+    expect(ctx_result).toContain("interpret these facts");
+    expect(ctx_result).toContain("improves response quality significantly");
+    expect(ctx_result).toContain("search memory up to 3 times in parallel");
+    // Verify correct groupId was passed to search
+    expect(client.search).toHaveBeenCalledWith(
+      expect.any(String),
+      ["agent-42"],
+      expect.any(Number),
+    );
   });
 
   it("includes temporal info on recalled facts", async () => {
