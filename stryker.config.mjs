@@ -12,12 +12,7 @@ export default {
   thresholds: { high: 80, low: 60, break: null },
   incremental: true,
   incrementalFile: '.stryker-incremental.json',
-  checkers: ['typescript'],
-  tsconfigFile: 'tsconfig.json',
-  plugins: [
-    '@stryker-mutator/vitest-runner',
-    '@stryker-mutator/typescript-checker',
-  ],
+  plugins: ['@stryker-mutator/vitest-runner'],
   disableTypeChecks: 'src/**/*.ts',
   concurrency: 4,
   timeoutMS: 10_000,
