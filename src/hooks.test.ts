@@ -2177,6 +2177,37 @@ describe("extractUserMessageFromPrompt — System: prefix stripping", () => {
     });
     expect(result).toBe("Fallback message");
   });
+
+  it("falls back to messages when prompt is metadata wrapper + whitespace only", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: 'Sender (untrusted metadata):\n```json\n{"key":"value"}\n```\n\n   ',
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Fallback" }] },
+      ],
+    });
+    expect(result).toBe("Fallback");
+  });
+
+  it("falls back to messages when messages contain only non-text blocks", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: 'Sender (untrusted metadata):\n```json\n{"key":"value"}\n```\n\n',
+      messages: [
+        { role: "user", content: [{ type: "image", url: "http://img" } as any] },
+        { role: "user", content: [{ type: "text", text: "Real question" }] },
+      ],
+    });
+    expect(result).toBe("Real question");
+  });
+
+  it("skips messages that have only non-text blocks in fallback", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: 'Sender (untrusted metadata):\n```json\n{"key":"value"}\n```\n\n',
+      messages: [
+        { role: "user", content: [{ type: "image", url: "http://img" } as any] },
+      ],
+    });
+    expect(result).toBe("");
+  });
 });
 
 describe("cleanUserMessageText — Untrusted context footer", () => {
