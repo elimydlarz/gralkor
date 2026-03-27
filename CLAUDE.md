@@ -273,6 +273,12 @@ _format_transcript (server-side)
     then blocks joined with --- separator
     and distilled via LLM into first-person past-tense summary
     and injected as "Assistant: (behaviour: {summary})" before assistant text
+  when behaviour blocks contain memory_search results (recalled facts)
+    then distillation describes the intent (e.g. "consulted memory")
+    and does NOT restate the recalled fact content
+  when behaviour blocks contain thinking that references recalled data
+    then distillation captures the reasoning and decisions
+    and does NOT echo the specific data that was recalled
   when distillation fails for a turn
     then behaviour line silently dropped, assistant text preserved
   when turn has only text blocks (no behaviour)
