@@ -119,7 +119,7 @@ export interface HookSessionContext {
 }
 
 /**
- * Extract the user's actual message from ctx.prompt (before_agent_start).
+ * Extract the user's actual message from event.prompt (before_prompt_build).
  *
  * The prompt may be wrapped in metadata:
  *   "Sender (untrusted metadata):\n```json\n{...}\n```\n\nActual message"
