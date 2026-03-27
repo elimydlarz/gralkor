@@ -87,6 +87,74 @@ describe("resolveConfig()", () => {
   });
 });
 
+describe("defaultConfig", () => {
+  it("has autoCapture enabled by default", () => {
+    expect(defaultConfig.autoCapture.enabled).toBe(true);
+  });
+
+  it("has idleTimeoutMs of 5 minutes", () => {
+    expect(defaultConfig.idleTimeoutMs).toBe(300_000);
+  });
+
+  it("has autoRecall enabled by default", () => {
+    expect(defaultConfig.autoRecall.enabled).toBe(true);
+  });
+
+  it("has autoRecall maxResults of 10", () => {
+    expect(defaultConfig.autoRecall.maxResults).toBe(10);
+  });
+});
+
+describe("provider defaults", () => {
+  it("DEFAULT_LLM_PROVIDER is gemini", () => {
+    expect(DEFAULT_LLM_PROVIDER).toBe("gemini");
+  });
+
+  it("DEFAULT_LLM_MODEL is gemini-3-flash-preview", () => {
+    expect(DEFAULT_LLM_MODEL).toBe("gemini-3-flash-preview");
+  });
+
+  it("DEFAULT_EMBEDDER_PROVIDER is gemini", () => {
+    expect(DEFAULT_EMBEDDER_PROVIDER).toBe("gemini");
+  });
+
+  it("DEFAULT_EMBEDDER_MODEL is gemini-embedding-2-preview", () => {
+    expect(DEFAULT_EMBEDDER_MODEL).toBe("gemini-embedding-2-preview");
+  });
+});
+
+describe("ReadyGate", () => {
+  it("starts not ready", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    expect(gate.isReady()).toBe(false);
+  });
+
+  it("becomes ready after resolve()", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    gate.resolve();
+    expect(gate.isReady()).toBe(true);
+  });
+
+  it("resetReadyGate() resets back to not ready", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    gate.resolve();
+    expect(gate.isReady()).toBe(true);
+    resetReadyGate();
+    expect(gate.isReady()).toBe(false);
+  });
+
+  it("shares state across multiple createReadyGate() calls", () => {
+    resetReadyGate();
+    const gate1 = createReadyGate();
+    const gate2 = createReadyGate();
+    gate1.resolve();
+    expect(gate2.isReady()).toBe(true);
+  });
+});
+
 describe("resolveGroupId()", () => {
   it("returns agentId when provided", () => {
     expect(resolveGroupId({ agentId: "agent-42" })).toBe("agent-42");
