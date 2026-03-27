@@ -375,11 +375,14 @@ export function createBeforePromptBuildHandler(
         sections.push("No native results.");
       }
 
-      const instructions =
-        "Before responding, search memory 2-3 times in parallel with different queries to surface relevant context " +
-        "(e.g. key entities or people mentioned, the topic being discussed, related projects or goals).";
+      const interpretation =
+        "Before responding, interpret these facts for relevance to the task at hand. " +
+        "Doing this step thoughtfully improves response quality significantly.";
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n\n${instructions}\n</gralkor-memory>`;
+      const furtherQuerying =
+        "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
+
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n\n${interpretation}\n\n${furtherQuerying}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall context:\n${prependContext}`);
