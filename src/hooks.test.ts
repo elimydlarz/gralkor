@@ -778,7 +778,7 @@ describe("before_prompt_build handler", () => {
 
   it("skips when no user message in context", async () => {
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
-    const result = await handler({}, { agentId: "agent-42" });
+    const result = await handler({ prompt: "", messages: [] }, { agentId: "agent-42" });
 
     expect(result).toBeUndefined();
     expect(client.search).not.toHaveBeenCalled();
