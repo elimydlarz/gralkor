@@ -327,7 +327,7 @@ export function createBeforePromptBuildHandler(
 
     const userMessage = extractUserMessageFromPrompt(event);
     if (!userMessage) {
-      console.log(`[gralkor] auto-recall skip (no query) — agentId:${agentId} promptLen:${event.prompt?.length ?? 0} messages:${event.messages?.length ?? 0}`);
+      console.log(`[gralkor] auto-recall skip (no query) — agentId:${agentId} promptLen:${event.prompt.length} messages:${event.messages.length}`);
       return;
     }
 
