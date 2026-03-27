@@ -440,6 +440,11 @@ _DISTILL_SYSTEM_PROMPT = (
     "the agent took and contextualise them within the dialog. Write one to three sentences "
     "— no filler, maximum distillation. Focus on reasoning, decisions, actions taken "
     "(including which tools were used and why), and outcomes. "
+    "IMPORTANT: When the agent retrieves information from memory (memory_search results, "
+    "knowledge graph facts, etc.), do NOT repeat or summarize the retrieved content. "
+    "Instead, note that memory was consulted and focus on what the agent concluded, "
+    "decided, or did as a result. The retrieved facts are already stored — re-stating "
+    "them creates redundancy. Capture the thinking, not the remembering. "
     "Write in first person, past tense. Output only the distilled text, nothing else."
 )
 
