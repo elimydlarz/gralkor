@@ -1,7 +1,6 @@
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
   testRunner: 'vitest',
-  vitest: { configFile: 'vitest.config.ts', dir: '.', related: true },
   mutate: [
     'src/**/*.ts',
     '!src/**/*.test.ts',
@@ -15,6 +14,11 @@ export default {
   incrementalFile: '.stryker-incremental.json',
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',
+  plugins: [
+    '@stryker-mutator/vitest-runner',
+    '@stryker-mutator/typescript-checker',
+  ],
+  disableTypeChecks: 'src/**/*.ts',
   concurrency: 4,
   timeoutMS: 10_000,
   timeoutFactor: 1.5,
