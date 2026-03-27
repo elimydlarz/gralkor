@@ -3,7 +3,7 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 import { GRAPHITI_URL, GRAPHITI_PORT } from "./config.js";
 import {
-  createBeforeAgentStartHandler,
+  createBeforePromptBuildHandler,
   createAgentEndHandler,
   createSessionEndHandler,
   DebouncedFlush,
@@ -26,7 +26,7 @@ export function registerHooks(
     flushSessionBuffer(key, buf, client, { test: config.test }),
   );
 
-  api.on("before_agent_start", createBeforeAgentStartHandler(client, config, opts));
+  api.on("before_agent_start", createBeforePromptBuildHandler(client, config, opts));
   api.on("agent_end", createAgentEndHandler(config, debouncer));
   api.on("session_end", createSessionEndHandler(debouncer));
 }
