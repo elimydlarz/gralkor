@@ -189,15 +189,13 @@ describe("retry logic", () => {
 
   it("truncates long error response body to 500 chars", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    const longBody = "x".repeat(1000);
+    const longBody = "a".repeat(600);
     fetchMock.mockResolvedValue(textResponse(longBody, 404));
 
-    await expect(client.health()).rejects.toThrow((err: Error) => {
-      // The body in the error message should be truncated
-      expect(err.message).toContain("x".repeat(500));
-      expect(err.message).not.toContain("x".repeat(501));
-      return true;
-    });
+    const err = await client.health().catch((e: Error) => e);
+    // The body should be truncated to 500 chars
+    expect(err.message).toContain("a".repeat(500));
+    expect(err.message).not.toContain("a".repeat(501));
   });
 
   it("does not retry 399 status codes (treated as success range)", async () => {
