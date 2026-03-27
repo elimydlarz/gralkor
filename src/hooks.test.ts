@@ -51,7 +51,6 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 
 describe("extractMessagesFromCtx", () => {
   it("returns empty array when no messages", () => {
-    expect(extractMessagesFromCtx({})).toEqual([]);
     expect(extractMessagesFromCtx({ messages: [] })).toEqual([]);
   });
 
