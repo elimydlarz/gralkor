@@ -633,7 +633,7 @@ describe("extractLastUserMessageFromMessages", () => {
   });
 });
 
-describe("before_agent_start handler", () => {
+describe("before_prompt_build handler", () => {
   let client: ReturnType<typeof mockClient>;
 
   beforeEach(() => {
