@@ -312,9 +312,9 @@ export function createBeforePromptBuildHandler(
 ) {
   const { setGroupId, getNativeSearch, serverReady } = opts;
 
-  return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
+  return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
-    console.log(`[gralkor] auto-recall — agentId:${agentId} promptLen:${event.prompt?.length ?? 0} messages:${event.messages?.length ?? 0}`);
+    console.log(`[gralkor] auto-recall — agentId:${agentId} promptLen:${event.prompt.length} messages:${event.messages.length}`);
 
     if (setGroupId && agentId) {
       setGroupId(agentId);
