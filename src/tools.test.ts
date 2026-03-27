@@ -63,6 +63,17 @@ describe("formatFacts", () => {
     expect(result).toContain("- recent fact (created 2025-03-15T10:00:00Z)");
     expect(result).not.toContain("valid from");
     expect(result).not.toContain("invalid since");
+    expect(result).not.toContain("expired");
+    // Exact format: no trailing garbage after the timestamp
+    expect(result).toMatch(/- recent fact \(created 2025-03-15T10:00:00Z\)\s*$/m);
+  });
+
+  it("separates multiple facts with newlines", () => {
+    const result = formatFacts([
+      makeFact({ fact: "Fact A" }),
+      makeFact({ fact: "Fact B" }),
+    ]);
+    expect(result).toMatch(/- Fact A[^\n]*\n- Fact B/);
   });
 
   it("returns 'No graph facts found.' when empty", () => {
