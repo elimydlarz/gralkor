@@ -2221,6 +2221,133 @@ describe("cleanUserMessageText — gralkor-memory XML removal", () => {
   });
 });
 
+describe("extractMessagesFromCtx — non-text block types are NOT treated as text", () => {
+  it("drops unknown block types from assistant messages even if they have text property", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "image", text: "alt text description" } as any,
+            { type: "text", text: "Real response" },
+          ],
+        },
+      ],
+    });
+    // Only the real text block should be extracted, not the image block
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Real response" }] },
+    ]);
+  });
+
+  it("drops non-text blocks from user messages even if they have text property", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", text: "image alt" } as any,
+            { type: "text", text: "My question" },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "My question" }] },
+    ]);
+  });
+
+  it("drops user messages that have only non-text blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "image", text: "alt text" } as any],
+        },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Response" }] },
+    ]);
+  });
+
+  it("drops non-text blocks from toolResult messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "toolResult",
+          content: [
+            { type: "image", text: "image data" } as any,
+            { type: "text", text: "Actual result" },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "tool_result", text: "Actual result" }] },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — assistant blocks without thinking property", () => {
+  it("does not extract non-thinking blocks as thinking even if they have thinking-like fields", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "text", text: "Response", thinking: "stale thinking" } as any,
+          ],
+        },
+      ],
+    });
+    // The text block should be treated as text, not as thinking
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Response" }] },
+    ]);
+  });
+});
+
+describe("extractUserMessageFromPrompt — regex anchors matter", () => {
+  it("does NOT strip System: appearing mid-string", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "Tell me about System: concepts in Linux",
+      messages: [],
+    });
+    expect(result).toBe("Tell me about System: concepts in Linux");
+  });
+
+  it("does NOT strip session-start text appearing mid-string", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "Explain what A new session was started means in this app",
+      messages: [],
+    });
+    expect(result).toBe("Explain what A new session was started means in this app");
+  });
+});
+
+describe("cleanUserMessageText — metadata wrapper removal", () => {
+  it("strips metadata wrapper from user message preserving content after", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: 'SomeApp (untrusted metadata):\n```json\n{"type":"message"}\n```\n\nWhat is the meaning of life?',
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "What is the meaning of life?" }] },
+    ]);
+  });
+});
+
 describe("DebouncedFlush — edge cases", () => {
   it("flush with non-existing key is a no-op", async () => {
     const onFlush = vi.fn();
