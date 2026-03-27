@@ -93,7 +93,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 3. Skip if disabled or no user message.
 4. **Server readiness check:** If `serverReady.isReady()` is false, auto-recall and tools throw an error (fail-fast). The `ReadyGate` is module-level so it persists across plugin reloads within the same process.
 5. Search `client.search()` (facts only — uses `graphiti.search()` edge-based hybrid) and native `memory_search` in parallel.
-6. Include facts in context plus a behavioral instruction encouraging the agent to manually search 2-3 times in parallel with varied queries. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
+6. Include facts in context plus two behavioral instructions: first encouraging interpretation of facts for relevance to the task at hand, then encouraging up to 3 parallel memory searches with diverse queries. Return in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`.
 7. On graph or native failure: error propagates to caller (fail-fast).
 
 **Auto-capture** (session buffering via `agent_end` → flush on `session_end`):
