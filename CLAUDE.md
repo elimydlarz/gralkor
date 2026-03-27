@@ -173,6 +173,22 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | custom-ontology | User-declared entity/edge types in plugin config (`ontology`). TypeScript validates config (reserved names, protected attrs, edgeMap cross-refs), serializes to `config.yaml`. Python server builds dynamic Pydantic models at startup via `_build_ontology()` and passes to every `graphiti.add_episode()`. Attributes are required (not Optional) to gate entity extraction. Supports string, enum (array → `Literal`), typed object, and enum-with-description forms. Reserved entity names: `Entity`, `Episodic`, `Community`, `Saga`. |
 | fact-prioritization | Server-side `_prioritize_facts()` in `/search` reserves slots for valid facts, fills remainder by relevance. Over-fetches 2x from Graphiti to widen candidate pool. See test tree below. |
 
+#### auto-recall-interpretation
+
+```
+auto-recall-interpretation
+  when auto-recall returns results
+    then prependContext includes an instruction to interpret facts for relevance to the task at hand
+```
+
+#### auto-recall-further-querying
+
+```
+auto-recall-further-querying
+  when auto-recall returns results
+    then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
+```
+
 #### fact-prioritization
 
 ```
