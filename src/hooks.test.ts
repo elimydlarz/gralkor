@@ -2035,3 +2035,266 @@ describe("extractLastUserMessageFromMessages — multiline joining", () => {
   });
 });
 
+describe("extractMessagesFromCtx — output_text blocks", () => {
+  it("extracts output_text blocks as text", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "output_text", text: "Hello via output_text" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello via output_text" }] },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — thinking blocks", () => {
+  it("extracts thinking blocks from assistant messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "thinking", thinking: "Let me think about this..." },
+            { type: "text", text: "Here's my answer" },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", text: "Let me think about this..." },
+          { type: "text", text: "Here's my answer" },
+        ],
+      },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — tool role (Ollama adapter)", () => {
+  it("converts tool role messages to assistant tool_result blocks", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Run a command" }] },
+        { role: "tool", content: [{ type: "text", text: "command output" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Run a command" }] },
+      { role: "assistant", content: [{ type: "tool_result", text: "command output" }] },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — user messages with empty text blocks", () => {
+  it("drops user messages where all text blocks are empty", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "" }] },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Response" }] },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — string content normalization", () => {
+  it("handles messages with string content instead of array", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: "Plain string content" as any },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Plain string content" }] },
+    ]);
+  });
+
+  it("handles messages with undefined content", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: undefined as any },
+        { role: "assistant", content: [{ type: "text", text: "Response" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Response" }] },
+    ]);
+  });
+});
+
+describe("extractUserMessageFromPrompt — System: prefix stripping", () => {
+  it("strips leading System: lines from prompt", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "System: [2025-01-01] Event happened\n\nWhat is this?",
+      messages: [],
+    });
+    expect(result).toBe("What is this?");
+  });
+
+  it("strips multiple leading System: lines", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "System: event 1\n\nSystem: event 2\n\nActual question",
+      messages: [],
+    });
+    expect(result).toBe("Actual question");
+  });
+
+  it("strips session-start instruction followed by user message", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "A new session was started via /new\n\nWhat is the weather?",
+      messages: [],
+    });
+    expect(result).toBe("What is the weather?");
+  });
+
+  it("returns empty for session-start-only prompt", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: "A new session was started via /new",
+      messages: [],
+    });
+    expect(result).toBe("");
+  });
+
+  it("strips metadata wrapper and returns user message", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: 'Sender (untrusted metadata):\n```json\n{"key":"value"}\n```\n\nActual question here',
+      messages: [],
+    });
+    expect(result).toBe("Actual question here");
+  });
+
+  it("falls back to messages when prompt is only metadata wrapper", () => {
+    const result = extractUserMessageFromPrompt({
+      prompt: 'Sender (untrusted metadata):\n```json\n{"key":"value"}\n```\n\n',
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Fallback message" }] },
+      ],
+    });
+    expect(result).toBe("Fallback message");
+  });
+});
+
+describe("cleanUserMessageText — Untrusted context footer", () => {
+  it("strips Untrusted context footer block from user message", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: 'Real question here\n\nUntrusted context (metadata from extensions):\n{"some":"data"}',
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Real question here" }] },
+    ]);
+  });
+});
+
+describe("cleanUserMessageText — gralkor-memory XML removal", () => {
+  it("strips gralkor-memory XML from user message", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: '<gralkor-memory source="auto-recall" trust="untrusted">\nSome facts\n</gralkor-memory>\nActual question',
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Actual question" }] },
+    ]);
+  });
+});
+
+describe("DebouncedFlush — edge cases", () => {
+  it("flush with non-existing key is a no-op", async () => {
+    const onFlush = vi.fn();
+    const debouncer = new DebouncedFlush<string>(1000, onFlush);
+    await debouncer.flush("nonexistent");
+    expect(onFlush).not.toHaveBeenCalled();
+  });
+
+  it("has() returns false for non-existing key", () => {
+    const debouncer = new DebouncedFlush<string>(1000, vi.fn());
+    expect(debouncer.has("missing")).toBe(false);
+  });
+
+  it("set then flush delivers value exactly once", async () => {
+    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const debouncer = new DebouncedFlush<string>(100000, onFlush);
+    debouncer.set("k", "v");
+    expect(debouncer.has("k")).toBe(true);
+    await debouncer.flush("k");
+    expect(onFlush).toHaveBeenCalledWith("k", "v");
+    expect(debouncer.has("k")).toBe(false);
+    // Flushing again is a no-op
+    await debouncer.flush("k");
+    expect(onFlush).toHaveBeenCalledTimes(1);
+  });
+
+  it("set replaces previous value for same key", async () => {
+    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const debouncer = new DebouncedFlush<string>(100000, onFlush);
+    debouncer.set("k", "first");
+    debouncer.set("k", "second");
+    await debouncer.flush("k");
+    expect(onFlush).toHaveBeenCalledWith("k", "second");
+    expect(onFlush).toHaveBeenCalledTimes(1);
+  });
+
+  it("pendingCount and timerCount reflect state", () => {
+    const debouncer = new DebouncedFlush<string>(100000, vi.fn());
+    expect(debouncer.pendingCount).toBe(0);
+    expect(debouncer.timerCount).toBe(0);
+    debouncer.set("a", "1");
+    debouncer.set("b", "2");
+    expect(debouncer.pendingCount).toBe(2);
+    expect(debouncer.timerCount).toBe(2);
+    debouncer.dispose();
+    expect(debouncer.pendingCount).toBe(0);
+    expect(debouncer.timerCount).toBe(0);
+  });
+
+  it("idle timeout fires flush after delay", async () => {
+    vi.useFakeTimers();
+    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const debouncer = new DebouncedFlush<string>(500, onFlush);
+    debouncer.set("k", "v");
+    expect(onFlush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(500);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onFlush).toHaveBeenCalledWith("k", "v");
+    vi.useRealTimers();
+  });
+
+  it("set resets the idle timer", async () => {
+    vi.useFakeTimers();
+    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const debouncer = new DebouncedFlush<string>(500, onFlush);
+    debouncer.set("k", "first");
+    vi.advanceTimersByTime(400);
+    debouncer.set("k", "second");
+    vi.advanceTimersByTime(400);
+    expect(onFlush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(100);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onFlush).toHaveBeenCalledWith("k", "second");
+    vi.useRealTimers();
+  });
+});
+
