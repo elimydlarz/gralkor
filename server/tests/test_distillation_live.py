@@ -33,11 +33,22 @@ def _build_input(blocks: list[dict]) -> str:
 
 @pytest.fixture(scope="module")
 def llm_client():
-    """Build the same LLM client the server uses (config.yaml + env keys)."""
+    """Build the same LLM client the server uses (config.yaml + env keys).
+
+    Reads CONFIG_PATH or falls back to ../config.yaml (project root).
+    Skips if the required API key for the configured provider is missing.
+    """
+    # Try server's config path, then project root config
     cfg = _load_config()
+    if not cfg.get("llm"):
+        root_cfg = Path(__file__).parent.parent.parent / "config.yaml"
+        if root_cfg.exists():
+            import yaml
+            with open(root_cfg) as f:
+                cfg = yaml.safe_load(f) or {}
+
     provider = cfg.get("llm", {}).get("provider", "gemini")
 
-    # Check that the required API key exists for the configured provider
     key_map = {
         "gemini": "GOOGLE_API_KEY",
         "openai": "OPENAI_API_KEY",
