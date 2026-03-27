@@ -791,7 +791,7 @@ describe("before_prompt_build handler", () => {
 
     const ctx_result = (result as { prependContext: string }).prependContext;
     // Facts separated by \n (not empty string)
-    expect(ctx_result).toMatch(/Fact A[^\n]*\nFact B/);
+    expect(ctx_result).toMatch(/- Fact A[^\n]*\n- Fact B/);
     // Sections separated by \n\n
     expect(ctx_result).toMatch(/No native results\.\n\n/);
   });
