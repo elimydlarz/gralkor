@@ -1,4 +1,5 @@
-.PHONY: test test-plugin test-functional test-server typecheck pack publish build-server up down logs setup-server \
+.PHONY: test test-plugin test-functional test-server test-mutate test-mutate-plugin test-mutate-server \
+        typecheck pack publish build-server up down logs setup-server \
         version-major version-minor version-patch help
 
 SYNC_RESOURCES = node -e " \
