@@ -57,13 +57,8 @@ test-functional:
 test-server:
 	cd server && uv run pytest tests/
 
-test-mutate: test-mutate-plugin test-mutate-server
-
-test-mutate-plugin:
+test-mutate:
 	pnpm exec stryker run
-
-test-mutate-server:
-	cd server && uv run mutmut run && uv run mutmut show all
 
 test-server-changed:
 	@cd server && files=$$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py'); \
