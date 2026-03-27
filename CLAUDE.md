@@ -394,6 +394,9 @@ TDD: write failing tests first, then implement. Test output uses tree reporters 
 | `make test-server` | Python (pytest) | spec (tree-style) |
 | `make test-server-changed` | Changed Python test files only | spec |
 | `pnpm exec vitest run --changed` | Changed TypeScript tests only | tree |
+| `make test-mutate` | Mutation testing (plugin + server) | clear-text / stdout |
+| `make test-mutate-plugin` | Mutation testing (TypeScript only) | clear-text |
+| `make test-mutate-server` | Mutation testing (Python only) | stdout |
 
 ## Building & Deploying
 
