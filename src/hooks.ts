@@ -204,7 +204,7 @@ function isSystemLine(line: string): boolean {
  * Returns the user's text, or empty string if the message is a system message.
  */
 function cleanUserMessageText(text: string): string {
-  if (isSystemMessage(text)) return "";
+  if (!text.trim()) return "";
 
   // Unwrap metadata wrappers (they surround real user content)
   let cleaned = text.replace(
@@ -215,12 +215,7 @@ function cleanUserMessageText(text: string): string {
   // Remove gralkor-memory XML (feedback loop prevention)
   cleaned = cleaned.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
 
-  cleaned = cleaned.trim();
-
-  // Re-check after unwrapping — metadata may have been hiding a system message
-  if (isSystemMessage(cleaned)) return "";
-
-  // Strip individual system lines from mixed content
+  // Strip individual system lines (session-start, Current time, etc.)
   cleaned = cleaned
     .split("\n")
     .filter((line) => !isSystemLine(line))
