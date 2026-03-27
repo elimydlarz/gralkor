@@ -918,6 +918,42 @@ describe("before_prompt_build handler", () => {
     expect(setGroupId).not.toHaveBeenCalled();
   });
 
+  describe("auto-recall-interpretation", () => {
+    it("when auto-recall returns results, prependContext includes an instruction to interpret facts for relevance to the task at hand", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("interpret these facts for relevance to the task at hand");
+    });
+  });
+
+  describe("auto-recall-further-querying", () => {
+    it("when auto-recall returns results, prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("search memory up to 3 times in parallel with diverse queries");
+    });
+  });
+
   describe("when server is NOT ready", () => {
     it("throws when server is not ready", async () => {
       const gate = createReadyGate();
