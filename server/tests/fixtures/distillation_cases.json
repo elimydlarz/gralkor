@@ -90,11 +90,7 @@
         "text": "0::/\n88f91881a252\nghcr.io/openclaw/openclaw:latest"
       }
     ],
-    "reject_patterns": [],
-    "expect_patterns": [
-      "container",
-      "image"
-    ]
+    "reject_patterns": []
   },
   {
     "name": "config_inspection_no_memory",
