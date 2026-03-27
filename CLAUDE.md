@@ -217,6 +217,68 @@ _prioritize_facts
     and logs valid/non-valid breakdown
 ```
 
+#### capture-hygiene
+
+```
+extractMessagesFromCtx
+  message roles
+    when role is "user"
+      then text/output_text blocks extracted and cleaned via cleanUserMessageText
+    when role is "assistant"
+      then text blocks checked individually via isSystemMessage, system blocks dropped
+      and thinking blocks extracted (type "thinking")
+      and tool call blocks (toolCall/toolUse/functionCall) serialized as tool_use
+    when role is "toolResult"
+      then converted to assistant message with tool_result block
+      and text truncated to 1000 chars
+    when role is "tool" (Ollama adapter)
+      then treated same as "toolResult"
+    when role is "compactionSummary" or unknown
+      then silently dropped
+
+cleanUserMessageText
+  when message contains (untrusted metadata) JSON block
+    then block stripped, surrounding user content preserved
+  when message contains <gralkor-memory> XML
+    then XML removed (feedback loop prevention)
+  when message contains Untrusted context (metadata...) footer block
+    then entire footer block stripped (header + JSON body)
+  when message contains system lines mixed with user content
+    then system lines stripped per-line via isSystemLine
+    and real user content preserved
+  when message is entirely system content
+    then returns empty string (message dropped)
+
+SYSTEM_MESSAGE_PATTERNS (isSystemLine / isSystemMessage)
+  then matches "A new session was started..."
+  then matches "Current time:..." (case insensitive)
+  then matches "✅ New session started..." (with or without emoji)
+  then matches "System: [timestamp] ..." event lines
+  then matches "[User sent media without caption]"
+```
+
+#### behaviour-distillation
+
+```
+_format_transcript (server-side)
+  when assistant message has thinking blocks
+    then grouped into behaviour for that turn
+  when assistant message has tool_use blocks
+    then grouped into behaviour for that turn
+  when assistant message has tool_result blocks
+    then grouped into behaviour for that turn
+  when turn has behaviour blocks and llm_client available
+    then blocks joined with --- separator
+    and distilled via LLM into first-person past-tense summary
+    and injected as "Assistant: (behaviour: {summary})" before assistant text
+  when distillation fails for a turn
+    then behaviour line silently dropped, assistant text preserved
+  when turn has only text blocks (no behaviour)
+    then text rendered as "Assistant: {text}" with no behaviour line
+  user messages
+    then rendered as "User: {text}"
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
