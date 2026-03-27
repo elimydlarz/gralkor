@@ -85,7 +85,7 @@ function truncateText(text: string, limit: number): string {
 /**
  * Hook event — the first argument passed to hook handlers.
  *
- * before_agent_start: { prompt, messages? }
+ * before_prompt_build: { prompt, messages }
  * agent_end: { messages, success, error, durationMs }
  */
 export interface HookEvent {
