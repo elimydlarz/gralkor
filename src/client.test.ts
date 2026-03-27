@@ -549,6 +549,7 @@ describe("clearGraph()", () => {
 
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:8000/clear");
+    expect(opts.method).toBe("POST");
     const body = JSON.parse(opts.body);
     expect(body).toEqual({ group_id: "g1" });
   });
