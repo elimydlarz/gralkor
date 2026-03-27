@@ -36,8 +36,12 @@ def llm_client():
     """Build the same LLM client the server uses (config.yaml + env keys).
 
     Reads CONFIG_PATH or falls back to ../config.yaml (project root).
-    Skips if the required API key for the configured provider is missing.
+    Gemini accepts GEMINI_API_KEY as an alias for GOOGLE_API_KEY.
     """
+    # Gemini SDK reads GOOGLE_API_KEY; copy GEMINI_API_KEY if that's what's set
+    if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
+        os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
     # Try server's config path, then project root config
     cfg = _load_config()
     if not cfg.get("llm"):
@@ -46,18 +50,6 @@ def llm_client():
             import yaml
             with open(root_cfg) as f:
                 cfg = yaml.safe_load(f) or {}
-
-    provider = cfg.get("llm", {}).get("provider", "gemini")
-
-    key_map = {
-        "gemini": "GOOGLE_API_KEY",
-        "openai": "OPENAI_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY",
-        "groq": "GROQ_API_KEY",
-    }
-    required_key = key_map.get(provider, "GOOGLE_API_KEY")
-    if not os.environ.get(required_key):
-        pytest.skip(f"No {required_key} for configured provider '{provider}'")
 
     return _build_llm_client(cfg)
 
