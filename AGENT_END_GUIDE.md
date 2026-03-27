@@ -62,6 +62,7 @@ assistant  stopReason:"stop"      [thinking("..."), text("Here's what I found")]
 | Block type | Fields | Notes |
 |---|---|---|
 | **Text** | `{ type: "text", text: string, textSignature?: string }` | The agent's natural language output |
+| **Output text** | `{ type: "output_text", text: string }` | Alternative text format used by some providers (e.g. OpenAI responses API). Semantically equivalent to `text` — treat both the same. |
 | **Tool call** | `{ type: "toolCall" \| "toolUse" \| "functionCall", id: string, name: string, input?: object, arguments?: object }` | Intent to invoke a tool. `input` (Anthropic-style) or `arguments` (OpenAI-style) — check both. `id` links to the matching `toolResult` |
 | **Thinking** | `{ type: "thinking", thinking: string, thinkingSignature?: string }` | Reasoning traces (extended thinking / chain-of-thought) |
 
