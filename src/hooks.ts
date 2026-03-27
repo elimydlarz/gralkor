@@ -215,7 +215,19 @@ function cleanUserMessageText(text: string): string {
   // Remove gralkor-memory XML (feedback loop prevention)
   cleaned = cleaned.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
 
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Re-check after unwrapping — metadata may have been hiding a system message
+  if (isSystemMessage(cleaned)) return "";
+
+  // Strip individual system lines from mixed content
+  cleaned = cleaned
+    .split("\n")
+    .filter((line) => !isSystemLine(line))
+    .join("\n")
+    .trim();
+
+  return cleaned;
 }
 
 /**
