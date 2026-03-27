@@ -2210,6 +2210,44 @@ describe("extractUserMessageFromPrompt — System: prefix stripping", () => {
   });
 });
 
+describe("cleanUserMessageText — system lines with leading whitespace", () => {
+  it("strips system lines even with leading whitespace", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "  Current time: 2025-01-01\nWhat is the answer?",
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "What is the answer?" }] },
+    ]);
+  });
+
+  it("drops assistant system message with leading whitespace", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        {
+          role: "assistant",
+          content: [
+            { type: "text", text: "  A new session was started via /new" },
+            { type: "text", text: "Real content" },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Real content" }] },
+    ]);
+  });
+});
+
 describe("cleanUserMessageText — Untrusted context footer", () => {
   it("strips Untrusted context footer block from user message", () => {
     const result = extractMessagesFromCtx({
