@@ -213,7 +213,7 @@ _prioritize_facts
 | untrusted-context | Auto-recalled facts wrapped in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s health ping interval on child process |
 | message-filtering | Auto-capture skips empty conversations (no text extracted) |
-| capture-hygiene | System messages detected and dropped via `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts` — a single pattern list checked against both user and assistant content. Catches session-start instructions, `Current time:` metadata, `✅ New session started` notifications. New runtime-injected patterns go in this list. Separately, metadata wrappers (`(untrusted metadata)` JSON blocks) are unwrapped to expose real user text, and `<gralkor-memory>` XML is removed to prevent feedback loops. |
+| capture-hygiene | System messages detected and stripped via `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. For user messages: metadata wrappers (`(untrusted metadata)` JSON blocks) are unwrapped first, `<gralkor-memory>` XML removed, then system lines filtered per-line via `isSystemLine()` — preserves real user content when mixed with system lines (e.g. `Current time:` followed by actual question). For assistant messages: each text block checked individually via `isSystemMessage()`. Catches session-start instructions, `Current time:` metadata, `✅ New session started` notifications. New runtime-injected patterns go in `SYSTEM_MESSAGE_PATTERNS`. |
 | prompt-robustness | Sequential stripping of system/session/metadata lines; fallback to `event.messages` |
 | query-sanitization | Server-side `_sanitize_query()` strips backticks (RediSearch syntax prevention) |
 | bundled-arm64-wheel | `make pack` builds falkordblite wheel for linux/arm64 via Docker; server manager force-installs after `uv sync` |
