@@ -555,7 +555,7 @@ export function createAgentEndHandler(
 export function createSessionEndHandler(
   debouncer: DebouncedFlush<SessionBuffer>,
 ) {
-  return async (_event: HookEvent, ctx: HookSessionContext): Promise<void> => {
+  return async (_event: unknown, ctx: HookSessionContext): Promise<void> => {
     const key = resolveBufferKey(ctx);
     if (!debouncer.has(key)) {
       console.log(`[gralkor] session_end — no buffer for key:${key}`);
