@@ -18,3 +18,9 @@ dev = [
     "httpx>=0.27",
     "mutmut>=3.0",
 ]
+
+[tool.mutmut]
+paths_to_mutate = ["main.py"]
+tests_dir = ["tests/"]
+runner = "python -m pytest -x --tb=short -q"
+mutate_only_covered_lines = true
