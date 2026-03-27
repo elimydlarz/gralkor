@@ -229,6 +229,22 @@ describe("register()", () => {
     expect(getTool.name).toBe("memory_get");
   });
 
+  describe("auto-recall-further-querying", () => {
+    it("when memory_search tool returns results, no further querying instruction is included in the response", async () => {
+      const { register } = await import("./index.js");
+
+      register(api);
+
+      const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
+      const tools = factory({ config: {}, sessionKey: "test-session" });
+      const [searchTool] = tools;
+
+      expect(searchTool.description).not.toContain("parallel");
+      expect(searchTool.description).not.toContain("different angles");
+      expect(searchTool.description).not.toContain("diverse queries");
+    });
+  });
+
   describe("when ontology config is invalid", () => {
     it("then throws validation error", async () => {
       const { register } = await import("./index.js");
