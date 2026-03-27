@@ -6,3 +6,6 @@ __pycache__
 .venv/
 server/wheels/
 .claude/worktrees
+.stryker-tmp/
+.stryker-incremental.json
+server/.mutmut-cache
