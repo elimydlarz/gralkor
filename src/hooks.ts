@@ -119,19 +119,16 @@ export interface HookSessionContext {
 }
 
 /**
- * Extract the user's actual message from event.prompt (before_prompt_build).
+ * Extract the user's actual message from event.prompt.
  *
  * The prompt may be wrapped in metadata:
  *   "Sender (untrusted metadata):\n```json\n{...}\n```\n\nActual message"
  *
  * System prompts (e.g. "A new session was started via /new") are not user messages.
  */
-export function extractUserMessageFromPrompt(event: HookEvent): string {
-  const prompt = event.prompt;
-  if (!prompt) return "";
-
+export function extractUserMessageFromPrompt(event: PromptBuildEvent): string {
   // Strip leading "System: ..." lines (queued events prepended by gateway)
-  const stripped = prompt.replace(/^(?:System: [^\n]*\n\n)+/, "");
+  const stripped = event.prompt.replace(/^(?:System: [^\n]*\n\n)+/, "");
 
   // Strip session-start system instruction (may have user message after it)
   const afterSession = stripped.replace(/^A new session was started[^\n]*(?:\n\n)?/, "");
@@ -142,9 +139,8 @@ export function extractUserMessageFromPrompt(event: HookEvent): string {
   const fromPrompt = afterSession.replace(metadataPattern, "").trim();
   if (fromPrompt) return fromPrompt;
 
-  // Fallback: prompt was only metadata with no user text after it.
-  // Extract the last user message from event.messages (available on 2nd fire).
-  return extractLastUserMessageFromMessages(event);
+  // Prompt was only metadata wrapper — extract from messages instead.
+  return extractLastUserMessageFromMessages(event.messages);
 }
 
 /**
