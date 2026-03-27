@@ -1,0 +1,153 @@
+[
+  {
+    "name": "memory_recall_with_tool_results",
+    "description": "Agent searches memory and gets facts back — distillation should NOT echo the facts",
+    "blocks": [
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"Eli recent projects and work\"}"
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"Eli2 current status infrastructure\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- Eli is utilizing the do-together project for their work. (created 2026-03-26T12:08:17.921441+00:00) (valid from 2026-03-26T12:08:08.867000+00:00)\n- Eli maintains an active focus on developing the you2 project. (created 2026-03-16T17:07:23.608350+00:00) (valid from 2026-03-16T17:00:00+00:00)\n- Eli1 worked on the eli2-projects repository. (created 2026-03-21T22:35:39.958571+00:00) (valid from 2026-03-21T00:00:00+00:00)\n- Eli utilizes various Google Cloud Platform services which have experienced a recent cost increase. (created 2026-03-19T22:40:08.166060+00:00) (valid from 2026-03-19T22:31:00+00:00)"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- Eli2 sends status reports and findings to the operator Eli. (created 2026-03-12T22:56:10.279380+00:00) (valid from 2026-03-12T22:55:20.879000+00:00)\n- Eli1 manages and develops the agents infrastructure repository. (created 2026-03-17T22:36:29.202409+00:00) (valid from 2026-03-17T22:30:00+00:00)\n- Eli2 uses Anthropic as the model provider for sub-agent runs. (created 2026-03-18T22:38:07.270576+00:00) (valid from 2026-03-18T22:31:00+00:00)"
+      }
+    ],
+    "reject_patterns": [
+      "do-together",
+      "you2",
+      "GCP",
+      "Google Cloud",
+      "Anthropic",
+      "eli2-projects",
+      "infrastructure repository",
+      "cost increase",
+      "sub-agent"
+    ]
+  },
+  {
+    "name": "thinking_with_memory_recall",
+    "description": "Agent thinks about what it recalled — should capture the reasoning, not restate the recalled data",
+    "blocks": [
+      {
+        "type": "thinking",
+        "text": "The user asked for a do-together status report. Let me search my memory for what I know about this project, then also check the filesystem to see the current state of the code."
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"do-together plugin status development progress\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- Eli1 released updates for the claude-code-plugins repository. (created 2026-03-22T22:35:59.492731+00:00) (valid from 2026-03-21T00:00:00+00:00)\n- Development of do-together must not result in permanent changes to the agents repo. (created 2026-03-27T03:54:13.098618+00:00) (valid from 2026-03-27T03:54:05.323000+00:00)\n- Eli wants to use the do-together plugin. (created 2026-03-26T12:13:27.130168+00:00) (valid from 2026-03-26T12:13:18.689000+00:00)\n- The do-together plugin uses Trakt for device authentication. (created 2026-03-26T12:13:27.130245+00:00) (valid from 2026-03-26T12:13:18.689000+00:00)"
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"do-together implementation current state features completed\"}"
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: exec\nInput: {\"command\":\"find /data/workspace -name \\\"*do-together*\\\" 2>/dev/null | head -20; ls /data/workspace/ 2>/dev/null\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- The Assistant uses the Claude coding agent to implement features for the do-together project. (created 2026-03-27T05:26:06.691892+00:00) (valid from 2026-03-27T05:25:58.391000+00:00)\n- Eli commissioned the development of the do-together plugin. (created 2026-03-27T05:26:06.691906+00:00) (valid from 2026-03-27T05:25:58.391000+00:00)"
+      },
+      {
+        "type": "tool_result",
+        "text": "/data/workspace/projects/eli2-projects/do-together\n/data/workspace/eli2-projects/do-together\nAGENTS.md\nCLAUDE.md\neli2-projects\nprojects\nskills"
+      }
+    ],
+    "reject_patterns": [
+      "claude-code-plugins",
+      "permanent changes",
+      "Trakt for device",
+      "commissioned",
+      "Claude coding agent"
+    ]
+  },
+  {
+    "name": "pure_filesystem_exploration",
+    "description": "Agent explores filesystem without memory — should summarize actions normally",
+    "blocks": [
+      {
+        "type": "thinking",
+        "text": "I need to check the container environment to figure out what image we're running."
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: exec\nInput: {\"command\":\"cat /proc/1/cgroup 2>/dev/null | head -5\\nhostname\\ndocker inspect $(hostname) --format '{{.Config.Image}}'\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "0::/\n88f91881a252\nghcr.io/openclaw/openclaw:latest"
+      }
+    ],
+    "reject_patterns": [],
+    "expect_patterns": [
+      "container",
+      "image"
+    ]
+  },
+  {
+    "name": "config_inspection_no_memory",
+    "description": "Agent inspects config files and credentials — should summarize actions, not file contents",
+    "blocks": [
+      {
+        "type": "tool_use",
+        "text": "Tool: exec\nInput: {\"command\":\"cat /data/.openclaw/state/do-together/trakt-tokens.json | python3 -c \\\"import sys,json; d=json.load(sys.stdin); d['access_token']='***'; d['refresh_token']='***'; print(json.dumps(d,indent=2))\\\"\\necho \\\"---\\\"\\ncat /data/.openclaw/do-together-state.json 2>/dev/null\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "{\n  \"access_token\": \"***\",\n  \"refresh_token\": \"***\",\n  \"expires_in\": 604800,\n  \"created_at\": 1774532848\n}\n---\n{\n  \"lastSeenId\": 12111015860,\n  \"lastSeenAt\": \"2026-03-26T15:53:00.000Z\"\n}"
+      }
+    ],
+    "reject_patterns": [
+      "604800",
+      "1774532848",
+      "12111015860"
+    ]
+  },
+  {
+    "name": "auto_recall_memory_search_heavy",
+    "description": "Multiple memory searches at session start — heavily restated recall, should be compressed to intent",
+    "blocks": [
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"Eli recent projects and work\"}"
+      },
+      {
+        "type": "tool_use",
+        "text": "Tool: memory_search\nInput: {\"query\":\"Eli2 current status infrastructure\"}"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- Eli is utilizing the do-together project for their work. (created 2026-03-26T12:08:17.921441+00:00)\n- Eli maintains an active focus on developing the you2 project. (created 2026-03-16T17:07:23.608350+00:00)\n- Eli1 worked on the eli2-projects repository. (created 2026-03-21T22:35:39.958571+00:00)\n- Eli performed work on the eli2-projects repository on March 21, 2026. (created 2026-03-22T17:07:12.172915+00:00)\n- Eli utilizes various Google Cloud Platform services which have experienced a recent cost increase. (created 2026-03-19T22:40:08.166060+00:00)\n- Eli is currently interested in and working on the you2 project. (created 2026-03-12T22:46:34.700472+00:00) (invalid since 2026-03-12T22:46:35.434000+00:00)"
+      },
+      {
+        "type": "tool_result",
+        "text": "Facts (knowledge graph):\n- Eli2 sends status reports and findings to the operator Eli. (created 2026-03-12T22:56:10.279380+00:00)\n- Eli1 manages and develops the agents infrastructure repository. (created 2026-03-17T22:36:29.202409+00:00)\n- Eli1 worked on the eli2-projects repository. (created 2026-03-21T22:35:39.958571+00:00)\n- Eli2 uses Anthropic as the model provider for sub-agent runs. (created 2026-03-18T22:38:07.270576+00:00)\n- Eli2 reported findings from the status check and performance evaluation to Eli. (created 2026-03-12T22:53:08.525319+00:00) (invalid since 2026-03-12T22:55:20.879000+00:00)\n- Eli2 is currently operating on OpenClaw version 2026.3.11. (created 2026-03-12T22:53:08.525422+00:00) (invalid)"
+      }
+    ],
+    "reject_patterns": [
+      "do-together",
+      "you2",
+      "Google Cloud",
+      "GCP",
+      "cost increase",
+      "Anthropic",
+      "2026.3.11",
+      "eli2-projects",
+      "infrastructure repository",
+      "status reports",
+      "sub-agent"
+    ]
+  }
+]
