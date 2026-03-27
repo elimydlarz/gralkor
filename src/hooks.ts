@@ -144,14 +144,10 @@ export function extractUserMessageFromPrompt(event: PromptBuildEvent): string {
 }
 
 /**
- * Extract the last user message text from event.messages.
- * Used as fallback when the prompt contains only metadata wrapper
- * and the user text is not appended after it.
+ * Extract the last user message text from the messages array.
+ * Used as fallback when the prompt contains only metadata wrapper.
  */
-export function extractLastUserMessageFromMessages(event: HookEvent): string {
-  const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return "";
-
+export function extractLastUserMessageFromMessages(messages: MessageEntry[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") {
       const text = normalizeContent(messages[i].content)
