@@ -1953,3 +1953,85 @@ describe("idle timeout flush", () => {
   });
 });
 
+describe("countNativeResults", () => {
+  it("returns 0 for null", () => {
+    expect(countNativeResults(null)).toBe(0);
+  });
+
+  it("returns results count for valid JSON with results array", () => {
+    expect(countNativeResults(JSON.stringify({ results: ["a", "b", "c"] }))).toBe(3);
+  });
+
+  it("returns 0 for JSON with empty results array", () => {
+    expect(countNativeResults(JSON.stringify({ results: [], provider: "test" }))).toBe(0);
+  });
+
+  it("returns 0 for JSON without results array", () => {
+    expect(countNativeResults(JSON.stringify({ other: "data" }))).toBe(0);
+  });
+
+  it("returns 1 for non-JSON non-empty string", () => {
+    expect(countNativeResults("Some plain text result")).toBe(1);
+  });
+
+  it("returns 0 for whitespace-only non-JSON string", () => {
+    expect(countNativeResults("   \n  ")).toBe(0);
+  });
+
+  it("returns 0 for empty string", () => {
+    expect(countNativeResults("")).toBe(0);
+  });
+});
+
+describe("extractMessagesFromCtx — [User sent media without caption]", () => {
+  it("drops user message that is only media caption placeholder", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: "[User sent media without caption]" }] },
+        { role: "assistant", content: [{ type: "text", text: "I see an image" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "I see an image" }] },
+    ]);
+  });
+});
+
+describe("extractMessagesFromCtx — compactionSummary and unknown roles", () => {
+  it("drops compactionSummary messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "compactionSummary", content: [{ type: "text", text: "Summary of conversation" }] },
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello" }] },
+    ]);
+  });
+
+  it("drops unknown role messages", () => {
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "system", content: [{ type: "text", text: "System prompt" }] },
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "user", content: [{ type: "text", text: "Hello" }] },
+    ]);
+  });
+});
+
+describe("extractLastUserMessageFromMessages — multiline joining", () => {
+  it("joins multiple text blocks with newlines not empty string", () => {
+    const result = extractLastUserMessageFromMessages([
+      { role: "user", content: [
+        { type: "text", text: "Line 1" },
+        { type: "text", text: "Line 2" },
+      ]},
+    ]);
+    expect(result).toBe("Line 1\nLine 2");
+  });
+});
+
