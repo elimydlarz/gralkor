@@ -573,62 +573,50 @@ describe("extractUserMessageFromPrompt", () => {
 
 describe("extractLastUserMessageFromMessages", () => {
   it("returns empty when no messages", () => {
-    expect(extractLastUserMessageFromMessages({})).toBe("");
+    expect(extractLastUserMessageFromMessages([])).toBe("");
   });
 
   it("returns last user message text", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "First" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-        { role: "user", content: [{ type: "text", text: "Second" }] },
-      ],
-    })).toBe("Second");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: [{ type: "text", text: "First" }] },
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: [{ type: "text", text: "Second" }] },
+    ])).toBe("Second");
   });
 
   it("strips gralkor-memory blocks", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n\nActual question' }] },
-      ],
-    })).toBe("Actual question");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n\nActual question' }] },
+    ])).toBe("Actual question");
   });
 
   it("skips user messages that are only gralkor-memory", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Real message" }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
-      ],
-    })).toBe("Real message");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: [{ type: "text", text: "Real message" }] },
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
+    ])).toBe("Real message");
   });
 
   it("handles string content in user messages", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: "First as string" },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-        { role: "user", content: "Second as string" },
-      ],
-    })).toBe("Second as string");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: "First as string" },
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: "Second as string" },
+    ])).toBe("Second as string");
   });
 
   it("strips gralkor-memory from string content", () => {
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n';
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: `${xml}Actual question` },
-      ],
-    })).toBe("Actual question");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: `${xml}Actual question` },
+    ])).toBe("Actual question");
   });
 
   it("extracts output_text blocks from user messages", () => {
-    expect(extractLastUserMessageFromMessages({
-      messages: [
-        { role: "user", content: [{ type: "output_text", text: "Question via output_text" }] },
-      ],
-    })).toBe("Question via output_text");
+    expect(extractLastUserMessageFromMessages([
+      { role: "user", content: [{ type: "output_text", text: "Question via output_text" }] },
+    ])).toBe("Question via output_text");
   });
 });
 
