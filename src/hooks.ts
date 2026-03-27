@@ -305,19 +305,12 @@ export interface RecallOpts {
   serverReady?: ReadyGate;
 }
 
-export function createBeforeAgentStartHandler(
+export function createBeforePromptBuildHandler(
   client: GraphitiClient,
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
   const { setGroupId, getNativeSearch, serverReady } = opts;
-  // Deduplicate the double-fire: cache result for same query within a short window.
-  // before_agent_start fires twice per agent run (OpenClaw behavior) — only the 2nd
-  // fire's prependContext is used, but both trigger expensive searches. We cache the
-  // result from the 1st fire and return it on the 2nd.
-  let lastQuery = "";
-  let lastResult: { prependContext?: string } | void;
-  let lastResultAt = 0;
 
   return async (event: HookEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
@@ -336,14 +329,6 @@ export function createBeforeAgentStartHandler(
     if (!userMessage) {
       console.log(`[gralkor] auto-recall skip (no query) — agentId:${agentId} promptLen:${event.prompt?.length ?? 0} messages:${event.messages?.length ?? 0}`);
       return;
-    }
-
-    // Deduplicate: if we searched for the same query within 5s, return cached result.
-    // This prevents the double-fire from doubling API calls.
-    const now = Date.now();
-    if (userMessage === lastQuery && now - lastResultAt < 5_000) {
-      console.log(`[gralkor] auto-recall dedup — agentId:${agentId}`);
-      return lastResult;
     }
 
     const groupId = resolveGroupId({ agentId });
@@ -389,10 +374,7 @@ export function createBeforeAgentStartHandler(
         console.log(`[gralkor] [test] auto-recall context:\n${prependContext}`);
       }
 
-      const result = { prependContext };
-      lastQuery = userMessage; lastResult = result; lastResultAt = now;
-
-      return result;
+      return { prependContext };
     } catch (err) {
       console.error("[gralkor] auto-recall failed:", err instanceof Error ? err.message : err);
       throw err;
