@@ -217,6 +217,9 @@ function cleanUserMessageText(text: string): string {
   // Remove gralkor-memory XML (feedback loop prevention)
   cleaned = cleaned.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
 
+  // Remove Untrusted context footer (appended by OpenClaw's appendUntrustedContext)
+  cleaned = cleaned.replace(/\n*Untrusted context \(metadata[^)]*\):\n[\s\S]*$/, "");
+
   // Strip individual system lines (session-start, Current time, etc.)
   cleaned = cleaned
     .split("\n")
