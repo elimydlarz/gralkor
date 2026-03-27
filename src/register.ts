@@ -26,7 +26,7 @@ export function registerHooks(
     flushSessionBuffer(key, buf, client, { test: config.test }),
   );
 
-  api.on("before_agent_start", createBeforePromptBuildHandler(client, config, opts));
+  api.on("before_prompt_build", createBeforePromptBuildHandler(client, config, opts));
   api.on("agent_end", createAgentEndHandler(config, debouncer));
   api.on("session_end", createSessionEndHandler(debouncer));
 }
