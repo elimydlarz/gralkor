@@ -890,7 +890,7 @@ describe("before_prompt_build handler", () => {
 
       await expect(
         handler(
-          { prompt: "Tell me about the project" },
+          { prompt: "Tell me about the project", messages: [] },
           { agentId: "agent-42" },
         ),
       ).rejects.toThrow("[gralkor] auto-recall failed: server is not ready");
@@ -911,7 +911,7 @@ describe("before_prompt_build handler", () => {
         client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
       );
       const result = await handler(
-        { prompt: "Tell me about the project" },
+        { prompt: "Tell me about the project", messages: [] },
         { agentId: "agent-42" },
       );
 
