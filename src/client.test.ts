@@ -478,8 +478,9 @@ describe("getEpisodes()", () => {
 
     await client.getEpisodes("g1", 5);
 
-    const url = String(fetchMock.mock.calls[0][0]);
+    const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:8000/episodes?group_id=g1&limit=5");
+    expect(opts.method).toBe("GET");
   });
 
   it("encodes special characters in groupId", async () => {
