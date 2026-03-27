@@ -120,7 +120,7 @@ describe("validateOntologyConfig()", () => {
   });
 
   describe("when edgeMap key format is invalid", () => {
-    it("then rejects", () => {
+    it("then rejects with descriptive message", () => {
       const ontology: OntologyConfig = {
         entities: {
           Project: { description: "test" },
@@ -132,7 +132,7 @@ describe("validateOntologyConfig()", () => {
           "Project": ["Uses"],
         },
       };
-      expect(() => validateOntologyConfig(ontology)).toThrow();
+      expect(() => validateOntologyConfig(ontology)).toThrow("Invalid edgeMap key 'Project': expected 'EntityA,EntityB'");
     });
   });
 
