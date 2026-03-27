@@ -704,7 +704,7 @@ describe("before_prompt_build handler", () => {
       client as unknown as GraphitiClient, defaultConfig, { getNativeSearch },
     );
     const result = await handler(
-      { prompt: "Tell me about something" },
+      { prompt: "Tell me about something", messages: [] },
     );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
