@@ -774,6 +774,28 @@ describe("before_prompt_build handler", () => {
     );
   });
 
+  it("separates multiple facts with newlines and sections with double newlines", async () => {
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [
+        makeFact({ group_id: "agent-42", fact: "Fact A" }),
+        makeFact({ group_id: "agent-42", fact: "Fact B" }),
+      ],
+    });
+
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const result = await handler(
+      { prompt: "Tell me about it", messages: [] },
+      { agentId: "agent-42" },
+    );
+
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    // Facts separated by \n (not empty string)
+    expect(ctx_result).toMatch(/Fact A[^\n]*\nFact B/);
+    // Sections separated by \n\n
+    expect(ctx_result).toMatch(/No native results\.\n\n/);
+  });
+
   it("includes temporal info on recalled facts", async () => {
     client.search.mockResolvedValue({
       ...emptySearchResults(),
