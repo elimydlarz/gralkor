@@ -1,0 +1,26 @@
+[project]
+name = "gralkor-server"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "graphiti-core[falkordb,anthropic,google-genai,groq]>=0.28.2",
+    "falkordblite",
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-spec>=6.0",
+    "httpx>=0.27",
+    "mutmut>=3.0",
+]
+
+[tool.mutmut]
+paths_to_mutate = ["main.py"]
+tests_dir = ["tests/"]
+runner = "python -m pytest -x --tb=short -q"
+mutate_only_covered_lines = true
