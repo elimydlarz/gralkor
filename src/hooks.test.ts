@@ -471,76 +471,76 @@ describe("extractMessagesFromCtx", () => {
 });
 
 describe("extractUserMessageFromPrompt", () => {
-  it("returns empty string when prompt is missing", () => {
-    expect(extractUserMessageFromPrompt({})).toBe("");
+  it("returns empty string for empty prompt", () => {
+    expect(extractUserMessageFromPrompt({ prompt: "", messages: [] })).toBe("");
   });
 
   it("returns empty string for plain session startup", () => {
     expect(extractUserMessageFromPrompt({
-      prompt: "A new session was started via /new",
+      prompt: "A new session was started via /new", messages: [],
     })).toBe("");
   });
 
   it("extracts user message after session startup line", () => {
     expect(extractUserMessageFromPrompt({
-      prompt: "A new session was started via /new\n\nHello",
+      prompt: "A new session was started via /new\n\nHello", messages: [],
     })).toBe("Hello");
   });
 
   it("extracts user message with metadata after session startup line", () => {
     const prompt = 'A new session was started via /new\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nHello';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Hello");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Hello");
   });
 
   it("returns user message from plain prompt", () => {
     expect(extractUserMessageFromPrompt({
-      prompt: "Tell me about the project",
+      prompt: "Tell me about the project", messages: [],
     })).toBe("Tell me about the project");
   });
 
   it("strips metadata wrapper and returns user message", () => {
     const prompt = 'Conversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
   });
 
   it("strips single System: event prefix before session startup", () => {
     const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nA new session was started via /new";
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
   });
 
   it("strips System: event prefix and returns real user message", () => {
     const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nWhat is the weather today?";
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather today?");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather today?");
   });
 
   it("strips multiple System: event lines", () => {
     const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event happened\n\nA new session was started via /new";
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
   });
 
   it("strips multiple System: lines before a real user message", () => {
     const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event\n\nWhat is the weather?";
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather?");
   });
 
   it("strips System: lines + metadata wrapper before user message", () => {
     const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nConversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
   });
 
   it("strips 'Sender' metadata wrapper", () => {
     const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123", "senderName": "Eli"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Tell me about the project");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
   });
 
   it("strips arbitrary label before (untrusted metadata) wrapper", () => {
     const prompt = 'Some Future Label (untrusted metadata):\n```json\n{"foo": "bar"}\n```\n\nHello world';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("Hello world");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Hello world");
   });
 
   it("strips System: lines + Sender metadata wrapper", () => {
     const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nWhat is the weather?';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("What is the weather?");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather?");
   });
 
   it("falls back to messages when prompt is only metadata wrapper", () => {
@@ -565,9 +565,9 @@ describe("extractUserMessageFromPrompt", () => {
     })).toBe("Second question");
   });
 
-  it("returns empty when prompt is only metadata and no messages", () => {
+  it("returns empty when prompt is only metadata and messages are empty", () => {
     const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
-    expect(extractUserMessageFromPrompt({ prompt })).toBe("");
+    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
   });
 });
 
