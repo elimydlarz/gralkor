@@ -219,13 +219,10 @@ function cleanUserMessageText(text: string): string {
  *
  * The server handles transcript formatting and thinking distillation.
  */
-export function extractMessagesFromCtx(event: HookEvent): EpisodeMessage[] {
-  const messages = event.messages;
-  if (!messages || !Array.isArray(messages)) return [];
-
+export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
   const result: EpisodeMessage[] = [];
 
-  for (const msg of messages) {
+  for (const msg of event.messages) {
     const blocks = normalizeContent(msg.content);
 
     if (msg.role === "user") {
