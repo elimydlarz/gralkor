@@ -469,6 +469,41 @@ describe("extractMessagesFromCtx", () => {
         { role: "assistant", content: [{ type: "text", text: "Response" }] },
       ]);
     });
+
+    it("then drops system message hidden inside metadata wrapper", () => {
+      const msg = 'Eli (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nA new session was started via /new or /reset. Execute your Session Startup sequence now';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+          { role: "assistant", content: [{ type: "text", text: "Session started!" }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "assistant", content: [{ type: "text", text: "Session started!" }] },
+      ]);
+    });
+
+    it("then drops multi-line system content hidden inside metadata wrapper", () => {
+      const msg = 'Eli (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nA new session was started via /new or /reset. Run your Session Startup sequence.\nCurrent time: Friday, March 27th, 2026 — 11:39 (Asia/Bangkok)';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+        ],
+      });
+      expect(result).toEqual([]);
+    });
+
+    it("then strips system lines from mixed metadata-wrapped content", () => {
+      const msg = 'Eli (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nCurrent time: Friday, March 27th, 2026\n\nWhat is the weather?';
+      const result = extractMessagesFromCtx({
+        messages: [
+          { role: "user", content: [{ type: "text", text: msg }] },
+        ],
+      });
+      expect(result).toEqual([
+        { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
+      ]);
+    });
   });
 });
 
