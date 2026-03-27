@@ -62,6 +62,23 @@ describe("constructor", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("respects custom timeoutMs", async () => {
+    const client = new GraphitiClient({
+      baseUrl: "http://localhost:8000",
+      timeoutMs: 42,
+      maxRetries: 0,
+    });
+    // Make fetch hang until aborted
+    fetchMock.mockImplementation((_url: string, opts: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        opts.signal!.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      });
+    });
+
+    await expect(client.health()).rejects.toThrow();
+    // The test above would time out with the default 30s if custom timeoutMs wasn't applied
+  });
+
   it("respects custom maxRetries", async () => {
     const client = new GraphitiClient({
       baseUrl: "http://localhost:8000",
