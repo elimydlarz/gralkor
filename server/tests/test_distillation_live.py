@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from main import _distill_one, _build_llm_client
+from main import _distill_one, _build_llm_client, _load_config
 
 FIXTURES = Path(__file__).parent / "fixtures" / "distillation_cases.json"
 
@@ -31,31 +31,24 @@ def _build_input(blocks: list[dict]) -> str:
     return "\n---\n".join(b["text"] for b in blocks)
 
 
-class _OpenAITextClient:
-    """Thin wrapper around OpenAI that doesn't force JSON mode."""
-
-    def __init__(self, model: str = "gpt-4o-mini"):
-        from openai import AsyncOpenAI
-        self._client = AsyncOpenAI()
-        self._model = model
-
-    async def generate_response(self, messages, max_tokens=300, **kwargs):
-        resp = await self._client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": m.role, "content": m.content} for m in messages],
-            max_tokens=max_tokens,
-        )
-        return {"content": resp.choices[0].message.content or ""}
-
-
 @pytest.fixture(scope="module")
 def llm_client():
-    """Build a real LLM client from env. Skip if no API key."""
-    if os.environ.get("GOOGLE_API_KEY"):
-        return _build_llm_client({"llm": {"provider": "gemini", "model": "gemini-2.0-flash"}})
-    if os.environ.get("OPENAI_API_KEY"):
-        return _OpenAITextClient()
-    pytest.skip("No LLM API key (set GOOGLE_API_KEY or OPENAI_API_KEY)")
+    """Build the same LLM client the server uses (config.yaml + env keys)."""
+    cfg = _load_config()
+    provider = cfg.get("llm", {}).get("provider", "gemini")
+
+    # Check that the required API key exists for the configured provider
+    key_map = {
+        "gemini": "GOOGLE_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "groq": "GROQ_API_KEY",
+    }
+    required_key = key_map.get(provider, "GOOGLE_API_KEY")
+    if not os.environ.get(required_key):
+        pytest.skip(f"No {required_key} for configured provider '{provider}'")
+
+    return _build_llm_client(cfg)
 
 
 CASES = _load_cases()
