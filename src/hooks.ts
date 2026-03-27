@@ -185,6 +185,16 @@ function isSystemMessage(text: string): boolean {
 }
 
 /**
+ * Returns true if a single non-empty line matches a system pattern.
+ * Unlike isSystemMessage, does NOT treat empty/whitespace as system content —
+ * preserves paragraph breaks when filtering line-by-line.
+ */
+function isSystemLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed !== "" && SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(trimmed));
+}
+
+/**
  * Detect system-injected user messages and extract real user content.
  *
  * Messages matching SYSTEM_MESSAGE_PATTERNS are dropped entirely.
