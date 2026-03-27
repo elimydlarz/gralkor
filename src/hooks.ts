@@ -82,15 +82,15 @@ function truncateText(text: string, limit: number): string {
   return text.slice(0, limit) + "... (truncated)";
 }
 
-/**
- * Hook event — the first argument passed to hook handlers.
- *
- * before_prompt_build: { prompt, messages }
- * agent_end: { messages, success, error, durationMs }
- */
-export interface HookEvent {
-  prompt?: string;
-  messages?: MessageEntry[];
+/** before_prompt_build event — prompt and messages always present. */
+export interface PromptBuildEvent {
+  prompt: string;
+  messages: MessageEntry[];
+}
+
+/** agent_end event — messages always present. */
+export interface AgentEndEvent {
+  messages: MessageEntry[];
   success?: boolean;
   error?: unknown;
   durationMs?: number;
