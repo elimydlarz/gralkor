@@ -174,6 +174,8 @@ const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
   /^A new session was started\b/,
   /^Current time:/i,
   /^✅?\s*New session started\b/,
+  /^System: /,
+  /^\[User sent media without caption\]$/,
 ];
 
 /**
