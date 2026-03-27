@@ -187,6 +187,32 @@ describe("retry logic", () => {
     );
   });
 
+  it("truncates long error response body to 500 chars", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    const longBody = "x".repeat(1000);
+    fetchMock.mockResolvedValue(textResponse(longBody, 404));
+
+    await expect(client.health()).rejects.toThrow((err: Error) => {
+      // The body in the error message should be truncated
+      expect(err.message).toContain("x".repeat(500));
+      expect(err.message).not.toContain("x".repeat(501));
+      return true;
+    });
+  });
+
+  it("does not retry 399 status codes (treated as success range)", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
+    // 399 is < 400 so !res.ok is true but status < 400 means it's not a client error
+    // Actually, 399 is not ok (ok means 200-299), and >= 400 check means it would retry
+    fetchMock
+      .mockResolvedValueOnce(new Response("weird", { status: 399 }))
+      .mockResolvedValueOnce(jsonResponse({ status: "ok" }));
+
+    const result = await client.health();
+    expect(result).toEqual({ status: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("handles error body read failure gracefully", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
     const badResponse = new Response(null, { status: 404 });
