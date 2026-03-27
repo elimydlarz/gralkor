@@ -78,11 +78,22 @@ async def test_distillation_quality(llm_client, case):
             else:
                 raise
 
+    # Show input and output side by side for eyeballing
     print(f"\n{'='*60}")
     print(f"CASE: {case['name']}")
-    print(f"DESC: {case['description']}")
+    print(f"{'─'*60}")
+    print("INPUT:")
+    for block in case["blocks"]:
+        tag = block["type"].upper()
+        # Truncate long tool results to keep output scannable
+        text = block["text"]
+        if len(text) > 200:
+            text = text[:200] + "..."
+        print(f"  [{tag}] {text}")
     print(f"{'─'*60}")
     print(f"OUTPUT: {result}")
+    if case.get("reject_patterns"):
+        print(f"MUST NOT CONTAIN: {case['reject_patterns']}")
     print(f"{'─'*60}")
 
     # Must produce non-empty output
