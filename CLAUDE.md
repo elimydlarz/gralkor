@@ -401,6 +401,9 @@ TDD: write failing tests first, then implement. Test output uses tree reporters 
 | `make test-server-changed` | Changed Python test files only | spec |
 | `pnpm exec vitest run --changed` | Changed TypeScript tests only | tree |
 | `make test-mutate` | Mutation testing (TypeScript, Stryker) | clear-text |
+| `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation quality (real LLM) | stdout |
+
+**Live distillation tests:** Run after changing `_DISTILL_SYSTEM_PROMPT` in `server/main.py`. These call the configured LLM (same provider/model as production) against fixture cases in `server/tests/fixtures/distillation_cases.json` and check that distilled output doesn't echo recalled fact content. Use `-s` to see the actual LLM output for eyeballing. Cases have `reject_patterns` (strings from recalled facts that must NOT appear in output). Add new cases to the fixture file when new distillation failure modes are discovered.
 
 ## Building & Deploying
 
