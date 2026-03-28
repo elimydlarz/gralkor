@@ -172,6 +172,9 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 | episode-idempotency | Client generates `crypto.randomUUID()` per `addEpisode`/`ingestMessages` call (before retry loop) as required `idempotency_key`. Server-side in-memory store with 5-min TTL deduplicates retries — returns cached result without calling `graphiti.add_episode()`. |
 | custom-ontology | User-declared entity/edge types in plugin config (`ontology`). TypeScript validates config (reserved names, protected attrs, edgeMap cross-refs), serializes to `config.yaml`. Python server builds dynamic Pydantic models at startup via `_build_ontology()` and passes to every `graphiti.add_episode()`. Attributes are required (not Optional) to gate entity extraction. Supports string, enum (array → `Literal`), typed object, and enum-with-description forms. Reserved entity names: `Entity`, `Episodic`, `Community`, `Saga`. |
 | fact-prioritization | Server-side `_prioritize_facts()` in `/search` reserves slots for valid facts, fills remainder by relevance. Over-fetches 2x from Graphiti to widen candidate pool. See test tree below. |
+| sigterm-flush | On SIGTERM, `debouncer.flushAll()` flushes all pending session buffers. Handler installed once via module-level guard. Flush errors logged, don't block shutdown. |
+| config-check | `gralkor check` CLI command validates: LLM provider known + env var present, embedder provider known + env var present, `uv` on PATH. |
+| rich-status | `gralkor status` shows: server process state, config summary (LLM/embedder provider+model, auto-capture/recall), data directory, FalkorDB connectivity + graph stats (node/edge counts), venv state. `/health` endpoint returns graph stats and data dir. |
 
 #### auto-recall-interpretation
 
