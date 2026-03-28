@@ -544,7 +544,31 @@ async def _format_transcript(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    result: dict = {"status": "ok"}
+
+    if graphiti is not None:
+        try:
+            node_result = await graphiti.driver.execute_query(
+                "MATCH (n) RETURN count(n) AS node_count"
+            )
+            edge_result = await graphiti.driver.execute_query(
+                "MATCH ()-[r]->() RETURN count(r) AS edge_count"
+            )
+            result["graph"] = {
+                "connected": True,
+                "node_count": node_result[0][0]["node_count"] if node_result and node_result[0] else 0,
+                "edge_count": edge_result[0][0]["edge_count"] if edge_result and edge_result[0] else 0,
+            }
+        except Exception as e:
+            result["graph"] = {"connected": False, "error": str(e)}
+    else:
+        result["graph"] = {"connected": False, "error": "graphiti not initialized"}
+
+    data_dir = os.getenv("FALKORDB_DATA_DIR", "")
+    if data_dir:
+        result["data_dir"] = data_dir
+
+    return result
 
 
 @app.post("/episodes")
