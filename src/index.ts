@@ -163,6 +163,7 @@ function registerFullPlugin(
     });
   }
 
+  const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
   const manager = registerServerService(api, config, dir, serverReady);
 
   // CLI — native memory commands + gralkor commands
@@ -172,7 +173,7 @@ function registerFullPlugin(
     },
     { commands: ["memory"] },
   );
-  registerCli(api, client, config, manager);
+  registerCli(api, client, config, manager, resolvedDataDir);
 }
 
 export const id = "gralkor";
