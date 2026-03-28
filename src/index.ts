@@ -22,6 +22,9 @@ const pluginDir = join(__dirname, ".."); // dist/ → plugin root
 // OpenClaw calls register() 4+ times per event; only log config once
 let configLogged = false;
 
+// Guard against duplicate SIGTERM handlers across multiple register() calls
+let sigTermHandlerInstalled = false;
+
 /**
  * Unwrap native tool execute result to a plain string.
  * Native tools return { content: [{ type: "text", text: "..." }, ...] }
