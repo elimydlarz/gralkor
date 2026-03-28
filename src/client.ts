@@ -187,7 +187,7 @@ export class GraphitiClient {
     await this.request("POST", "/clear", { group_id: groupId });
   }
 
-  async getStatus(): Promise<{ status: string }> {
+  async getStatus(): Promise<HealthResponse> {
     return this.health();
   }
 }
