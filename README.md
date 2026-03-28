@@ -156,7 +156,8 @@ In memory mode, `memory_search` searches both the knowledge graph and native Mar
 ## CLI
 
 ```bash
-openclaw gralkor status          # Check backend connectivity and server process status
+openclaw gralkor status          # Server state, config, graph stats, data dir, venv
+openclaw gralkor check           # Validate provider config and API keys
 openclaw gralkor search <query>  # Search the knowledge graph
 openclaw gralkor clear [group]   # Delete all data for a group (destructive!)
 ```
