@@ -456,6 +456,11 @@ export class DebouncedFlush<T> {
     await this.onFlush(key, val);
   }
 
+  async flushAll(): Promise<void> {
+    const keys = [...this.entries.keys()];
+    await Promise.allSettled(keys.map(key => this.flush(key)));
+  }
+
   has(key: string): boolean {
     return this.entries.has(key);
   }
