@@ -2525,3 +2525,50 @@ describe("DebouncedFlush — edge cases", () => {
   });
 });
 
+describe("DebouncedFlush.flushAll", () => {
+  it("flushes all pending entries and clears all timers", async () => {
+    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const debouncer = new DebouncedFlush<string>(100000, onFlush);
+    debouncer.set("a", "1");
+    debouncer.set("b", "2");
+    debouncer.set("c", "3");
+    expect(debouncer.pendingCount).toBe(3);
+    expect(debouncer.timerCount).toBe(3);
+
+    await debouncer.flushAll();
+
+    expect(onFlush).toHaveBeenCalledTimes(3);
+    expect(onFlush).toHaveBeenCalledWith("a", "1");
+    expect(onFlush).toHaveBeenCalledWith("b", "2");
+    expect(onFlush).toHaveBeenCalledWith("c", "3");
+    expect(debouncer.pendingCount).toBe(0);
+    expect(debouncer.timerCount).toBe(0);
+  });
+
+  it("is a no-op when no entries are pending", async () => {
+    const onFlush = vi.fn();
+    const debouncer = new DebouncedFlush<string>(1000, onFlush);
+    await debouncer.flushAll();
+    expect(onFlush).not.toHaveBeenCalled();
+  });
+
+  it("completes successful flushes even when one fails (allSettled)", async () => {
+    const results: string[] = [];
+    const onFlush = vi.fn().mockImplementation(async (key: string) => {
+      if (key === "b") throw new Error("flush b failed");
+      results.push(key);
+    });
+    const debouncer = new DebouncedFlush<string>(100000, onFlush);
+    debouncer.set("a", "1");
+    debouncer.set("b", "2");
+    debouncer.set("c", "3");
+
+    await debouncer.flushAll();
+
+    expect(onFlush).toHaveBeenCalledTimes(3);
+    expect(results).toContain("a");
+    expect(results).toContain("c");
+    expect(debouncer.pendingCount).toBe(0);
+  });
+});
+
