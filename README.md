@@ -375,7 +375,7 @@ Check logs with `openclaw gralkor status`. Most likely: missing or invalid LLM A
 
 **Agent doesn't store conversations**
 - Check that `autoCapture.enabled` is `true` (it is by default)
-- Conversations are flushed to the graph when the session ends or after 5 minutes of inactivity (configurable via `idleTimeoutMs`). If the process is killed before either fires, buffered messages are lost.
+- Conversations are flushed to the graph when the session ends or after 5 minutes of inactivity (configurable via `idleTimeoutMs`). On SIGTERM, all pending buffers are flushed before shutdown. If the process receives SIGKILL without prior SIGTERM, buffered messages may be lost.
 - Conversations where the first user message starts with `/` are skipped by design
 - Empty conversations (no extractable text) are skipped
 
