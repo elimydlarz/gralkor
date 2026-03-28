@@ -21,7 +21,7 @@ export function registerHooks(
   client: GraphitiClient,
   config: GralkorConfig,
   opts: RecallOpts = {},
-) {
+): DebouncedFlush<SessionBuffer> {
   const debouncer = new DebouncedFlush<SessionBuffer>(config.idleTimeoutMs, (key, buf) =>
     flushSessionBuffer(key, buf, client, { test: config.test }),
   );
@@ -29,6 +29,8 @@ export function registerHooks(
   api.on("before_prompt_build", createBeforePromptBuildHandler(client, config, opts));
   api.on("agent_end", createAgentEndHandler(config, debouncer));
   api.on("session_end", createSessionEndHandler(debouncer));
+
+  return debouncer;
 }
 
 export function registerServerService(
