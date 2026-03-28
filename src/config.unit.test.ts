@@ -224,6 +224,34 @@ describe("validateConfig()", () => {
     });
   });
 
+  describe("when uv is on PATH", () => {
+    it("then uv check passes", async () => {
+      process.env.GOOGLE_API_KEY = "test-key";
+      const config = resolveConfig({});
+      const result = await validateConfig(config);
+      const uvCheck = result.checks.find(c => c.label === "uv");
+      expect(uvCheck?.status).toBe("pass");
+    });
+  });
+
+  describe("when uv is not on PATH", () => {
+    it("then uv check fails", async () => {
+      // Override PATH to exclude uv
+      const originalPath = process.env.PATH;
+      process.env.PATH = "/nonexistent";
+      process.env.GOOGLE_API_KEY = "test-key";
+      try {
+        const config = resolveConfig({});
+        const result = await validateConfig(config);
+        const uvCheck = result.checks.find(c => c.label === "uv");
+        expect(uvCheck?.status).toBe("fail");
+        expect(uvCheck?.message).toContain("not found on PATH");
+      } finally {
+        process.env.PATH = originalPath;
+      }
+    });
+  });
+
   describe("when all checks pass", () => {
     it("then result.ok is true", async () => {
       process.env.GOOGLE_API_KEY = "test-key";
