@@ -106,7 +106,7 @@ Handlers receive **`(event, ctx)`** where `ctx` (`PluginHookAgentContext`) has `
 8. **Server-side transcript formatting + behaviour distillation:** `_format_transcript()` groups thinking, `tool_use`, and `tool_result` blocks per turn, distils each group into a single first-person behaviour summary via the configured LLM in parallel, then builds the transcript with `Assistant: (behaviour: {summary})` lines injected before each turn's first assistant text. If distillation fails for a turn, the behaviour line is silently dropped. The resulting text is passed to `graphiti.add_episode()`.
 9. `flushSessionBuffer` is retried up to 3 times with exponential backoff (1s/2s/4s) for transient errors (network, 5xx, `AbortError`). 4xx client errors are not retried. After exhaustion, the last error propagates to callers.
 
-**Unrecoverable edge case:** If the process terminates before either `session_end` or the idle timer fires, buffered messages are lost. Idle timers use `unref()` so they don't block Node shutdown.
+**SIGTERM flush:** On SIGTERM, the plugin calls `debouncer.flushAll()` to flush all pending session buffers before exit. The handler is installed once (module-level guard) despite `register()` being called 4+ times. If the flush HTTP call fails, the error is logged but doesn't prevent shutdown.
 
 ### Graph Partitioning
 
