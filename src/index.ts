@@ -148,7 +148,20 @@ function registerFullPlugin(
   });
   api.registerTool(storeTool);
 
-  registerHooks(api, client, config, { setGroupId, getNativeSearch, serverReady });
+  const debouncer = registerHooks(api, client, config, { setGroupId, getNativeSearch, serverReady });
+
+  // Flush pending session buffers on SIGTERM to prevent data loss on shutdown
+  if (!sigTermHandlerInstalled) {
+    sigTermHandlerInstalled = true;
+    process.on("SIGTERM", () => {
+      if (debouncer.pendingCount > 0) {
+        console.log(`[gralkor] SIGTERM received, flushing ${debouncer.pendingCount} pending session buffer(s)...`);
+        debouncer.flushAll().catch((err) => {
+          console.error("[gralkor] SIGTERM flush failed:", err instanceof Error ? err.message : err);
+        });
+      }
+    });
+  }
 
   const manager = registerServerService(api, config, dir, serverReady);
 
