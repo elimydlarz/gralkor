@@ -77,6 +77,7 @@ export function registerCli(
   client: GraphitiClient,
   config: GralkorConfig,
   manager?: ServerManager,
+  dataDir?: string,
 ) {
   api.registerCli(
     ({ program }) => {
@@ -88,18 +89,56 @@ export function registerCli(
         .command("status")
         .description("Check Graphiti and FalkorDB connection status")
         .action(async () => {
+          // Process state
           if (manager) {
             console.log(`Server process: ${manager.isRunning() ? "running" : "stopped"}`);
           }
+
+          // Config summary
+          const llmProvider = config.llm?.provider ?? DEFAULT_LLM_PROVIDER;
+          const llmModel = config.llm?.model ?? DEFAULT_LLM_MODEL;
+          const embedderProvider = config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER;
+          const embedderModel = config.embedder?.model ?? DEFAULT_EMBEDDER_MODEL;
+          console.log(`LLM: ${llmProvider}/${llmModel}`);
+          console.log(`Embedder: ${embedderProvider}/${embedderModel}`);
+          console.log(`Auto-capture: ${config.autoCapture.enabled ? "enabled" : "disabled"}`);
+          console.log(`Auto-recall: ${config.autoRecall.enabled ? "enabled" : "disabled"} (max ${config.autoRecall.maxResults} results)`);
+
+          // Data directory
+          if (dataDir) {
+            console.log(`Data directory: ${dataDir}`);
+          }
+
+          // Server health + graph stats
           try {
             const result = await client.health();
-            console.log(
-              `Graphiti is ${result.status ?? "reachable"} at ${GRAPHITI_URL}`,
-            );
+            console.log(`Graphiti: ${result.status ?? "reachable"} at ${GRAPHITI_URL}`);
+
+            if (result.graph) {
+              if (result.graph.connected) {
+                console.log(`FalkorDB: connected (${result.graph.node_count ?? 0} nodes, ${result.graph.edge_count ?? 0} edges)`);
+              } else {
+                console.log(`FalkorDB: disconnected — ${result.graph.error ?? "unknown error"}`);
+              }
+            }
           } catch (err) {
             console.error(
-              `Graphiti is unreachable at ${GRAPHITI_URL}: ${err instanceof Error ? err.message : err}`,
+              `Graphiti: unreachable at ${GRAPHITI_URL} — ${err instanceof Error ? err.message : err}`,
             );
+          }
+
+          // Venv state
+          if (dataDir) {
+            const venvPython = join(dataDir, "venv", "bin", "python");
+            try {
+              const { execFile } = await import("node:child_process");
+              const { promisify } = await import("node:util");
+              const execFileAsync = promisify(execFile);
+              await execFileAsync(venvPython, ["--version"]);
+              console.log(`Python venv: ready`);
+            } catch {
+              console.log(`Python venv: not found`);
+            }
           }
         });
 
