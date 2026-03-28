@@ -100,6 +100,60 @@ export function validateOntologyConfig(ontology?: OntologyConfig): void {
   }
 }
 
+export const PROVIDER_ENV_KEYS: Record<string, string> = {
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  gemini: "GOOGLE_API_KEY",
+  groq: "GROQ_API_KEY",
+};
+
+export interface ConfigCheckResult {
+  ok: boolean;
+  checks: Array<{ label: string; status: "pass" | "fail" | "warn"; message: string }>;
+}
+
+export async function validateConfig(config: GralkorConfig): Promise<ConfigCheckResult> {
+  const checks: ConfigCheckResult["checks"] = [];
+
+  // LLM provider check
+  const llmProvider = config.llm?.provider ?? DEFAULT_LLM_PROVIDER;
+  const llmEnvKey = PROVIDER_ENV_KEYS[llmProvider];
+  if (!llmEnvKey) {
+    checks.push({ label: "LLM provider", status: "warn", message: `Unknown provider '${llmProvider}' — cannot verify API key` });
+  } else if (process.env[llmEnvKey]) {
+    checks.push({ label: "LLM provider", status: "pass", message: `${llmProvider} (${llmEnvKey} set)` });
+  } else {
+    checks.push({ label: "LLM provider", status: "fail", message: `${llmProvider} requires ${llmEnvKey}` });
+  }
+
+  // Embedder provider check
+  const embedderProvider = config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER;
+  const embedderEnvKey = PROVIDER_ENV_KEYS[embedderProvider];
+  if (!embedderEnvKey) {
+    checks.push({ label: "Embedder provider", status: "warn", message: `Unknown provider '${embedderProvider}' — cannot verify API key` });
+  } else if (process.env[embedderEnvKey]) {
+    checks.push({ label: "Embedder provider", status: "pass", message: `${embedderProvider} (${embedderEnvKey} set)` });
+  } else {
+    checks.push({ label: "Embedder provider", status: "fail", message: `${embedderProvider} requires ${embedderEnvKey}` });
+  }
+
+  // uv check
+  try {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+    await execFileAsync("uv", ["--version"]);
+    checks.push({ label: "uv", status: "pass", message: "found on PATH" });
+  } catch {
+    checks.push({ label: "uv", status: "fail", message: "not found on PATH — install: curl -LsSf https://astral.sh/uv/install.sh | sh" });
+  }
+
+  return {
+    ok: checks.every(c => c.status !== "fail"),
+    checks,
+  };
+}
+
 export const GRAPHITI_URL = "http://127.0.0.1:8001";
 export const GRAPHITI_PORT = 8001;
 
