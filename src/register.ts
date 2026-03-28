@@ -104,6 +104,23 @@ export function registerCli(
         });
 
       gralkor
+        .command("check")
+        .description("Validate Gralkor configuration and environment")
+        .action(async () => {
+          const result = await validateConfig(config);
+          for (const check of result.checks) {
+            const icon = check.status === "pass" ? "OK" : check.status === "warn" ? "WARN" : "FAIL";
+            console.log(`  [${icon}] ${check.label}: ${check.message}`);
+          }
+          if (!result.ok) {
+            console.error("\nConfiguration has errors. Fix the issues above before starting.");
+            process.exitCode = 1;
+          } else {
+            console.log("\nConfiguration looks good.");
+          }
+        });
+
+      gralkor
         .command("search <group_id> <query...>")
         .description("Search the knowledge graph")
         .action(async (groupId: string, query: string[]) => {
