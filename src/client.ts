@@ -49,6 +49,17 @@ export interface SearchResults {
   facts: Fact[];
 }
 
+export interface HealthResponse {
+  status: string;
+  graph?: {
+    connected: boolean;
+    node_count?: number;
+    edge_count?: number;
+    error?: string;
+  };
+  data_dir?: string;
+}
+
 export interface GraphitiClientOptions {
   baseUrl: string;
   timeoutMs?: number;
