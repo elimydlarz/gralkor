@@ -133,7 +133,7 @@ export class GraphitiClient {
     throw lastError!;
   }
 
-  async health(): Promise<{ status: string }> {
+  async health(): Promise<HealthResponse> {
     return this.request("GET", "/health");
   }
 
