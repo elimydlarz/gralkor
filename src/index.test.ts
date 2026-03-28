@@ -192,7 +192,7 @@ describe("register()", () => {
     registrar({ program: mockProgram });
 
     const cmdNames = subcommands.map((c) => c.name);
-    expect(cmdNames).toEqual(["status", "search <group_id> <query...>", "clear <group_id>"]);
+    expect(cmdNames).toEqual(["status", "check", "search <group_id> <query...>", "clear <group_id>"]);
   });
 
   it("reads plugin config from api.pluginConfig (OpenClaw contract)", async () => {
