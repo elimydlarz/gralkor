@@ -290,6 +290,70 @@ _format_transcript (server-side)
     then rendered as "User: {text}"
 ```
 
+#### sigterm-flush
+
+```
+DebouncedFlush.flushAll
+  when multiple keys have pending entries
+    then all entries are flushed
+    and all timers are cleared
+  when no entries are pending
+    then flushAll is a no-op
+  when one flush fails and another succeeds
+    then the successful flush still completes (allSettled)
+
+SIGTERM handler
+  when SIGTERM is received with pending buffers
+    then flushAll is called
+    and pending count is logged
+  when SIGTERM is received with no pending buffers
+    then flushAll is not called
+  when register() is called multiple times
+    then only one SIGTERM handler is installed
+```
+
+#### config-check
+
+```
+validateConfig
+  when LLM provider is known and env var is present
+    then LLM check passes
+  when LLM provider is known but env var is missing
+    then LLM check fails with expected env var name
+  when embedder provider is known and env var is present
+    then embedder check passes
+  when embedder provider is known but env var is missing
+    then embedder check fails with expected env var name
+  when provider is unknown
+    then check warns with provider name
+  when uv is on PATH
+    then uv check passes
+  when uv is not on PATH
+    then uv check fails
+  when all checks pass
+    then result.ok is true
+  when any check fails
+    then result.ok is false
+```
+
+#### rich-status
+
+```
+/health endpoint
+  when graphiti is initialized and FalkorDB is connected
+    then returns status ok with graph connected true and node/edge counts
+  when graphiti is initialized but query fails
+    then returns status ok with graph connected false and error message
+  when graphiti is not initialized
+    then returns status ok with graph connected false
+
+gralkor status CLI
+  when server is running and healthy
+    then shows process state, config summary, data dir, graph stats, venv state
+  when server is unreachable
+    then shows process state, config summary, data dir, and unreachable error
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
