@@ -29,11 +29,8 @@ export async function install(opts: InstallOptions): Promise<void> {
   }
 
   // 2. Validate source
-  const isFile = !source.startsWith("@") && !source.includes("/") ? false :
-    source.startsWith("@") ? false :
-    existsSync(source);
-
-  if (!source.startsWith("@") && source.endsWith(".tgz") && !existsSync(source)) {
+  const isFilePath = source.endsWith(".tgz") || (source.includes("/") && !source.startsWith("@"));
+  if (isFilePath && !existsSync(source)) {
     console.error(`Error: file not found: ${source}`);
     process.exitCode = 1;
     return;
