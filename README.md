@@ -193,7 +193,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
         "enabled": true,
         "config": {
           "autoCapture": { "enabled": true },
-          "autoRecall": { "enabled": true, "maxResults": 5 },
+          "autoRecall": { "enabled": true, "maxResults": 10 },
           "idleTimeoutMs": 300000,
           "dataDir": "/path/to/data"
         }
