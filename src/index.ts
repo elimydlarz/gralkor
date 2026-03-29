@@ -5,6 +5,7 @@ import { resolveConfig, validateOntologyConfig, GRAPHITI_URL, resolveProviders, 
 import {
   createMemoryStoreTool,
   formatFacts,
+  INTERPRETATION_INSTRUCTION,
 } from "./tools.js";
 import {
   registerHooks,
