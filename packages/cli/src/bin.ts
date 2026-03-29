@@ -65,6 +65,21 @@ async function main(): Promise<void> {
       });
       break;
     }
+    case "config": {
+      const { values: configValues } = parseArgs({
+        args: args.slice(1),
+        options: {
+          config: { type: "string" },
+          set: { type: "string", multiple: true },
+        },
+        allowPositionals: false,
+      });
+      await config({
+        config: configValues.config,
+        set: configValues.set,
+      });
+      break;
+    }
     case "check":
       await check();
       break;
