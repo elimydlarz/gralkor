@@ -190,14 +190,14 @@ export const configSchema = {
     autoCapture: {
       type: "object" as const,
       properties: {
-        enabled: { type: "boolean" as const, default: true },
+        enabled: { type: "boolean" as const, default: defaultConfig.autoCapture.enabled },
       },
     },
     autoRecall: {
       type: "object" as const,
       properties: {
-        enabled: { type: "boolean" as const, default: true },
-        maxResults: { type: "number" as const, default: 10 },
+        enabled: { type: "boolean" as const, default: defaultConfig.autoRecall.enabled },
+        maxResults: { type: "number" as const, default: defaultConfig.autoRecall.maxResults },
       },
     },
     dataDir: {
