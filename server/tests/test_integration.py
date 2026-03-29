@@ -117,7 +117,10 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             resp = await ac.get("/health")
             assert resp.status_code == 200
-            assert resp.json() == {"status": "ok"}
+            data = resp.json()
+            assert data["status"] == "ok"
+            assert data["graph"]["connected"] is True
+            assert data["graph"]["node_count"] == 1
 
 
 @pytest.mark.asyncio
