@@ -133,7 +133,7 @@ To switch away from Gemini, set `llm` and `embedder` in the plugin config. For e
 }
 ```
 
-### 5. Restart and go
+### 4. Restart and go
 
 Restart OpenClaw. On first start, Gralkor automatically:
 - Creates a Python virtual environment
