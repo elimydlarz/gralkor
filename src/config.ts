@@ -198,10 +198,6 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   };
 }
 
-export function resolveGroupId(ctx: { agentId?: string }): string {
-  return ctx.agentId ?? "default";
-}
-
 export interface ReadyGate {
   isReady(): boolean;
   resolve(): void;
