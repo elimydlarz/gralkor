@@ -1,11 +1,6 @@
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 
-export interface ToolOverrides {
-  name?: string;
-  description?: string;
-}
-
 export function formatFact(f: Fact): string {
   const createdAt = f.created_at ? ` (created ${f.created_at})` : "";
   const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
