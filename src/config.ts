@@ -149,11 +149,11 @@ export const DEFAULT_EMBEDDER_PROVIDER = "gemini";
 export const DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview";
 
 export interface GralkorConfig {
-  autoCapture: AutoCaptureConfig;
-  autoRecall: AutoRecallConfig;
+  autoCapture: { enabled: boolean };
+  autoRecall: { enabled: boolean; maxResults: number };
   idleTimeoutMs: number;
-  llm?: LlmConfig;
-  embedder?: EmbedderConfig;
+  llm?: ModelConfig;
+  embedder?: ModelConfig;
   ontology?: OntologyConfig;
   dataDir?: string;
   test?: boolean;
