@@ -9,8 +9,12 @@ vi.stubGlobal("fetch", fetchMock);
 
 const mocked = vi.mocked(oc);
 
+const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+vi.spyOn(console, "error").mockImplementation(() => {});
+
 beforeEach(() => {
   vi.resetAllMocks();
+  logSpy.mockClear();
   process.exitCode = undefined;
   mocked.getPluginInfo.mockResolvedValue({
     id: "gralkor",
