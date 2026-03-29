@@ -17,8 +17,8 @@ export interface ServerManagerOptions {
   serverDir: string;
   port: number;
   env?: Record<string, string>;
-  llmConfig?: LlmConfig;
-  embedderConfig?: EmbedderConfig;
+  llmConfig?: ModelConfig;
+  embedderConfig?: ModelConfig;
   ontologyConfig?: OntologyConfig;
   test?: boolean;
 }
