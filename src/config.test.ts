@@ -103,6 +103,32 @@ describe("defaultConfig", () => {
   it("has autoRecall maxResults of 10", () => {
     expect(defaultConfig.autoRecall.maxResults).toBe(10);
   });
+
+  it("configSchema defaults match defaultConfig (single source of truth)", async () => {
+    const { configSchema } = await import("./index.js");
+    const schema = configSchema.properties;
+    expect(schema.autoCapture.properties.enabled.default).toBe(defaultConfig.autoCapture.enabled);
+    expect(schema.autoRecall.properties.enabled.default).toBe(defaultConfig.autoRecall.enabled);
+    expect(schema.autoRecall.properties.maxResults.default).toBe(defaultConfig.autoRecall.maxResults);
+  });
+
+  it("plugin manifest defaults match defaultConfig (single source of truth)", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+
+    for (const manifestPath of [
+      join(__dirname, "..", "openclaw.plugin.json"),
+      join(__dirname, "..", "resources", "memory", "openclaw.plugin.json"),
+    ]) {
+      const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+      const props = manifest.configSchema.properties;
+      expect(props.autoCapture.properties.enabled.default, `${manifestPath}: autoCapture.enabled`).toBe(defaultConfig.autoCapture.enabled);
+      expect(props.autoRecall.properties.enabled.default, `${manifestPath}: autoRecall.enabled`).toBe(defaultConfig.autoRecall.enabled);
+      expect(props.autoRecall.properties.maxResults.default, `${manifestPath}: autoRecall.maxResults`).toBe(defaultConfig.autoRecall.maxResults);
+    }
+  });
 });
 
 describe("provider defaults", () => {
