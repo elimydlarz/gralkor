@@ -231,17 +231,35 @@ describe("register()", () => {
 
   describe("auto-recall-further-querying", () => {
     it("when memory_search tool returns results, no further querying instruction is included in the response", async () => {
-      const { register } = await import("./index.js");
+      // Stub fetch so the GraphitiClient created inside register() gets graph results
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ facts: [{ uuid: "1", name: "test", fact: "Team uses React", group_id: "default", valid_at: null, invalid_at: null, expired_at: null, created_at: "2025-01-01T00:00:00Z" }] }),
+        text: async () => "",
+      });
+      vi.stubGlobal("fetch", fetchMock);
 
+      // Resolve the module-level ReadyGate so execute doesn't throw
+      const { createReadyGate } = await import("./config.js");
+      createReadyGate().resolve();
+
+      const { register } = await import("./index.js");
       register(api);
 
       const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
       const tools = factory({ config: {}, sessionKey: "test-session" });
       const [searchTool] = tools;
 
-      expect(searchTool.description).not.toContain("parallel");
-      expect(searchTool.description).not.toContain("different angles");
-      expect(searchTool.description).not.toContain("diverse queries");
+      const result = await searchTool.execute("tool-1", { query: "React" });
+
+      // Tool result should contain the fact but NOT the auto-recall instructions
+      expect(result).toContain("Team uses React");
+      expect(result).not.toContain("search memory up to 3 times");
+      expect(result).not.toContain("diverse queries");
+      expect(result).not.toContain("interpret these facts");
+
+      vi.unstubAllGlobals();
     });
   });
 
