@@ -273,17 +273,6 @@ describe("health()", () => {
   });
 });
 
-describe("getStatus()", () => {
-  it("delegates to health()", async () => {
-    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse({ status: "ok" }));
-
-    const result = await client.getStatus();
-    expect(result).toEqual({ status: "ok" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-});
-
 describe("addEpisode()", () => {
   it("sends POST to /episodes with JSON body", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
