@@ -47,7 +47,7 @@ help:
 	@echo "Setup"
 	@echo "  setup-server    Create server venv and install Python deps (first time only)"
 
-test: test-plugin test-functional test-server
+test: test-plugin test-functional test-server test-cli
 
 test-plugin:
 	pnpm exec vitest run
