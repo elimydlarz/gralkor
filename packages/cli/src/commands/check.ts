@@ -5,6 +5,10 @@ import * as out from "../lib/output.js";
 
 const execFileAsync = promisify(execFile);
 
+/** Known provider → env var mapping. Duplicated here because the CLI is a
+ *  separate package and cannot import from the plugin source. If a provider
+ *  is added to the plugin, this map must be updated — the `check` command
+ *  will emit a "warn" for unknown providers, making the gap visible. */
 const PROVIDER_ENV_KEYS: Record<string, string> = {
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
@@ -41,7 +45,8 @@ export async function check(): Promise<void> {
   }
 
   // 3. Plugin installed
-  let pluginConfig: { llmProvider?: string; embedderProvider?: string } = {};
+  let llmProvider = DEFAULT_LLM_PROVIDER;
+  let embedderProvider = DEFAULT_EMBEDDER_PROVIDER;
   try {
     const info = await oc.getPluginInfo("gralkor");
     if (info) {
@@ -56,7 +61,18 @@ export async function check(): Promise<void> {
     fail("plugin", "could not check plugin status");
   }
 
-  // 4. Slot
+  // 4. Read actual configured providers from OpenClaw config
+  try {
+    const configuredLlm = await oc.getConfig("plugins.entries.gralkor.config.llm.provider");
+    if (configuredLlm) llmProvider = configuredLlm;
+  } catch { /* use default */ }
+
+  try {
+    const configuredEmbedder = await oc.getConfig("plugins.entries.gralkor.config.embedder.provider");
+    if (configuredEmbedder) embedderProvider = configuredEmbedder;
+  } catch { /* use default */ }
+
+  // 5. Slot
   try {
     const slot = await oc.getConfig("plugins.slots.memory");
     if (slot === "gralkor") {
@@ -68,8 +84,7 @@ export async function check(): Promise<void> {
     lines.push(out.skip("slot", "could not read config"));
   }
 
-  // 5. LLM provider key
-  const llmProvider = pluginConfig.llmProvider ?? DEFAULT_LLM_PROVIDER;
+  // 6. LLM provider key
   const llmEnvKey = PROVIDER_ENV_KEYS[llmProvider];
   if (llmEnvKey) {
     if (process.env[llmEnvKey]) {
@@ -81,8 +96,7 @@ export async function check(): Promise<void> {
     lines.push(out.warn("LLM provider", `unknown provider '${llmProvider}'`));
   }
 
-  // 6. Embedder provider key
-  const embedderProvider = pluginConfig.embedderProvider ?? DEFAULT_EMBEDDER_PROVIDER;
+  // 7. Embedder provider key
   const embedderEnvKey = PROVIDER_ENV_KEYS[embedderProvider];
   if (embedderEnvKey) {
     if (embedderEnvKey === llmEnvKey) {
@@ -94,7 +108,7 @@ export async function check(): Promise<void> {
     }
   }
 
-  // 7. Server health
+  // 8. Server health
   try {
     const resp = await fetch("http://127.0.0.1:8001/health", { signal: AbortSignal.timeout(3000) });
     if (resp.ok) {
