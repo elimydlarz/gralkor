@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import * as oc from "../lib/openclaw.js";
+import { buildConfigEntries } from "../lib/config.js";
 import { extractVersionFromTarball, extractVersionFromNpmRef, compareVersions } from "../lib/version.js";
 
 export interface InstallOptions {
