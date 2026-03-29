@@ -128,10 +128,7 @@ function registerFullPlugin(
             return "No memories found.";
           }
 
-          const interpretation =
-            "Before responding, interpret these facts for relevance to the task at hand. " +
-            "Doing this step thoughtfully improves response quality significantly.";
-          sections.push(interpretation);
+          sections.push(INTERPRETATION_INSTRUCTION);
 
           const combinedResult = sections.join("\n\n");
 
