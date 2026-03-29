@@ -51,7 +51,7 @@ describe("check", () => {
     await check();
 
     // Should have checked for OPENAI_API_KEY, not GOOGLE_API_KEY
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("openai");
     expect(output).toContain("OPENAI_API_KEY");
 
@@ -69,7 +69,7 @@ describe("check", () => {
 
     await check();
 
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     // Should show embedder as openai
     expect(output).toContain("Embedder provider");
 
@@ -86,7 +86,7 @@ describe("check", () => {
 
     await check();
 
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("gemini");
 
     delete process.env.GOOGLE_API_KEY;
