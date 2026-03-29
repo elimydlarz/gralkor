@@ -32,12 +32,15 @@ def _build_input(blocks: list[dict]) -> str:
     return "\n---\n".join(b["text"] for b in blocks)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def llm_client():
     """Build the same LLM client the server uses (config.yaml + env keys).
 
     Reads CONFIG_PATH or falls back to ../config.yaml (project root).
     Gemini accepts GEMINI_API_KEY as an alias for GOOGLE_API_KEY.
+
+    Function-scoped (not module) so the async HTTP session matches each
+    test's event loop — prevents "Event loop is closed" errors.
     """
     # Gemini SDK reads GOOGLE_API_KEY; copy GEMINI_API_KEY if that's what's set
     if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
