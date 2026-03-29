@@ -49,11 +49,11 @@ export function createMemoryStoreTool(
       args: { content: string; source_description?: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
-        throw new Error(`[gralkor] ${"memory_add"} failed: server is not ready`);
+        throw new Error(`[gralkor] memory_add failed: server is not ready`);
       }
 
       const groupId = getGroupId?.() ?? "default";
-      console.log(`[gralkor] ${"memory_add"} storing — groupId:${groupId} bodySize:${args.content.length}`);
+      console.log(`[gralkor] memory_add storing — groupId:${groupId} bodySize:${args.content.length}`);
 
       if (config.test) {
         console.log(`[gralkor] [test] episode body:\n${args.content}`);
@@ -67,7 +67,7 @@ export function createMemoryStoreTool(
         source: "text",
       });
 
-      console.log(`[gralkor] ${"memory_add"} stored — groupId:${groupId}`);
+      console.log(`[gralkor] memory_add stored — groupId:${groupId}`);
       return "Stored successfully. The knowledge graph will extract entities and relationships from this content.";
     },
   };
