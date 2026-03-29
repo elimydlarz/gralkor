@@ -95,10 +95,7 @@ export function registerCli(
           }
 
           // Config summary
-          const llmProvider = config.llm?.provider ?? DEFAULT_LLM_PROVIDER;
-          const llmModel = config.llm?.model ?? DEFAULT_LLM_MODEL;
-          const embedderProvider = config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER;
-          const embedderModel = config.embedder?.model ?? DEFAULT_EMBEDDER_MODEL;
+          const { llmProvider, llmModel, embedderProvider, embedderModel } = resolveProviders(config);
           console.log(`LLM: ${llmProvider}/${llmModel}`);
           console.log(`Embedder: ${embedderProvider}/${embedderModel}`);
           console.log(`Auto-capture: ${config.autoCapture.enabled ? "enabled" : "disabled"}`);
