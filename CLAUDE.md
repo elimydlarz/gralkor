@@ -496,6 +496,8 @@ TDD: write failing tests first, then implement. Test output uses tree reporters 
 make version-patch                    # bump, commit, tag (also version-minor/major)
 make publish                          # build + pnpm publish --access public
 make pack                             # deployment tarball (requires Docker for arm64 wheel)
+make build-cli                        # build CLI package
+make publish-cli                      # build + publish CLI package
 ```
 
 **Default deployment:** Install plugin, set LLM API key, restart OpenClaw. Requires `uv` on host.
