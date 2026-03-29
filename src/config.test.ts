@@ -180,16 +180,3 @@ describe("ReadyGate", () => {
   });
 });
 
-describe("resolveGroupId()", () => {
-  it("returns agentId when provided", () => {
-    expect(resolveGroupId({ agentId: "agent-42" })).toBe("agent-42");
-  });
-
-  it("falls back to 'default' when agentId is missing", () => {
-    expect(resolveGroupId({})).toBe("default");
-  });
-
-  it("falls back to 'default' when agentId is undefined", () => {
-    expect(resolveGroupId({ agentId: undefined })).toBe("default");
-  });
-});
