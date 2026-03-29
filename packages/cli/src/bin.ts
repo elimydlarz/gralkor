@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { install } from "./commands/install.js";
+import { config } from "./commands/config.js";
 import { check } from "./commands/check.js";
 import { status } from "./commands/status.js";
 
