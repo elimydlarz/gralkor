@@ -4,6 +4,7 @@ import { install } from "./commands/install.js";
 import { config } from "./commands/config.js";
 import { check } from "./commands/check.js";
 import { status } from "./commands/status.js";
+import { getCLIVersion } from "./lib/version.js";
 
 const HELP = `Usage: gralkor <command> [options]
 
