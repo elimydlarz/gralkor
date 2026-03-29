@@ -116,6 +116,16 @@ describe("resolveConfig()", () => {
     const config = resolveConfig({ test: true });
     expect(config.test).toBe(true);
   });
+
+  it("passes through ontology when provided", () => {
+    const config = resolveConfig({ ontology: VALID_ONTOLOGY });
+    expect(config.ontology).toBe(VALID_ONTOLOGY);
+  });
+
+  it("defaults ontology to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.ontology).toBeUndefined();
+  });
 });
 
 describe("defaultConfig", () => {
