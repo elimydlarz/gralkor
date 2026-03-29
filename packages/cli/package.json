@@ -1,0 +1,27 @@
+{
+  "name": "@susu-eng/gralkor-cli",
+  "version": "1.0.0",
+  "description": "CLI for managing the Gralkor OpenClaw plugin lifecycle",
+  "type": "module",
+  "bin": {
+    "gralkor": "./dist/bin.js"
+  },
+  "main": "./dist/bin.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "license": "MIT"
+}
