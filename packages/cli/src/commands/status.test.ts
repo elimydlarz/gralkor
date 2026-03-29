@@ -37,7 +37,7 @@ describe("status", () => {
 
     await status();
 
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("42 nodes");
     expect(output).toContain("100 edges");
     expect(output).toContain("/data/.gralkor-data");
@@ -54,7 +54,7 @@ describe("status", () => {
 
     await status();
 
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("disconnected");
     expect(output).toContain("connection refused");
   });
@@ -64,7 +64,7 @@ describe("status", () => {
 
     await status();
 
-    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join("\n");
+    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("not running");
   });
 
