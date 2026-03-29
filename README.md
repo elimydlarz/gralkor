@@ -49,36 +49,39 @@ The agent gets a unified memory interface where it doesn't need to think about w
 
 - OpenClaw >= 2026.1.26
 - Python 3.12+ on the system PATH
+- `uv` on PATH ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - An API key for a supported LLM provider (see below)
 
 ### 2. Install the plugin
 
-**From npm (recommended):**
+**Using the CLI helper (recommended):**
+
+```bash
+npx @susu-eng/gralkor-cli install @susu-eng/gralkor
+```
+
+This handles everything: installs the plugin, enables it, assigns the memory slot, and migrates from `memory-gralkor` if present. You can also pass config inline:
+
+```bash
+npx @susu-eng/gralkor-cli install @susu-eng/gralkor \
+  --config '{"llm":{"provider":"openai","model":"gpt-4.1-mini"}}'
+```
+
+Or from a tarball:
+
+```bash
+npx @susu-eng/gralkor-cli install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
+```
+
+The install is idempotent — running it again with the same version is a no-op.
+
+**Manual install:**
 
 ```bash
 openclaw plugins install @susu-eng/gralkor
 ```
 
-**From tarball:**
-
-Clone and build:
-
-```bash
-git clone https://github.com/susu-eng/gralkor.git && cd gralkor
-pnpm install && make pack
-```
-
-Then install:
-
-```bash
-openclaw plugins install ./openclaw-gralkor-memory-<version>.tgz
-```
-
-The plugin files land in `~/.openclaw/plugins/gralkor/`.
-
-### 3. Configure and enable the plugin
-
-Edit `~/.openclaw/openclaw.json`:
+Then edit `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -96,7 +99,7 @@ Edit `~/.openclaw/openclaw.json`:
 }
 ```
 
-### 4. Set your LLM API key
+### 3. Set your LLM API key
 
 Graphiti needs an LLM to extract entities and relationships from conversations. Make sure the API key for your chosen provider is available in the environment (see [OpenClaw docs](https://openclaw.dev/docs) for where env vars are configured).
 
