@@ -41,12 +41,16 @@ export async function status(): Promise<void> {
       const data = await resp.json() as Record<string, unknown>;
       lines.push(out.info("Server", "running (healthy)"));
 
-      // Graph stats if available
-      if (data.graph_stats && typeof data.graph_stats === "object") {
-        const stats = data.graph_stats as Record<string, unknown>;
-        const nodes = stats.node_count ?? "?";
-        const edges = stats.edge_count ?? "?";
-        lines.push(out.info("Graph", `${nodes} nodes, ${edges} edges`));
+      // Graph stats — server returns { graph: { connected, node_count, edge_count } }
+      if (data.graph && typeof data.graph === "object") {
+        const graph = data.graph as Record<string, unknown>;
+        if (graph.connected) {
+          const nodes = graph.node_count ?? "?";
+          const edges = graph.edge_count ?? "?";
+          lines.push(out.info("Graph", `${nodes} nodes, ${edges} edges`));
+        } else {
+          lines.push(out.info("Graph", `disconnected — ${graph.error ?? "unknown error"}`));
+        }
       }
 
       // Data dir if available
