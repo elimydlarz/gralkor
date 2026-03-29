@@ -399,16 +399,6 @@ def _serialize_fact(edge: EntityEdge) -> dict[str, Any]:
     }
 
 
-def _serialize_node(node: EntityNode) -> dict[str, Any]:
-    return {
-        "uuid": node.uuid,
-        "name": node.name,
-        "summary": node.summary,
-        "group_id": node.group_id,
-        "created_at": _ts(node.created_at),
-    }
-
-
 def _serialize_episode(ep: EpisodicNode) -> dict[str, Any]:
     return {
         "uuid": ep.uuid,
