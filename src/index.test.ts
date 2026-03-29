@@ -230,7 +230,7 @@ describe("register()", () => {
   });
 
   describe("auto-recall-further-querying", () => {
-    it("when memory_search tool execute returns results, response contains facts but no further querying or interpretation instruction", async () => {
+    it("when memory_search tool execute returns results, response contains facts and interpretation but no further querying instruction", async () => {
       // Stub fetch so the GraphitiClient created inside register() gets graph results
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
