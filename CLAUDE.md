@@ -366,6 +366,191 @@ gralkor status CLI
     then shows process state, config summary, data dir, and unreachable error
 ```
 
+#### validate-ontology-config
+
+```
+validateOntologyConfig
+  when ontology is undefined
+    then does not throw
+  when ontology is valid
+    then does not throw
+  when entity name is a reserved graph label
+    then rejects Entity, Episodic, Community, Saga
+  when entity attribute uses a protected EntityNode field name
+    then rejects uuid, name, group_id, labels, created_at, summary, attributes, name_embedding
+  when edge attribute uses a protected EntityEdge field name
+    then rejects uuid, group_id, source_node_uuid, target_node_uuid, created_at, name, fact, fact_embedding, episodes, expired_at, valid_at, invalid_at, attributes
+  when edgeMap key format is invalid
+    then rejects (expected "EntityA,EntityB")
+  when edgeMap references undeclared entity
+    then rejects
+  when edgeMap references undeclared edge
+    then rejects
+  when excludedEntityTypes contains a declared entity
+    then rejects (contradictory)
+```
+
+#### extract-user-message-from-prompt
+
+```
+extractUserMessageFromPrompt
+  when prompt has leading "System: ..." lines
+    then strips them and returns user message
+  when prompt has multiple leading System: lines
+    then strips all of them
+  when prompt has session-start instruction followed by user message
+    then strips session-start and returns user message
+  when prompt is only a session-start instruction
+    then returns empty string
+  when prompt has metadata wrapper followed by user message
+    then strips wrapper and returns user message
+  when prompt is only metadata wrapper
+    then falls back to last user message from event.messages
+  when prompt is metadata wrapper + whitespace only
+    then falls back to messages
+  when fallback messages contain only non-text blocks
+    then returns empty string
+  when System: appears mid-string (not at start)
+    then does NOT strip it
+  when session-start text appears mid-string
+    then does NOT strip it
+```
+
+#### flush-session-buffer-retry
+
+```
+flushSessionBuffer
+  when flush succeeds on first attempt
+    then returns without retry
+  when flush fails with retryable error
+    then retries up to 3 times with exponential backoff (1s/2s/4s)
+  when flush fails with 4xx client error
+    then does not retry (throws immediately)
+  when all retries exhausted
+    then throws the last error
+  when messages are empty after filtering
+    then skips flush (no API call)
+```
+
+#### debounced-flush
+
+```
+DebouncedFlush
+  set and flush
+    when set then flush for same key
+      then delivers value exactly once
+    when set called twice for same key
+      then replaces previous value
+    when flush called for non-existing key
+      then is a no-op
+  idle timeout
+    when idle timeout elapses after set
+      then flushes the value
+    when set called again before timeout
+      then resets the timer (debounce)
+  state queries
+    when entries exist
+      then has() returns true, pendingCount reflects count
+    when no entries
+      then has() returns false, pendingCount is 0
+  dispose
+    when dispose called with pending entries
+      then cancels all timers and clears entries
+  flushAll
+    when multiple keys have pending entries
+      then all entries are flushed and all timers cleared
+    when no entries are pending
+      then flushAll is a no-op
+    when one flush fails and another succeeds
+      then successful flush still completes (allSettled)
+```
+
+#### auto-capture-buffering
+
+```
+createAgentEndHandler
+  when autoCapture is disabled
+    then skips buffering
+  when event.messages is empty
+    then skips buffering
+  when autoCapture is enabled and messages present
+    then buffers messages in debouncer keyed by sessionKey || agentId || "default"
+```
+
+#### cli-install
+
+```
+gralkor install
+  when source is npm ref and plugin not installed
+    then installs, enables, and sets memory slot
+  when same version already installed
+    then skips install but still enables and sets slot
+  when older version installed
+    then uninstalls old version, installs new, enables, sets slot
+  when installed version is newer than source
+    then refuses downgrade with error
+  when source is tarball path that does not exist
+    then errors with file not found
+  when --dry-run flag is set
+    then prints actions without executing
+  when --config JSON is provided
+    then sets each flattened key via openclaw config set
+  when --set key=value is provided
+    then sets each key via openclaw config set
+  when legacy memory-gralkor is installed
+    then uninstalls legacy before installing gralkor
+```
+
+#### cli-check
+
+```
+gralkor check
+  when LLM provider is configured in OpenClaw config
+    then reads configured provider (not hardcoded default)
+  when embedder provider is configured in OpenClaw config
+    then reads configured provider
+  when config read fails
+    then falls back to default gemini provider
+```
+
+#### cli-status
+
+```
+gralkor status
+  when server is running and healthy
+    then shows graph stats from /health response graph field (node_count, edge_count)
+  when graph is disconnected
+    then shows disconnected with error message
+  when server is not running
+    then shows "not running"
+  when plugin is not installed
+    then errors with exit code 1
+```
+
+#### cli-config
+
+```
+gralkor config
+  when --config JSON is provided
+    then sets each flattened key via openclaw config set
+  when --set key=value is provided
+    then sets each key via openclaw config set
+  when nothing to set
+    then errors
+```
+
+#### config-defaults-single-source
+
+```
+config defaults
+  when configSchema is read from index.ts
+    then defaults match defaultConfig in config.ts
+  when plugin manifest (openclaw.plugin.json) is read
+    then defaults match defaultConfig in config.ts
+  when resources/memory/openclaw.plugin.json is read
+    then defaults match defaultConfig in config.ts
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
