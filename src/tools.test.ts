@@ -15,11 +15,7 @@ function mockClient(): {
     addEpisode: vi.fn(),
     ingestMessages: vi.fn(),
     search: vi.fn(),
-    getEpisodes: vi.fn(),
-    deleteEpisode: vi.fn(),
-    deleteEdge: vi.fn(),
     clearGraph: vi.fn(),
-    getStatus: vi.fn(),
   };
 }
 
