@@ -165,24 +165,6 @@ export class GraphitiClient {
     });
   }
 
-  async getEpisodes(groupId: string, limit = 10): Promise<Episode[]> {
-    return this.request(
-      "GET",
-      `/episodes?group_id=${encodeURIComponent(groupId)}&limit=${limit}`,
-    );
-  }
-
-  async deleteEpisode(uuid: string): Promise<void> {
-    await this.request("DELETE", `/episodes/${encodeURIComponent(uuid)}`);
-  }
-
-  async deleteEdge(uuid: string): Promise<void> {
-    await this.request(
-      "DELETE",
-      `/edges/${encodeURIComponent(uuid)}`,
-    );
-  }
-
   async clearGraph(groupId: string): Promise<void> {
     await this.request("POST", "/clear", { group_id: groupId });
   }
