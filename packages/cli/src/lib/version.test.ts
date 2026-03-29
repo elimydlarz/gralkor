@@ -62,3 +62,19 @@ describe("compareVersions", () => {
     expect(compareVersions("20.0.0", "19.9.9")).toBe(1);
   });
 });
+
+describe("getCLIVersion", () => {
+  it("returns version from package.json (not hardcoded)", () => {
+    const version = getCLIVersion();
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it("matches package.json version", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(await readFile(join(__dirname, "..", "..", "package.json"), "utf-8"));
+    expect(getCLIVersion()).toBe(pkg.version);
+  });
+});
