@@ -81,6 +81,12 @@ publish:
 	pnpm run build
 	pnpm publish --access public
 
+build-cli:
+	cd packages/cli && pnpm run build
+
+publish-cli:
+	cd packages/cli && pnpm run build && pnpm publish --access public
+
 version-major:
 	pnpm version major --no-git-tag-version
 	$(SYNC_RESOURCES)
