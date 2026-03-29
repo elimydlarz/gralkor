@@ -401,6 +401,23 @@ gralkor status CLI
 │   ├── package.json                  # @susu-eng/gralkor npm package config
 │   └── openclaw.plugin.json          # canonical manifest
 │
+├── packages/cli/                     # @susu-eng/gralkor-cli — lifecycle management CLI
+│   ├── package.json                  # standalone npm package with bin: { gralkor }
+│   ├── tsconfig.json
+│   ├── vitest.config.ts
+│   └── src/
+│       ├── bin.ts                    # entry point (parseArgs dispatch)
+│       ├── commands/
+│       │   ├── install.ts            # idempotent install/upgrade/migrate/slot/config
+│       │   ├── config.ts             # set plugin config independently
+│       │   ├── check.ts              # pre-flight validation (uv, API keys, server)
+│       │   └── status.ts             # rich status output
+│       └── lib/
+│           ├── openclaw.ts           # shell out to `openclaw` CLI
+│           ├── version.ts            # semver extract/compare from tarball filenames
+│           ├── config.ts             # shared config entry parsing (--config/--set)
+│           └── output.ts             # ANSI formatting (respects NO_COLOR)
+│
 ├── scripts/pack.sh                   # builds deployment tarball (arm64 wheel via Docker)
 │
 ├── test/functional/                  # functional tests (multi-load resilience, etc.)
