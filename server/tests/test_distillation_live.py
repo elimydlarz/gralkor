@@ -67,19 +67,23 @@ async def test_distillation_quality(llm_client, case):
     """Verify distillation output follows guidelines for each case."""
     input_text = _build_input(case["blocks"])
 
-    # Retry with backoff for rate limits
+    # Retry with backoff for rate limits; skip test if exhausted
     result = ""
+    last_error = None
     for attempt in range(3):
         try:
             result = await _distill_one(llm_client, input_text)
             break
         except Exception as e:
             if "429" in str(e) or "rate" in str(e).lower() or "quota" in str(e).lower():
+                last_error = e
                 wait = 2 ** attempt * 5
                 print(f"  Rate limited, waiting {wait}s (attempt {attempt + 1}/3)")
                 await asyncio.sleep(wait)
             else:
                 raise
+    else:
+        pytest.skip(f"Rate-limited after 3 attempts: {last_error}")
 
     # Show input and output side by side for eyeballing
     print(f"\n{'='*60}")
