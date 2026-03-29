@@ -495,7 +495,7 @@ export async function flushSessionBuffer(
     return;
   }
 
-  const groupId = resolveGroupId({ agentId: buffer.agentId });
+  const groupId = buffer.agentId ?? "default";
   const userFiltered = filtered.filter(m => m.role === "user").length;
   const assistantFiltered = filtered.filter(m => m.role === "assistant").length;
   const assistantBlocks = filtered.filter(m => m.role === "assistant").flatMap(m => m.content);
