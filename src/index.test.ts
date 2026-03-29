@@ -253,11 +253,12 @@ describe("register()", () => {
 
       const result = await searchTool.execute("tool-1", { query: "React" });
 
-      // Tool result should contain the fact but NOT the auto-recall instructions
+      // Tool result should contain the fact and interpretation instruction
       expect(result).toContain("Team uses React");
+      expect(result).toContain("interpret these facts for relevance");
+      // But NOT the further querying instruction (that's auto-recall only)
       expect(result).not.toContain("search memory up to 3 times");
       expect(result).not.toContain("diverse queries");
-      expect(result).not.toContain("interpret these facts");
 
       vi.unstubAllGlobals();
     });
