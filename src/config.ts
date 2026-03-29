@@ -184,6 +184,15 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
   };
 }
 
+export function resolveProviders(config: GralkorConfig) {
+  return {
+    llmProvider: config.llm?.provider ?? DEFAULT_LLM_PROVIDER,
+    llmModel: config.llm?.model ?? DEFAULT_LLM_MODEL,
+    embedderProvider: config.embedder?.provider ?? DEFAULT_EMBEDDER_PROVIDER,
+    embedderModel: config.embedder?.model ?? DEFAULT_EMBEDDER_MODEL,
+  };
+}
+
 export interface ReadyGate {
   isReady(): boolean;
   resolve(): void;
