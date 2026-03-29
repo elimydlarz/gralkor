@@ -146,6 +146,17 @@ Plugin → `GraphitiClient` (HTTP with retry: 2 retries, 500ms/1000ms backoff fo
 
 **Known OpenClaw bug:** In FTS-only mode (no embedding provider key), `syncMemoryFiles()` returns early (`if (!this.provider) return;`), so FTS tables are never populated → `memory_search` always returns empty. **Workaround:** configure an embedding provider (e.g. set `OPENAI_API_KEY`).
 
+### Lifecycle CLI (`@susu-eng/gralkor-cli`)
+
+Separate npm package (`packages/cli/`) providing the `gralkor` CLI binary for managing the plugin lifecycle outside the OpenClaw gateway process. Wraps `openclaw` CLI commands (`openclaw plugins install/uninstall/enable`, `openclaw config set/get`). Commands:
+
+- **`gralkor install <source>`** — Idempotent install/upgrade. Detects same version (no-op), older version (uninstall → install), legacy `memory-gralkor` (migrate). Always enables and sets memory slot. Accepts `--config <json>` and `--set key=value` for config-at-install. `--dry-run` to preview.
+- **`gralkor config`** — Set plugin config independently via `--config`/`--set`.
+- **`gralkor check`** — Pre-flight validation: openclaw on PATH, uv on PATH, plugin installed + enabled, slot set, LLM/embedder API keys (reads actual provider config from OpenClaw, falls back to gemini default).
+- **`gralkor status`** — Plugin version, slot, server health (graph node/edge counts from `/health` response `graph` field), data directory.
+
+`PROVIDER_ENV_KEYS` and default provider names are duplicated from `src/config.ts` because the CLI is a separate package. Unknown providers emit a warning (not a silent pass), making drift visible.
+
 ## Requirements
 
 ### Functional
