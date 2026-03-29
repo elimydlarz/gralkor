@@ -16,7 +16,6 @@ export function formatFacts(facts: Fact[]): string {
 }
 
 export interface StoreToolOpts {
-  overrides?: ToolOverrides;
   getGroupId?: () => string;
   serverReady?: ReadyGate;
 }
@@ -26,13 +25,11 @@ export function createMemoryStoreTool(
   config: GralkorConfig,
   opts: StoreToolOpts = {},
 ) {
-  const { overrides, getGroupId, serverReady } = opts;
-  const toolName = overrides?.name ?? "memory_add";
+  const { getGroupId, serverReady } = opts;
   return {
-    name: toolName,
+    name: "memory_add",
     description:
-      overrides?.description ??
-      "Store a thought, insight, reflection, or decision in the knowledge graph. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said. Also store detailed descriptions of any images or videos you consume, as media content is not captured by automatic memory.",
+      "Store a thought, insight, reflection, or decision in memory. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
     parameters: {
       type: "object" as const,
       properties: {
