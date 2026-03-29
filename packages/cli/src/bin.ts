@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   }
 
   if (command === "--version" || command === "-v") {
-    console.log("gralkor-cli 1.0.0");
+    console.log(`gralkor-cli ${getCLIVersion()}`);
     return;
   }
 
