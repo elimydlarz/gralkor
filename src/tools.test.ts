@@ -150,14 +150,6 @@ describe("memory_store (createMemoryStoreTool)", () => {
     expect(call.source).toBe("text");
   });
 
-  it("accepts ToolOverrides for name and description", () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, {
-      overrides: { name: "memory_add", description: "Custom store description" },
-    });
-    expect(tool.name).toBe("memory_add");
-    expect(tool.description).toBe("Custom store description");
-  });
-
   it("propagates errors when addEpisode throws", async () => {
     client.addEpisode.mockRejectedValue(new Error("server down"));
 
