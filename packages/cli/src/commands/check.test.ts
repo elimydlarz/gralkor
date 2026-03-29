@@ -17,8 +17,13 @@ vi.mock("node:child_process", () => ({
 
 const mocked = vi.mocked(oc);
 
+const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
 beforeEach(() => {
   vi.resetAllMocks();
+  logSpy.mockClear();
+  errorSpy.mockClear();
   process.exitCode = undefined;
   mocked.checkOpenclaw.mockResolvedValue("openclaw 2026.3.0");
   mocked.getInstalledPlugins.mockResolvedValue([
