@@ -9,12 +9,15 @@ const HELP = `Usage: gralkor <command> [options]
 
 Commands:
   install <source>   Install or upgrade the Gralkor plugin
+  config             Set plugin configuration
   check              Validate prerequisites (uv, API keys, etc.)
   status             Show plugin and server status
 
-Install options:
+Install/config options:
   --config <json>    Plugin config as JSON string
   --set <key=value>  Set individual config value (repeatable)
+
+Install options:
   --dry-run          Show what would happen without executing
 
 General:
