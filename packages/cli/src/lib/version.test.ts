@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractVersionFromTarball, extractVersionFromNpmRef, compareVersions } from "./version.js";
+import { extractVersionFromTarball, extractVersionFromNpmRef, compareVersions, getCLIVersion } from "./version.js";
 
 describe("extractVersionFromTarball", () => {
   it("extracts from make pack output (memory suffix)", () => {
