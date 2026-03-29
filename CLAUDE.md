@@ -193,6 +193,8 @@ Separate npm package (`packages/cli/`) providing the `gralkor` CLI binary for ma
 auto-recall-interpretation
   when auto-recall returns results
     then prependContext includes an instruction to interpret facts for relevance to the task at hand
+  when memory_search tool execute returns results
+    then response includes the same interpretation instruction
 ```
 
 #### auto-recall-further-querying
