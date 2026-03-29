@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   resolveConfig,
+  validateOntologyConfig,
+  validateConfig,
   defaultConfig,
   GRAPHITI_URL,
   GRAPHITI_PORT,
@@ -11,6 +13,36 @@ import {
   createReadyGate,
   resetReadyGate,
 } from "./config.js";
+import type { OntologyConfig } from "./config.js";
+
+const VALID_ONTOLOGY: OntologyConfig = {
+  entities: {
+    Project: {
+      description: "A software project or initiative.",
+      attributes: {
+        status: ["active", "completed", "paused"],
+        language: "Primary programming language",
+      },
+    },
+    Technology: {
+      description: "A technology, framework, or tool.",
+      attributes: {
+        category: ["language", "framework", "database"],
+      },
+    },
+  },
+  edges: {
+    Uses: {
+      description: "A project using a technology.",
+      attributes: {
+        version: "Version in use",
+      },
+    },
+  },
+  edgeMap: {
+    "Project,Technology": ["Uses"],
+  },
+};
 
 describe("resolveConfig()", () => {
   it("returns defaults when called with no arguments", () => {
