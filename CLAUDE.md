@@ -593,7 +593,7 @@ config defaults
 │   ├── client.ts                     # GraphitiClient — HTTP wrapper with retry
 │   ├── server-manager.ts             # Python process lifecycle
 │   ├── types.ts                      # PluginApiBase, MemoryPluginApi interfaces
-│   ├── config.ts                     # constants, config types, resolveConfig(), resolveGroupId(), validateOntologyConfig(), ReadyGate (module-level)
+│   ├── config.ts                     # constants, config types, resolveConfig(), resolveProviders(), validateOntologyConfig(), ReadyGate (module-level)
 │   └── *.test.ts                     # co-located unit tests (vitest)
 │
 ├── resources/memory/
