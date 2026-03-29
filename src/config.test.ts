@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   resolveConfig,
-  resolveGroupId,
   defaultConfig,
   GRAPHITI_URL,
   GRAPHITI_PORT,
