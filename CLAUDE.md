@@ -202,8 +202,8 @@ auto-recall-further-querying
   when auto-recall returns results
     then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
   when memory_search tool execute returns results
-    then response contains facts but no further querying instruction
-    and response contains no interpretation instruction
+    then response contains facts and interpretation instruction
+    and response does not contain further querying instruction
 ```
 
 #### fact-prioritization
