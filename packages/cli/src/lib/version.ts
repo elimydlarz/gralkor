@@ -1,3 +1,18 @@
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** Read CLI version from package.json (single source of truth). */
+export function getCLIVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const pkg = JSON.parse(readFileSync(join(__dirname, "..", "..", "package.json"), "utf-8"));
+    return pkg.version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 /**
  * Tarball naming patterns:
  *   susu-eng-gralkor-memory-{version}.tgz  (make pack output)
