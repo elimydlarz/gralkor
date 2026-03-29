@@ -1,18 +1,4 @@
-export interface AutoCaptureConfig {
-  enabled: boolean;
-}
-
-export interface AutoRecallConfig {
-  enabled: boolean;
-  maxResults: number;
-}
-
-export interface LlmConfig {
-  provider: string;
-  model: string;
-}
-
-export interface EmbedderConfig {
+export interface ModelConfig {
   provider: string;
   model: string;
 }
