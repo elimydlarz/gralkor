@@ -148,10 +148,6 @@ function registerFullPlugin(
   );
 
   const storeTool = createMemoryStoreTool(client, config, {
-    overrides: {
-      name: "memory_add",
-      description: "Store a thought, insight, reflection, or decision in memory. Conversations are already captured automatically — use this for higher-level reasoning, conclusions, and connections you want to preserve, not for recording what was said.",
-    },
     getGroupId,
     serverReady,
   });
