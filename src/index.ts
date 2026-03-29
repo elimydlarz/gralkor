@@ -123,7 +123,16 @@ function registerFullPlugin(
             sections.push(formatFacts(searchResults.facts));
           }
 
-          const combinedResult = sections.join("\n\n") || "No memories found.";
+          if (sections.length === 0) {
+            return "No memories found.";
+          }
+
+          const interpretation =
+            "Before responding, interpret these facts for relevance to the task at hand. " +
+            "Doing this step thoughtfully improves response quality significantly.";
+          sections.push(interpretation);
+
+          const combinedResult = sections.join("\n\n");
 
           if (config.test) {
             console.log(`[gralkor] [test] memory_search result:\n${combinedResult}`);
