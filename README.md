@@ -158,9 +158,23 @@ In memory mode, `memory_search` searches both the knowledge graph and native Mar
 
 ## CLI
 
+### Lifecycle management (`@susu-eng/gralkor-cli`)
+
+Install the CLI globally or use via `npx`:
+
+```bash
+gralkor install <source>         # Idempotent install/upgrade with slot assignment
+gralkor config --set llm.model=gpt-4.1-mini  # Set plugin config
+gralkor check                    # Pre-flight: uv, API keys, plugin state, server health
+gralkor status                   # Plugin version, slot, server health, graph stats
+```
+
+The `install` command handles version comparison, upgrades, migration from the old `memory-gralkor` plugin ID, and optional `--config`/`--set` flags. Use `--dry-run` to preview what it would do.
+
+### Plugin commands (via OpenClaw)
+
 ```bash
 openclaw gralkor status          # Server state, config, graph stats, data dir, venv
-openclaw gralkor check           # Validate provider config and API keys
 openclaw gralkor search <query>  # Search the knowledge graph
 openclaw gralkor clear [group]   # Delete all data for a group (destructive!)
 ```
