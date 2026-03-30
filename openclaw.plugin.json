@@ -94,5 +94,6 @@
     "test": {
       "label": "Test mode (verbose logging)"
     }
-  }
+  },
+  "version": "24.0.0"
 }
