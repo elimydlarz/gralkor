@@ -476,6 +476,12 @@ gralkor install
     then sets each key via openclaw config set
   when legacy memory-gralkor is installed
     then uninstalls legacy before installing gralkor
+  when plugin not in list but directory may exist on disk
+    then attempts uninstall (swallowing errors) before fresh install
+  when openclaw plugins list fails due to stale config
+    then clears stale memory slot and retries
+    when retry also fails
+      then proceeds with fresh install (empty plugin list)
 ```
 
 #### cli-check
