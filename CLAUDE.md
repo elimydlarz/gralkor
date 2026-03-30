@@ -10,7 +10,7 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 | Plugin ID / Kind | `gralkor` / `"memory"` |
 | Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph) |
 | Hooks | `before_prompt_build` (auto-recall), `agent_end`/`session_end` (auto-capture) |
-| CLI | `openclaw memory`, `openclaw gralkor` |
+| CLI | `openclaw memory`, `openclaw gralkor` (plugin); `npx @susu-eng/gralkor` (standalone) |
 
 ## Mental Model
 
