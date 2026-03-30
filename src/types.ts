@@ -35,7 +35,7 @@ export interface PluginApiBase {
 }
 
 /**
- * Memory-mode API — adds tool registration and runtime tools.
+ * Memory-mode API — adds tool registration.
  *
  * registerTool is overloaded: accepts both plain tool objects and factory functions.
  */
@@ -45,18 +45,10 @@ export interface MemoryPluginApi extends PluginApiBase {
     tool: { name: string; description: string; parameters: unknown; execute: AnyFn },
     opts?: { optional?: boolean },
   ): void;
-  // Factory function registration (used for native memory tools)
+  // Factory function registration (provides ctx.config, ctx.sessionKey at agent start)
   registerTool(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     factory: (ctx: any) => any | any[] | null,
     opts?: { names?: string[] },
   ): void;
-  runtime: {
-    tools: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createMemorySearchTool(opts: { config: any; agentSessionKey: string }): any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createMemoryGetTool(opts: { config: any; agentSessionKey: string }): any;
-    };
-  };
 }
