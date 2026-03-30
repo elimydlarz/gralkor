@@ -58,5 +58,75 @@ describe("unified-search", () => {
         expect(parsed.results[0].snippet).toBe("Project uses React");
       });
     });
+
+    describe("when manager is unavailable", () => {
+      it("then returns null", async () => {
+        mockGetMemorySearchManager.mockResolvedValue({ manager: null, error: "no embedding provider" });
+
+        const result = await searchNativeMemory({}, "test-agent", "query");
+
+        expect(result).toBeNull();
+      });
+    });
+
+    describe("when native search throws", () => {
+      it("then returns null (does not propagate error)", async () => {
+        (mockManager.search as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("SDK exploded"));
+
+        const result = await searchNativeMemory({}, "test-agent", "query");
+
+        expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe("memory_get tool", () => {
+    const mockReadAgentMemoryFile = vi.fn();
+    const mockSDK: MemorySDK = {
+      getMemorySearchManager: vi.fn(),
+      readAgentMemoryFile: mockReadAgentMemoryFile,
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      setSDKLoader(() => Promise.resolve(mockSDK));
+    });
+
+    afterEach(() => {
+      resetSDKLoader();
+    });
+
+    describe("when path is valid", () => {
+      it("then reads file via native memory SDK and returns JSON result", async () => {
+        mockReadAgentMemoryFile.mockResolvedValue({ text: "# Notes\nSome content", path: "memory/notes.md" });
+
+        const result = await readNativeMemoryFile({}, "test-agent", "memory/notes.md", { from: 1, lines: 10 });
+
+        expect(mockReadAgentMemoryFile).toHaveBeenCalledWith({
+          cfg: {},
+          agentId: "test-agent",
+          relPath: "memory/notes.md",
+          from: 1,
+          lines: 10,
+        });
+
+        const parsed = JSON.parse(result);
+        expect(parsed.text).toBe("# Notes\nSome content");
+        expect(parsed.path).toBe("memory/notes.md");
+      });
+    });
+
+    describe("when read fails", () => {
+      it("then returns JSON with error", async () => {
+        mockReadAgentMemoryFile.mockRejectedValue(new Error("File not found"));
+
+        const result = await readNativeMemoryFile({}, "test-agent", "memory/missing.md");
+
+        const parsed = JSON.parse(result);
+        expect(parsed.path).toBe("memory/missing.md");
+        expect(parsed.text).toBe("");
+        expect(parsed.error).toBe("File not found");
+      });
+    });
   });
 });
