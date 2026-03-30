@@ -44,9 +44,12 @@ interface MemorySearchManager {
 
 let memorySDKPromise: Promise<MemorySDK> | null = null;
 async function loadMemorySDK(): Promise<MemorySDK> {
+  // Dynamic import paths constructed to prevent TypeScript from resolving them
+  // at build time — these modules are provided by the OpenClaw host at runtime.
+  const sdkBase = "openclaw/plugin-sdk";
   memorySDKPromise ??= Promise.all([
-    import(/* @vite-ignore */ "openclaw/plugin-sdk/memory-core"),
-    import(/* @vite-ignore */ "openclaw/plugin-sdk/memory-core-host-runtime-files"),
+    import(/* @vite-ignore */ `${sdkBase}/memory-core`),
+    import(/* @vite-ignore */ `${sdkBase}/memory-core-host-runtime-files`),
   ]).then(([core, files]) => ({
     getMemorySearchManager: core.getMemorySearchManager,
     readAgentMemoryFile: files.readAgentMemoryFile,
