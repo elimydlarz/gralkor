@@ -66,7 +66,7 @@ describe("multi-load resilience", () => {
         );
 
         const result = await handler(
-          { prompt: "Tell me about the project" },
+          { prompt: "Tell me about the project", messages: [] },
           { agentId: "agent-42" },
         );
 
