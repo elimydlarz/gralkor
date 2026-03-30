@@ -93,7 +93,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 ### Native Memory Indexing (OpenClaw internals)
 
-`createMemorySearchTool()` uses `MemoryIndexManager` (SQLite FTS5 + optional vector embeddings). **Known bug:** FTS-only mode (no embedding key) → `syncMemoryFiles()` returns early → `memory_search` always empty. Workaround: configure an embedding provider.
+Gralkor accesses native Markdown memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core` (lazy dynamic import). The underlying `MemoryIndexManager` uses SQLite FTS5 + optional vector embeddings. **Known bug:** FTS-only mode (no embedding key) → `syncMemoryFiles()` returns early → native search always empty. Workaround: configure an embedding provider.
 
 ### Lifecycle CLI (`@susu-eng/gralkor-cli`)
 
