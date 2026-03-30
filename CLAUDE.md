@@ -528,37 +528,15 @@ config defaults
 ## Repo Map
 
 ```
-├── CLAUDE.md
-├── Makefile                          # build/test/deploy
-├── package.json / tsconfig.json
-├── vitest.config.ts                  # tree reporter
+├── CLAUDE.md / Makefile / package.json / tsconfig.json / vitest.config.ts
 ├── openclaw.plugin.json              # active manifest
-├── src/
-│   ├── index.ts                      # entry point (kind: "memory")
-│   ├── register.ts                   # shared registration
-│   ├── tools.ts                      # tool factories + formatters
-│   ├── hooks.ts                      # auto-recall, auto-capture
-│   ├── client.ts                     # GraphitiClient (HTTP + retry)
-│   ├── server-manager.ts             # Python process lifecycle
-│   ├── types.ts                      # PluginApiBase, MemoryPluginApi
-│   ├── config.ts                     # constants, types, resolveConfig, ReadyGate
-│   └── *.test.ts                     # co-located unit tests
-├── resources/memory/
-│   ├── package.json                  # @susu-eng/gralkor npm package
-│   └── openclaw.plugin.json          # canonical manifest
-├── packages/cli/                     # @susu-eng/gralkor-cli
-│   ├── package.json                  # bin: { gralkor }
-│   └── src/
-│       ├── bin.ts                    # parseArgs dispatch
-│       ├── commands/                 # install, config, check, status
-│       └── lib/                      # openclaw, version, config, output
-├── scripts/pack.sh                   # deployment tarball (arm64 wheel)
-├── test/functional/                  # functional tests
-├── server/                           # Graphiti REST API (Python/FastAPI)
-│   ├── main.py                       # FastAPI app
-│   ├── pyproject.toml / uv.lock
-│   ├── wheels/                       # bundled falkordblite arm64 wheel
-│   └── tests/                        # pytest
+├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
+│                                     # client.ts, server-manager.ts, types.ts, config.ts, *.test.ts
+├── resources/memory/                 # @susu-eng/gralkor npm package + canonical manifest
+├── packages/cli/                     # @susu-eng/gralkor-cli (bin.ts, commands/, lib/)
+├── scripts/pack.sh                   # deployment tarball
+├── test/functional/
+├── server/                           # Python/FastAPI: main.py, tests/, wheels/
 └── dist/                             # compiled JS (git-ignored)
 ```
 
