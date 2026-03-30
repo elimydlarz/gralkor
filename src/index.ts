@@ -135,20 +135,10 @@ function registerFullPlugin(
           _toolCallId: string,
           args: { path: string; from?: number; lines?: number },
         ): Promise<string> {
-          try {
-            const { readAgentMemoryFile } = await loadMemorySDK();
-            const result = await readAgentMemoryFile({
-              cfg: ctx.config,
-              agentId: getGroupId(),
-              relPath: args.path,
-              from: args.from,
-              lines: args.lines,
-            });
-            return JSON.stringify(result);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return JSON.stringify({ path: args.path, text: "", error: message });
-          }
+          return readNativeMemoryFile(ctx.config, getGroupId(), args.path, {
+            from: args.from,
+            lines: args.lines,
+          });
         },
       };
 
