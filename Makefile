@@ -62,24 +62,14 @@ setup-server:
 pack:
 	bash scripts/pack.sh
 
-publish:
-	pnpm run build
-	pnpm publish --access public
+publish-patch:
+	pnpm run publish:npm -- patch
 
-version-major:
-	pnpm version major --no-git-tag-version
-	$(SYNC_RESOURCES)
-	$(TAG_VERSION)
+publish-minor:
+	pnpm run publish:npm -- minor
 
-version-minor:
-	pnpm version minor --no-git-tag-version
-	$(SYNC_RESOURCES)
-	$(TAG_VERSION)
-
-version-patch:
-	pnpm version patch --no-git-tag-version
-	$(SYNC_RESOURCES)
-	$(TAG_VERSION)
+publish-major:
+	pnpm run publish:npm -- major
 
 build-server:
 	docker build -t gralkor-server:latest server/
