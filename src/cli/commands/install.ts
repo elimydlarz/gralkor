@@ -78,6 +78,12 @@ export async function install(opts: InstallOptions): Promise<void> {
       description: "Uninstall current gralkor",
       execute: () => oc.uninstallPlugin("gralkor"),
     });
+  } else if (!current) {
+    // Plugin not in list but directory may exist (untracked local code) — clean up
+    actions.push({
+      description: "Remove stale gralkor install (if present)",
+      execute: () => oc.uninstallPlugin("gralkor").catch(() => {}),
+    });
   }
 
   // 5. Install
