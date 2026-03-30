@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Verify the module's export shape — this is the test that would have
 // caught the "entry.register is not a function" bug.
