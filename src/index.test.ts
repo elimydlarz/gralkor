@@ -63,12 +63,12 @@ describe("register()", () => {
 
     register(api);
 
-    // 2 registerTool calls: 1 factory (native memory, wrapped) + 1 plain (memory_add)
+    // 2 registerTool calls: 1 factory (memory_search + memory_get) + 1 plain (memory_add)
     expect(api.registerTool).toHaveBeenCalledTimes(2);
     expect(api.on).toHaveBeenCalledTimes(3);
     expect(api.registerService).toHaveBeenCalledOnce();
-    // 2 registerCli calls: memory CLI + gralkor CLI
-    expect(api.registerCli).toHaveBeenCalledTimes(2);
+    // 1 registerCli call: gralkor CLI
+    expect(api.registerCli).toHaveBeenCalledTimes(1);
   });
 
   it("registers native memory tools via factory with wrapping", async () => {
