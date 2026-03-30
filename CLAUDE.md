@@ -97,14 +97,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 ### Lifecycle CLI (`@susu-eng/gralkor-cli`)
 
-Separate package (`packages/cli/`) wrapping `openclaw` CLI commands:
-
-- **`gralkor install <source>`** — Idempotent install/upgrade. Handles same-version (no-op), older (uninstall→install), legacy `memory-gralkor` (migrate). `--config <json>`, `--set key=value`, `--dry-run`.
-- **`gralkor config`** — Set config via `--config`/`--set`.
-- **`gralkor check`** — Validates: openclaw/uv on PATH, plugin installed+enabled, slot set, API keys.
-- **`gralkor status`** — Version, slot, server health (graph stats), data directory.
-
-`PROVIDER_ENV_KEYS` duplicated from `src/config.ts` (separate package). Unknown providers warn.
+Separate package (`packages/cli/`) wrapping `openclaw` CLI. Commands: `install` (idempotent upgrade/migrate, `--config`/`--set`/`--dry-run`), `config` (`--config`/`--set`), `check` (PATH/plugin/slot/keys), `status` (version/health/graph stats). `PROVIDER_ENV_KEYS` duplicated from `src/config.ts`; unknown providers warn.
 
 ## Requirements
 
