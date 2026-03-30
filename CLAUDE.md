@@ -59,9 +59,9 @@ Handlers receive `(event, ctx)` where `ctx` (`PluginHookAgentContext`) has `{ ag
 | `agent_end` | `{ messages, success, error, durationMs }` | Fire-and-forget | Fires per agent run (not per session). Gateway doesn't await. |
 | `session_end` | `{ sessionId, sessionKey?, messageCount, durationMs? }` | Fire-and-forget | **No messages payload** — metadata only. Fires when previous session replaced. |
 
-**Other available hooks:** `before_model_resolve`, `before_agent_start` (legacy, fires twice, must be idempotent), `llm_input`/`llm_output` (read-only), `before_compaction`/`after_compaction`, `before_reset` (has full `messages` array), `message_received`/`message_sending`/`message_sent`, `before_tool_call`/`after_tool_call`, `tool_result_persist`/`before_message_write` (synchronous hot path — must not return Promise), `session_start`, `subagent_spawning`/`subagent_delivery_target`/`subagent_spawned`/`subagent_ended`, `gateway_start`/`gateway_stop`.
+**Other hooks:** `before_model_resolve`, `before_agent_start` (legacy, fires twice), `llm_input`/`llm_output`, `before_compaction`/`after_compaction`, `before_reset` (has `messages`), `message_received`/`message_sending`/`message_sent`, `before_tool_call`/`after_tool_call`, `tool_result_persist`/`before_message_write` (synchronous — no Promise), `session_start`, `subagent_*`, `gateway_*`.
 
-**Message format:** `event.messages[].content` is `{ type, text?, ... }[]` (not JSON string). Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`. Roles: `"user"`, `"assistant"`, `"toolResult"`, `"tool"` (Ollama), `"compactionSummary"`.
+**Message format:** `event.messages[].content` is `{ type, text?, ... }[]`. Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`. Roles: `"user"`, `"assistant"`, `"toolResult"`, `"tool"` (Ollama), `"compactionSummary"`.
 
 ### Data Lifecycle
 
