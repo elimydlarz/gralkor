@@ -231,6 +231,45 @@ describe("register()", () => {
     });
   });
 
+  describe("test-mode-query-logging", () => {
+    it("logs memory_search query in test mode", async () => {
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ facts: [{ uuid: "1", name: "test", fact: "Team uses React", group_id: "default", valid_at: null, invalid_at: null, expired_at: null, created_at: "2025-01-01T00:00:00Z" }] }),
+        text: async () => "",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { createReadyGate } = await import("./config.js");
+      createReadyGate().resolve();
+
+      const testApi = {
+        ...api,
+        pluginConfig: { test: true },
+      };
+      const { register } = await import("./index.js");
+      register(testApi);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const factory = testApi.registerTool.mock.calls[0][0] as (ctx: any) => any;
+      const tools = factory({ config: {}, sessionKey: "test-session" });
+      const [searchTool] = tools;
+
+      await searchTool.execute("tool-1", { query: "React patterns" });
+
+      const testLogs = consoleSpy.mock.calls.filter(
+        (args) => typeof args[0] === "string" && args[0].includes("[test] memory_search query:"),
+      );
+      expect(testLogs).toHaveLength(1);
+      expect(testLogs[0][0]).toContain("React patterns");
+
+      consoleSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+  });
+
   describe("when ontology config is invalid", () => {
     it("then throws validation error", async () => {
       const { register } = await import("./index.js");
