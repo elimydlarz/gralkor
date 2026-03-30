@@ -89,13 +89,13 @@ Service `gralkor-server` (`src/server-manager.ts`): `uv sync --no-dev --frozen` 
 
 Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search()` → `POST /search` returning `{ facts }` (edges only).
 
-**Fact prioritization:** `/search` over-fetches 2x `num_results`, then `_prioritize_facts()` reserves 70% of slots for valid facts (`invalid_at` null), fills remaining 30% by relevance regardless of validity. `invalid_at` is the signal (both "no longer true" and "superseded" facts treated as non-valid).
+**Fact prioritization:** Over-fetches 2x, `_prioritize_facts()` reserves 70% slots for valid facts (`invalid_at` null), fills rest by relevance. `invalid_at` is the signal.
 
-**Idempotency:** `addEpisode()`/`ingestMessages()` generate `crypto.randomUUID()` per call as `idempotency_key`. Server deduplicates via in-memory store (5-min TTL, lazy cleanup at 100 items).
+**Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, 5-min TTL).
 
-**Rate-limit passthrough:** Server middleware catches upstream `RateLimitError` → returns 429 (prevents client retry amplification).
+**Rate-limit passthrough:** Middleware: `RateLimitError` → 429 (prevents retry amplification).
 
-**Modes:** No `FALKORDB_URI` → embedded FalkorDBLite at `{FALKORDB_DATA_DIR}/gralkor.db`. `FALKORDB_URI` set → legacy TCP.
+**Modes:** No `FALKORDB_URI` → embedded FalkorDBLite. `FALKORDB_URI` → legacy TCP.
 
 ### Native Memory Indexing (OpenClaw internals)
 
