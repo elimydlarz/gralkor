@@ -3,8 +3,7 @@
  * via the memory SDK. Lazy-loads SDK modules at runtime (not available at build time).
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MemorySDK = {
+export type MemorySDK = {
   getMemorySearchManager: (params: {
     cfg: unknown;
     agentId: string;
@@ -29,7 +28,7 @@ export interface MemorySearchManager {
 
 let memorySDKPromise: Promise<MemorySDK> | null = null;
 
-export function loadMemorySDK(): Promise<MemorySDK> {
+function defaultLoadMemorySDK(): Promise<MemorySDK> {
   // Dynamic import paths constructed to prevent TypeScript from resolving them
   // at build time — these modules are provided by the OpenClaw host at runtime.
   const sdkBase = "openclaw/plugin-sdk";
@@ -43,8 +42,17 @@ export function loadMemorySDK(): Promise<MemorySDK> {
   return memorySDKPromise;
 }
 
-/** Reset the cached SDK promise (for testing). */
-export function resetMemorySDK(): void {
+let sdkLoader: () => Promise<MemorySDK> = defaultLoadMemorySDK;
+
+/** Replace the SDK loader (for testing). */
+export function setSDKLoader(loader: () => Promise<MemorySDK>): void {
+  sdkLoader = loader;
+  memorySDKPromise = null;
+}
+
+/** Reset to the default SDK loader (for testing). */
+export function resetSDKLoader(): void {
+  sdkLoader = defaultLoadMemorySDK;
   memorySDKPromise = null;
 }
 
@@ -61,7 +69,7 @@ export async function searchNativeMemory(
   opts?: { maxResults?: number; sessionKey?: string },
 ): Promise<string | null> {
   try {
-    const { getMemorySearchManager } = await loadMemorySDK();
+    const { getMemorySearchManager } = await sdkLoader();
     const { manager, error } = await getMemorySearchManager({ cfg, agentId });
     if (!manager) {
       if (error) console.log(`[gralkor] native memory unavailable: ${error}`);
@@ -89,7 +97,7 @@ export async function readNativeMemoryFile(
   opts?: { from?: number; lines?: number },
 ): Promise<string> {
   try {
-    const { readAgentMemoryFile } = await loadMemorySDK();
+    const { readAgentMemoryFile } = await sdkLoader();
     const result = await readAgentMemoryFile({
       cfg,
       agentId,
