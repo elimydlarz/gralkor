@@ -552,7 +552,7 @@ config defaults
 - `GROQ_API_KEY` — Groq LLM (needs `OPENAI_API_KEY` for embeddings)
 - `FALKORDB_URI` — (Optional) `redis://host:port` for legacy Docker mode
 
-Dynamic `config.yaml` generated at startup. Server manager forwards all API keys.
+Server manager generates `config.yaml` and forwards all API keys at startup.
 
 ## Dev Workflow
 
