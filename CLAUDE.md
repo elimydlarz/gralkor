@@ -519,19 +519,18 @@ config defaults
 
 | Requirement | Implementation |
 |---|---|
-| fail-fast | `ReadyGate` (module-level in `src/config.ts`): before ready → tools/auto-recall throw. After ready → normal. Graph failures propagate (no degradation). |
+| fail-fast | `ReadyGate` (module-level `src/config.ts`): before ready → throw. Graph failures propagate. |
 | docker-compat | `FALKORDB_URI` → legacy TCP mode |
-| observability | Two-tier `[gralkor]`-prefixed logging. Config logged once (module-level `configLogged` flag). Normal: metadata only (counts, sizes, durations). Test: full data at both layers. Boot uses `[gralkor] boot:` markers. |
-| retry-backoff | `GraphitiClient`: 2 retries (500ms/1s) for network/5xx. `flushSessionBuffer`: 3 retries (1s/2s/4s). 4xx not retried. |
-| rate-limit-passthrough | Server middleware: upstream `RateLimitError` → 429 (prevents retry amplification) |
-| untrusted-context | Facts wrapped in `<gralkor-memory trust="untrusted">` XML |
-| health-monitoring | 60s health ping on child process |
-| message-filtering | Auto-capture skips empty conversations |
-| capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip `<gralkor-memory>` → strip footer → filter system lines (preserves real content). Assistant: per-block `isSystemMessage()`. `role: "tool"` → same as `"toolResult"`. |
-| prompt-robustness | Sequential strip of system/session/metadata; fallback to `event.messages` |
-| query-sanitization | `_sanitize_query()` strips backticks (RediSearch prevention) |
+| observability | Two-tier `[gralkor]` logging. Config logged once (`configLogged` flag). Normal: metadata. Test: full data. `[gralkor] boot:` markers. |
+| retry-backoff | Client: 2 retries (500ms/1s) network/5xx. Flush: 3 retries (1s/2s/4s). 4xx not retried. |
+| rate-limit-passthrough | Middleware: `RateLimitError` → 429 (prevents retry amplification) |
+| untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML |
+| health-monitoring | 60s ping on child process |
+| capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
+| prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
+| query-sanitization | `_sanitize_query()` strips backticks (RediSearch) |
 | bundled-arm64-wheel | `make pack` builds falkordblite for linux/arm64 via Docker |
-| configurable-providers | `llm`/`embedder` in config; dynamic `config.yaml` at startup. Defaults in `src/config.ts`. |
+| configurable-providers | `llm`/`embedder` in config; dynamic `config.yaml` at startup |
 
 ## Repo Map
 
