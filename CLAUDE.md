@@ -478,10 +478,10 @@ gralkor install
     then uninstalls legacy before installing gralkor
   when plugin not in list but directory may exist on disk
     then attempts uninstall (swallowing errors) before fresh install
-  when openclaw plugins list fails due to stale config
-    then clears stale memory slot and retries
-    when retry also fails
-      then proceeds with fresh install (empty plugin list)
+  before listing plugins
+    then proactively clears plugins.slots.memory (stale slot breaks all openclaw commands)
+  when openclaw plugins list fails after slot clear
+    then proceeds with fresh install (empty plugin list)
 ```
 
 #### cli-check
