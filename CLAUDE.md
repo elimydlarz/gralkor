@@ -36,7 +36,7 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 - **Native memory SDK** — `openclaw/plugin-sdk/memory-core` exports `getMemorySearchManager` (returns `MemorySearchManager` with `.search()` and `.readFile()`). `openclaw/plugin-sdk/memory-core-host-runtime-files` exports `readAgentMemoryFile`. Loaded lazily at runtime via dynamic import (not available at build time). These replace the removed `api.runtime.tools` surface.
 - **`api.on(event, handler)`** — Prefer over `registerHook` (crashes without `metadata: { name }`)
 - **`registerService({ id, start, stop })`** — `id` not `name`
-- **`registerCli(registrar, opts?)`** — Mounts under `openclaw plugins`
+- **`registerCli(registrar, opts?)`** — Mounts under `openclaw` (top-level)
 - Other: `api.runtime.{media, config, system, tts, channel, logging, state}`. No LLM inference.
 
 ### Hook Behavior
