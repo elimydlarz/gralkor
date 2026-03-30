@@ -177,8 +177,8 @@ describe("provider defaults", () => {
     expect(DEFAULT_LLM_PROVIDER).toBe("gemini");
   });
 
-  it("DEFAULT_LLM_MODEL is gemini-3-flash-preview", () => {
-    expect(DEFAULT_LLM_MODEL).toBe("gemini-3-flash-preview");
+  it("DEFAULT_LLM_MODEL is gemini-3.1-flash-lite-preview", () => {
+    expect(DEFAULT_LLM_MODEL).toBe("gemini-3.1-flash-lite-preview");
   });
 
   it("DEFAULT_EMBEDDER_PROVIDER is gemini", () => {
