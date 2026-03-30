@@ -66,16 +66,14 @@ Handlers receive `(event, ctx)` where `ctx` (`PluginHookAgentContext`) has `{ ag
 ### Data Lifecycle
 
 **Auto-recall** (`before_prompt_build`):
-Extracts user message from `event.prompt` by stripping `System:` lines, session-start lines, metadata wrappers (`/^.+?\(untrusted metadata\):/`). Falls back to last user message from `event.messages` (stripping `<gralkor-memory>` blocks). Captures `ctx.agentId` into shared group ID. Skips if disabled or no user message. Checks `serverReady.isReady()` (fail-fast if not). Searches `client.search()` and native `memory_search` in parallel. Returns facts plus two behavioral instructions (interpret relevance; search up to 3x in parallel) in `<gralkor-memory source="auto-recall" trust="untrusted">` XML as `{ prependContext }`. Errors propagate (fail-fast).
+Extracts user message from `event.prompt` (strips `System:` lines, session-start, metadata wrappers `/^.+?\(untrusted metadata\):/`; falls back to `event.messages` stripping `<gralkor-memory>`). Captures `ctx.agentId` into group ID. Skips if disabled/no message. Fail-fast if `serverReady` not ready. Searches `client.search()` + native `memory_search` in parallel. Returns facts + two instructions (interpret relevance; search up to 3x parallel) in `<gralkor-memory source="auto-recall" trust="untrusted">` as `{ prependContext }`. Errors propagate.
 
 **Auto-capture** (session buffering):
-`agent_end` fires per agent run. `event.messages` is the full session message array (may include compacted summaries). Handler debounces via `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`. `session_end` calls `debouncer.flush(key)` — race-safe (entry deleted before `onFlush`, so first wins). `flushSessionBuffer()` calls `extractMessagesFromCtx()`: user messages cleaned via `cleanUserMessageText()` (session-start/metadata wrappers/`<gralkor-memory>`/`Untrusted context` footer/`System:` lines stripped). Assistant messages: `text`/`output_text`, `thinking`, tool calls serialized as `tool_use`. `toolResult`/`tool` messages → `tool_result` blocks (text truncated to 1000 chars). Media silently dropped. POSTs to `/ingest-messages` with structured `messages` array.
+`agent_end` fires per run with full session `messages` (may include compaction summaries). Debounces via `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`. `session_end` force-flushes — race-safe (entry deleted before `onFlush`). `extractMessagesFromCtx()` cleans user messages via `cleanUserMessageText()`, extracts assistant `text`/`thinking`/tool calls (as `tool_use`), converts `toolResult`/`tool` → `tool_result` (truncated 1000 chars). Media dropped. POSTs to `/ingest-messages`.
 
-**Server-side transcript formatting:** `_format_transcript()` groups thinking/`tool_use`/`tool_result` blocks per turn, distils each into a first-person behaviour summary via LLM in parallel, injects `Assistant: (behaviour: {summary})` before assistant text. Failures silently dropped. Result passed to `graphiti.add_episode()`.
+**Server-side:** `_format_transcript()` groups thinking/`tool_use`/`tool_result` per turn, distils each into first-person behaviour summary via LLM, injects `(behaviour: {summary})` before assistant text. Failures dropped. Result → `graphiti.add_episode()`.
 
-`flushSessionBuffer` retries 3x with exponential backoff (1s/2s/4s) for transient errors. 4xx not retried.
-
-**SIGTERM flush:** `debouncer.flushAll()` on SIGTERM. Handler installed once (module-level guard). Flush errors logged, don't block shutdown.
+Flush retries 3x exponential (1s/2s/4s). 4xx not retried. SIGTERM → `flushAll()` (once via module guard; errors don't block shutdown).
 
 ### Graph Partitioning
 
