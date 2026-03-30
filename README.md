@@ -158,12 +158,12 @@ In memory mode, `memory_search` searches both the knowledge graph and native Mar
 
 ## CLI
 
-### Lifecycle management (`@susu-eng/gralkor-cli`)
+### Lifecycle management
 
-Install the CLI globally or use via `npx`:
+Run via `npx @susu-eng/gralkor` or install globally:
 
 ```bash
-gralkor install <source>         # Idempotent install/upgrade with slot assignment
+gralkor install                  # Self-install from npm (default: @susu-eng/gralkor)
 gralkor config --set llm.model=gpt-4.1-mini  # Set plugin config
 gralkor check                    # Pre-flight: uv, API keys, plugin state, server health
 gralkor status                   # Plugin version, slot, server health, graph stats
