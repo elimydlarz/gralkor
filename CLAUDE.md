@@ -29,13 +29,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core`. Auto-recall s
 
 ### Plugin Registration
 
-`register(api)` must be synchronous (async silently registers nothing). Config is on `api.pluginConfig` (not a second argument). Sequence:
-
-1. `resolveConfig()` merges `api.pluginConfig` with defaults, passes through `llm`/`embedder`/`ontology`. `validateOntologyConfig()` rejects reserved names. Graphiti URL hardcoded: `http://127.0.0.1:8001`.
-2. Create `GraphitiClient`, resolve `pluginDir` from `import.meta.url`.
-3. `registerFullPlugin()` creates shared state (`getGroupId`/`setGroupId`, `getNativeSearch`/`setNativeSearch`, `serverReady` gate), registers tools, hooks, service, CLI. `ReadyGate` is module-level (survives 4+ plugin reloads per event).
-
-Tool factory wraps native `memory_search` to also call `client.search()` in parallel. Native search reference shared with auto-recall via closure.
+`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges with defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`get/setGroupId`, `get/setNativeSearch`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). Tool factory wraps native `memory_search` to call `client.search()` in parallel.
 
 ### Plugin API Contract
 
