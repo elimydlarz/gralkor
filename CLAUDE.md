@@ -33,13 +33,13 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core`. Auto-recall s
 
 ### Plugin API Contract
 
-- **`api.pluginConfig`** — `Record<string, unknown> | undefined` from `plugins.entries.<id>.config`.
-- **`registerTool(tool, opts?)`** — Plain object: `execute(toolCallId, params, signal, onUpdate)` (first arg is string ID, not params). Factory: `(ctx) => Tool | Tool[] | null` with `opts: { names: string[] }`.
-- **`api.runtime.tools`** — `createMemorySearchTool()`, `createMemoryGetTool()`, `registerMemoryCli()`.
-- **`api.on(event, handler)`** — Prefer over `registerHook` (which requires `metadata: { name }` or crashes).
-- **`registerService({ id, start, stop })`** — Uses `id` (not `name`).
-- **`registerCli(registrar, opts?)`** — Mounts under `openclaw plugins`.
-- Other: `api.runtime.{media, config, system, tts, channel, logging, state}`. No LLM inference API.
+- **`api.pluginConfig`** — `Record<string, unknown> | undefined` from `plugins.entries.<id>.config`
+- **`registerTool(tool, opts?)`** — `execute(toolCallId, params, signal, onUpdate)` (first arg is string ID). Factory: `(ctx) => Tool | Tool[] | null` with `opts: { names }`.
+- **`api.runtime.tools`** — `createMemorySearchTool()`, `createMemoryGetTool()`, `registerMemoryCli()`
+- **`api.on(event, handler)`** — Prefer over `registerHook` (crashes without `metadata: { name }`)
+- **`registerService({ id, start, stop })`** — `id` not `name`
+- **`registerCli(registrar, opts?)`** — Mounts under `openclaw plugins`
+- Other: `api.runtime.{media, config, system, tts, channel, logging, state}`. No LLM inference.
 
 ### Hook Behavior
 
