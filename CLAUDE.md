@@ -562,8 +562,8 @@ test-mode-query-logging
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts, types.ts, config.ts, *.test.ts
-├── resources/memory/                 # @susu-eng/gralkor npm package + canonical manifest
-├── packages/cli/                     # @susu-eng/gralkor-cli (bin.ts, commands/, lib/)
+│   └── cli/                          # standalone CLI: bin.ts, commands/, lib/
+├── resources/memory/                 # canonical manifest for make pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/functional/
 ├── server/                           # Python/FastAPI: main.py, tests/, wheels/
