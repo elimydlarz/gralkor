@@ -115,7 +115,7 @@ Separate package (`packages/cli/`) wrapping `openclaw` CLI. Commands: `install` 
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
-| cli-diagnostics | `status/check/search/clear` under `openclaw plugins`; group ID for search/clear |
+| cli-diagnostics | `status/check/search/clear` under `openclaw gralkor`; group ID for search/clear |
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
 | error-propagation | Flush retries 3x exponential; final error propagates |
