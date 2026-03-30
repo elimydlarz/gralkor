@@ -63,7 +63,7 @@ Extracts user message from `event.prompt` (strips `System:` lines, session-start
 **Auto-capture** (session buffering):
 `agent_end` fires per run with full session `messages`. Debounces via `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`. `session_end` force-flushes (race-safe). `extractMessagesFromCtx()` cleans user messages via `cleanUserMessageText()`, extracts assistant `text`/`thinking`/tool calls (as `tool_use`), converts `toolResult`/`tool` → `tool_result` (truncated 1000 chars). Media dropped. POSTs to `/ingest-messages`.
 
-**Server-side:** `_format_transcript()` groups thinking/`tool_use`/`tool_result` per turn, distils each into first-person behaviour summary via LLM, injects `(behaviour: {summary})` before assistant text. Failures dropped. Result → `graphiti.add_episode()`.
+**Server-side:** `_format_transcript()` groups thinking/`tool_use`/`tool_result` per turn, distils into first-person behaviour summary via LLM, injects `(behaviour: ...)` before text. Failures dropped. Result → `graphiti.add_episode()`.
 
 Flush retries 3x exponential (1s/2s/4s). 4xx not retried. SIGTERM → `flushAll()` (once via module guard; errors don't block shutdown).
 
