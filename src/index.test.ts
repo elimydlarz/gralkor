@@ -358,6 +358,19 @@ describe("register()", () => {
         expect(result).toContain("Team uses React");
         expect(result).toContain("interpret these facts for relevance");
       });
+
+      it("when only graph returns results (native unavailable), then response includes graph facts only", async () => {
+        const searchTool = await setupSearchTool({
+          nativeResult: null,
+          graphFacts: [sampleFact],
+        });
+
+        const result = await searchTool.execute("tool-1", { query: "React" });
+
+        expect(result).toContain("Team uses React");
+        expect(result).not.toContain("Project notes");
+        expect(result).toContain("interpret these facts for relevance");
+      });
     });
   });
 });
