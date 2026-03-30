@@ -594,8 +594,7 @@ make pack                             # deployment tarball (Docker for arm64 whe
 make build-cli && make publish-cli    # CLI package
 ```
 
-Default deployment: install plugin, set API key, restart OpenClaw. Requires `uv`.
-Docker HOME split: gateway `HOME=/data`, shell `HOME=/root`. Fix: `ln -sfn /data/.openclaw /root/.openclaw`.
+Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 ## Conventions
 
