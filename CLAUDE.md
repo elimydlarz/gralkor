@@ -565,7 +565,7 @@ make test-server                      # pytest only (no Docker needed)
 make setup-server                     # first time: sync server venv
 ```
 
-TDD: write failing tests first, then implement. Tree reporters (vitest `tree`, pytest `--spec`).
+TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 ### Test Commands
 
