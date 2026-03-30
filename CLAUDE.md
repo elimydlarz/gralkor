@@ -605,7 +605,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 ## Gotchas
 
 - `register()` must be synchronous — async silently registers nothing
-- Native `execute()` returns `{ content: [{ type: "text", text }] }`, not string. Use `unwrapToolResult()`.
+- Native memory SDK imports (`openclaw/plugin-sdk/memory-core` etc.) resolve at runtime via OpenClaw's jiti loader — not available at build time. Use template-literal dynamic imports to prevent TS from resolving them.
 - `falkordblite` installs as Python module `redislite`, not `falkordblite`
 - `falkordblite` 0.9.0 sdist bundles x86-64; aarch64 + glibc < 2.39 → `RedisLiteServerStartError`. Fix: bundled arm64 wheel via `make pack`.
 - Graphiti requires LLM API key — starts without one but all operations fail
