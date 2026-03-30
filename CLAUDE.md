@@ -111,14 +111,13 @@ Separate package (`packages/cli/`) wrapping `openclaw` CLI. Commands: `install` 
 | behaviour-distillation | `/ingest-messages` groups+distils behaviour blocks per turn via LLM |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
 | auto-recall | `before_prompt_build` searches graph+native in parallel, injects facts+instructions |
-| unified-search | `memory_search` combines native+graph; interpretation instruction appended (no further-querying instruction). Empty native results filtered via `countNativeResults()`. |
+| unified-search | `memory_search` combines native Markdown memory + graph facts; `memory_get` reads native files. Delegates to OpenClaw memory SDK. See test tree below. |
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
 | cli-diagnostics | `status/check/search/clear` under `openclaw plugins`; group ID for search/clear |
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
-| native-delegation | Delegates to OpenClaw memory SDK (`getMemorySearchManager`, `readAgentMemoryFile`) via lazy dynamic import |
 | error-propagation | Flush retries 3x exponential; final error propagates |
 | episode-idempotency | UUID per call; server deduplicates (5-min TTL) |
 | custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. |
