@@ -560,11 +560,10 @@ test-mode-query-logging
 
 - `GOOGLE_API_KEY` — Gemini (self-contained: LLM + embeddings + reranking)
 - `OPENAI_API_KEY` — OpenAI; also needed for embeddings with Anthropic/Groq
-- `ANTHROPIC_API_KEY` — Anthropic LLM (needs `OPENAI_API_KEY` for embeddings)
-- `GROQ_API_KEY` — Groq LLM (needs `OPENAI_API_KEY` for embeddings)
-- `FALKORDB_URI` — (Optional) `redis://host:port` for legacy Docker mode
+- `ANTHROPIC_API_KEY` / `GROQ_API_KEY` — need `OPENAI_API_KEY` for embeddings
+- `FALKORDB_URI` — (Optional) legacy Docker mode
 
-Server manager generates `config.yaml` and forwards all API keys at startup.
+Server manager generates `config.yaml` and forwards all keys at startup.
 
 ## Dev Workflow
 
