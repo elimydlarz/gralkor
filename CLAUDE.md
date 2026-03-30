@@ -493,6 +493,18 @@ config defaults
     then defaults match defaultConfig in config.ts
 ```
 
+#### test-mode-query-logging
+
+```
+test-mode-query-logging
+  when auto-recall searches in test mode
+    then the extracted user message (search query) is logged
+  when memory_search tool executes in test mode
+    then the query argument is logged
+  when test mode is disabled
+    then queries are not logged
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
