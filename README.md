@@ -57,20 +57,20 @@ The agent gets a unified memory interface where it doesn't need to think about w
 **Using the CLI helper (recommended):**
 
 ```bash
-npx @susu-eng/gralkor-cli install @susu-eng/gralkor
+npx @susu-eng/gralkor install
 ```
 
 This handles everything: installs the plugin, enables it, assigns the memory slot, and migrates from `memory-gralkor` if present. You can also pass config inline:
 
 ```bash
-npx @susu-eng/gralkor-cli install @susu-eng/gralkor \
+npx @susu-eng/gralkor install \
   --config '{"llm":{"provider":"openai","model":"gpt-4.1-mini"}}'
 ```
 
 Or from a tarball:
 
 ```bash
-npx @susu-eng/gralkor-cli install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
+npx @susu-eng/gralkor install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
 ```
 
 The install is idempotent — running it again with the same version is a no-op.
