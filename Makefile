@@ -30,8 +30,6 @@ help:
 	@echo ""
 	@echo "Build"
 	@echo "  pack            Build deployment tarball"
-	@echo "  build-cli       Build CLI package"
-	@echo "  publish-cli     Build and publish CLI package"
 	@echo ""
 	@echo "Versioning"
 	@echo "  version-patch   Bump patch version (x.y.Z)"
