@@ -371,6 +371,62 @@ describe("register()", () => {
         expect(result).not.toContain("Project notes");
         expect(result).toContain("interpret these facts for relevance");
       });
+
+      it("when only native returns results (graph empty), then response includes native results only", async () => {
+        const searchTool = await setupSearchTool({
+          nativeResult: sampleNativeResult,
+          graphFacts: [],
+        });
+
+        const result = await searchTool.execute("tool-1", { query: "notes" });
+
+        expect(result).toContain("Project notes");
+        expect(result).not.toContain("Team uses React");
+        expect(result).toContain("interpret these facts for relevance");
+      });
+
+      it("when neither returns results, then response is 'No memories found.'", async () => {
+        const searchTool = await setupSearchTool({
+          nativeResult: null,
+          graphFacts: [],
+        });
+
+        const result = await searchTool.execute("tool-1", { query: "nothing" });
+
+        expect(result).toBe("No memories found.");
+      });
+    });
+
+    describe("when server is not ready", () => {
+      it("then throws error", async () => {
+        // Don't resolve ReadyGate — override setup to skip it
+        const { resetSDKLoader } = await import("./native-memory.js");
+        resetSDKLoader();
+
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => ({ facts: [] }),
+          text: async () => "",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        // Import fresh module with unresolved ReadyGate
+        const { createReadyGate } = await import("./config.js");
+        // Don't call resolve() — gate stays closed
+
+        const { register } = await import("./index.js");
+        register(api);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
+        const tools = factory({ config: {}, sessionKey: "test-session" });
+        const searchTool = tools[0];
+
+        await expect(
+          searchTool.execute("tool-1", { query: "test" }),
+        ).rejects.toThrow("server is not ready");
+      });
     });
   });
 });
