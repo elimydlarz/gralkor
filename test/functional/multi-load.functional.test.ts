@@ -59,7 +59,7 @@ describe("multi-load resilience", () => {
         const client = mockClient();
         client.search.mockResolvedValue({ facts: [makeFact()] });
 
-        const handler = createBeforeAgentStartHandler(
+        const handler = createBeforePromptBuildHandler(
           client as unknown as GraphitiClient,
           defaultConfig,
           { serverReady: gateB },
@@ -106,7 +106,7 @@ describe("multi-load resilience", () => {
         void gateA; // unused, just showing two instances exist
 
         const client = mockClient();
-        const handler = createBeforeAgentStartHandler(
+        const handler = createBeforePromptBuildHandler(
           client as unknown as GraphitiClient,
           defaultConfig,
           { serverReady: gateB },
