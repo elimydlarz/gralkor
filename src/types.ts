@@ -57,8 +57,6 @@ export interface MemoryPluginApi extends PluginApiBase {
       createMemorySearchTool(opts: { config: any; agentSessionKey: string }): any;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createMemoryGetTool(opts: { config: any; agentSessionKey: string }): any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      registerMemoryCli(program: any): void;
     };
   };
 }
