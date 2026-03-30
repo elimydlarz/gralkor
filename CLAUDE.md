@@ -77,9 +77,9 @@ Flush retries 3x exponential (1s/2s/4s). 4xx not retried. SIGTERM → `flushAll(
 
 ### Graph Partitioning
 
-Tools don't receive agent context (`execute(toolCallId, params)` — no ctx). `before_prompt_build` captures `ctx.agentId` via `setGroupId`, tools read via `getGroupId`. Resolution: `agentId ?? "default"`.
+Tools don't receive ctx (`execute(toolCallId, params)`). `before_prompt_build` captures `ctx.agentId` via `setGroupId`; tools read via `getGroupId`. Resolution: `agentId ?? "default"`.
 
-**FalkorDB named graphs:** graphiti-core maps each `group_id` to a separate named graph. `add_episode(group_id='main')` clones the driver targeting `'main'`. But `search()` doesn't route — uses whatever graph the driver currently targets (`'default_db'` on fresh boot → empty results). Fix: `_ensure_driver_graph()` in `main.py` applies routing for reads.
+graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_episode()` clones the driver per group, but `search()` doesn't route (uses current graph — `'default_db'` on fresh boot → empty). Fix: `_ensure_driver_graph()` in `main.py`.
 
 ### Server Manager Lifecycle
 
