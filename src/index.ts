@@ -15,47 +15,7 @@ import {
 import type { NativeSearchFn } from "./hooks.js";
 import { countNativeResults } from "./hooks.js";
 import type { MemoryPluginApi } from "./types.js";
-
-// Lazy-loaded SDK imports for native memory search (avoids eager load of heavy modules).
-// These resolve at runtime via OpenClaw's jiti loader — not available at build time.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MemorySDK = {
-  getMemorySearchManager: (params: {
-    cfg: unknown;
-    agentId: string;
-    purpose?: "default" | "status";
-  }) => Promise<{ manager: MemorySearchManager | null; error?: string }>;
-  readAgentMemoryFile: (params: {
-    cfg: unknown;
-    agentId: string;
-    relPath: string;
-    from?: number;
-    lines?: number;
-  }) => Promise<{ text: string; path: string }>;
-};
-
-interface MemorySearchManager {
-  search(
-    query: string,
-    opts?: { maxResults?: number; minScore?: number; sessionKey?: string },
-  ): Promise<Array<{ path: string; startLine: number; endLine: number; score: number; snippet: string; source: string }>>;
-  readFile(params: { relPath: string; from?: number; lines?: number }): Promise<{ text: string; path: string }>;
-}
-
-let memorySDKPromise: Promise<MemorySDK> | null = null;
-async function loadMemorySDK(): Promise<MemorySDK> {
-  // Dynamic import paths constructed to prevent TypeScript from resolving them
-  // at build time — these modules are provided by the OpenClaw host at runtime.
-  const sdkBase = "openclaw/plugin-sdk";
-  memorySDKPromise ??= Promise.all([
-    import(/* @vite-ignore */ `${sdkBase}/memory-core`),
-    import(/* @vite-ignore */ `${sdkBase}/memory-core-host-runtime-files`),
-  ]).then(([core, files]) => ({
-    getMemorySearchManager: core.getMemorySearchManager,
-    readAgentMemoryFile: files.readAgentMemoryFile,
-  }));
-  return memorySDKPromise;
-}
+import { searchNativeMemory, readNativeMemoryFile } from "./native-memory.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -66,36 +26,6 @@ let configLogged = false;
 
 // Guard against duplicate SIGTERM handlers across multiple register() calls
 let sigTermHandlerInstalled = false;
-
-/**
- * Search native Markdown memory via the OpenClaw memory SDK.
- * Returns JSON string matching memory-core's output format ({ results: [...] })
- * so countNativeResults() can parse it.
- */
-async function searchNativeMemory(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cfg: any,
-  agentId: string,
-  query: string,
-  opts?: { maxResults?: number; sessionKey?: string },
-): Promise<string | null> {
-  try {
-    const { getMemorySearchManager } = await loadMemorySDK();
-    const { manager, error } = await getMemorySearchManager({ cfg, agentId });
-    if (!manager) {
-      if (error) console.log(`[gralkor] native memory unavailable: ${error}`);
-      return null;
-    }
-    const results = await manager.search(query, {
-      maxResults: opts?.maxResults,
-      sessionKey: opts?.sessionKey,
-    });
-    return JSON.stringify({ results });
-  } catch (err) {
-    console.log(`[gralkor] native memory search failed: ${err instanceof Error ? err.message : err}`);
-    return null;
-  }
-}
 
 function registerFullPlugin(
   api: MemoryPluginApi,
