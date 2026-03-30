@@ -288,4 +288,76 @@ describe("register()", () => {
       expect(() => register(apiWithBadOntology)).toThrow("Entity");
     });
   });
+
+  describe("unified-search (memory_search tool)", () => {
+    // Helper: register plugin, get factory, create tools, return searchTool.execute
+    async function setupSearchTool(opts: {
+      nativeResult?: string | null;
+      graphFacts?: Array<{ uuid: string; name: string; fact: string; group_id: string; valid_at: string | null; invalid_at: string | null; expired_at: string | null; created_at: string }>;
+    }) {
+      const { searchNativeMemory } = await import("./native-memory.js");
+      const { setSDKLoader } = await import("./native-memory.js");
+
+      // Mock native search via SDK loader
+      const mockManager = {
+        search: vi.fn().mockResolvedValue(
+          opts.nativeResult ? JSON.parse(opts.nativeResult).results ?? [] : [],
+        ),
+        readFile: vi.fn(),
+      };
+      setSDKLoader(() => Promise.resolve({
+        getMemorySearchManager: vi.fn().mockResolvedValue(
+          opts.nativeResult !== null
+            ? { manager: mockManager }
+            : { manager: null, error: "unavailable" },
+        ),
+        readAgentMemoryFile: vi.fn(),
+      }));
+
+      // Mock graph search via fetch
+      const facts = opts.graphFacts ?? [];
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ facts }),
+        text: async () => "",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      // Resolve ReadyGate
+      const { createReadyGate } = await import("./config.js");
+      createReadyGate().resolve();
+
+      const { register } = await import("./index.js");
+      register(api);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
+      const tools = factory({ config: {}, sessionKey: "test-session" });
+      return tools[0]; // memory_search tool
+    }
+
+    const sampleFact = { uuid: "1", name: "test", fact: "Team uses React", group_id: "default", valid_at: null, invalid_at: null, expired_at: null, created_at: "2025-01-01T00:00:00Z" };
+    const sampleNativeResult = JSON.stringify({ results: [{ path: "memory/notes.md", snippet: "Project notes" }] });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      import("./native-memory.js").then(m => m.resetSDKLoader());
+    });
+
+    describe("when searching", () => {
+      it("when both native and graph return results, then response includes native results and graph facts and interpretation instruction", async () => {
+        const searchTool = await setupSearchTool({
+          nativeResult: sampleNativeResult,
+          graphFacts: [sampleFact],
+        });
+
+        const result = await searchTool.execute("tool-1", { query: "React" });
+
+        expect(result).toContain("Project notes");
+        expect(result).toContain("Team uses React");
+        expect(result).toContain("interpret these facts for relevance");
+      });
+    });
+  });
 });
