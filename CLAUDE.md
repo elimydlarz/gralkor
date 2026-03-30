@@ -32,7 +32,7 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 ### Plugin API Contract
 
 - **`api.pluginConfig`** — `Record<string, unknown> | undefined` from `plugins.entries.<id>.config`
-- **`registerTool(tool, opts?)`** — `execute(toolCallId, params, signal, onUpdate)` (first arg is string ID). Factory: `(ctx) => Tool | Tool[] | null` with `opts: { names }`.
+- **`registerTool(tool, opts?)`** — `execute(toolCallId, params, signal, onUpdate)`. Factory: `(ctx) => Tool | Tool[] | null` with `opts: { names }`.
 - **Native memory SDK** — `openclaw/plugin-sdk/memory-core` exports `getMemorySearchManager` (returns `MemorySearchManager` with `.search()` and `.readFile()`). `openclaw/plugin-sdk/memory-core-host-runtime-files` exports `readAgentMemoryFile`. Loaded lazily at runtime via dynamic import (not available at build time). These replace the removed `api.runtime.tools` surface.
 - **`api.on(event, handler)`** — Prefer over `registerHook` (crashes without `metadata: { name }`)
 - **`registerService({ id, start, stop })`** — `id` not `name`
