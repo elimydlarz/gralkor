@@ -79,6 +79,18 @@ describe("install", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("cleans up stale install when plugin not in list", async () => {
+    // Plugin directory exists on disk but openclaw plugins list doesn't report it
+    mocked.getInstalledPlugins.mockResolvedValue([]);
+    mocked.uninstallPlugin.mockRejectedValue(new Error("not installed"));
+
+    await install({ source: "@susu-eng/gralkor" });
+
+    // Should attempt uninstall (swallowing the error) then install
+    expect(mocked.uninstallPlugin).toHaveBeenCalledWith("gralkor");
+    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
+  });
+
   it("errors when tarball file not found", async () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
 
