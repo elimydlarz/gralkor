@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { GraphitiClient, Fact } from "../../src/client.js";
 import { createReadyGate, resetReadyGate, defaultConfig } from "../../src/config.js";
-import { createBeforeAgentStartHandler } from "../../src/hooks.js";
+import { createBeforePromptBuildHandler } from "../../src/hooks.js";
 import { createMemoryStoreTool } from "../../src/tools.js";
 
 function mockClient(): { [K in keyof GraphitiClient]: ReturnType<typeof vi.fn> } {
