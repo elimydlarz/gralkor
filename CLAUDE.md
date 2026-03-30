@@ -614,8 +614,4 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 ## Server Tests
 
-No Docker or API keys needed. Unit tests: `httpx.AsyncClient` with `ASGITransport` (mocked Graphiti). Integration: real FalkorDBLite, zero mocks.
-
-```bash
-make setup-server && make test-server
-```
+No Docker or API keys. Unit: `httpx.AsyncClient` + `ASGITransport` (mocked Graphiti). Integration: real FalkorDBLite. Run: `make setup-server && make test-server`.
