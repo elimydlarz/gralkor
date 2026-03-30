@@ -18,12 +18,12 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 
 | Object | Type | Description |
 |---|---|---|
-| Episode | `Episode` | Captured conversation or manual store. Has `source` (`message` for auto-capture, `text` for `memory_add`) and `source_description`. |
-| Fact (edge) | `Fact` | Extracted relationship. 4 timestamps: `created_at`, `valid_at`/`invalid_at` (validity window), `expired_at` (superseded). Formatted by `formatFact()` in `src/tools.ts`. |
-| Entity (node) | (Graphiti-internal) | Person/concept/thing with `summary`. Not exposed — we use `search()` (edges only), not `search_()`. |
-| Community | (Graphiti-internal) | Entity cluster with `name`/`summary`. Not exposed. |
+| Episode | `Episode` | Captured conversation or manual store. `source`: `message` (auto-capture) or `text` (`memory_add`). |
+| Fact (edge) | `Fact` | Extracted relationship. 4 timestamps: `created_at`, `valid_at`/`invalid_at`, `expired_at`. Via `formatFact()`. |
+| Entity (node) | (Graphiti-internal) | Person/concept/thing with `summary`. Not exposed (we use edge-only `search()`). |
+| Community | (Graphiti-internal) | Entity cluster. Not exposed. |
 | Group | `string` | Partition key from `agentId` (fallback `"default"`). One graph per agent. |
-| SessionBuffer | `SessionBuffer` | In-memory buffer of latest `messages` snapshot. Managed by `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. |
+| SessionBuffer | `SessionBuffer` | In-memory `messages` snapshot. `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. |
 
 ### Plugin Registration
 
