@@ -399,9 +399,9 @@ describe("register()", () => {
 
     describe("when server is not ready", () => {
       it("then throws error", async () => {
-        // Don't resolve ReadyGate — override setup to skip it
-        const { resetSDKLoader } = await import("./native-memory.js");
-        resetSDKLoader();
+        // Reset the module-level ready gate so it's not resolved
+        const { resetReadyGate } = await import("./config.js");
+        resetReadyGate();
 
         const fetchMock = vi.fn().mockResolvedValue({
           ok: true,
@@ -410,10 +410,6 @@ describe("register()", () => {
           text: async () => "",
         });
         vi.stubGlobal("fetch", fetchMock);
-
-        // Import fresh module with unresolved ReadyGate
-        const { createReadyGate } = await import("./config.js");
-        // Don't call resolve() — gate stays closed
 
         const { register } = await import("./index.js");
         register(api);
@@ -426,6 +422,10 @@ describe("register()", () => {
         await expect(
           searchTool.execute("tool-1", { query: "test" }),
         ).rejects.toThrow("server is not ready");
+
+        // Re-resolve so other tests aren't affected
+        const { createReadyGate } = await import("./config.js");
+        createReadyGate().resolve();
       });
     });
   });
