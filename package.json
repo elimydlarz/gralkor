@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor",
-  "version": "26.0.0",
+  "version": "26.0.1",
   "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
   "main": "./dist/index.js",
