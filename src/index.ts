@@ -98,13 +98,6 @@ function registerFullPlugin(
   api.registerTool(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ctx: { config: any; sessionKey: string }) => {
-      // Resolve agentId from session key (same pattern as memory-core)
-      let agentId = "default";
-      try {
-        // Synchronous dynamic import isn't possible — resolve lazily on first call.
-        // For now, use the shared group ID captured by hooks (which runs before tools).
-      } catch { /* agentId resolved lazily */ }
-
       // Capture native search function for the auto-recall hook
       nativeSearchFn = async (query: string) => {
         return (await searchNativeMemory(ctx.config, getGroupId(), query, { sessionKey: ctx.sessionKey })) ?? "";
