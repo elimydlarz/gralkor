@@ -123,28 +123,12 @@ describe("register()", () => {
     expect(typeof service.stop).toBe("function");
   });
 
-  it("registers memory CLI that delegates to runtime", async () => {
-    const { register } = await import("./index.js");
-
-    register(api);
-
-    const [memoryCli, memoryOpts] = api.registerCli.mock.calls[0];
-    expect(typeof memoryCli).toBe("function");
-    expect(memoryOpts).toEqual({ commands: ["memory"] });
-
-    // Simulate OpenClaw calling the registrar
-    const mockProgram = {};
-    memoryCli({ program: mockProgram });
-    expect(api.runtime.tools.registerMemoryCli).toHaveBeenCalledWith(mockProgram);
-  });
-
   it("registers gralkor CLI as a Commander registrar function", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    // Second registerCli call is the gralkor CLI
-    const [registrar, opts] = api.registerCli.mock.calls[1];
+    const [registrar, opts] = api.registerCli.mock.calls[0];
     expect(typeof registrar).toBe("function");
     expect(opts).toEqual({ commands: ["gralkor"] });
 
