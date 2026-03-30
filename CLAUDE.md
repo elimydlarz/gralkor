@@ -632,8 +632,7 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 ## Building & Deploying
 
 ```bash
-make version-patch        # bump, commit, tag (also version-minor/major)
-make publish              # build + publish
+make publish-patch        # bump, build, publish, commit+tag (also publish-minor/major)
 make pack                 # deployment tarball (arm64 wheel via Docker)
 ```
 
