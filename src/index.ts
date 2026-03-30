@@ -16,22 +16,40 @@ import type { NativeSearchFn } from "./hooks.js";
 import { countNativeResults } from "./hooks.js";
 import type { MemoryPluginApi } from "./types.js";
 
-// Lazy-loaded SDK imports for native memory search (avoids eager load of heavy modules)
+// Lazy-loaded SDK imports for native memory search (avoids eager load of heavy modules).
+// These resolve at runtime via OpenClaw's jiti loader — not available at build time.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MemorySDK = {
-  getMemorySearchManager: typeof import("openclaw/plugin-sdk/memory-core")["getMemorySearchManager"];
-  readAgentMemoryFile: typeof import("openclaw/plugin-sdk/memory-core-host-runtime-files")["readAgentMemoryFile"];
-  resolveSessionAgentId: typeof import("openclaw/plugin-sdk/memory-core-host-runtime-core")["resolveSessionAgentId"];
+  getMemorySearchManager: (params: {
+    cfg: unknown;
+    agentId: string;
+    purpose?: "default" | "status";
+  }) => Promise<{ manager: MemorySearchManager | null; error?: string }>;
+  readAgentMemoryFile: (params: {
+    cfg: unknown;
+    agentId: string;
+    relPath: string;
+    from?: number;
+    lines?: number;
+  }) => Promise<{ text: string; path: string }>;
 };
+
+interface MemorySearchManager {
+  search(
+    query: string,
+    opts?: { maxResults?: number; minScore?: number; sessionKey?: string },
+  ): Promise<Array<{ path: string; startLine: number; endLine: number; score: number; snippet: string; source: string }>>;
+  readFile(params: { relPath: string; from?: number; lines?: number }): Promise<{ text: string; path: string }>;
+}
+
 let memorySDKPromise: Promise<MemorySDK> | null = null;
 async function loadMemorySDK(): Promise<MemorySDK> {
   memorySDKPromise ??= Promise.all([
-    import("openclaw/plugin-sdk/memory-core"),
-    import("openclaw/plugin-sdk/memory-core-host-runtime-files"),
-    import("openclaw/plugin-sdk/memory-core-host-runtime-core"),
-  ]).then(([core, files, runtimeCore]) => ({
+    import(/* @vite-ignore */ "openclaw/plugin-sdk/memory-core"),
+    import(/* @vite-ignore */ "openclaw/plugin-sdk/memory-core-host-runtime-files"),
+  ]).then(([core, files]) => ({
     getMemorySearchManager: core.getMemorySearchManager,
     readAgentMemoryFile: files.readAgentMemoryFile,
-    resolveSessionAgentId: runtimeCore.resolveSessionAgentId,
   }));
   return memorySDKPromise;
 }
