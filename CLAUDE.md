@@ -120,7 +120,7 @@ Separate package (`packages/cli/`) wrapping `openclaw` CLI. Commands: `install` 
 | cli-diagnostics | `status/check/search/clear` under `openclaw plugins`; group ID for search/clear |
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
-| native-delegation | Delegates to `api.runtime.tools` |
+| native-delegation | Delegates to OpenClaw memory SDK (`getMemorySearchManager`, `readAgentMemoryFile`) via lazy dynamic import |
 | error-propagation | Flush retries 3x exponential; final error propagates |
 | episode-idempotency | UUID per call; server deduplicates (5-min TTL) |
 | custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. |
