@@ -91,27 +91,24 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
-  it("recovers from stale config that makes plugins list fail", async () => {
-    // First call fails (stale plugins.slots.memory: gralkor), retry succeeds
-    mocked.getInstalledPlugins
-      .mockRejectedValueOnce(new Error("Config invalid"))
-      .mockResolvedValueOnce([]);
-
+  it("proactively clears stale memory slot before listing plugins", async () => {
     await install({ source: "@susu-eng/gralkor" });
 
-    // Should clear stale slot, retry, then proceed with fresh install
-    expect(mocked.setConfig).toHaveBeenCalledWith("plugins.slots.memory", "");
-    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
+    // setConfig("plugins.slots.memory", "") should be called first (proactive clear)
+    // then again with "gralkor" after install
+    const slotCalls = mocked.setConfig.mock.calls.filter(
+      ([key]) => key === "plugins.slots.memory"
+    );
+    expect(slotCalls[0]).toEqual(["plugins.slots.memory", ""]);
+    expect(slotCalls[slotCalls.length - 1]).toEqual(["plugins.slots.memory", "gralkor"]);
   });
 
-  it("proceeds with fresh install when plugins list fails twice", async () => {
-    mocked.getInstalledPlugins
-      .mockRejectedValueOnce(new Error("Config invalid"))
-      .mockRejectedValueOnce(new Error("Config invalid"));
+  it("proceeds with fresh install when plugins list fails after slot clear", async () => {
+    mocked.getInstalledPlugins.mockRejectedValue(new Error("Config invalid"));
 
     await install({ source: "@susu-eng/gralkor" });
 
-    // Should still install
+    // Should still install despite listing failure
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
