@@ -47,13 +47,6 @@ describe("register()", () => {
     on: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
     registerCli: ReturnType<typeof vi.fn>;
-    runtime: {
-      tools: {
-        createMemorySearchTool: ReturnType<typeof vi.fn>;
-        createMemoryGetTool: ReturnType<typeof vi.fn>;
-        registerMemoryCli: ReturnType<typeof vi.fn>;
-      };
-    };
   };
 
   beforeEach(() => {
@@ -62,16 +55,6 @@ describe("register()", () => {
       on: vi.fn(),
       registerService: vi.fn(),
       registerCli: vi.fn(),
-      runtime: {
-        tools: {
-          createMemorySearchTool: vi.fn().mockReturnValue({
-            name: "memory_search",
-            execute: vi.fn().mockResolvedValue({ content: [{ type: "text", text: "native result" }] }),
-          }),
-          createMemoryGetTool: vi.fn().mockReturnValue({ name: "memory_get" }),
-          registerMemoryCli: vi.fn(),
-        },
-      },
     };
   });
 
