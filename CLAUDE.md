@@ -147,6 +147,40 @@ auto-recall-further-querying
     and response does not contain further querying instruction
 ```
 
+#### unified-search
+
+```
+unified-search (memory_search tool)
+  when searching
+    then searches native memory and graph in parallel
+    and combines results into a single response
+    when both native and graph return results
+      then response includes native results and graph facts
+      and response includes interpretation instruction
+    when only graph returns results (native unavailable)
+      then response includes graph facts only
+    when only native returns results (graph empty)
+      then response includes native results only
+    when neither returns results
+      then response is "No memories found."
+    native memory delegation
+      when manager is available
+        then calls manager.search with query and options
+        and returns JSON with results array
+      when manager is unavailable
+        then returns null
+      when native search throws
+        then returns null (does not propagate error)
+  when server is not ready
+    then throws error
+  memory_get tool
+    when path is valid
+      then reads file via native memory SDK
+      and returns JSON result
+    when read fails
+      then returns JSON with error
+```
+
 #### fact-prioritization
 
 ```
