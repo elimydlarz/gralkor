@@ -4,6 +4,9 @@
   "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "gralkor": "./dist/cli/bin.js"
+  },
   "openclaw": {
     "extensions": [
       "./dist/index.js"
