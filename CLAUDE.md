@@ -597,10 +597,10 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 ## Building & Deploying
 
 ```bash
-make version-patch                    # bump, commit, tag (also version-minor/major)
-make publish                          # build + publish
-make pack                             # deployment tarball (Docker for arm64 wheel)
-make build-cli && make publish-cli    # CLI package
+make version-patch        # bump, commit, tag (also version-minor/major)
+make publish              # build + publish
+make pack                 # deployment tarball (arm64 wheel via Docker)
+make build-cli && make publish-cli  # CLI package
 ```
 
 Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
