@@ -612,8 +612,8 @@ Docker HOME split: gateway `HOME=/data`, shell `HOME=/root`. Fix: `ln -sfn /data
 - Graphiti requires LLM API key — starts without one but all operations fail
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)
-- **graphiti-core search doesn't route to named graph:** `add_episode()` clones driver per `group_id`, but `search()` doesn't. Fix: `_ensure_driver_graph()` in `main.py`. Also: `FalkorDriver.__init__()` fires `build_indices_and_constraints()` on every clone — caught by error handler but noisy.
-- **`memory_add` blocked by tool profiles:** `coding` profile allowlists core tools only; `memory_add` is plugin tool → silently blocked. Workaround: `"alsoAllow": ["memory_add"]` (or `"gralkor"`/`"group:plugins"`) in `tools` config.
+- **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught).
+- **`memory_add` blocked by tool profiles:** `coding` profile allowlists core tools only. Workaround: `"alsoAllow": ["memory_add"]` in `tools` config.
 
 ## Server Tests
 
