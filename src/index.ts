@@ -16,6 +16,26 @@ import type { NativeSearchFn } from "./hooks.js";
 import { countNativeResults } from "./hooks.js";
 import type { MemoryPluginApi } from "./types.js";
 
+// Lazy-loaded SDK imports for native memory search (avoids eager load of heavy modules)
+type MemorySDK = {
+  getMemorySearchManager: typeof import("openclaw/plugin-sdk/memory-core")["getMemorySearchManager"];
+  readAgentMemoryFile: typeof import("openclaw/plugin-sdk/memory-core-host-runtime-files")["readAgentMemoryFile"];
+  resolveSessionAgentId: typeof import("openclaw/plugin-sdk/memory-core-host-runtime-core")["resolveSessionAgentId"];
+};
+let memorySDKPromise: Promise<MemorySDK> | null = null;
+async function loadMemorySDK(): Promise<MemorySDK> {
+  memorySDKPromise ??= Promise.all([
+    import("openclaw/plugin-sdk/memory-core"),
+    import("openclaw/plugin-sdk/memory-core-host-runtime-files"),
+    import("openclaw/plugin-sdk/memory-core-host-runtime-core"),
+  ]).then(([core, files, runtimeCore]) => ({
+    getMemorySearchManager: core.getMemorySearchManager,
+    readAgentMemoryFile: files.readAgentMemoryFile,
+    resolveSessionAgentId: runtimeCore.resolveSessionAgentId,
+  }));
+  return memorySDKPromise;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const pluginDir = join(__dirname, ".."); // dist/ → plugin root
