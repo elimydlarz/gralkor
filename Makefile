@@ -56,15 +56,6 @@ setup-server:
 pack:
 	bash scripts/pack.sh
 
-publish-patch:
-	pnpm run publish:npm -- patch
-
-publish-minor:
-	pnpm run publish:npm -- minor
-
-publish-major:
-	pnpm run publish:npm -- major
-
 build-server:
 	docker build -t gralkor-server:latest server/
 
