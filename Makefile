@@ -2,19 +2,6 @@
         typecheck pack publish build-server up down logs setup-server \
         version-major version-minor version-patch help
 
-SYNC_RESOURCES = node -e " \
-  const fs = require('fs'); \
-  const v = require('./package.json').version; \
-  ['resources/memory/package.json'].forEach(f => { \
-    const p = JSON.parse(fs.readFileSync(f)); \
-    p.version = v; \
-    fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n'); \
-  });"
-
-TAG_VERSION = \
-  V=$$(node -p "require('./package.json').version"); \
-  git commit --only package.json resources/memory/package.json -m "$$V"; \
-  git tag "v$$V"
 
 help:
 	@echo "Usage: make <target>"
