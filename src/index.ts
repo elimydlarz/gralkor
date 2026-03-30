@@ -179,6 +179,7 @@ function registerFullPlugin(
           const combinedResult = sections.join("\n\n");
 
           if (config.test) {
+            console.log(`[gralkor] [test] memory_search query: ${args.query}`);
             console.log(`[gralkor] [test] memory_search result:\n${combinedResult}`);
           }
 
