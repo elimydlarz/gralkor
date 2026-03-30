@@ -549,12 +549,12 @@ test-mode-query-logging
 | `llm.model` | string | `"gemini-3-flash-preview"` | LLM model |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model |
-| `dataDir` | string | `{pluginDir}/../.gralkor-data` | Backend data (outside plugin dir for upgrade safety) |
+| `dataDir` | string | `{pluginDir}/../.gralkor-data` | Outside plugin dir (upgrade-safe) |
 | `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types |
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types |
-| `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edge types |
+| `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edges |
 | `ontology.excludedEntityTypes` | `string[]` | — | Exclude from extraction |
-| `test` | boolean | `false` | Verbose logging at both layers |
+| `test` | boolean | `false` | Verbose logging both layers |
 
 ## Environment Variables
 
