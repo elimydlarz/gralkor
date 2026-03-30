@@ -87,8 +87,9 @@ describe("install", () => {
 
     await install({ source: "@susu-eng/gralkor" });
 
-    // Should attempt uninstall (swallowing the error) then install
+    // Should attempt uninstall (swallowing the error), remove dir, then install
     expect(mocked.uninstallPlugin).toHaveBeenCalledWith("gralkor");
+    expect(mocked.removePluginDir).toHaveBeenCalledWith("gralkor");
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
