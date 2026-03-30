@@ -1792,6 +1792,23 @@ describe("test mode logging", () => {
     expect(testLogs[0][0]).toContain("Sky is blue");
   });
 
+  it("logs auto-recall query in test mode", async () => {
+    client.search.mockResolvedValue({
+      ...emptySearchResults(),
+      facts: [makeFact({ fact: "Sky is blue" })],
+    });
+
+    const config: GralkorConfig = { ...defaultConfig, test: true };
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
+    await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
+
+    const testLogs = consoleSpy.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].includes("[test] auto-recall query:"),
+    );
+    expect(testLogs).toHaveLength(1);
+    expect(testLogs[0][0]).toContain("What color is the sky?");
+  });
+
   it("does not log auto-recall context when test mode is off", async () => {
     client.search.mockResolvedValue({
       ...emptySearchResults(),
