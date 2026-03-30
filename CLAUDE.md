@@ -583,7 +583,7 @@ TDD: write failing tests first, then implement. Tree reporters (vitest `tree`, p
 | `make test-mutate` | Mutation testing (Stryker) | clear-text |
 | `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation (real LLM) | stdout |
 
-**Live distillation tests:** Run after changing `_DISTILL_SYSTEM_PROMPT` or default LLM. Calls configured LLM against `server/tests/fixtures/distillation_cases.json`. Cases have `reject_patterns` (recalled-fact strings that must NOT appear). Use `-s` to eyeball output.
+**Live distillation tests:** Run after changing `_DISTILL_SYSTEM_PROMPT` or default LLM. Uses `server/tests/fixtures/distillation_cases.json` with `reject_patterns`. `-s` to eyeball.
 
 ## Building & Deploying
 
