@@ -529,10 +529,10 @@ config defaults
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `autoCapture.enabled` | boolean | `true` | Store conversations automatically |
-| `autoRecall.enabled` | boolean | `true` | Inject context before agent runs |
+| `autoCapture.enabled` | boolean | `true` | Auto-store conversations |
+| `autoRecall.enabled` | boolean | `true` | Auto-inject context |
 | `autoRecall.maxResults` | number | `10` | Max facts injected |
-| `idleTimeoutMs` | number | `300000` | Idle flush timeout (ms); races `session_end` |
+| `idleTimeoutMs` | number | `300000` | Flush timeout (ms); races `session_end` |
 | `llm.provider` | string | `"gemini"` | LLM provider (gemini, openai, anthropic, groq) |
 | `llm.model` | string | `"gemini-3-flash-preview"` | LLM model |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
