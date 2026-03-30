@@ -178,21 +178,20 @@ describe("register()", () => {
     expect(api.on).toHaveBeenCalledTimes(3);
   });
 
-  it("factory returns wrapped memory_search that combines native + graph results", async () => {
+  it("factory returns memory_search and memory_get tools", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
     // Get the factory and simulate OpenClaw calling it
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
     const tools = factory({ config: {}, sessionKey: "test-session" });
 
     expect(tools).toHaveLength(2);
     const [searchTool, getTool] = tools;
 
-    // The wrapped search tool should still be named memory_search
     expect(searchTool.name).toBe("memory_search");
-    // memory_get should be unwrapped
     expect(getTool.name).toBe("memory_get");
   });
 
