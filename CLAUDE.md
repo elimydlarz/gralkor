@@ -29,7 +29,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core`. Auto-recall s
 
 ### Plugin Registration
 
-`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges with defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`get/setGroupId`, `get/setNativeSearch`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). Tool factory wraps native `memory_search` to call `client.search()` in parallel.
+`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges with defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`get/setGroupId`, `get/setNativeSearch`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). Tool factory creates `memory_search` (combines native Markdown search via `getMemorySearchManager` SDK + graph search via `client.search()` in parallel) and `memory_get` (reads native memory files via `readAgentMemoryFile` SDK).
 
 ### Plugin API Contract
 
