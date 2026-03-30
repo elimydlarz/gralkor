@@ -47,22 +47,33 @@ let configLogged = false;
 let sigTermHandlerInstalled = false;
 
 /**
- * Unwrap native tool execute result to a plain string.
- * Native tools return { content: [{ type: "text", text: "..." }, ...] }
- * rather than a plain string.
+ * Search native Markdown memory via the OpenClaw memory SDK.
+ * Returns JSON string matching memory-core's output format ({ results: [...] })
+ * so countNativeResults() can parse it.
  */
-function unwrapToolResult(result: unknown): string {
-  if (typeof result === "string") return result;
-  if (result && typeof result === "object" && "content" in result) {
-    const { content } = result as { content: Array<{ type: string; text?: string }> };
-    if (Array.isArray(content)) {
-      return content
-        .filter((block) => block.type === "text" && block.text)
-        .map((block) => block.text!)
-        .join("\n");
+async function searchNativeMemory(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cfg: any,
+  agentId: string,
+  query: string,
+  opts?: { maxResults?: number; sessionKey?: string },
+): Promise<string | null> {
+  try {
+    const { getMemorySearchManager } = await loadMemorySDK();
+    const { manager, error } = await getMemorySearchManager({ cfg, agentId });
+    if (!manager) {
+      if (error) console.log(`[gralkor] native memory unavailable: ${error}`);
+      return null;
     }
+    const results = await manager.search(query, {
+      maxResults: opts?.maxResults,
+      sessionKey: opts?.sessionKey,
+    });
+    return JSON.stringify({ results });
+  } catch (err) {
+    console.log(`[gralkor] native memory search failed: ${err instanceof Error ? err.message : err}`);
+    return null;
   }
-  return String(result);
 }
 
 function registerFullPlugin(
@@ -82,39 +93,38 @@ function registerFullPlugin(
   let nativeSearchFn: NativeSearchFn | null = null;
   const getNativeSearch = () => nativeSearchFn;
 
-  // Native memory tools — delegate to OpenClaw's built-in memory infrastructure
-  // The factory wraps memory_search to also search the graph
+  // Native memory tools via OpenClaw memory SDK (getMemorySearchManager)
+  // The factory provides ctx.config and ctx.sessionKey at agent start
   api.registerTool(
-    (ctx: { config: unknown; sessionKey: string }) => {
-      const memorySearchTool = api.runtime.tools.createMemorySearchTool({
-        config: ctx.config,
-        agentSessionKey: ctx.sessionKey,
-      });
-      const memoryGetTool = api.runtime.tools.createMemoryGetTool({
-        config: ctx.config,
-        agentSessionKey: ctx.sessionKey,
-      });
-      if (!memorySearchTool || !memoryGetTool) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ctx: { config: any; sessionKey: string }) => {
+      // Resolve agentId from session key (same pattern as memory-core)
+      let agentId = "default";
+      try {
+        // Synchronous dynamic import isn't possible — resolve lazily on first call.
+        // For now, use the shared group ID captured by hooks (which runs before tools).
+      } catch { /* agentId resolved lazily */ }
 
       // Capture native search function for the auto-recall hook
-      const originalExecute = memorySearchTool.execute.bind(memorySearchTool);
       nativeSearchFn = async (query: string) => {
-        // Native tool execute signature: (toolCallId, params, signal, onUpdate)
-        const result = await originalExecute("auto-recall", { query });
-        return unwrapToolResult(result);
+        return (await searchNativeMemory(ctx.config, getGroupId(), query, { sessionKey: ctx.sessionKey })) ?? "";
       };
 
-      // Wrap memory_search to combine native + graph results
-      const wrappedSearchTool = {
-        ...memorySearchTool,
-        description:
-          "Search memory for relevant context. Use specific, focused queries.",
+      // memory_search: combines native Markdown + graph facts
+      const memorySearchTool = {
+        name: "memory_search",
+        description: "Search memory for relevant context. Use specific, focused queries.",
+        parameters: {
+          type: "object" as const,
+          properties: {
+            query: { type: "string" as const },
+            limit: { type: "number" as const },
+          },
+          required: ["query"],
+        },
         async execute(
           toolCallId: string,
           args: { query: string; limit?: number },
-          signal?: AbortSignal,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onUpdate?: any,
         ): Promise<string> {
           const groupId = getGroupId();
           const limit = args.limit ?? 10;
@@ -123,12 +133,14 @@ function registerFullPlugin(
             throw new Error("[gralkor] memory_search failed: server is not ready");
           }
 
-          const [nativeRaw, searchResults] = await Promise.all([
-            originalExecute(toolCallId, args, signal, onUpdate),
+          const [nativeResult, searchResults] = await Promise.all([
+            searchNativeMemory(ctx.config, groupId, args.query, {
+              maxResults: limit,
+              sessionKey: ctx.sessionKey,
+            }),
             client.search(args.query, [groupId], limit),
           ]);
 
-          const nativeResult = unwrapToolResult(nativeRaw);
           const factCount = searchResults.facts.length;
           const nativeCount = countNativeResults(nativeResult);
 
@@ -137,7 +149,7 @@ function registerFullPlugin(
           const sections: string[] = [];
 
           if (nativeCount > 0) {
-            sections.push(nativeResult);
+            sections.push(nativeResult!);
           }
 
           if (searchResults.facts.length > 0) {
@@ -160,7 +172,42 @@ function registerFullPlugin(
         },
       };
 
-      return [wrappedSearchTool, memoryGetTool];
+      // memory_get: reads native Markdown memory files via SDK
+      const memoryGetTool = {
+        name: "memory_get",
+        description:
+          "Read a memory file by path with optional line range. Use after memory_search to pull specific sections.",
+        parameters: {
+          type: "object" as const,
+          properties: {
+            path: { type: "string" as const },
+            from: { type: "number" as const },
+            lines: { type: "number" as const },
+          },
+          required: ["path"],
+        },
+        async execute(
+          _toolCallId: string,
+          args: { path: string; from?: number; lines?: number },
+        ): Promise<string> {
+          try {
+            const { readAgentMemoryFile } = await loadMemorySDK();
+            const result = await readAgentMemoryFile({
+              cfg: ctx.config,
+              agentId: getGroupId(),
+              relPath: args.path,
+              from: args.from,
+              lines: args.lines,
+            });
+            return JSON.stringify(result);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return JSON.stringify({ path: args.path, text: "", error: message });
+          }
+        },
+      };
+
+      return [memorySearchTool, memoryGetTool];
     },
     { names: ["memory_search", "memory_get"] },
   );
