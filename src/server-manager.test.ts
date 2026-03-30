@@ -264,7 +264,7 @@ describe("createServerManager", () => {
       "utf-8",
     );
     const written = mockWriteFile.mock.calls[0][1] as string;
-    expect(written).toContain('model: "gemini-3-flash-preview"');
+    expect(written).toContain('model: "gemini-3.1-flash-lite-preview"');
     expect(written).toContain('model: "gemini-embedding-2-preview"');
   });
 
