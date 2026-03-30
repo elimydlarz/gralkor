@@ -52,14 +52,7 @@ async function main(): Promise<void> {
         },
         allowPositionals: true,
       });
-      const source = positionals[0];
-      if (!source) {
-        console.error("Error: install requires a source (tarball path or npm package)");
-        console.error("  gralkor install /path/to/susu-eng-gralkor-memory-19.0.4.tgz");
-        console.error("  gralkor install @susu-eng/gralkor");
-        process.exitCode = 1;
-        return;
-      }
+      const source = positionals[0] ?? DEFAULT_SOURCE;
       await install({
         source,
         config: values.config,
