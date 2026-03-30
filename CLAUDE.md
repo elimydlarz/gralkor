@@ -607,8 +607,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 ## Conventions
 
-- TypeScript, ES modules, target ES2022, bundler module resolution
-- Imports use `.js` extensions (ESM requirement)
+- TypeScript, ESM, ES2022, bundler resolution. `.js` extensions required.
 - All Graphiti communication via HTTP through `src/client.ts`
 
 ## Gotchas
