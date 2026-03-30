@@ -25,7 +25,7 @@ echo "Bumped to $version"
 # Build and publish unless DRY_RUN is set (used by tests)
 if [[ -z "${DRY_RUN:-}" ]]; then
   pnpm run build
-  pnpm publish --access public
+  pnpm publish --access public --no-git-checks
 
   git commit --only package.json openclaw.plugin.json resources/memory/package.json -m "$version"
   git tag "v$version"
