@@ -581,7 +581,7 @@ test-mode-query-logging
 | `autoRecall.maxResults` | number | `10` | Max facts injected |
 | `idleTimeoutMs` | number | `300000` | Flush timeout (ms); races `session_end` |
 | `llm.provider` | string | `"gemini"` | LLM provider (gemini, openai, anthropic, groq) |
-| `llm.model` | string | `"gemini-3-flash-preview"` | LLM model |
+| `llm.model` | string | `"gemini-3.1-flash-lite-preview"` | LLM model |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model |
 | `dataDir` | string | `{pluginDir}/../.gralkor-data` | Outside plugin dir (upgrade-safe) |
