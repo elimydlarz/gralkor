@@ -43,7 +43,7 @@ A memory plugin (`kind: "memory"`) replacing native `memory-core`. Auto-recall s
 
 ### Hook Behavior
 
-Handlers receive `(event, ctx)` where `ctx` (`PluginHookAgentContext`) has `{ agentId?, sessionKey?, sessionId?, workspaceDir?, messageProvider? }`. Session hooks get `PluginHookSessionContext` with `{ agentId?, sessionId, sessionKey? }`.
+Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?, workspaceDir?, messageProvider? }`. Session ctx: `{ agentId?, sessionId, sessionKey? }`.
 
 **Hooks used by gralkor:**
 
