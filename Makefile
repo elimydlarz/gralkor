@@ -57,7 +57,7 @@ test-server:
 	cd server && uv run pytest tests/
 
 test-cli:
-	cd packages/cli && pnpm exec vitest run
+	pnpm exec vitest run src/cli/
 
 test-mutate:
 	pnpm exec stryker run
