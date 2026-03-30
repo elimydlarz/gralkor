@@ -99,6 +99,16 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
   }
 }
 
+/**
+ * Remove a plugin's extension directory directly.
+ * Fallback for untracked plugins that `openclaw plugins uninstall` can't handle
+ * because the plugin exists on disk but isn't in the plugin list.
+ */
+export async function removePluginDir(pluginId: string): Promise<void> {
+  const dir = join(homedir(), ".openclaw", "extensions", pluginId);
+  await rm(dir, { recursive: true, force: true });
+}
+
 export async function enablePlugin(pluginId: string): Promise<void> {
   const result = await exec(["plugins", "enable", pluginId]);
   if (result.exitCode !== 0) {
