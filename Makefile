@@ -1,6 +1,5 @@
 .PHONY: test test-plugin test-functional test-server test-cli test-mutate \
-        typecheck pack publish publish-patch publish-minor publish-major \
-        build-server up down logs setup-server help
+        typecheck pack build-server up down logs setup-server help
 
 
 help:
