@@ -213,6 +213,7 @@ describe("register()", () => {
       const { register } = await import("./index.js");
       register(api);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
       const tools = factory({ config: {}, sessionKey: "test-session" });
       const [searchTool] = tools;
