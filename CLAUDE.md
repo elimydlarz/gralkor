@@ -619,7 +619,7 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 | `make test-plugin` | TS unit tests | tree |
 | `make test-functional` | TS functional tests | tree |
 | `make test-server` | Python | spec |
-| `make test-cli` | CLI package | verbose |
+| `make test-cli` | CLI tests (src/cli/) | tree |
 | `make test-server-changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
 | `make test-mutate` | Mutation testing (Stryker) | clear-text |
