@@ -91,6 +91,30 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
+  it("recovers from stale config that makes plugins list fail", async () => {
+    // First call fails (stale plugins.slots.memory: gralkor), retry succeeds
+    mocked.getInstalledPlugins
+      .mockRejectedValueOnce(new Error("Config invalid"))
+      .mockResolvedValueOnce([]);
+
+    await install({ source: "@susu-eng/gralkor" });
+
+    // Should clear stale slot, retry, then proceed with fresh install
+    expect(mocked.setConfig).toHaveBeenCalledWith("plugins.slots.memory", "");
+    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
+  });
+
+  it("proceeds with fresh install when plugins list fails twice", async () => {
+    mocked.getInstalledPlugins
+      .mockRejectedValueOnce(new Error("Config invalid"))
+      .mockRejectedValueOnce(new Error("Config invalid"));
+
+    await install({ source: "@susu-eng/gralkor" });
+
+    // Should still install
+    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
+  });
+
   it("errors when tarball file not found", async () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
 
