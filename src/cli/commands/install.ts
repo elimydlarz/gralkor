@@ -39,22 +39,19 @@ export async function install(opts: InstallOptions): Promise<void> {
 
   const targetVersion = extractVersionFromTarball(source) ?? extractVersionFromNpmRef(source);
 
-  // 3. Check for legacy memory-gralkor
-  // getInstalledPlugins() can fail if stale config references a missing plugin
-  // (e.g. plugins.slots.memory: gralkor after plugin dir was removed).
-  // Clear the stale slot and retry, or treat as fresh install.
+  // 3. Clear stale memory slot before listing plugins.
+  // The init script or prior install may have set plugins.slots.memory: gralkor
+  // before the plugin directory exists, making all openclaw commands fail with
+  // "Config invalid: plugin not found". Clear it upfront — we'll set it back
+  // at the end after install succeeds.
+  await oc.setConfig("plugins.slots.memory", "").catch(() => {});
+
   let plugins: oc.PluginInfo[];
   try {
     plugins = await oc.getInstalledPlugins();
   } catch {
-    log("Config invalid — clearing stale memory slot and retrying...");
-    await oc.setConfig("plugins.slots.memory", "").catch(() => {});
-    try {
-      plugins = await oc.getInstalledPlugins();
-    } catch {
-      log("Could not list plugins — proceeding with fresh install");
-      plugins = [];
-    }
+    log("Could not list plugins — proceeding with fresh install");
+    plugins = [];
   }
   const legacy = plugins.find((p) => p.id === "memory-gralkor");
   if (legacy) {
