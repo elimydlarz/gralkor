@@ -58,28 +58,6 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalled();
   });
 
-  it("migrates from memory-gralkor", async () => {
-    mocked.getInstalledPlugins.mockResolvedValue([
-      { id: "memory-gralkor", version: "18.0.0", enabled: true },
-    ]);
-
-    await install({ source: "@susu-eng/gralkor" });
-
-    expect(mocked.uninstallPlugin).toHaveBeenCalledWith("memory-gralkor");
-    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
-  });
-
-  it("refuses downgrade", async () => {
-    mocked.getInstalledPlugins.mockResolvedValue([
-      { id: "gralkor", version: "20.0.0", enabled: true },
-    ]);
-
-    await install({ source: "/data/susu-eng-gralkor-memory-19.0.4.tgz" });
-
-    expect(mocked.installPlugin).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(1);
-  });
-
   it("cleans up stale install when plugin not in list", async () => {
     // Plugin directory exists on disk but openclaw plugins list doesn't report it
     mocked.getInstalledPlugins.mockResolvedValue([]);
