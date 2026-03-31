@@ -7,7 +7,6 @@ export interface InstallOptions {
   source: string;
   config?: string;
   set?: string[];
-  dryRun?: boolean;
 }
 
 interface Action {
