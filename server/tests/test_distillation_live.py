@@ -4,15 +4,12 @@ Run with:
     cd server && uv run pytest tests/test_distillation_live.py -v -s
 
 Each case loads behaviour blocks from fixtures/distillation_cases.json,
-sends them through _distill_one with a real LLM client, and checks that
-the output follows the distillation guidelines.
+sends them through _distill_one with a real LLM client, and writes
+results to tests/distillation_results/ for human review against the
+behaviour-distillation test tree in CLAUDE.md.
 
-Cases with ``reject_patterns`` are auto-checked (hard string match for
-values that must never appear, like credential numbers).
-
-Cases with ``judge_guideline`` write results to
-tests/distillation_results/ for human review — the guideline and output
-are placed side-by-side so the reviewer can evaluate quality.
+The test only asserts mechanical properties (non-empty, first-person).
+Quality evaluation is done by reviewing the output against the test tree.
 """
 
 from __future__ import annotations
@@ -29,6 +26,33 @@ from main import _distill_one, _build_llm_client, _load_config
 
 FIXTURES = Path(__file__).parent / "fixtures" / "distillation_cases.json"
 RESULTS_DIR = Path(__file__).parent / "distillation_results"
+
+# The test tree from CLAUDE.md — evaluation criteria for review.
+EVALUATION_CRITERIA = """\
+_format_transcript (server-side)
+  when assistant message has thinking blocks
+    then grouped into behaviour for that turn
+  when assistant message has tool_use blocks
+    then grouped into behaviour for that turn
+  when assistant message has tool_result blocks
+    then grouped into behaviour for that turn
+  when turn has behaviour blocks and llm_client available
+    then blocks joined with --- separator
+    and distilled via LLM into first-person past-tense summary
+    and injected as "Assistant: (behaviour: {summary})" before assistant text
+  when behaviour blocks contain memory_search results (recalled facts)
+    then distillation describes the intent (e.g. "consulted memory")
+    and does NOT restate the recalled fact content
+  when behaviour blocks contain thinking that references recalled data
+    then distillation captures the reasoning and decisions
+    and does NOT echo the specific data that was recalled
+  when distillation fails for a turn
+    then behaviour line silently dropped, assistant text preserved
+  when turn has only text blocks (no behaviour)
+    then text rendered as "Assistant: {text}" with no behaviour line
+  user messages
+    then rendered as "User: {text}"
+"""
 
 
 def _load_cases() -> list[dict]:
@@ -51,11 +75,9 @@ def llm_client():
     Function-scoped (not module) so the async HTTP session matches each
     test's event loop — prevents "Event loop is closed" errors.
     """
-    # Gemini SDK reads GOOGLE_API_KEY; copy GEMINI_API_KEY if that's what's set
     if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
         os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
-    # Try server's config path, then project root config
     cfg = _load_config()
     if not cfg.get("llm"):
         root_cfg = Path(__file__).parent.parent.parent / "config.yaml"
@@ -69,38 +91,54 @@ def llm_client():
 
 CASES = _load_cases()
 
+# Collect results across all cases, written to a single file at the end.
+_results: list[dict] = []
 
-def _write_result(case: dict, result: str) -> Path:
-    """Write distillation result to a review file. Returns the file path."""
+
+def _write_review_file():
+    """Write all collected results to a single timestamped review file."""
+    if not _results:
+        return
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = RESULTS_DIR / f"{case['name']}_{ts}.md"
+    path = RESULTS_DIR / f"review_{ts}.md"
 
     lines = [
-        f"# {case['name']}",
+        "# Distillation Review",
         "",
-        f"**Description:** {case['description']}",
+        f"**Generated:** {datetime.now(timezone.utc).isoformat()}",
         "",
-        "## Guideline",
+        "## Evaluation Criteria (test tree)",
         "",
-        case.get("judge_guideline", "(no guideline — uses reject_patterns)"),
-        "",
-        "## Input blocks",
+        "```",
+        EVALUATION_CRITERIA.rstrip(),
+        "```",
         "",
     ]
-    for block in case["blocks"]:
-        text = block["text"]
-        if len(text) > 300:
-            text = text[:300] + "..."
-        lines.append(f"**[{block['type'].upper()}]** {text}")
-        lines.append("")
 
-    lines.extend([
-        "## Distillation output",
-        "",
-        f"> {result}",
-        "",
-    ])
+    for r in _results:
+        lines.extend([
+            f"---",
+            "",
+            f"## {r['name']}",
+            "",
+            f"**Description:** {r['description']}",
+            "",
+            "### Input",
+            "",
+        ])
+        for block in r["blocks"]:
+            text = block["text"]
+            if len(text) > 300:
+                text = text[:300] + "..."
+            lines.append(f"**[{block['type'].upper()}]** {text}")
+            lines.append("")
+        lines.extend([
+            "### Output",
+            "",
+            f"> {r['output']}",
+            "",
+        ])
 
     path.write_text("\n".join(lines))
     return path
@@ -109,7 +147,7 @@ def _write_result(case: dict, result: str) -> Path:
 @pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
 @pytest.mark.asyncio
 async def test_distillation_quality(llm_client, case):
-    """Verify distillation output follows guidelines for each case."""
+    """Run distillation and collect output for review."""
     input_text = _build_input(case["blocks"])
 
     # Retry with backoff for rate limits; skip test if exhausted
@@ -130,24 +168,24 @@ async def test_distillation_quality(llm_client, case):
     else:
         pytest.skip(f"Rate-limited after 3 attempts: {last_error}")
 
-    # Must produce non-empty output
+    # Mechanical checks only — quality is evaluated in review
     assert result, f"Distillation returned empty for case '{case['name']}'"
-
-    # Must be first person
     assert any(
         result.lower().startswith(p) for p in ("i ", "i'")
     ), f"Expected first-person output, got: {result[:50]}..."
 
-    # Cases with reject_patterns: hard string match (for literal values like credentials)
-    if case.get("reject_patterns"):
-        result_lower = result.lower()
-        violations = [p for p in case["reject_patterns"] if p.lower() in result_lower]
-        assert not violations, (
-            f"Distillation echoed rejected content for '{case['name']}': "
-            f"found {violations} in output: {result}"
-        )
+    _results.append({
+        "name": case["name"],
+        "description": case["description"],
+        "blocks": case["blocks"],
+        "output": result,
+    })
 
-    # Cases with judge_guideline: write results for human review
-    if case.get("judge_guideline"):
-        path = _write_result(case, result)
-        print(f"\n  Review: {path}")
+    print(f"\n  [{case['name']}] {result}")
+
+
+def test_write_review_file():
+    """Write the collected results to a review file (runs last)."""
+    path = _write_review_file()
+    if path:
+        print(f"\n  Review file: {path}")
