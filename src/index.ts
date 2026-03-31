@@ -212,32 +212,38 @@ export const configSchema = {
 };
 
 export function register(api: MemoryPluginApi) {
-  const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
-  validateOntologyConfig(config.ontology);
+  try {
+    const config = resolveConfig((api.pluginConfig ?? {}) as Partial<GralkorConfig>);
+    validateOntologyConfig(config.ontology);
 
-  if (!configLogged) {
-    configLogged = true;
-    if (config.test) {
-      console.log(`[gralkor] raw pluginConfig: ${JSON.stringify(api.pluginConfig)}`);
+    if (!configLogged) {
+      configLogged = true;
+      console.log(`[gralkor] boot: plugin loaded (v${version})`);
+      if (config.test) {
+        console.log(`[gralkor] raw pluginConfig: ${JSON.stringify(api.pluginConfig)}`);
+      }
+      const { llmProvider, llmModel, embedderProvider, embedderModel } = resolveProviders(config);
+      const ontologySummary = config.ontology
+        ? `${Object.keys(config.ontology.entities ?? {}).length} entities, ${Object.keys(config.ontology.edges ?? {}).length} edges`
+        : "none";
+      console.log(
+        `[gralkor] config:` +
+        ` llm=${llmProvider}/${llmModel}` +
+        ` embedder=${embedderProvider}/${embedderModel}` +
+        ` ontology=${ontologySummary}` +
+        ` autoCapture=${config.autoCapture.enabled}` +
+        ` autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults}` +
+        ` idleTimeout=${config.idleTimeoutMs}ms` +
+        ` test=${config.test}` +
+        ` dataDir=${config.dataDir ?? 'default'}`
+      );
     }
-    const { llmProvider, llmModel, embedderProvider, embedderModel } = resolveProviders(config);
-    const ontologySummary = config.ontology
-      ? `${Object.keys(config.ontology.entities ?? {}).length} entities, ${Object.keys(config.ontology.edges ?? {}).length} edges`
-      : "none";
-    console.log(
-      `[gralkor] config:` +
-      ` llm=${llmProvider}/${llmModel}` +
-      ` embedder=${embedderProvider}/${embedderModel}` +
-      ` ontology=${ontologySummary}` +
-      ` autoCapture=${config.autoCapture.enabled}` +
-      ` autoRecall=${config.autoRecall.enabled} maxResults=${config.autoRecall.maxResults}` +
-      ` idleTimeout=${config.idleTimeoutMs}ms` +
-      ` test=${config.test}` +
-      ` dataDir=${config.dataDir ?? 'default'}`
-    );
+    const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
+    registerFullPlugin(api, client, config, pluginDir);
+  } catch (err) {
+    console.error(`[gralkor] boot: register() failed:`, err instanceof Error ? err.message : err);
+    throw err;
   }
-  const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
-  registerFullPlugin(api, client, config, pluginDir);
 }
 
 export default { id, name, description, kind, configSchema, register };
