@@ -552,6 +552,10 @@ publish-version-integrity
     and no git commit or tag is created
   when successive publishes fail
     then version does not increment multiple times
+  when DRY_RUN is set
+    then version is bumped and synced across manifests
+    and build and publish are skipped
+    and no git commit or tag is created
 ```
 
 ### Cross-functional
