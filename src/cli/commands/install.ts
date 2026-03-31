@@ -115,15 +115,6 @@ export async function install(opts: InstallOptions): Promise<void> {
     });
   }
 
-  // Execute or dry-run
-  if (dryRun) {
-    log("\nDry run — would execute:");
-    for (const action of actions) {
-      log(`  → ${action.description}`);
-    }
-    return;
-  }
-
   for (const action of actions) {
     log(`  → ${action.description}`);
     await action.execute();
