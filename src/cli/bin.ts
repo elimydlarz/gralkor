@@ -20,9 +20,6 @@ Install/config options:
   --config <json>    Plugin config as JSON string
   --set <key=value>  Set individual config value (repeatable)
 
-Install options:
-  --dry-run          Show what would happen without executing
-
 General:
   --help             Show this help
   --version          Show CLI version`;
