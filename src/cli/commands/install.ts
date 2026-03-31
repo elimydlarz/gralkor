@@ -15,7 +15,7 @@ interface Action {
 }
 
 export async function install(opts: InstallOptions): Promise<void> {
-  const { source, dryRun } = opts;
+  const { source } = opts;
   const actions: Action[] = [];
   const log = (msg: string) => console.log(msg);
 
