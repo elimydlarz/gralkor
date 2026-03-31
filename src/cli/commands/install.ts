@@ -52,15 +52,6 @@ export async function install(opts: InstallOptions): Promise<void> {
     log("Could not list plugins — proceeding with fresh install");
     plugins = [];
   }
-  const legacy = plugins.find((p) => p.id === "memory-gralkor");
-  if (legacy) {
-    log(`Found legacy plugin 'memory-gralkor' — will migrate to 'gralkor'`);
-    actions.push({
-      description: "Uninstall legacy memory-gralkor",
-      execute: () => oc.uninstallPlugin("memory-gralkor"),
-    });
-  }
-
   // 4. Check if gralkor already installed
   const current = plugins.find((p) => p.id === "gralkor");
   let needsInstall = true;
