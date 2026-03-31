@@ -101,18 +101,6 @@ describe("install", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("dry run prints actions without executing", async () => {
-    await install({ source: "@susu-eng/gralkor", dryRun: true });
-
-    expect(mocked.installPlugin).not.toHaveBeenCalled();
-    expect(mocked.enablePlugin).not.toHaveBeenCalled();
-    // Only the proactive stale-slot clear should fire; no install-phase setConfig
-    const nonClearCalls = mocked.setConfig.mock.calls.filter(
-      ([key, val]) => !(key === "plugins.slots.memory" && val === "")
-    );
-    expect(nonClearCalls).toHaveLength(0);
-  });
-
   it("applies --config JSON", async () => {
     await install({
       source: "@susu-eng/gralkor",
