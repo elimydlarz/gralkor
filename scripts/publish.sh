@@ -47,12 +47,12 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
   publish_cmd="${PUBLISH_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}"
 
-  trap rollback ERR
+  # trap rollback ERR  # TEMPORARILY DISABLED FOR VERIFICATION
 
   $build_cmd
   $publish_cmd
 
-  trap - ERR
+  # trap - ERR  # TEMPORARILY DISABLED FOR VERIFICATION
 
   git commit --only package.json openclaw.plugin.json resources/memory/package.json -m "$version"
   git tag "v$version"
