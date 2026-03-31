@@ -20,17 +20,7 @@
         "text": "Facts (knowledge graph):\n- Eli2 sends status reports and findings to the operator Eli. (created 2026-03-12T22:56:10.279380+00:00) (valid from 2026-03-12T22:55:20.879000+00:00)\n- Eli1 manages and develops the agents infrastructure repository. (created 2026-03-17T22:36:29.202409+00:00) (valid from 2026-03-17T22:30:00+00:00)\n- Eli2 uses Anthropic as the model provider for sub-agent runs. (created 2026-03-18T22:38:07.270576+00:00) (valid from 2026-03-18T22:31:00+00:00)"
       }
     ],
-    "reject_patterns": [
-      "do-together",
-      "you2",
-      "GCP",
-      "Google Cloud",
-      "Anthropic",
-      "eli2-projects",
-      "infrastructure repository",
-      "cost increase",
-      "sub-agent"
-    ]
+    "judge_guideline": "The distillation should describe the intent (e.g. 'consulted memory about projects and infrastructure') and what was concluded or decided, without restating the specific facts that were retrieved (project names, providers, repository names, etc.)."
   },
   {
     "name": "thinking_with_memory_recall",
@@ -65,13 +55,7 @@
         "text": "/data/workspace/projects/eli2-projects/do-together\n/data/workspace/eli2-projects/do-together\nAGENTS.md\nCLAUDE.md\neli2-projects\nprojects\nskills"
       }
     ],
-    "reject_patterns": [
-      "claude-code-plugins",
-      "permanent changes",
-      "Trakt for device",
-      "commissioned",
-      "Claude coding agent"
-    ]
+    "judge_guideline": "The distillation should capture the agent's reasoning (wanting to check project status via memory and filesystem) and actions taken (searched memory, explored filesystem), without restating the specific recalled facts (plugin details, authentication methods, repository names from memory results)."
   },
   {
     "name": "pure_filesystem_exploration",
@@ -132,18 +116,6 @@
         "text": "Facts (knowledge graph):\n- Eli2 sends status reports and findings to the operator Eli. (created 2026-03-12T22:56:10.279380+00:00)\n- Eli1 manages and develops the agents infrastructure repository. (created 2026-03-17T22:36:29.202409+00:00)\n- Eli1 worked on the eli2-projects repository. (created 2026-03-21T22:35:39.958571+00:00)\n- Eli2 uses Anthropic as the model provider for sub-agent runs. (created 2026-03-18T22:38:07.270576+00:00)\n- Eli2 reported findings from the status check and performance evaluation to Eli. (created 2026-03-12T22:53:08.525319+00:00) (invalid since 2026-03-12T22:55:20.879000+00:00)\n- Eli2 is currently operating on OpenClaw version 2026.3.11. (created 2026-03-12T22:53:08.525422+00:00) (invalid)"
       }
     ],
-    "reject_patterns": [
-      "do-together",
-      "you2",
-      "Google Cloud",
-      "GCP",
-      "cost increase",
-      "Anthropic",
-      "2026.3.11",
-      "eli2-projects",
-      "infrastructure repository",
-      "status reports",
-      "sub-agent"
-    ]
+    "judge_guideline": "The distillation should describe the intent (consulted memory for context on projects and infrastructure status) and any conclusions drawn, without restating the specific facts retrieved (project names, version numbers, provider names, repository names, reporting relationships, etc.)."
   }
 ]
