@@ -45,7 +45,6 @@ async function main(): Promise<void> {
         options: {
           config: { type: "string" },
           set: { type: "string", multiple: true },
-          "dry-run": { type: "boolean", default: false },
         },
         allowPositionals: true,
       });
@@ -54,7 +53,6 @@ async function main(): Promise<void> {
         source,
         config: values.config,
         set: values.set,
-        dryRun: values["dry-run"],
       });
       break;
     }
