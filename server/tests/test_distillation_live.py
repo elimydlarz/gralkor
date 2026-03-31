@@ -5,7 +5,14 @@ Run with:
 
 Each case loads behaviour blocks from fixtures/distillation_cases.json,
 sends them through _distill_one with a real LLM client, and checks that
-the output follows the distillation guidelines (no echoed recall, etc.).
+the output follows the distillation guidelines.
+
+Cases with ``reject_patterns`` are auto-checked (hard string match for
+values that must never appear, like credential numbers).
+
+Cases with ``judge_guideline`` write results to
+tests/distillation_results/ for human review — the guideline and output
+are placed side-by-side so the reviewer can evaluate quality.
 """
 
 from __future__ import annotations
@@ -13,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -20,6 +28,7 @@ import pytest
 from main import _distill_one, _build_llm_client, _load_config
 
 FIXTURES = Path(__file__).parent / "fixtures" / "distillation_cases.json"
+RESULTS_DIR = Path(__file__).parent / "distillation_results"
 
 
 def _load_cases() -> list[dict]:
@@ -61,6 +70,42 @@ def llm_client():
 CASES = _load_cases()
 
 
+def _write_result(case: dict, result: str) -> Path:
+    """Write distillation result to a review file. Returns the file path."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    path = RESULTS_DIR / f"{case['name']}_{ts}.md"
+
+    lines = [
+        f"# {case['name']}",
+        "",
+        f"**Description:** {case['description']}",
+        "",
+        "## Guideline",
+        "",
+        case.get("judge_guideline", "(no guideline — uses reject_patterns)"),
+        "",
+        "## Input blocks",
+        "",
+    ]
+    for block in case["blocks"]:
+        text = block["text"]
+        if len(text) > 300:
+            text = text[:300] + "..."
+        lines.append(f"**[{block['type'].upper()}]** {text}")
+        lines.append("")
+
+    lines.extend([
+        "## Distillation output",
+        "",
+        f"> {result}",
+        "",
+    ])
+
+    path.write_text("\n".join(lines))
+    return path
+
+
 @pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
 @pytest.mark.asyncio
 async def test_distillation_quality(llm_client, case):
@@ -85,24 +130,6 @@ async def test_distillation_quality(llm_client, case):
     else:
         pytest.skip(f"Rate-limited after 3 attempts: {last_error}")
 
-    # Show input and output side by side for eyeballing
-    print(f"\n{'='*60}")
-    print(f"CASE: {case['name']}")
-    print(f"{'─'*60}")
-    print("INPUT:")
-    for block in case["blocks"]:
-        tag = block["type"].upper()
-        # Truncate long tool results to keep output scannable
-        text = block["text"]
-        if len(text) > 200:
-            text = text[:200] + "..."
-        print(f"  [{tag}] {text}")
-    print(f"{'─'*60}")
-    print(f"OUTPUT: {result}")
-    if case.get("reject_patterns"):
-        print(f"MUST NOT CONTAIN: {case['reject_patterns']}")
-    print(f"{'─'*60}")
-
     # Must produce non-empty output
     assert result, f"Distillation returned empty for case '{case['name']}'"
 
@@ -111,17 +138,16 @@ async def test_distillation_quality(llm_client, case):
         result.lower().startswith(p) for p in ("i ", "i'")
     ), f"Expected first-person output, got: {result[:50]}..."
 
-    # Check reject patterns — content from recalled facts that should NOT appear
-    result_lower = result.lower()
-    violations = []
-    for pattern in case.get("reject_patterns", []):
-        if pattern.lower() in result_lower:
-            violations.append(pattern)
+    # Cases with reject_patterns: hard string match (for literal values like credentials)
+    if case.get("reject_patterns"):
+        result_lower = result.lower()
+        violations = [p for p in case["reject_patterns"] if p.lower() in result_lower]
+        assert not violations, (
+            f"Distillation echoed rejected content for '{case['name']}': "
+            f"found {violations} in output: {result}"
+        )
 
-    if violations:
-        print(f"REJECT VIOLATIONS: {violations}")
-
-    assert not violations, (
-        f"Distillation echoed recalled content for '{case['name']}': "
-        f"found {violations} in output: {result}"
-    )
+    # Cases with judge_guideline: write results for human review
+    if case.get("judge_guideline"):
+        path = _write_result(case, result)
+        print(f"\n  Review: {path}")
