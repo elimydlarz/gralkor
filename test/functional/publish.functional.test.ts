@@ -168,4 +168,90 @@ describe("publish-version-integrity", () => {
       expect(tags.trim()).toBe("");
     });
   });
+
+  describe("when successive publishes fail", () => {
+    it("then version does not increment multiple times", () => {
+      const before = readJson(join(tempDir, "package.json")).version as string;
+
+      // Fail twice in a row
+      for (let i = 0; i < 3; i++) {
+        try {
+          execSync("bash scripts/publish.sh patch", {
+            cwd: tempDir,
+            env: {
+              ...process.env,
+              PUBLISH_BUILD_CMD: "false",
+            },
+            stdio: "ignore",
+          });
+        } catch {
+          // expected
+        }
+      }
+
+      const afterPkg = readJson(join(tempDir, "package.json"))
+        .version as string;
+      expect(afterPkg).toBe(before);
+    });
+  });
+
+  describe("when publish succeeds", () => {
+    it("then version is bumped in package.json, openclaw.plugin.json, and resources/memory/package.json", () => {
+      const before = readJson(join(tempDir, "package.json")).version as string;
+
+      execSync("bash scripts/publish.sh patch", {
+        cwd: tempDir,
+        env: {
+          ...process.env,
+          PUBLISH_BUILD_CMD: "true",
+          PUBLISH_PUBLISH_CMD: "true",
+          GIT_AUTHOR_NAME: "test",
+          GIT_AUTHOR_EMAIL: "test@test",
+          GIT_COMMITTER_NAME: "test",
+          GIT_COMMITTER_EMAIL: "test@test",
+        },
+        stdio: "ignore",
+      });
+
+      const pkgVersion = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const pluginVersion = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+      const resVersion = readJson(
+        join(tempDir, "resources/memory/package.json"),
+      ).version as string;
+
+      expect(pkgVersion).not.toBe(before);
+      expect(pluginVersion).toBe(pkgVersion);
+      expect(resVersion).toBe(pkgVersion);
+    });
+
+    it("and a git commit and tag are created for the new version", () => {
+      execSync("bash scripts/publish.sh patch", {
+        cwd: tempDir,
+        env: {
+          ...process.env,
+          PUBLISH_BUILD_CMD: "true",
+          PUBLISH_PUBLISH_CMD: "true",
+          GIT_AUTHOR_NAME: "test",
+          GIT_AUTHOR_EMAIL: "test@test",
+          GIT_COMMITTER_NAME: "test",
+          GIT_COMMITTER_EMAIL: "test@test",
+        },
+        stdio: "ignore",
+      });
+
+      const version = readJson(join(tempDir, "package.json"))
+        .version as string;
+
+      const log = execSync("git log --oneline", {
+        cwd: tempDir,
+        encoding: "utf8",
+      });
+      expect(log).toContain(version);
+
+      const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
+      expect(tags.trim()).toContain(`v${version}`);
+    });
+  });
 });
