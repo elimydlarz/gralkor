@@ -61,11 +61,6 @@ export async function install(opts: InstallOptions): Promise<void> {
     if (cmp === 0) {
       log(`gralkor ${targetVersion} already installed`);
       needsInstall = false;
-    } else if (cmp > 0) {
-      log(`Warning: installed ${current.version} is newer than source ${targetVersion}`);
-      console.error("Use --force to downgrade (not yet supported)");
-      process.exitCode = 1;
-      return;
     } else {
       log(`Upgrading gralkor ${current.version} → ${targetVersion}`);
       actions.push({
