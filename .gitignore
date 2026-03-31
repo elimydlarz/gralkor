@@ -9,4 +9,4 @@ server/wheels/
 .stryker-tmp/
 .stryker-incremental.json
 server/mutants/
-server/tests/fixtures/distillation_results/
+server/tests/distillation_results/
