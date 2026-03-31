@@ -22,6 +22,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const pluginDir = join(__dirname, ".."); // dist/ → plugin root
 
+let version = "unknown";
+try {
+  version = JSON.parse(readFileSync(join(pluginDir, "package.json"), "utf-8")).version ?? "unknown";
+} catch { /* not critical */ }
+
 // OpenClaw calls register() 4+ times per event; only log config once
 let configLogged = false;
 
