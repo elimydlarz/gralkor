@@ -7,6 +7,25 @@ if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch)$ ]]; then
   exit 1
 fi
 
+# Save pre-bump versions for rollback
+manifests=("openclaw.plugin.json" "resources/memory/package.json")
+old_version=$(node -p "require('./package.json').version")
+
+rollback() {
+  echo "Rolling back versions to $old_version..." >&2
+  # Restore package.json
+  npm version "$old_version" --no-git-tag-version --allow-same-version >/dev/null 2>&1 || true
+  # Restore other manifests
+  node -e "
+const fs = require('fs');
+['openclaw.plugin.json', 'resources/memory/package.json'].forEach(f => {
+  const p = JSON.parse(fs.readFileSync(f, 'utf8'));
+  p.version = '$old_version';
+  fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n');
+});
+" || true
+}
+
 npm version "$level" --no-git-tag-version
 version=$(node -p "require('./package.json').version")
 
@@ -24,8 +43,16 @@ echo "Bumped to $version"
 
 # Build and publish unless DRY_RUN is set (used by tests)
 if [[ -z "${DRY_RUN:-}" ]]; then
-  pnpm run build
-  pnpm publish --access public --no-git-checks
+  # Allow overriding commands for testing
+  build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
+  publish_cmd="${PUBLISH_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}"
+
+  trap rollback ERR
+
+  $build_cmd
+  $publish_cmd
+
+  trap - ERR
 
   git commit --only package.json openclaw.plugin.json resources/memory/package.json -m "$version"
   git tag "v$version"
