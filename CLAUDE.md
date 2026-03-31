@@ -464,18 +464,12 @@ gralkor install
     then skips install but still enables and sets slot
   when older version installed
     then uninstalls old version, installs new, enables, sets slot
-  when installed version is newer than source
-    then refuses downgrade with error
   when source is tarball path that does not exist
     then errors with file not found
-  when --dry-run flag is set
-    then prints actions without executing
   when --config JSON is provided
     then sets each flattened key via openclaw config set
   when --set key=value is provided
     then sets each key via openclaw config set
-  when legacy memory-gralkor is installed
-    then uninstalls legacy before installing gralkor
   when plugin not in list but directory may exist on disk
     then attempts uninstall (swallowing errors) then removes extension directory before fresh install
   before listing plugins
