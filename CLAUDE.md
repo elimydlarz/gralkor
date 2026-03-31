@@ -540,6 +540,20 @@ test-mode-query-logging
     then queries are not logged
 ```
 
+#### publish-version-integrity
+
+```
+publish-version-integrity
+  when publish succeeds
+    then version is bumped in package.json, openclaw.plugin.json, and resources/memory/package.json
+    and a git commit and tag are created for the new version
+  when publish fails (build error or npm reject)
+    then version files are rolled back to their pre-publish values
+    and no git commit or tag is created
+  when successive publishes fail
+    then version does not increment multiple times
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
