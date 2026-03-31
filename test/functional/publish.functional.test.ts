@@ -106,4 +106,66 @@ describe("publish-version-integrity", () => {
       expect(tags.trim()).toBe("");
     });
   });
+
+  describe("when publish fails (build error or npm reject)", () => {
+    it("then version files are rolled back to their pre-publish values", () => {
+      const beforePkg = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const beforePlugin = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+      const beforeRes = readJson(
+        join(tempDir, "resources/memory/package.json"),
+      ).version as string;
+
+      // Inject a failing build command via PUBLISH_BUILD_CMD
+      try {
+        execSync("bash scripts/publish.sh patch", {
+          cwd: tempDir,
+          env: {
+            ...process.env,
+            PUBLISH_BUILD_CMD: "false", // always fails
+          },
+          stdio: "ignore",
+        });
+      } catch {
+        // expected to fail
+      }
+
+      const afterPkg = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const afterPlugin = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+      const afterRes = readJson(
+        join(tempDir, "resources/memory/package.json"),
+      ).version as string;
+
+      expect(afterPkg).toBe(beforePkg);
+      expect(afterPlugin).toBe(beforePlugin);
+      expect(afterRes).toBe(beforeRes);
+    });
+
+    it("and no git commit or tag is created", () => {
+      try {
+        execSync("bash scripts/publish.sh patch", {
+          cwd: tempDir,
+          env: {
+            ...process.env,
+            PUBLISH_BUILD_CMD: "false",
+          },
+          stdio: "ignore",
+        });
+      } catch {
+        // expected
+      }
+
+      const log = execSync("git log --oneline", {
+        cwd: tempDir,
+        encoding: "utf8",
+      });
+      expect(log.trim().split("\n")).toHaveLength(1);
+
+      const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
+      expect(tags.trim()).toBe("");
+    });
+  });
 });
