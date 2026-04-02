@@ -102,10 +102,7 @@ export function isConfigWarningOnly(output: string): boolean {
 export async function installPlugin(source: string): Promise<void> {
   const result = await exec(["plugins", "install", source]);
   if (result.exitCode !== 0) {
-    const output = result.stderr || result.stdout;
-    if (!isConfigWarningOnly(output)) {
-      throw new Error(`Install failed: ${output}`);
-    }
+    throw new Error(`Install failed: ${result.stderr || result.stdout}`);
   }
 }
 
