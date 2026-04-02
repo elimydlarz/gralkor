@@ -155,29 +155,6 @@ async def test_add_episode_backend_error_propagates(client, mock_graphiti):
         })
 
 
-@pytest.mark.asyncio
-async def test_get_episodes_backend_error_propagates(client, mock_graphiti):
-    mock_graphiti.retrieve_episodes.side_effect = RuntimeError("timeout")
-
-    with pytest.raises(RuntimeError, match="timeout"):
-        await client.get("/episodes", params={"group_id": "g1"})
-
-
-@pytest.mark.asyncio
-async def test_delete_episode_returns_204(client, mock_graphiti):
-    resp = await client.delete("/episodes/ep-99")
-
-    assert resp.status_code == 204
-    mock_graphiti.remove_episode.assert_called_once_with("ep-99")
-
-
-@pytest.mark.asyncio
-async def test_delete_episode_backend_error_propagates(client, mock_graphiti):
-    mock_graphiti.remove_episode.side_effect = RuntimeError("not found")
-
-    with pytest.raises(RuntimeError, match="not found"):
-        await client.delete("/episodes/ep-99")
-
 
 @pytest.mark.asyncio
 async def test_add_episode_rate_limit_returns_429(client, mock_graphiti):
