@@ -30,7 +30,11 @@ describe("install", () => {
     await install({ source: "@susu-eng/gralkor" });
 
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
-    expect(mocked.setConfig).toHaveBeenCalledWith("plugins.slots.memory", "gralkor");
+    // Must NOT set memory slot — operator's responsibility
+    const slotCalls = mocked.setConfig.mock.calls.filter(
+      ([key]) => key === "plugins.slots.memory"
+    );
+    expect(slotCalls).toEqual([]);
   });
 
   it("skips install when same version already installed", async () => {
