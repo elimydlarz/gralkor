@@ -99,16 +99,12 @@ export function isConfigWarningOnly(output: string): boolean {
     !output.includes("404");
 }
 
-export async function installPlugin(source: string): Promise<void> {
+export async function installPlugin(source: string): Promise<ExecResult> {
   const result = await exec(["plugins", "install", source]);
   if (result.exitCode !== 0) {
     throw new Error(`Install failed: ${result.stderr || result.stdout}`);
   }
-  // Log raw output for debuggability — install can silently fail
-  // when config-warning tolerance masks the real error.
-  if (result.stderr) {
-    console.error(result.stderr.trimEnd());
-  }
+  return result;
 }
 
 export async function uninstallPlugin(pluginId: string): Promise<void> {
