@@ -1,4 +1,4 @@
-"""Tests for graph operations: DELETE /edges, POST /clear, POST /build-indices, POST /build-communities."""
+"""Tests for graph operations: POST /clear, POST /build-indices, POST /build-communities."""
 
 from __future__ import annotations
 
