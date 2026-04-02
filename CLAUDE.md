@@ -474,10 +474,10 @@ gralkor install
     then proactively clears plugins.slots.memory (stale slot breaks all openclaw commands)
   when openclaw plugins list fails after slot clear
     then proceeds with fresh install (empty plugin list)
-  when openclaw plugins install exits non-zero with config warnings only
+  when any openclaw command exits non-zero with config warnings only
     then tolerates warnings and continues (stale plugins.allow/entries are harmless)
-  when openclaw plugins install exits non-zero with real errors (npm error, 404, ENOENT)
-    then throws install failure
+  when any openclaw command exits non-zero with real errors (npm error, 404, ENOENT)
+    then throws failure
 ```
 
 #### cli-check
