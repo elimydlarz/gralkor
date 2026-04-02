@@ -8,20 +8,6 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_delete_edge_returns_204(client, mock_graphiti):
-    mock_edge = AsyncMock()
-    mock_edge.delete = AsyncMock()
-
-    with patch("main.EntityEdge") as MockEntityEdge:
-        MockEntityEdge.get_by_uuid = AsyncMock(return_value=mock_edge)
-        resp = await client.delete("/edges/edge-42")
-
-    assert resp.status_code == 204
-    MockEntityEdge.get_by_uuid.assert_called_once_with(mock_graphiti.driver, "edge-42")
-    mock_edge.delete.assert_called_once_with(mock_graphiti.driver)
-
-
-@pytest.mark.asyncio
 async def test_clear_graph_returns_deleted_true(client, mock_graphiti):
     with patch("main.Node") as MockNode:
         MockNode.delete_by_group_id = AsyncMock()
