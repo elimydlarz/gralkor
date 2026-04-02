@@ -329,7 +329,7 @@ validateConfig
   when graphiti is not initialized
     then returns status ok with graph connected false
 
-gralkor status CLI
+openclaw gralkor status
   when server is running and healthy
     then shows process state, config summary, data dir, graph stats, venv state
   when server is unreachable
