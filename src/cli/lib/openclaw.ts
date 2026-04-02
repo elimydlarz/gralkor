@@ -85,19 +85,24 @@ export async function getPluginInfo(pluginId: string): Promise<PluginInfo | null
   return plugins.find((p) => p.id === pluginId) ?? null;
 }
 
+/**
+ * Check if openclaw output contains only config warnings (no real errors).
+ * openclaw plugins install exits non-zero for stale config references
+ * (e.g. plugins.allow referencing a not-yet-installed plugin).
+ * These are harmless — the install succeeded despite the exit code.
+ */
+export function isConfigWarningOnly(output: string): boolean {
+  return output.includes("Config warnings:") &&
+    !output.includes("ENOENT") &&
+    !output.includes("npm error") &&
+    !output.includes("404");
+}
+
 export async function installPlugin(source: string): Promise<void> {
   const result = await exec(["plugins", "install", source]);
   if (result.exitCode !== 0) {
-    // openclaw plugins install exits non-zero for config warnings about stale
-    // references (e.g. plugins.allow referencing a not-yet-installed plugin).
-    // These are harmless — the install may have succeeded despite the exit code.
-    // Check if the output indicates an actual install failure vs just warnings.
     const output = result.stderr || result.stdout;
-    const isJustConfigWarnings = output.includes("Config warnings:") &&
-      !output.includes("ENOENT") &&
-      !output.includes("npm error") &&
-      !output.includes("404");
-    if (!isJustConfigWarnings) {
+    if (!isConfigWarningOnly(output)) {
       throw new Error(`Install failed: ${output}`);
     }
   }
