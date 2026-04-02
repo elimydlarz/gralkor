@@ -84,11 +84,7 @@ export async function install(opts: InstallOptions): Promise<void> {
     });
   }
 
-  // 6. Enable + slot
-  actions.push({
-    description: "Enable gralkor",
-    execute: () => oc.enablePlugin("gralkor"),
-  });
+  // 6. Set memory slot
   actions.push({
     description: "Set memory slot → gralkor",
     execute: () => oc.setConfig("plugins.slots.memory", "gralkor"),
