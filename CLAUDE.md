@@ -83,7 +83,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 **Fact prioritization:** Over-fetches 2x, `_prioritize_facts()` reserves 70% slots for valid facts (`invalid_at` null), fills rest by relevance. `invalid_at` is the signal.
 
-**Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, 5-min TTL).
+**Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, process lifetime).
 
 **Rate-limit passthrough:** Middleware: `RateLimitError` → 429 (prevents retry amplification).
 
