@@ -114,12 +114,6 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
 }
 
 
-export async function enablePlugin(pluginId: string): Promise<void> {
-  const result = await exec(["plugins", "enable", pluginId]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Enable failed: ${result.stderr || result.stdout}`);
-  }
-}
 
 export async function setConfig(key: string, value: string): Promise<void> {
   const result = await exec(["config", "set", key, value]);
