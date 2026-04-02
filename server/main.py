@@ -716,13 +716,6 @@ async def search(req: SearchRequest):
     return {"facts": result}
 
 
-@app.delete("/edges/{uuid}")
-async def delete_edge(uuid: str):
-    driver = graphiti.driver
-    edge = await EntityEdge.get_by_uuid(driver, uuid)
-    await edge.delete(driver)
-    return Response(status_code=204)
-
 
 @app.post("/clear")
 async def clear_graph(req: GroupIdRequest):
