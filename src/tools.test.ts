@@ -211,3 +211,72 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 });
 
+describe("memory_build_indices (createBuildIndicesTool)", () => {
+  let client: ReturnType<typeof mockClient>;
+
+  beforeEach(() => {
+    resetReadyGate();
+    client = mockClient();
+    client.buildIndices.mockResolvedValue({ status: "ok" });
+  });
+
+  describe("when server is ready", () => {
+    it("calls client.buildIndices and returns success message", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      const tool = createBuildIndicesTool(client as unknown as GraphitiClient, { serverReady: gate });
+      const result = await tool.execute();
+
+      expect(client.buildIndices).toHaveBeenCalledTimes(1);
+      expect(result).toContain("Indices rebuilt successfully");
+    });
+  });
+
+  describe("when server is not ready", () => {
+    it("throws error", async () => {
+      const gate = createReadyGate();
+      const tool = createBuildIndicesTool(client as unknown as GraphitiClient, { serverReady: gate });
+
+      await expect(tool.execute()).rejects.toThrow(
+        "[gralkor] memory_build_indices failed: server is not ready",
+      );
+      expect(client.buildIndices).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("memory_build_communities (createBuildCommunitiesTool)", () => {
+  let client: ReturnType<typeof mockClient>;
+
+  beforeEach(() => {
+    resetReadyGate();
+    client = mockClient();
+    client.buildCommunities.mockResolvedValue({ communities: 5, edges: 12 });
+  });
+
+  describe("when server is ready", () => {
+    it("calls client.buildCommunities with group ID and returns counts", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
+      const result = await tool.execute();
+
+      expect(client.buildCommunities).toHaveBeenCalledWith("agent-42");
+      expect(result).toContain("5 communities");
+      expect(result).toContain("12 edges");
+    });
+  });
+
+  describe("when server is not ready", () => {
+    it("throws error", async () => {
+      const gate = createReadyGate();
+      const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
+
+      await expect(tool.execute()).rejects.toThrow(
+        "[gralkor] memory_build_communities failed: server is not ready",
+      );
+      expect(client.buildCommunities).not.toHaveBeenCalled();
+    });
+  });
+});
+
