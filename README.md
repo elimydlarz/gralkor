@@ -38,6 +38,8 @@ Gralkor replaces the native memory plugin entirely, taking the memory slot.
 - **`memory_search`** — searches both native Markdown files and the knowledge graph in parallel, returning combined results
 - **`memory_get`** — reads native Markdown memory files directly (delegated to OpenClaw's built-in implementation)
 - **`memory_add`** — stores information in the knowledge graph; Graphiti extracts entities and relationships
+- **`memory_build_indices`** — rebuilds search indices and constraints (maintenance)
+- **`memory_build_communities`** — detects and builds entity communities/clusters to improve search quality (maintenance)
 - Hooks: auto-capture (stores full multi-turn conversations after each agent run), auto-recall (injects relevant facts and entities before the agent responds)
 - Set up: `plugins.slots.memory = "gralkor"` in `openclaw.json`
 
