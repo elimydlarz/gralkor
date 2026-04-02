@@ -470,8 +470,6 @@ gralkor install
     then sets each flattened key via openclaw config set
   when --set key=value is provided
     then sets each key via openclaw config set
-  when plugin not in list but directory may exist on disk
-    then attempts uninstall (swallowing errors) then removes extension directory before fresh install
   before listing plugins
     then proactively clears plugins.slots.memory (stale slot breaks all openclaw commands)
   when openclaw plugins list fails after slot clear
