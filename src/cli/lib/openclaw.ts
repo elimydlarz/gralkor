@@ -129,3 +129,10 @@ export async function getConfig(key: string): Promise<string | null> {
   const val = result.stdout.trim();
   return val || null;
 }
+
+export async function unsetConfig(key: string): Promise<void> {
+  const result = await exec(["config", "unset", key]);
+  if (result.exitCode !== 0) {
+    throw new Error(`Config unset failed: ${result.stderr || result.stdout}`);
+  }
+}
