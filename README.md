@@ -426,8 +426,8 @@ Run `openclaw gralkor check` to validate your provider configuration and API key
 - Conversations where the first user message starts with `/` are skipped by design
 - Empty conversations (no extractable text) are skipped
 
-**Agent doesn't have the `memory_add` tool**
-OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools by default. `memory_add` is a plugin tool, so it gets filtered out when a profile is active. To enable it, add it to `alsoAllow` in your `openclaw.json`:
+**Agent doesn't have plugin tools (`memory_add`, `memory_build_indices`, etc.)**
+OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools by default. Plugin tools are filtered out when a profile is active. To enable them, add them to `alsoAllow` in your `openclaw.json`:
 
 ```json
 {
