@@ -52,9 +52,10 @@ describe("install", () => {
   });
 
   it("upgrades when older version installed", async () => {
-    mocked.getInstalledPlugins.mockResolvedValue([
-      { id: "gralkor", version: "19.0.3", enabled: true },
-    ]);
+    mocked.getInstalledPlugins.mockReset();
+    mocked.getInstalledPlugins
+      .mockResolvedValueOnce([{ id: "gralkor", version: "19.0.3", enabled: true }])
+      .mockResolvedValue([{ id: "gralkor", version: "19.0.4", enabled: true }]);
 
     await install({ source: "/data/susu-eng-gralkor-memory-19.0.4.tgz" });
 
