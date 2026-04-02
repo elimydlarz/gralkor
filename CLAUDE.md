@@ -542,6 +542,28 @@ test-mode-query-logging
     then queries are not logged
 ```
 
+#### memory-build-indices
+
+```
+memory_build_indices tool
+  when server is ready
+    then calls client.buildIndices
+    and returns success message
+  when server is not ready
+    then throws error
+```
+
+#### memory-build-communities
+
+```
+memory_build_communities tool
+  when server is ready
+    then calls client.buildCommunities with group ID
+    and returns community and edge counts
+  when server is not ready
+    then throws error
+```
+
 #### publish-version-integrity
 
 ```
