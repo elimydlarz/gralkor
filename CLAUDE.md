@@ -93,10 +93,6 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core` (lazy dynamic import). Uses SQLite FTS5 + optional vector embeddings. **Bug:** FTS-only mode (no embedding key) → `syncMemoryFiles()` returns early → empty. Workaround: configure embedding provider.
 
-### Standalone CLI (`src/cli/`)
-
-Standalone `gralkor` binary (`npx @susu-eng/gralkor@latest` or global install) wrapping `openclaw` CLI. Self-installs: `gralkor install` defaults to `@susu-eng/gralkor@latest` from npm (bypasses npm cache). Commands: `install` (idempotent upgrade, `--config`/`--set`; does not set memory slot or allowlist — operator's responsibility), `config` (`--config`/`--set`), `check` (PATH/plugin/slot/keys), `status` (version/health/graph stats).
-
 ## Requirements
 
 ### Functional
