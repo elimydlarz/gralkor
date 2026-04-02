@@ -205,7 +205,6 @@ The `install` command handles version comparison, upgrades, and optional `--conf
 ```bash
 openclaw gralkor status          # Server state, config, graph stats, data dir, venv
 openclaw gralkor search <query>  # Search the knowledge graph
-openclaw gralkor clear [group]   # Delete all data for a group (destructive!)
 ```
 
 The native `openclaw memory` commands also remain available.
