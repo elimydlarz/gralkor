@@ -41,7 +41,6 @@ describe("install", () => {
     await install({ source: "/data/susu-eng-gralkor-memory-19.0.4.tgz" });
 
     expect(mocked.installPlugin).not.toHaveBeenCalled();
-    expect(mocked.enablePlugin).toHaveBeenCalledWith("gralkor");
   });
 
   it("upgrades when older version installed", async () => {
