@@ -454,44 +454,6 @@ install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
 
-#### cli-check
-
-```
-gralkor check
-  when LLM provider is configured in OpenClaw config
-    then reads configured provider (not hardcoded default)
-  when embedder provider is configured in OpenClaw config
-    then reads configured provider
-  when config read fails
-    then falls back to default gemini provider
-```
-
-#### cli-status
-
-```
-gralkor status
-  when server is running and healthy
-    then shows graph stats from /health response graph field (node_count, edge_count)
-  when graph is disconnected
-    then shows disconnected with error message
-  when server is not running
-    then shows "not running"
-  when plugin is not installed
-    then errors with exit code 1
-```
-
-#### cli-config
-
-```
-gralkor config
-  when --config JSON is provided
-    then sets each flattened key via openclaw config set
-  when --set key=value is provided
-    then sets each key via openclaw config set
-  when nothing to set
-    then errors
-```
-
 #### config-defaults-single-source
 
 ```
