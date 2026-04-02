@@ -62,12 +62,14 @@ describe("install", () => {
     // Plugin directory exists on disk but openclaw plugins list doesn't report it
     mocked.getInstalledPlugins.mockResolvedValue([]);
     mocked.uninstallPlugin.mockRejectedValue(new Error("not installed"));
+    mocked.deleteConfig.mockResolvedValue(undefined);
 
     await install({ source: "@susu-eng/gralkor" });
 
-    // Should attempt uninstall (swallowing the error), remove dir, then install
+    // Should attempt uninstall (swallowing the error), remove dir, clean config, then install
     expect(mocked.uninstallPlugin).toHaveBeenCalledWith("gralkor");
     expect(mocked.removePluginDir).toHaveBeenCalledWith("gralkor");
+    expect(mocked.deleteConfig).toHaveBeenCalledWith("plugins.entries.gralkor");
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
