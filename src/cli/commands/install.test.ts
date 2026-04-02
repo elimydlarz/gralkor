@@ -41,6 +41,7 @@ describe("install", () => {
   });
 
   it("skips install when same version already installed", async () => {
+    mocked.getInstalledPlugins.mockReset();
     mocked.getInstalledPlugins.mockResolvedValue([
       { id: "gralkor", version: "19.0.4", enabled: true },
     ]);
