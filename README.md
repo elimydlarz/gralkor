@@ -56,78 +56,29 @@ The agent gets a unified memory interface where it doesn't need to think about w
 
 ### 2. Install the plugin
 
-**Using the CLI helper (recommended):**
-
 ```bash
-npx @susu-eng/gralkor@latest install
+openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
 ```
 
-Use `@latest` to bypass npm's cache and always get the newest version. You can also pass config inline:
+From a tarball (e.g. for air-gapped deploys):
 
 ```bash
-npx @susu-eng/gralkor@latest install \
-  --config '{"llm":{"provider":"openai","model":"gpt-4.1-mini"}}'
+openclaw plugins install ./susu-eng-gralkor-memory-26.0.8.tgz --dangerously-force-unsafe-install
 ```
 
-Or from a tarball:
+The `--dangerously-force-unsafe-install` flag is required because Gralkor is not in OpenClaw's verified plugin registry.
+
+Then configure:
 
 ```bash
-npx @susu-eng/gralkor@latest install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
-```
+# Set allowlist (if you use one)
+openclaw config set --json plugins.allow '["gralkor"]'
 
-The install is idempotent — running it again with the same version is a no-op.
-
-**What the installer handles:**
-
-1. Checks the installed version — skips if already current, uninstalls the old version if upgrading
-2. Runs `openclaw plugins install @susu-eng/gralkor@latest` (tolerates config warnings from stale references)
-3. Applies any `--config`/`--set` values
-
-The installer does **not** modify `plugins.slots.memory` or `plugins.allow` — those are your responsibility.
-
-**Recommended sequencing for init scripts:**
-
-```bash
-# 1. Set allowlist (before install, so openclaw commands don't warn)
-openclaw config set --json plugins.allow '["gralkor", ...]'
-
-# 2. Install (or upgrade) the plugin
-npx @susu-eng/gralkor@latest install
-
-# 3. Assign the memory slot (after install, so the plugin exists)
+# Assign the memory slot
 openclaw config set plugins.slots.memory gralkor
 
-# 4. Plugin config (via install flags or directly)
+# Optional: set plugin config
 openclaw config set plugins.entries.gralkor.config.test true
-```
-
-**Other prerequisites:**
-
-- **API keys**: Set `GOOGLE_API_KEY` (default), `OPENAI_API_KEY`, or the relevant provider key in the environment before starting OpenClaw.
-- **`uv`**: Must be on PATH. The installer does not install it.
-
-**Manual install:**
-
-```bash
-openclaw plugins install @susu-eng/gralkor
-```
-
-Then edit `~/.openclaw/openclaw.json`:
-
-```json
-{
-  "plugins": {
-    "slots": {
-      "memory": "gralkor"
-    },
-    "entries": {
-      "gralkor": {
-        "enabled": true,
-        "config": {}
-      }
-    }
-  }
-}
 ```
 
 ### 3. Set your LLM API key
