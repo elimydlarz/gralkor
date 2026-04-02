@@ -76,9 +76,8 @@ export async function install(opts: InstallOptions): Promise<void> {
     });
   } else if (!current) {
     // Plugin not in list but directory may exist on disk — clean up.
-    // Config metadata already cleared upfront (step 3).
     actions.push({
-      description: "Remove stale gralkor directory (if present)",
+      description: "Remove stale gralkor install (if present)",
       execute: async () => {
         await oc.uninstallPlugin("gralkor").catch(() => {});
         await oc.removePluginDir("gralkor");
