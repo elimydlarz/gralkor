@@ -543,7 +543,6 @@ publish-version-integrity
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts, types.ts, config.ts, *.test.ts
-│   └── cli/                          # standalone CLI: bin.ts, commands/, lib/
 ├── resources/memory/                 # canonical manifest for make pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/functional/
