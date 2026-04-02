@@ -1,4 +1,4 @@
-.PHONY: test test-plugin test-functional test-server test-cli test-mutate \
+.PHONY: test test-plugin test-functional test-server test-mutate \
         typecheck pack build-server up down logs setup-server help
 
 
