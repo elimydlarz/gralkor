@@ -547,7 +547,7 @@ publish-version-integrity
 | docker-compat | `FALKORDB_URI` → legacy TCP mode |
 | observability | Two-tier `[gralkor]` logging. Config logged once (`configLogged` flag). Normal: metadata. Test: full data. `[gralkor] boot:` markers: `register()` logs `boot: plugin loaded (v...)` on first call, `boot: register() failed:` on error; server-manager logs `boot: starting/ready`. |
 | retry-backoff | Client: 2 retries (500ms/1s) network/5xx. Flush: 3 retries (1s/2s/4s). 4xx not retried. |
-| rate-limit-passthrough | Middleware: `RateLimitError` → 429 (prevents retry amplification) |
+| rate-limit-passthrough | Middleware: `RateLimitError` → 429 + `Retry-After` header. Client retries 429s indefinitely (guided by `Retry-After`), independent of 5xx retry budget. |
 | untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s ping on child process |
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
