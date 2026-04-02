@@ -463,7 +463,7 @@ gralkor install
   when same version already installed
     then skips install but still sets slot
   when older version installed
-    then uninstalls old version, installs new, enables, sets slot
+    then uninstalls old version, installs new, sets slot
   when source is tarball path that does not exist
     then errors with file not found
   when --config JSON is provided
