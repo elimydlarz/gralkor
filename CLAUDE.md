@@ -472,9 +472,7 @@ gralkor install
     then sets each key via openclaw config set
   when openclaw plugins list fails
     then proceeds with fresh install (empty plugin list)
-  when any openclaw command exits non-zero with config warnings only
-    then tolerates warnings and continues (stale plugins.allow/entries are harmless)
-  when any openclaw command exits non-zero with real errors (npm error, 404, ENOENT)
+  when any openclaw command exits non-zero
     then throws failure
 ```
 
