@@ -155,11 +155,10 @@ function registerFullPlugin(
     { names: ["memory_search", "memory_get"] },
   );
 
-  const storeTool = createMemoryStoreTool(client, config, {
-    getGroupId,
-    serverReady,
-  });
-  api.registerTool(storeTool);
+  const toolOpts = { getGroupId, serverReady };
+  api.registerTool(createMemoryStoreTool(client, config, toolOpts));
+  api.registerTool(createBuildIndicesTool(client, toolOpts));
+  api.registerTool(createBuildCommunitiesTool(client, toolOpts));
 
   const debouncer = registerHooks(api, client, config, { setGroupId, getNativeSearch, serverReady });
 
