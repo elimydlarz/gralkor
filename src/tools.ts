@@ -76,3 +76,57 @@ export function createMemoryStoreTool(
     },
   };
 }
+
+export function createBuildIndicesTool(
+  client: GraphitiClient,
+  opts: ToolOpts = {},
+) {
+  const { serverReady } = opts;
+  return {
+    name: "memory_build_indices",
+    description:
+      "Rebuild the knowledge graph's search indices and constraints. " +
+      "Use after bulk operations or if search results seem incomplete.",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+    async execute(): Promise<string> {
+      if (serverReady && !serverReady.isReady()) {
+        throw new Error(`[gralkor] memory_build_indices failed: server is not ready`);
+      }
+      console.log(`[gralkor] memory_build_indices starting`);
+      const result = await client.buildIndices();
+      console.log(`[gralkor] memory_build_indices done — status:${result.status}`);
+      return `Indices rebuilt successfully.`;
+    },
+  };
+}
+
+export function createBuildCommunitiesTool(
+  client: GraphitiClient,
+  opts: ToolOpts = {},
+) {
+  const { getGroupId, serverReady } = opts;
+  return {
+    name: "memory_build_communities",
+    description:
+      "Detect and build entity communities (clusters) in the knowledge graph. " +
+      "Communities group related entities together and can improve search quality. " +
+      "Run periodically or after significant new information has been ingested.",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+    async execute(): Promise<string> {
+      if (serverReady && !serverReady.isReady()) {
+        throw new Error(`[gralkor] memory_build_communities failed: server is not ready`);
+      }
+      const groupId = getGroupId?.() ?? "default";
+      console.log(`[gralkor] memory_build_communities starting — groupId:${groupId}`);
+      const result = await client.buildCommunities(groupId);
+      console.log(`[gralkor] memory_build_communities done — communities:${result.communities} edges:${result.edges}`);
+      return `Communities built: ${result.communities} communities, ${result.edges} edges.`;
+    },
+  };
+}
