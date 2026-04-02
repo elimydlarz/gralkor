@@ -4,6 +4,8 @@ import type { GralkorConfig } from "./config.js";
 import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
 import {
   createMemoryStoreTool,
+  createBuildIndicesTool,
+  createBuildCommunitiesTool,
   formatFacts,
 } from "./tools.js";
 
