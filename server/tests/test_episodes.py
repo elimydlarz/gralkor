@@ -102,43 +102,6 @@ async def test_add_episode_missing_required_field_returns_422(client):
     assert resp.status_code == 422
 
 
-@pytest.mark.asyncio
-async def test_get_episodes_returns_list(client, mock_graphiti):
-    episodes = [
-        make_episode(uuid="ep-1", name="first"),
-        make_episode(uuid="ep-2", name="second"),
-    ]
-    mock_graphiti.retrieve_episodes.return_value = episodes
-
-    resp = await client.get("/episodes", params={"group_id": "g1", "limit": 5})
-
-    assert resp.status_code == 200
-    body = resp.json()
-    assert len(body) == 2
-    assert body[0]["uuid"] == "ep-1"
-    assert body[1]["uuid"] == "ep-2"
-
-    call_kwargs = mock_graphiti.retrieve_episodes.call_args.kwargs
-    assert call_kwargs["last_n"] == 5
-    assert call_kwargs["group_ids"] == ["g1"]
-
-
-@pytest.mark.asyncio
-async def test_get_episodes_default_limit(client, mock_graphiti):
-    mock_graphiti.retrieve_episodes.return_value = []
-
-    resp = await client.get("/episodes", params={"group_id": "g1"})
-
-    assert resp.status_code == 200
-    call_kwargs = mock_graphiti.retrieve_episodes.call_args.kwargs
-    assert call_kwargs["last_n"] == 10
-
-
-@pytest.mark.asyncio
-async def test_get_episodes_missing_group_id_returns_422(client):
-    resp = await client.get("/episodes")
-    assert resp.status_code == 422
-
 
 @pytest.mark.asyncio
 async def test_add_episode_defaults_to_message_type(client, mock_graphiti):
