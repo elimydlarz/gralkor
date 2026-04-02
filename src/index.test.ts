@@ -63,8 +63,8 @@ describe("register()", () => {
 
     register(api);
 
-    // 2 registerTool calls: 1 factory (memory_search + memory_get) + 1 plain (memory_add)
-    expect(api.registerTool).toHaveBeenCalledTimes(2);
+    // 4 registerTool calls: 1 factory (memory_search + memory_get) + 3 plain (memory_add, memory_build_indices, memory_build_communities)
+    expect(api.registerTool).toHaveBeenCalledTimes(4);
     expect(api.on).toHaveBeenCalledTimes(3);
     expect(api.registerService).toHaveBeenCalledOnce();
     // 1 registerCli call: gralkor CLI
