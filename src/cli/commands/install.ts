@@ -74,7 +74,19 @@ export async function install(opts: InstallOptions): Promise<void> {
   if (needsInstall) {
     actions.push({
       description: `Install gralkor from ${source}`,
-      execute: () => oc.installPlugin(source),
+      execute: async () => {
+        await oc.installPlugin(source);
+        // Verify the plugin is actually discoverable after install.
+        // openclaw plugins install can exit 0 (via config-warning tolerance)
+        // even when the install silently failed.
+        const after = await oc.getInstalledPlugins().catch(() => []);
+        if (!after.find((p) => p.id === "gralkor")) {
+          throw new Error(
+            "openclaw plugins install appeared to succeed but gralkor is not in the plugin list. " +
+            "Run `openclaw plugins install @susu-eng/gralkor@latest` manually to see the full error."
+          );
+        }
+      },
     });
   }
 
