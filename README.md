@@ -57,23 +57,38 @@ The agent gets a unified memory interface where it doesn't need to think about w
 **Using the CLI helper (recommended):**
 
 ```bash
-npx @susu-eng/gralkor install
+npx @susu-eng/gralkor@latest install
 ```
 
-This handles everything: installs the plugin, enables it, assigns the memory slot, and migrates from `memory-gralkor` if present. You can also pass config inline:
+Use `@latest` to bypass npm's cache and always get the newest version. You can also pass config inline:
 
 ```bash
-npx @susu-eng/gralkor install \
+npx @susu-eng/gralkor@latest install \
   --config '{"llm":{"provider":"openai","model":"gpt-4.1-mini"}}'
 ```
 
 Or from a tarball:
 
 ```bash
-npx @susu-eng/gralkor install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
+npx @susu-eng/gralkor@latest install /path/to/susu-eng-gralkor-memory-19.0.4.tgz
 ```
 
 The install is idempotent — running it again with the same version is a no-op.
+
+**What the installer handles:**
+
+1. Clears `plugins.slots.memory` if it references a missing plugin (prevents "Config invalid" errors that block all openclaw commands)
+2. Checks the installed version — skips if already current, uninstalls the old version if upgrading
+3. Runs `openclaw plugins install @susu-eng/gralkor@latest` (tolerates config warnings from stale `plugins.allow`/`plugins.entries` references)
+4. Enables the plugin (`openclaw plugins enable gralkor`)
+5. Sets `plugins.slots.memory` to `gralkor`
+6. Applies any `--config`/`--set` values
+
+**What you must handle:**
+
+- **`plugins.allow`**: If your config uses an allowlist, add `"gralkor"` to it. The installer does not modify the allowlist — stale references produce warnings but don't break anything.
+- **API keys**: Set `GOOGLE_API_KEY` (default), `OPENAI_API_KEY`, or the relevant provider key in the environment before starting OpenClaw.
+- **`uv`**: Must be on PATH. The installer does not install it.
 
 **Manual install:**
 
