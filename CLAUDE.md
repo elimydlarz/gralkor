@@ -27,7 +27,7 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 
 ### Plugin Registration
 
-`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`get/setGroupId`, `get/setNativeSearch`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). `memory_search` combines native (SDK `getMemorySearchManager`) + graph (`client.search()`) in parallel. `memory_get` reads via SDK `readAgentMemoryFile`.
+`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`get/setGroupId`, `get/setNativeSearch`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). `memory_search` combines native (SDK `getMemorySearchManager`) + graph (`client.search()`) in parallel. `memory_get` reads via SDK `readAgentMemoryFile`. `memory_build_indices` triggers index rebuild via `client.buildIndices()`. `memory_build_communities` triggers community detection via `client.buildCommunities(groupId)`.
 
 ### Plugin API Contract
 
