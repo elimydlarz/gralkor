@@ -461,7 +461,7 @@ gralkor install
   when source is npm ref and plugin not installed
     then installs and sets memory slot
   when same version already installed
-    then skips install but still enables and sets slot
+    then skips install but still sets slot
   when older version installed
     then uninstalls old version, installs new, enables, sets slot
   when source is tarball path that does not exist
