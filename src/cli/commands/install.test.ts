@@ -17,7 +17,7 @@ beforeEach(() => {
   mocked.getInstalledPlugins
     .mockResolvedValueOnce([])
     .mockResolvedValue([{ id: "gralkor", version: "26.0.0", enabled: true }]);
-  mocked.installPlugin.mockResolvedValue(undefined);
+  mocked.installPlugin.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 });
   mocked.uninstallPlugin.mockResolvedValue(undefined);
   mocked.setConfig.mockResolvedValue(undefined);
 });
