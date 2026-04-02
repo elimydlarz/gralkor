@@ -500,6 +500,25 @@ memory_build_communities tool
     then throws error
 ```
 
+#### rate-limit-retry
+
+```
+rate-limit-retry
+  server side
+    when upstream LLM returns a rate-limit error
+      then 429 response includes Retry-After header
+  client side
+    when server returns 429 with Retry-After header
+      then client waits for the specified duration and retries
+    when server returns 429 repeatedly
+      then client keeps retrying (no cap)
+    when request is aborted via AbortSignal during rate-limit wait
+      then client stops retrying and throws
+    when server returns 429 then succeeds on retry
+      then the successful response is returned
+    then 429 retries are independent of the 5xx/network retry budget
+```
+
 #### publish-version-integrity
 
 ```
