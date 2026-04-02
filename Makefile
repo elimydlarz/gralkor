@@ -36,9 +36,6 @@ test-functional:
 test-server:
 	cd server && uv run pytest tests/
 
-test-cli:
-	pnpm exec vitest run src/cli/
-
 test-mutate:
 	pnpm exec stryker run
 
