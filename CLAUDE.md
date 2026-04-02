@@ -8,7 +8,7 @@ Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent,
 |---|---|
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
-| Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph) |
+| Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
 | Hooks | `before_prompt_build` (auto-recall), `agent_end`/`session_end` (auto-capture) |
 | CLI | `openclaw memory`, `openclaw gralkor` (plugin); `npx @susu-eng/gralkor` (standalone) |
 
