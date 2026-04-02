@@ -13,11 +13,8 @@ beforeEach(() => {
   vi.mocked(fs.existsSync).mockReturnValue(true);
   process.exitCode = undefined;
   mocked.checkOpenclaw.mockResolvedValue("openclaw 2026.3.0");
-  // First call: no plugins installed. Second call (post-install verification): gralkor present.
-  mocked.getInstalledPlugins
-    .mockResolvedValueOnce([])
-    .mockResolvedValue([{ id: "gralkor", version: "26.0.0", enabled: true }]);
-  mocked.installPlugin.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 });
+  mocked.getInstalledPlugins.mockResolvedValue([]);
+  mocked.installPlugin.mockResolvedValue(undefined);
   mocked.uninstallPlugin.mockResolvedValue(undefined);
   mocked.setConfig.mockResolvedValue(undefined);
 });
@@ -41,7 +38,6 @@ describe("install", () => {
   });
 
   it("skips install when same version already installed", async () => {
-    mocked.getInstalledPlugins.mockReset();
     mocked.getInstalledPlugins.mockResolvedValue([
       { id: "gralkor", version: "19.0.4", enabled: true },
     ]);
@@ -52,10 +48,9 @@ describe("install", () => {
   });
 
   it("upgrades when older version installed", async () => {
-    mocked.getInstalledPlugins.mockReset();
-    mocked.getInstalledPlugins
-      .mockResolvedValueOnce([{ id: "gralkor", version: "19.0.3", enabled: true }])
-      .mockResolvedValue([{ id: "gralkor", version: "19.0.4", enabled: true }]);
+    mocked.getInstalledPlugins.mockResolvedValue([
+      { id: "gralkor", version: "19.0.3", enabled: true },
+    ]);
 
     await install({ source: "/data/susu-eng-gralkor-memory-19.0.4.tgz" });
 
@@ -64,10 +59,7 @@ describe("install", () => {
   });
 
   it("proceeds with fresh install when plugins list fails", async () => {
-    mocked.getInstalledPlugins.mockReset();
-    mocked.getInstalledPlugins
-      .mockRejectedValueOnce(new Error("Config invalid"))
-      .mockResolvedValue([{ id: "gralkor", version: "26.0.0", enabled: true }]);
+    mocked.getInstalledPlugins.mockRejectedValue(new Error("Config invalid"));
 
     await install({ source: "@susu-eng/gralkor" });
 
