@@ -16,7 +16,6 @@ beforeEach(() => {
   mocked.getInstalledPlugins.mockResolvedValue([]);
   mocked.installPlugin.mockResolvedValue(undefined);
   mocked.uninstallPlugin.mockResolvedValue(undefined);
-  mocked.enablePlugin.mockResolvedValue(undefined);
   mocked.setConfig.mockResolvedValue(undefined);
 });
 
