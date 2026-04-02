@@ -3,50 +3,21 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export interface ExecResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
 export interface PluginInfo {
   id: string;
   version: string | null;
   enabled: boolean;
 }
 
-async function exec(args: string[]): Promise<ExecResult> {
-  try {
-    const { stdout, stderr } = await execFileAsync("openclaw", args, {
-      timeout: 30_000,
-    });
-    return { stdout, stderr, exitCode: 0 };
-  } catch (err: unknown) {
-    if (isExecError(err)) {
-      return {
-        stdout: err.stdout ?? "",
-        stderr: err.stderr ?? "",
-        exitCode: err.code ?? 1,
-      };
-    }
-    throw new Error(
-      "openclaw not found on PATH. Install: https://docs.openclaw.ai/install"
-    );
-  }
-}
-
-function isExecError(
-  err: unknown
-): err is Error & { stdout?: string; stderr?: string; code?: number } {
-  return err instanceof Error && "code" in err;
+async function openclaw(...args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync("openclaw", args, {
+    timeout: 30_000,
+  });
+  return stdout;
 }
 
 export async function checkOpenclaw(): Promise<string> {
-  const result = await exec(["--version"]);
-  if (result.exitCode !== 0) {
-    throw new Error("openclaw returned non-zero exit code");
-  }
-  return result.stdout.trim();
+  return (await openclaw("--version")).trim();
 }
 
 /** Parse `openclaw plugins list` output into structured plugin info. */
@@ -70,11 +41,7 @@ export function parsePluginList(stdout: string): PluginInfo[] {
 }
 
 export async function getInstalledPlugins(): Promise<PluginInfo[]> {
-  const result = await exec(["plugins", "list"]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Failed to list plugins: ${result.stderr}`);
-  }
-  return parsePluginList(result.stdout);
+  return parsePluginList(await openclaw("plugins", "list"));
 }
 
 export async function getPluginInfo(pluginId: string): Promise<PluginInfo | null> {
@@ -83,31 +50,22 @@ export async function getPluginInfo(pluginId: string): Promise<PluginInfo | null
 }
 
 export async function installPlugin(source: string): Promise<void> {
-  const result = await exec(["plugins", "install", source]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Install failed: ${result.stderr || result.stdout}`);
-  }
+  await openclaw("plugins", "install", source);
 }
 
 export async function uninstallPlugin(pluginId: string): Promise<void> {
-  const result = await exec(["plugins", "uninstall", pluginId]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Uninstall failed: ${result.stderr || result.stdout}`);
-  }
+  await openclaw("plugins", "uninstall", pluginId);
 }
 
-
-
 export async function setConfig(key: string, value: string): Promise<void> {
-  const result = await exec(["config", "set", key, value]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Config set failed: ${result.stderr || result.stdout}`);
-  }
+  await openclaw("config", "set", key, value);
 }
 
 export async function getConfig(key: string): Promise<string | null> {
-  const result = await exec(["config", "get", key]);
-  if (result.exitCode !== 0) return null;
-  const val = result.stdout.trim();
-  return val || null;
+  try {
+    const val = (await openclaw("config", "get", key)).trim();
+    return val || null;
+  } catch {
+    return null;
+  }
 }
