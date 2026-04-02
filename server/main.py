@@ -632,22 +632,6 @@ async def ingest_messages(req: IngestMessagesRequest):
     return serialized
 
 
-@app.get("/episodes")
-async def get_episodes(group_id: str, limit: int = 10):
-    _ensure_driver_graph([group_id])
-    episodes = await graphiti.retrieve_episodes(
-        reference_time=datetime.now(timezone.utc),
-        last_n=limit,
-        group_ids=[group_id],
-    )
-    return [_serialize_episode(ep) for ep in episodes]
-
-
-@app.delete("/episodes/{uuid}")
-async def delete_episode(uuid: str):
-    await graphiti.remove_episode(uuid)
-    return Response(status_code=204)
-
 
 def _sanitize_query(query: str) -> str:
     """Strip backticks that cause RediSearch syntax errors.
