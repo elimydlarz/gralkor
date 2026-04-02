@@ -74,20 +74,7 @@ export async function install(opts: InstallOptions): Promise<void> {
   if (needsInstall) {
     actions.push({
       description: `Install gralkor from ${source}`,
-      execute: async () => {
-        const result = await oc.installPlugin(source);
-        // Verify the plugin is actually discoverable after install.
-        // openclaw plugins install can exit 0 (via config-warning tolerance)
-        // even when the install silently failed.
-        const after = await oc.getInstalledPlugins().catch(() => []);
-        if (!after.find((p) => p.id === "gralkor")) {
-          const output = (result.stderr || result.stdout).trim();
-          throw new Error(
-            `openclaw plugins install did not register gralkor.\n\n` +
-            `openclaw output:\n${output}`
-          );
-        }
-      },
+      execute: () => oc.installPlugin(source),
     });
   }
 
