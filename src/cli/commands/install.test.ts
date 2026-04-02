@@ -13,7 +13,10 @@ beforeEach(() => {
   vi.mocked(fs.existsSync).mockReturnValue(true);
   process.exitCode = undefined;
   mocked.checkOpenclaw.mockResolvedValue("openclaw 2026.3.0");
-  mocked.getInstalledPlugins.mockResolvedValue([]);
+  // First call: no plugins installed. Second call (post-install verification): gralkor present.
+  mocked.getInstalledPlugins
+    .mockResolvedValueOnce([])
+    .mockResolvedValue([{ id: "gralkor", version: "26.0.0", enabled: true }]);
   mocked.installPlugin.mockResolvedValue(undefined);
   mocked.uninstallPlugin.mockResolvedValue(undefined);
   mocked.setConfig.mockResolvedValue(undefined);
