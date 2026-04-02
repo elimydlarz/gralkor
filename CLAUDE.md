@@ -674,7 +674,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)
 - **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught).
-- **`memory_add` blocked by tool profiles:** `coding` profile allowlists core tools only. Workaround: `"alsoAllow": ["memory_add"]` in `tools` config.
+- **Plugin tools blocked by tool profiles:** `coding` profile allowlists core tools only. Plugin tools (`memory_add`, `memory_build_indices`, `memory_build_communities`) are filtered out. Workaround: `"alsoAllow": ["memory_add", "memory_build_indices", "memory_build_communities"]` or `"alsoAllow": ["gralkor"]` in `tools` config.
 
 ## Server Tests
 
