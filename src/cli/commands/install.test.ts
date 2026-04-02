@@ -67,7 +67,7 @@ describe("install", () => {
     // Should attempt uninstall (swallowing the error), remove dir, clear config entry, then install
     expect(mocked.uninstallPlugin).toHaveBeenCalledWith("gralkor");
     expect(mocked.removePluginDir).toHaveBeenCalledWith("gralkor");
-    expect(mocked.setConfig).toHaveBeenCalledWith("plugins.entries.gralkor", "");
+    expect(mocked.unsetConfig).toHaveBeenCalledWith("plugins.entries.gralkor");
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
