@@ -457,7 +457,7 @@ createAgentEndHandler
 ```
 gralkor install
   when no source provided
-    then defaults to @susu-eng/gralkor (self-install from npm)
+    then defaults to @susu-eng/gralkor@latest (self-install from npm, bypasses cache)
   when source is npm ref and plugin not installed
     then installs, enables, and sets memory slot
   when same version already installed
