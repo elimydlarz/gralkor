@@ -78,13 +78,7 @@ export async function install(opts: InstallOptions): Promise<void> {
     });
   }
 
-  // 6. Set memory slot
-  actions.push({
-    description: "Set memory slot → gralkor",
-    execute: () => oc.setConfig("plugins.slots.memory", "gralkor"),
-  });
-
-  // 7. Config
+  // 6. Config
   const configEntries = buildConfigEntries(opts);
   for (const [key, value] of configEntries) {
     actions.push({
