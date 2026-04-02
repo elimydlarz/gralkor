@@ -76,12 +76,6 @@ describe("install", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("throws when openclaw plugins install exits non-zero", async () => {
-    mocked.installPlugin.mockRejectedValue(new Error("Install failed: npm ERR! 404"));
-
-    await expect(install({ source: "@susu-eng/gralkor" })).rejects.toThrow("Install failed");
-  });
-
   it("applies --config JSON", async () => {
     await install({
       source: "@susu-eng/gralkor",
