@@ -289,31 +289,18 @@ async def rate_limit_middleware(request, call_next):
 
 # ── Idempotency store ────────────────────────────────────────
 
-# In-memory store: idempotency_key -> (serialized_episode, monotonic_expiry)
-_idempotency_store: dict[str, tuple[dict[str, Any], float]] = {}
-_IDEMPOTENCY_TTL = 300  # 5 minutes
+# In-memory store: idempotency_key -> serialized_episode
+_idempotency_store: dict[str, dict[str, Any]] = {}
 
 
 def _idempotency_check(key: str) -> dict[str, Any] | None:
-    """Return cached episode if key exists and is not expired, else None."""
-    entry = _idempotency_store.get(key)
-    if entry is None:
-        return None
-    if entry[1] > time.monotonic():
-        return entry[0]
-    del _idempotency_store[key]
-    return None
+    """Return cached episode if key has been seen, else None."""
+    return _idempotency_store.get(key)
 
 
 def _idempotency_store_result(key: str, result: dict[str, Any]) -> None:
-    """Cache the result under the idempotency key with TTL."""
-    _idempotency_store[key] = (result, time.monotonic() + _IDEMPOTENCY_TTL)
-    # Lazy cleanup when store grows large
-    if len(_idempotency_store) > 100:
-        now = time.monotonic()
-        expired = [k for k, (_, exp) in _idempotency_store.items() if exp <= now]
-        for k in expired:
-            del _idempotency_store[k]
+    """Cache the result under the idempotency key."""
+    _idempotency_store[key] = result
 
 
 # ── Request / response models ────────────────────────────────
