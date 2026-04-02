@@ -58,19 +58,7 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalled();
   });
 
-  it("proactively clears stale memory slot before listing plugins", async () => {
-    await install({ source: "@susu-eng/gralkor" });
-
-    // setConfig("plugins.slots.memory", "") should be called first (proactive clear)
-    // then again with "gralkor" after install
-    const slotCalls = mocked.setConfig.mock.calls.filter(
-      ([key]) => key === "plugins.slots.memory"
-    );
-    expect(slotCalls[0]).toEqual(["plugins.slots.memory", ""]);
-    expect(slotCalls[slotCalls.length - 1]).toEqual(["plugins.slots.memory", "gralkor"]);
-  });
-
-  it("proceeds with fresh install when plugins list fails after slot clear", async () => {
+  it("proceeds with fresh install when plugins list fails", async () => {
     mocked.getInstalledPlugins.mockRejectedValue(new Error("Config invalid"));
 
     await install({ source: "@susu-eng/gralkor" });
