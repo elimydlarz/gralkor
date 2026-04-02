@@ -6,7 +6,7 @@ import { check } from "./commands/check.js";
 import { status } from "./commands/status.js";
 import { getCLIVersion } from "./lib/version.js";
 
-const DEFAULT_SOURCE = "@susu-eng/gralkor";
+const DEFAULT_SOURCE = "@susu-eng/gralkor@latest";
 
 const HELP = `Usage: gralkor <command> [options]
 
