@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePluginList } from "./openclaw.js";
+import { parsePluginList, isConfigWarningOnly } from "./openclaw.js";
 
 describe("parsePluginList", () => {
   it("parses table output with multiple plugins", () => {
