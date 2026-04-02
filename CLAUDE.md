@@ -95,7 +95,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 
 ### Standalone CLI (`src/cli/`)
 
-Standalone `gralkor` binary (`npx @susu-eng/gralkor@latest` or global install) wrapping `openclaw` CLI. Self-installs: `gralkor install` defaults to `@susu-eng/gralkor@latest` from npm (bypasses npm cache). Commands: `install` (idempotent upgrade/migrate, `--config`/`--set`/`--dry-run`), `config` (`--config`/`--set`), `check` (PATH/plugin/slot/keys), `status` (version/health/graph stats).
+Standalone `gralkor` binary (`npx @susu-eng/gralkor@latest` or global install) wrapping `openclaw` CLI. Self-installs: `gralkor install` defaults to `@susu-eng/gralkor@latest` from npm (bypasses npm cache). Commands: `install` (idempotent upgrade, `--config`/`--set`), `config` (`--config`/`--set`), `check` (PATH/plugin/slot/keys), `status` (version/health/graph stats).
 
 ## Requirements
 
