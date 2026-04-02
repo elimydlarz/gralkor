@@ -100,8 +100,13 @@ export class GraphitiClient {
 
         if (res.status === 429) {
           const retryAfter = parseInt(res.headers.get("retry-after") ?? "5", 10);
-          clearTimeout(timer);
-          await new Promise((r) => setTimeout(r, retryAfter * 1000));
+          await new Promise<void>((resolve, reject) => {
+            const sleep = setTimeout(resolve, retryAfter * 1000);
+            controller.signal.addEventListener("abort", () => {
+              clearTimeout(sleep);
+              reject(controller.signal.reason ?? new DOMException("aborted", "AbortError"));
+            });
+          });
           continue; // does not consume the 5xx/network retry budget
         }
 
