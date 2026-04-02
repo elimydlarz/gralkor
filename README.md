@@ -344,7 +344,7 @@ Graphiti handles the heavy lifting: entity extraction, relationship mapping, tem
 
 ## Troubleshooting
 
-**`gralkor status` says "Server process: stopped"**
+**`openclaw gralkor status` says "Server process: stopped"**
 Python 3.12+ is not found on the system PATH. Install Python 3.12+ and restart OpenClaw.
 
 **First startup takes a long time**
