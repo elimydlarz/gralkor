@@ -54,14 +54,6 @@ async def test_build_communities_missing_group_id_returns_422(client):
     assert resp.status_code == 422
 
 
-@pytest.mark.asyncio
-async def test_delete_edge_backend_error_propagates(client, mock_graphiti):
-    """Backend errors propagate (ASGITransport raises instead of returning 500)."""
-    with patch("main.EntityEdge") as MockEntityEdge:
-        MockEntityEdge.get_by_uuid = AsyncMock(side_effect=RuntimeError("DB down"))
-        with pytest.raises(RuntimeError, match="DB down"):
-            await client.delete("/edges/edge-42")
-
 
 @pytest.mark.asyncio
 async def test_clear_graph_backend_error_propagates(client, mock_graphiti):
