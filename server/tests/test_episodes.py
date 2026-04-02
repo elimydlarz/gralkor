@@ -1,4 +1,4 @@
-"""Tests for episode endpoints: POST /episodes, GET /episodes, DELETE /episodes/{uuid}."""
+"""Tests for episode endpoint: POST /episodes."""
 
 from __future__ import annotations
 
