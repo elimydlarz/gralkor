@@ -459,7 +459,7 @@ gralkor install
   when no source provided
     then defaults to @susu-eng/gralkor@latest (self-install from npm, bypasses cache)
   when source is npm ref and plugin not installed
-    then installs, enables, and sets memory slot
+    then installs and sets memory slot
   when same version already installed
     then skips install but still enables and sets slot
   when older version installed
