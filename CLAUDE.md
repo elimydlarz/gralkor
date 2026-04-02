@@ -447,28 +447,6 @@ createAgentEndHandler
     then buffers messages in debouncer keyed by sessionKey || agentId || "default"
 ```
 
-#### cli-install
-
-```
-gralkor install
-  when no source provided
-    then defaults to @susu-eng/gralkor@latest (self-install from npm, bypasses cache)
-  when source is npm ref and plugin not installed
-    then installs the plugin
-  when same version already installed
-    then skips install
-  when older version installed
-    then uninstalls old version, installs new
-  when source is tarball path that does not exist
-    then errors with file not found
-  when --config JSON is provided
-    then sets each flattened key via openclaw config set
-  when --set key=value is provided
-    then sets each key via openclaw config set
-  when openclaw plugins list fails
-    then proceeds with fresh install (empty plugin list)
-```
-
 #### install-sequencing-docs
 
 ```
