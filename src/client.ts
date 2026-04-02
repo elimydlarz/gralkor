@@ -169,4 +169,12 @@ export class GraphitiClient {
     await this.request("POST", "/clear", { group_id: groupId });
   }
 
+  async buildIndices(): Promise<{ status: string }> {
+    return this.request("POST", "/build-indices");
+  }
+
+  async buildCommunities(groupId: string): Promise<{ communities: number; edges: number }> {
+    return this.request("POST", "/build-communities", { group_id: groupId });
+  }
+
 }
