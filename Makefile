@@ -10,7 +10,6 @@ help:
 	@echo "  test-plugin     TypeScript unit tests only (vitest)"
 	@echo "  test-functional TypeScript functional tests (test/functional/)"
 	@echo "  test-server     Python server tests only (no Docker needed)"
-	@echo "  test-cli        CLI package tests (vitest)"
 	@echo "  test-mutate     Mutation testing (TypeScript, Stryker)"
 	@echo "  typecheck       TypeScript type-check"
 	@echo ""
