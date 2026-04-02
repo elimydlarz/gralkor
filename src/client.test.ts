@@ -229,6 +229,91 @@ describe("retry logic", () => {
   });
 });
 
+// ── Rate-limit retry (429 + Retry-After) ────────────────────
+
+function rateLimitResponse(retryAfter: string): Response {
+  return new Response(JSON.stringify({ detail: "rate limited" }), {
+    status: 429,
+    headers: {
+      "content-type": "application/json",
+      "retry-after": retryAfter,
+    },
+  });
+}
+
+describe("rate-limit retry", () => {
+  it("when server returns 429 with Retry-After header, client waits and retries", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 0 });
+    fetchMock
+      .mockResolvedValueOnce(rateLimitResponse("1"))
+      .mockResolvedValueOnce(jsonResponse({ status: "ok" }));
+
+    const result = await client.health();
+    expect(result).toEqual({ status: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("when server returns 429 repeatedly, client keeps retrying (no cap)", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 0 });
+    fetchMock
+      .mockResolvedValueOnce(rateLimitResponse("0"))
+      .mockResolvedValueOnce(rateLimitResponse("0"))
+      .mockResolvedValueOnce(rateLimitResponse("0"))
+      .mockResolvedValueOnce(jsonResponse({ status: "ok" }));
+
+    const result = await client.health();
+    expect(result).toEqual({ status: "ok" });
+    // 3 rate-limited + 1 success = 4, even though maxRetries is 0
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("when server returns 429 then succeeds on retry, the successful response is returned", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 0 });
+    fetchMock
+      .mockResolvedValueOnce(rateLimitResponse("0"))
+      .mockResolvedValueOnce(jsonResponse({ facts: [{ uuid: "f1" }] }));
+
+    const result = await client.search({ query: "test", group_ids: ["g1"] });
+    expect(result).toEqual({ facts: [{ uuid: "f1" }] });
+  });
+
+  it("429 retries are independent of the 5xx/network retry budget", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 1 });
+    fetchMock
+      // Exhaust the 5xx retry budget
+      .mockResolvedValueOnce(textResponse("Server Error", 500))
+      .mockResolvedValueOnce(textResponse("Server Error", 500))
+      // Now a 429 — should still retry despite budget being exhausted
+      // Actually this won't happen because 5xx exhaustion throws.
+      // Instead: interleave 429 with 5xx to show independence
+      .mockResolvedValueOnce(jsonResponse({ status: "ok" }));
+
+    // Better test: 429s don't count against the 5xx budget
+    const client2 = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 1 });
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(rateLimitResponse("0"))  // 429 — doesn't consume retry budget
+      .mockResolvedValueOnce(rateLimitResponse("0"))  // 429 — doesn't consume retry budget
+      .mockResolvedValueOnce(textResponse("Server Error", 500))  // 5xx — consumes 1 of 1 retry
+      .mockResolvedValueOnce(jsonResponse({ status: "ok" }));  // success on retry
+
+    const result = await client2.health();
+    expect(result).toEqual({ status: "ok" });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("when request is aborted via AbortSignal during rate-limit wait, client stops retrying", async () => {
+    const client = new GraphitiClient({ baseUrl: "http://localhost:8000", maxRetries: 0, timeoutMs: 50 });
+    // Return 429 with a long Retry-After — the timeout should abort
+    fetchMock.mockResolvedValue(rateLimitResponse("60"));
+
+    await expect(client.health()).rejects.toThrow();
+    // Should have made at least 1 call but not retried endlessly
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchMock.mock.calls.length).toBeLessThan(3);
+  });
+});
+
 // ── Response parsing ─────────────────────────────────────────
 
 describe("response parsing", () => {
