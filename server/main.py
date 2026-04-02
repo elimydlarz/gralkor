@@ -275,6 +275,9 @@ def _find_rate_limit_error(exc: Exception) -> Exception | None:
     return None
 
 
+_DEFAULT_RETRY_AFTER = 5  # seconds
+
+
 @app.middleware("http")
 async def rate_limit_middleware(request, call_next):
     try:
@@ -283,7 +286,14 @@ async def rate_limit_middleware(request, call_next):
         rl = _find_rate_limit_error(exc)
         if rl is not None:
             msg = str(rl).split("\n")[0][:200]
-            return JSONResponse(status_code=429, content={"detail": msg})
+            retry_after = getattr(rl, "retry_after", None)
+            if retry_after is None:
+                retry_after = _DEFAULT_RETRY_AFTER
+            return JSONResponse(
+                status_code=429,
+                content={"detail": msg},
+                headers={"retry-after": str(int(retry_after))},
+            )
         raise
 
 
