@@ -1,9 +1,9 @@
 {
   "sessionId": "494e27d3-57c3-43d2-96c6-314863857a6f",
-  "pid": 93340,
+  "pid": 25941,
   "hostname": "Eli Mydlarz",
   "clockedInAt": "2026-03-31T09:24:06.308Z",
-  "lastActiveAt": "2026-04-02T02:58:22.514Z",
+  "lastActiveAt": "2026-04-02T03:58:01.966Z",
   "branch": "main",
   "task": "plugin install problem on agent:"
 }

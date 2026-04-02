@@ -22,10 +22,10 @@ beforeEach(() => {
 });
 
 describe("install", () => {
-  it("defaults to @susu-eng/gralkor when no source override", async () => {
-    await install({ source: "@susu-eng/gralkor" });
+  it("defaults to @susu-eng/gralkor@latest when no source override", async () => {
+    await install({ source: "@susu-eng/gralkor@latest" });
 
-    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
+    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor@latest");
   });
 
   it("fresh install from npm ref", async () => {
