@@ -6,7 +6,7 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Testing"
-	@echo "  test            Run all tests (plugin + functional + server + cli)"
+	@echo "  test            Run all tests (plugin + functional + server)"
 	@echo "  test-plugin     TypeScript unit tests only (vitest)"
 	@echo "  test-functional TypeScript functional tests (test/functional/)"
 	@echo "  test-server     Python server tests only (no Docker needed)"
