@@ -23,11 +23,15 @@ async function exec(args: string[]): Promise<ExecResult> {
     return { stdout, stderr, exitCode: 0 };
   } catch (err: unknown) {
     if (isExecError(err)) {
-      return {
-        stdout: err.stdout ?? "",
-        stderr: err.stderr ?? "",
-        exitCode: err.code ?? 1,
-      };
+      const stdout = err.stdout ?? "";
+      const stderr = err.stderr ?? "";
+      const exitCode = err.code ?? 1;
+      // openclaw exits non-zero for stale config warnings (e.g. plugins.allow
+      // referencing a not-yet-installed plugin). These are harmless — treat as success.
+      if (isConfigWarningOnly(stderr || stdout)) {
+        return { stdout, stderr, exitCode: 0 };
+      }
+      return { stdout, stderr, exitCode };
     }
     throw new Error(
       "openclaw not found on PATH. Install: https://docs.openclaw.ai/install"
