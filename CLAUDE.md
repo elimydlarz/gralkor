@@ -595,7 +595,7 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 | Command | Scope | Reporter |
 |---|---|---|
-| `make test` | All (plugin + functional + server + cli) | tree |
+| `make test` | All (plugin + functional + server) | tree |
 | `make test-plugin` | TS unit tests | tree |
 | `make test-functional` | TS functional tests | tree |
 | `make test-server` | Python | spec |
