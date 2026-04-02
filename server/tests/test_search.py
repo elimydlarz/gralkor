@@ -120,6 +120,48 @@ async def test_search_wrapped_rate_limit_returns_429(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_search_rate_limit_includes_retry_after_header(client, mock_graphiti):
+    """429 response includes Retry-After header."""
+
+    class RateLimitError(Exception):
+        status_code = 429
+
+    mock_graphiti.search.side_effect = RateLimitError("rate limited")
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 429
+    assert "retry-after" in resp.headers
+    # Should be a valid integer (seconds)
+    assert int(resp.headers["retry-after"]) >= 0
+
+
+@pytest.mark.asyncio
+async def test_search_rate_limit_forwards_upstream_retry_after(client, mock_graphiti):
+    """When upstream error has retry_after, it's forwarded in the header."""
+
+    class RateLimitError(Exception):
+        status_code = 429
+
+        def __init__(self, msg, retry_after=None):
+            super().__init__(msg)
+            self.retry_after = retry_after
+
+    mock_graphiti.search.side_effect = RateLimitError("rate limited", retry_after=30)
+
+    resp = await client.post("/search", json={
+        "query": "test",
+        "group_ids": ["g1"],
+    })
+
+    assert resp.status_code == 429
+    assert resp.headers["retry-after"] == "30"
+
+
+@pytest.mark.asyncio
 async def test_search_returns_empty_results(client, mock_graphiti):
     mock_graphiti.search.return_value = []
 
