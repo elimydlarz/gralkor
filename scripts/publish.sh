@@ -56,5 +56,6 @@ if [[ -z "${DRY_RUN:-}" ]]; then
 
   git commit --only package.json openclaw.plugin.json resources/memory/package.json -m "$version"
   git tag "v$version"
-  echo "Tagged v$version — run 'git push --follow-tags' to push"
+  git push --follow-tags
+  echo "Published and pushed v$version"
 fi
