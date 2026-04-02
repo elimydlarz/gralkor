@@ -432,7 +432,7 @@ OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools b
 ```json
 {
   "tools": {
-    "alsoAllow": ["memory_add"]
+    "alsoAllow": ["memory_add", "memory_build_indices", "memory_build_communities"]
   }
 }
 ```
