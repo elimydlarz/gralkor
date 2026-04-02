@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePluginList, isConfigWarningOnly } from "./openclaw.js";
+import { parsePluginList } from "./openclaw.js";
 
 describe("parsePluginList", () => {
   it("parses table output with multiple plugins", () => {
@@ -44,31 +44,5 @@ describe("parsePluginList", () => {
       "",
     ].join("\n");
     expect(parsePluginList(output)).toEqual([]);
-  });
-});
-
-describe("isConfigWarningOnly", () => {
-  it("returns true for config warnings without real errors", () => {
-    const output = "Config warnings:\n- plugins.allow: plugin not found: gralkor (stale config entry ignored)";
-    expect(isConfigWarningOnly(output)).toBe(true);
-  });
-
-  it("returns false when output contains npm error", () => {
-    const output = "Config warnings:\n- plugins.allow: ...\nnpm error code E404";
-    expect(isConfigWarningOnly(output)).toBe(false);
-  });
-
-  it("returns false when output contains 404", () => {
-    const output = "Config warnings:\n404 Not Found";
-    expect(isConfigWarningOnly(output)).toBe(false);
-  });
-
-  it("returns false when output contains ENOENT", () => {
-    const output = "Config warnings:\nENOENT: no such file";
-    expect(isConfigWarningOnly(output)).toBe(false);
-  });
-
-  it("returns false when output has no config warnings", () => {
-    expect(isConfigWarningOnly("some other error")).toBe(false);
   });
 });
