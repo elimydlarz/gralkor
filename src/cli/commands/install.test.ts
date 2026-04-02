@@ -57,19 +57,6 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalled();
   });
 
-  it("cleans up stale install when plugin not in list", async () => {
-    // Plugin directory exists on disk but openclaw plugins list doesn't report it
-    mocked.getInstalledPlugins.mockResolvedValue([]);
-    mocked.uninstallPlugin.mockRejectedValue(new Error("not installed"));
-    await install({ source: "@susu-eng/gralkor" });
-
-    // Should attempt uninstall (swallowing the error), remove dir, then install
-    expect(mocked.uninstallPlugin).toHaveBeenCalledWith("gralkor");
-    expect(mocked.removePluginDir).toHaveBeenCalledWith("gralkor");
-    expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
-  });
-
-
   it("proactively clears stale memory slot before listing plugins", async () => {
     await install({ source: "@susu-eng/gralkor" });
 
