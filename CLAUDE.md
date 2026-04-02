@@ -472,8 +472,6 @@ gralkor install
     then sets each key via openclaw config set
   when openclaw plugins list fails
     then proceeds with fresh install (empty plugin list)
-  when any openclaw command exits non-zero
-    then throws failure
 ```
 
 #### install-sequencing-docs
