@@ -84,7 +84,8 @@ export async function install(opts: InstallOptions): Promise<void> {
       execute: async () => {
         await oc.uninstallPlugin("gralkor").catch(() => {});
         await oc.removePluginDir("gralkor");
-        await oc.deleteConfig("plugins.entries.gralkor").catch(() => {});
+        // Clear stale config entry (openclaw has no "config delete", so set to empty)
+        await oc.setConfig("plugins.entries.gralkor", "").catch(() => {});
       },
     });
   }
