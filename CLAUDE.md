@@ -576,6 +576,7 @@ publish-version-integrity
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch) |
 | bundled-arm64-wheel | `make pack` builds falkordblite for linux/arm64 via Docker |
 | configurable-providers | `llm`/`embedder` in config; dynamic `config.yaml` at startup |
+| episode-idempotency | UUID per call; server deduplicates (5-min TTL) |
 
 ## Repo Map
 
