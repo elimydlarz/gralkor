@@ -5,6 +5,8 @@ import { GraphitiClient } from "./client.js";
 import { resolveConfig, validateOntologyConfig, GRAPHITI_URL, resolveProviders, createReadyGate, defaultConfig, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
+  createBuildIndicesTool,
+  createBuildCommunitiesTool,
   formatFacts,
   INTERPRETATION_INSTRUCTION,
 } from "./tools.js";
