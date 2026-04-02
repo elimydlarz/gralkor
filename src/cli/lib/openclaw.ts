@@ -147,29 +147,3 @@ export async function unsetConfig(key: string): Promise<void> {
     throw new Error(`Config unset failed: ${result.stderr || result.stdout}`);
   }
 }
-
-export async function setConfigJson(key: string, value: string): Promise<void> {
-  const result = await exec(["config", "set", "--json", key, value]);
-  if (result.exitCode !== 0) {
-    throw new Error(`Config set --json failed: ${result.stderr || result.stdout}`);
-  }
-}
-
-/**
- * Remove a plugin ID from the plugins.allow array.
- * Reads the current array, filters out the ID, and writes it back.
- * No-op if the array doesn't exist or doesn't contain the ID.
- */
-export async function removeFromAllowList(pluginId: string): Promise<void> {
-  const raw = await getConfig("plugins.allow");
-  if (!raw) return;
-  try {
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
-    const filtered = arr.filter((id: unknown) => id !== pluginId);
-    if (filtered.length === arr.length) return; // not present
-    await setConfigJson("plugins.allow", JSON.stringify(filtered));
-  } catch {
-    // Couldn't parse — leave it alone
-  }
-}
