@@ -19,7 +19,7 @@ export function formatFacts(facts: Fact[]): string {
   return `Facts (knowledge graph):\n${lines}`;
 }
 
-export interface StoreToolOpts {
+export interface ToolOpts {
   getGroupId?: () => string;
   serverReady?: ReadyGate;
 }
