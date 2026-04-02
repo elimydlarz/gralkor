@@ -38,12 +38,6 @@ export async function install(opts: InstallOptions): Promise<void> {
 
   const targetVersion = extractVersionFromTarball(source) ?? extractVersionFromNpmRef(source);
 
-  // 3. Clear stale memory slot before listing plugins.
-  // plugins.slots.memory referencing a missing plugin causes "Config invalid"
-  // which blocks ALL openclaw commands. Other stale references (plugins.allow,
-  // plugins.entries) only produce warnings that installPlugin tolerates.
-  await oc.setConfig("plugins.slots.memory", "").catch(() => {});
-
   let plugins: oc.PluginInfo[];
   try {
     plugins = await oc.getInstalledPlugins();
