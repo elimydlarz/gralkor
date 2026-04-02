@@ -77,15 +77,30 @@ The install is idempotent — running it again with the same version is a no-op.
 
 **What the installer handles:**
 
-1. Clears `plugins.slots.memory` if it references a missing plugin (prevents "Config invalid" errors that block all openclaw commands)
-2. Checks the installed version — skips if already current, uninstalls the old version if upgrading
-3. Runs `openclaw plugins install @susu-eng/gralkor@latest` (tolerates config warnings from stale references)
-4. Sets `plugins.slots.memory` to `gralkor`
-5. Applies any `--config`/`--set` values
+1. Checks the installed version — skips if already current, uninstalls the old version if upgrading
+2. Runs `openclaw plugins install @susu-eng/gralkor@latest` (tolerates config warnings from stale references)
+3. Applies any `--config`/`--set` values
 
-**What you must handle:**
+The installer does **not** modify `plugins.slots.memory` or `plugins.allow` — those are your responsibility.
 
-- **`plugins.allow`**: If your config uses an allowlist, add `"gralkor"` to it. The installer does not modify the allowlist — stale references produce warnings but don't break anything.
+**Recommended sequencing for init scripts:**
+
+```bash
+# 1. Set allowlist (before install, so openclaw commands don't warn)
+openclaw config set --json plugins.allow '["gralkor", ...]'
+
+# 2. Install (or upgrade) the plugin
+npx @susu-eng/gralkor@latest install
+
+# 3. Assign the memory slot (after install, so the plugin exists)
+openclaw config set plugins.slots.memory gralkor
+
+# 4. Plugin config (via install flags or directly)
+openclaw config set plugins.entries.gralkor.config.test true
+```
+
+**Other prerequisites:**
+
 - **API keys**: Set `GOOGLE_API_KEY` (default), `OPENAI_API_KEY`, or the relevant provider key in the environment before starting OpenClaw.
 - **`uv`**: Must be on PATH. The installer does not install it.
 
