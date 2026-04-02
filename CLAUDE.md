@@ -119,7 +119,6 @@ Standalone `gralkor` binary (`npx @susu-eng/gralkor@latest` or global install) w
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
 | error-propagation | Flush retries 3x exponential; final error propagates |
-| episode-idempotency | UUID per call; server deduplicates (5-min TTL) |
 | custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. |
 | fact-prioritization | `_prioritize_facts()`: 70% valid slots, 30% by relevance. Over-fetches 2x. |
 | sigterm-flush | `flushAll()` on SIGTERM; once via module guard |
