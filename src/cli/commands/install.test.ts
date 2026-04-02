@@ -18,7 +18,6 @@ beforeEach(() => {
   mocked.uninstallPlugin.mockResolvedValue(undefined);
   mocked.enablePlugin.mockResolvedValue(undefined);
   mocked.setConfig.mockResolvedValue(undefined);
-  mocked.removePluginDir.mockResolvedValue(undefined);
 });
 
 describe("install", () => {
