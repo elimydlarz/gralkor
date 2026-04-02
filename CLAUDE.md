@@ -85,7 +85,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 **Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, process lifetime).
 
-**Rate-limit passthrough:** Middleware: `RateLimitError` → 429 (prevents retry amplification).
+**Rate-limit passthrough:** Middleware: `RateLimitError` → 429 + `Retry-After` header (from upstream or default 5s). Client retries 429s indefinitely guided by `Retry-After`, independent of the 5xx/network retry budget. Cancellable via AbortSignal.
 
 **Modes:** No `FALKORDB_URI` → embedded FalkorDBLite. `FALKORDB_URI` → legacy TCP.
 
