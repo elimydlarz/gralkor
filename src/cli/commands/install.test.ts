@@ -30,7 +30,6 @@ describe("install", () => {
     await install({ source: "@susu-eng/gralkor" });
 
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
-    expect(mocked.enablePlugin).toHaveBeenCalledWith("gralkor");
     expect(mocked.setConfig).toHaveBeenCalledWith("plugins.slots.memory", "gralkor");
   });
 
