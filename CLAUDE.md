@@ -118,7 +118,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. |
 | fact-prioritization | `_prioritize_facts()`: 70% valid slots, 30% by relevance. Over-fetches 2x. |
 | sigterm-flush | `flushAll()` on SIGTERM; once via module guard |
-| config-check | `gralkor check`: LLM/embedder provider+key, `uv` on PATH |
+| config-check | `openclaw gralkor check` + `validateConfig()`: LLM/embedder provider+key, `uv` on PATH |
 | rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
 
 #### auto-recall-interpretation
