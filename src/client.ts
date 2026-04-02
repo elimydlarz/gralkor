@@ -83,8 +83,9 @@ export class GraphitiClient {
     body?: unknown,
   ): Promise<T> {
     let lastError: Error | undefined;
+    let attempt = 0;
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    while (true) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
       let clientError: Error | undefined;
@@ -96,6 +97,13 @@ export class GraphitiClient {
           body: body ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });
+
+        if (res.status === 429) {
+          const retryAfter = parseInt(res.headers.get("retry-after") ?? "5", 10);
+          clearTimeout(timer);
+          await new Promise((r) => setTimeout(r, retryAfter * 1000));
+          continue; // does not consume the 5xx/network retry budget
+        }
 
         if (!res.ok) {
           const text = await res.text().catch(() => "").then((t) => t.slice(0, 500));
@@ -109,7 +117,10 @@ export class GraphitiClient {
           }
           lastError = err;
           if (attempt < this.maxRetries) {
-            await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            attempt++;
+            await new Promise((r) => setTimeout(r, 500 * attempt));
+          } else {
+            throw lastError;
           }
           continue;
         }
@@ -123,14 +134,15 @@ export class GraphitiClient {
         if (clientError) throw clientError;
         lastError = err instanceof Error ? err : new Error(String(err));
         if (attempt < this.maxRetries) {
-          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          attempt++;
+          await new Promise((r) => setTimeout(r, 500 * attempt));
+        } else {
+          throw lastError;
         }
       } finally {
         clearTimeout(timer);
       }
     }
-
-    throw lastError!;
   }
 
   async health(): Promise<HealthResponse> {
