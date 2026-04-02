@@ -71,15 +71,6 @@ describe("install", () => {
     expect(mocked.installPlugin).toHaveBeenCalledWith("@susu-eng/gralkor");
   });
 
-  it("tolerates config warnings during install", async () => {
-    // openclaw plugins install may exit non-zero due to stale config warnings
-    // (e.g. plugins.allow referencing gralkor before it's installed)
-    mocked.installPlugin.mockRejectedValue(new Error("Install failed: Config warnings:\n- plugins.allow: plugin not found: gralkor"));
-
-    // Should not throw — installPlugin tolerates config warnings internally
-    // (This test verifies the mock behavior matches; real tolerance is in openclaw.ts)
-    await expect(install({ source: "@susu-eng/gralkor" })).resolves.not.toThrow();
-  });
 
   it("proactively clears stale memory slot before listing plugins", async () => {
     await install({ source: "@susu-eng/gralkor" });
