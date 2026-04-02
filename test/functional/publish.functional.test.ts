@@ -227,13 +227,14 @@ describe("publish-version-integrity", () => {
       expect(resVersion).toBe(pkgVersion);
     });
 
-    it("and a git commit and tag are created for the new version", () => {
+    it("and a git commit and tag are created and pushed for the new version", () => {
       execSync("bash scripts/publish.sh patch", {
         cwd: tempDir,
         env: {
           ...process.env,
           PUBLISH_BUILD_CMD: "true",
           PUBLISH_PUBLISH_CMD: "true",
+          PUBLISH_GIT_PUSH_CMD: "true",
           GIT_AUTHOR_NAME: "test",
           GIT_AUTHOR_EMAIL: "test@test",
           GIT_COMMITTER_NAME: "test",
