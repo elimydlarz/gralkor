@@ -120,6 +120,8 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | sigterm-flush | `flushAll()` on SIGTERM; once via module guard |
 | config-check | `openclaw gralkor check` + `validateConfig()`: LLM/embedder provider+key, `uv` on PATH |
 | rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
+| build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
+| build-communities-tool | `memory_build_communities` agent tool triggers `POST /build-communities` via `client.buildCommunities(groupId)` |
 
 #### auto-recall-interpretation
 
