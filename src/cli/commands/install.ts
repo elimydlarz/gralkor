@@ -76,14 +76,15 @@ export async function install(opts: InstallOptions): Promise<void> {
       execute: () => oc.uninstallPlugin("gralkor"),
     });
   } else if (!current) {
-    // Plugin not in list but directory may exist (untracked local code) — clean up.
+    // Plugin not in list but directory or config metadata may exist — clean up both.
     // uninstallPlugin may fail if the plugin isn't tracked, so fall back to
-    // removing the extension directory directly.
+    // removing the extension directory and config entries directly.
     actions.push({
       description: "Remove stale gralkor install (if present)",
       execute: async () => {
         await oc.uninstallPlugin("gralkor").catch(() => {});
         await oc.removePluginDir("gralkor");
+        await oc.deleteConfig("plugins.entries.gralkor").catch(() => {});
       },
     });
   }
