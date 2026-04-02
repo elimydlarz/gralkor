@@ -129,3 +129,10 @@ export async function getConfig(key: string): Promise<string | null> {
   const val = result.stdout.trim();
   return val || null;
 }
+
+export async function deleteConfig(key: string): Promise<void> {
+  const result = await exec(["config", "delete", key]);
+  if (result.exitCode !== 0) {
+    throw new Error(`Config delete failed: ${result.stderr || result.stdout}`);
+  }
+}
