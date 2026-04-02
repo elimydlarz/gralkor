@@ -64,7 +64,10 @@ describe("install", () => {
   });
 
   it("proceeds with fresh install when plugins list fails", async () => {
-    mocked.getInstalledPlugins.mockRejectedValue(new Error("Config invalid"));
+    mocked.getInstalledPlugins.mockReset();
+    mocked.getInstalledPlugins
+      .mockRejectedValueOnce(new Error("Config invalid"))
+      .mockResolvedValue([{ id: "gralkor", version: "26.0.0", enabled: true }]);
 
     await install({ source: "@susu-eng/gralkor" });
 
