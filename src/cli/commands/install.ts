@@ -38,14 +38,11 @@ export async function install(opts: InstallOptions): Promise<void> {
 
   const targetVersion = extractVersionFromTarball(source) ?? extractVersionFromNpmRef(source);
 
-  // 3. Clear all stale gralkor config references before listing plugins.
-  // The init script or prior install may have set these before the plugin
-  // directory exists, making all openclaw commands fail with
-  // "Config invalid: plugin not found". Clear upfront — re-set at the end.
-  log("  → Clear stale config references");
+  // 3. Clear stale memory slot before listing plugins.
+  // plugins.slots.memory referencing a missing plugin causes "Config invalid"
+  // which blocks ALL openclaw commands. Other stale references (plugins.allow,
+  // plugins.entries) only produce warnings that installPlugin tolerates.
   await oc.setConfig("plugins.slots.memory", "").catch(() => {});
-  await oc.removeFromAllowList("gralkor").catch(() => {});
-  await oc.unsetConfig("plugins.entries.gralkor").catch(() => {});
 
   let plugins: oc.PluginInfo[];
   try {
