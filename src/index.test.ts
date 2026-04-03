@@ -275,7 +275,7 @@ describe("register()", () => {
 
       const testApi = {
         ...api,
-        pluginConfig: { test: true },
+        pluginConfig: { test: true, dataDir: "/tmp/gralkor-test-data" },
       };
       const { register } = await import("./index.js");
       register(testApi);
