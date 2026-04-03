@@ -54,6 +54,7 @@ describe("register()", () => {
     _resetForTesting();
 
     api = {
+      pluginConfig: { dataDir: "/tmp/gralkor-test-data" },
       registerTool: vi.fn(),
       on: vi.fn(),
       registerService: vi.fn(),
