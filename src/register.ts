@@ -184,19 +184,7 @@ export function registerCli(
           }
         });
 
-      gralkor
-        .command("clear <group_id>")
-        .description("Clear the knowledge graph for a group")
-        .action(async (groupId: string) => {
-          try {
-            await client.clearGraph(groupId);
-            console.log(`Cleared graph for group "${groupId}".`);
-          } catch (err) {
-            console.error(
-              `Clear failed: ${err instanceof Error ? err.message : err}`,
-            );
-          }
-        });
+
     },
     { commands: ["gralkor"] },
   );
