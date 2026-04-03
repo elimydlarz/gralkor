@@ -58,9 +58,11 @@ export function registerServerService(
     test: config.test,
   });
 
+  console.log("[gralkor] boot: registering service gralkor-server");
   api.registerService({
     id: "gralkor-server",
     async start() {
+      console.log("[gralkor] boot: service start() called by host");
       await manager.start();
       serverReady?.resolve();
     },
