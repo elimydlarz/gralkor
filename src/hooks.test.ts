@@ -1209,8 +1209,9 @@ describe("agent_end handler", () => {
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
-  it("propagates errors when Graphiti is unreachable on flush (after retries)", async () => {
+  it("logs error when Graphiti is unreachable on flush (after retries) without crashing", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
     );
@@ -1223,9 +1224,14 @@ describe("agent_end handler", () => {
       ],
     });
 
-    await expect(errorDebouncer.flush("default")).rejects.toThrow("ECONNREFUSED");
+    // Does not throw — errors are logged, not propagated
+    await errorDebouncer.flush("default");
     expect(client.ingestMessages).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("message dropped"),
+    );
     errorDebouncer.dispose();
+    errorSpy.mockRestore();
   });
 
   it("formats episode body with auto-capture metadata on flush", async () => {
