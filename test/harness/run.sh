@@ -5,12 +5,13 @@ echo "=== Gralkor Install Harness ==="
 echo ""
 
 # Configure Google API key from env at runtime.
-# Usage: docker run --rm -it -e GOOGLE_API_KEY=... gralkor-harness:latest
-if [ -n "${GOOGLE_API_KEY:-}" ]; then
+# Usage: docker run --rm -it -e GEMINI_API_KEY=... gralkor-harness:latest
+API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+if [ -n "$API_KEY" ]; then
   echo "Configuring googleApiKey from env..."
-  npx openclaw config set plugins.entries.gralkor.config.googleApiKey "$GOOGLE_API_KEY" 2>&1
+  npx openclaw config set plugins.entries.gralkor.config.googleApiKey "$API_KEY" 2>&1
 else
-  echo "WARNING: GOOGLE_API_KEY not set — server will fail to start"
+  echo "WARNING: GEMINI_API_KEY not set — server will fail to start"
 fi
 echo ""
 
