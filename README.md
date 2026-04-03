@@ -314,13 +314,15 @@ The following entity names are used internally by Graphiti and cannot be used: `
 
 ## Data storage
 
-By default, all data lives in `.gralkor-data/` alongside the plugin directory (i.e. `{pluginDir}/../.gralkor-data/`):
+`dataDir` is a required config field — the operator chooses where persistent data lives:
 - `venv/` — Python virtual environment (Graphiti, FalkorDBLite, etc.)
 - `falkordb/` — embedded FalkorDB database files
 
-This location is outside the plugin directory so that `openclaw plugins uninstall` doesn't destroy runtime data — the graph database survives plugin upgrades without any data-preservation workarounds.
+By keeping `dataDir` outside the plugin install directory, `openclaw plugins uninstall` and reinstall won't destroy the graph database. The operator controls the lifecycle of this directory.
 
-Set `dataDir` in plugin config to change the location.
+```bash
+openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor
+```
 
 ## How it works
 
