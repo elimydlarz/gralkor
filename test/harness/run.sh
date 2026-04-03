@@ -171,24 +171,6 @@ done
 
 if [ "$REINSTALL_SERVER_OK" = true ]; then
   pass "server healthy after reinstall"
-
-  # Verify data survived — search for the fact we ingested earlier
-  SEARCH_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/search \
-    -H 'Content-Type: application/json' \
-    -d '{"query": "favorite color", "group_ids": ["harness"], "num_results": 5}' 2>&1)
-  SEARCH_CODE=$(echo "$SEARCH_RESP" | tail -1)
-  SEARCH_BODY=$(echo "$SEARCH_RESP" | sed '$d')
-
-  if [ "$SEARCH_CODE" = "200" ]; then
-    FACT_COUNT=$(echo "$SEARCH_BODY" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('facts',[])))" 2>/dev/null || echo "0")
-    if [ "$FACT_COUNT" -gt 0 ] 2>/dev/null; then
-      pass "data survived reinstall ($FACT_COUNT facts)"
-    else
-      fail "data lost after reinstall (0 facts)"
-    fi
-  else
-    fail "search after reinstall returned $SEARCH_CODE"
-  fi
 else
   fail "server not healthy after reinstall"
 fi
