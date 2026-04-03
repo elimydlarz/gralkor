@@ -123,6 +123,20 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
     delete env.FALKORDB_URI;
 
+    // Check if a server is already running before spawning a new one.
+    // This handles the case where a previous session left a server running
+    // and the module-level manager cache was lost (e.g. process restart).
+    try {
+      const res = await fetch(`http://127.0.0.1:${opts.port}/health`);
+      if (res.ok) {
+        const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
+        console.log(`[gralkor] boot: server already running on port ${opts.port}, reusing (${bootDuration}s)`);
+        return;
+      }
+    } catch {
+      // Not running — proceed with spawn
+    }
+
     console.log("[gralkor] Starting Graphiti server on port", opts.port);
 
     proc = spawn(
