@@ -48,7 +48,7 @@ mkdir -p /tmp/harness-workspace
 
 # Run gateway with timeout — we just want to see if the plugin loads
 # The gateway will fail eventually (no LLM key) but we care about plugin load logs
-timeout 30 openclaw gateway start --workspace /tmp/harness-workspace 2>&1 || EXIT_CODE=$?
+timeout 30 npx openclaw gateway start --workspace /tmp/harness-workspace 2>&1 || EXIT_CODE=$?
 
 echo ""
 echo "Gateway exited with code: ${EXIT_CODE:-0}"
