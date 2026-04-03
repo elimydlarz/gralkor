@@ -18,11 +18,6 @@ vi.mock("./server-manager.js", async (importOriginal) => {
   };
 });
 
-// Mock resolveSecretEnv
-vi.mock("./resolve-secrets.js", () => ({
-  resolveSecretEnv: vi.fn().mockResolvedValue({}),
-}));
-
 /**
  * Build a mock Commander chain that captures subcommands and their action handlers.
  * Returns both the mock `program` and a map of action handlers keyed by command name.
