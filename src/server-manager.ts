@@ -17,6 +17,7 @@ export interface ServerManagerOptions {
   serverDir: string;
   port: number;
   env?: Record<string, string>;
+  resolveSecretEnv?: () => Promise<Record<string, string>>;
   llmConfig?: ModelConfig;
   embedderConfig?: ModelConfig;
   ontologyConfig?: OntologyConfig;
