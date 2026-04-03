@@ -533,13 +533,11 @@ export async function flushSessionBuffer(
         console.warn(`[gralkor] auto-capture flush attempt ${attempt + 1} failed, retrying in ${delay}ms: ${err instanceof Error ? err.message : err}`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
-        console.error(`[gralkor] auto-capture flush failed after ${attempt + 1} attempts — key:${key}: ${err instanceof Error ? err.message : err}`);
-        break;
+        console.error(`[gralkor] auto-capture flush failed after ${attempt + 1} attempts (message dropped) — key:${key}: ${err instanceof Error ? err.message : err}`);
+        return;
       }
     }
   }
-
-  throw lastError;
 }
 
 export function createAgentEndHandler(
