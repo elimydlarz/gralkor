@@ -215,6 +215,22 @@ export const configSchema = {
       default: false,
       description: "Enable test mode — logs full episode bodies and search results for debugging.",
     },
+    googleApiKey: {
+      type: ["string", "object", "null"] as const,
+      description: "Google API key for Gemini LLM and embeddings",
+    },
+    openaiApiKey: {
+      type: ["string", "object", "null"] as const,
+      description: "OpenAI API key; also needed for embeddings with Anthropic/Groq providers",
+    },
+    anthropicApiKey: {
+      type: ["string", "object", "null"] as const,
+      description: "Anthropic API key for Claude-based LLM extraction",
+    },
+    groqApiKey: {
+      type: ["string", "object", "null"] as const,
+      description: "Groq API key for Groq-hosted LLM extraction",
+    },
   },
 };
 
