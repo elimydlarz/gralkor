@@ -29,7 +29,7 @@ try {
   version = JSON.parse(readFileSync(join(pluginDir, "package.json"), "utf-8")).version ?? "unknown";
 } catch { /* not critical */ }
 
-// OpenClaw calls register() 4+ times per event; only log config once
+// Guard: only log config once per process (module may be re-evaluated on reload)
 let configLogged = false;
 
 // Guard against duplicate SIGTERM handlers across multiple register() calls
