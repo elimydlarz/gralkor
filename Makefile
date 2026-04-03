@@ -23,6 +23,12 @@ help:
 	@echo "  down            Stop services"
 	@echo "  logs            Tail Graphiti logs"
 	@echo ""
+	@echo "Harness (OpenClaw install test in Docker)"
+	@echo "  harness         Build harness image from local source"
+	@echo "  harness-npm     Build harness image installing from npm"
+	@echo "  harness-run     Run the harness test script"
+	@echo "  harness-shell   Open interactive shell in harness"
+	@echo ""
 	@echo "Setup"
 	@echo "  setup-server    Create server venv and install Python deps (first time only)"
 
