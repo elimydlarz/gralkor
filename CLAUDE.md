@@ -397,9 +397,9 @@ flushSessionBuffer
   when flush fails with retryable error
     then retries up to 3 times with exponential backoff (1s/2s/4s)
   when flush fails with 4xx client error
-    then does not retry (throws immediately)
+    then does not retry
   when all retries exhausted
-    then throws the last error
+    then logs error (message dropped) without crashing
   when messages are empty after filtering
     then skips flush (no API call)
 ```
