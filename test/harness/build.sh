@@ -5,6 +5,9 @@
 #   bash test/harness/build.sh              # local tarball (test your changes)
 #   bash test/harness/build.sh --npm        # from npm (test what operators get)
 #   bash test/harness/build.sh --no-cache   # rebuild without Docker cache
+#
+# Runs as linux/amd64 by default (matches most operators, avoids falkordb.so
+# arch mismatch on Apple Silicon). Override: PLATFORM=linux/arm64 bash test/harness/build.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
