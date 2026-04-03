@@ -4,14 +4,34 @@ set -euo pipefail
 echo "=== Gralkor Install Harness ==="
 echo ""
 
+# Configure API keys from env vars at runtime.
+# Usage: docker run --rm -it -e GOOGLE_API_KEY=... gralkor-harness:latest
+if [ -n "${GOOGLE_API_KEY:-}" ]; then
+  echo "Configuring googleApiKey from env..."
+  npx openclaw config set plugins.entries.gralkor.config.googleApiKey "$GOOGLE_API_KEY" 2>&1
+fi
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+  echo "Configuring openaiApiKey from env..."
+  npx openclaw config set plugins.entries.gralkor.config.openaiApiKey "$OPENAI_API_KEY" 2>&1
+fi
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "Configuring anthropicApiKey from env..."
+  npx openclaw config set plugins.entries.gralkor.config.anthropicApiKey "$ANTHROPIC_API_KEY" 2>&1
+fi
+if [ -n "${GROQ_API_KEY:-}" ]; then
+  echo "Configuring groqApiKey from env..."
+  npx openclaw config set plugins.entries.gralkor.config.groqApiKey "$GROQ_API_KEY" 2>&1
+fi
+echo ""
+
 # 1. Verify OpenClaw sees the plugin
 echo "--- npx openclaw plugins list ---"
 npx openclaw plugins list 2>&1 || true
 echo ""
 
-# 2. Show plugin config
+# 2. Show plugin config (redact API keys)
 echo "--- npx openclaw config get plugins ---"
-npx openclaw config get plugins 2>&1 || true
+npx openclaw config get plugins 2>&1 | sed -E 's/("(google|openai|anthropic|groq)Api[Kk]ey"\s*:\s*")[^"]+/\1***REDACTED***/g' || true
 echo ""
 
 # 3. Check installed plugin files
@@ -39,16 +59,14 @@ else
 fi
 echo ""
 
-# 4. Try to start the gateway briefly to see if plugin loads
-echo "--- Gateway startup test (10s timeout) ---"
+# 4. Try to start the gateway to see if plugin + server load
+echo "--- Gateway startup test (timeout: 180s) ---"
 echo "Starting openclaw gateway to verify plugin loading..."
 
-# Create a minimal workspace
 mkdir -p /tmp/harness-workspace
 
-# Run gateway with timeout — we just want to see if the plugin loads
-# The gateway will fail eventually (no LLM key) but we care about plugin load logs
-timeout 30 npx openclaw gateway start --workspace /tmp/harness-workspace 2>&1 || EXIT_CODE=$?
+# Give the server time to start (venv sync + health polling can take ~2 min)
+timeout 180 npx openclaw gateway start --workspace /tmp/harness-workspace 2>&1 || EXIT_CODE=$?
 
 echo ""
 echo "Gateway exited with code: ${EXIT_CODE:-0}"
