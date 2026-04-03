@@ -363,7 +363,7 @@ memory_build_communities tool
 startup
   then the server is started as fire-and-forget during registration
   then subsequent register() calls reuse the existing manager (no duplicate starts)
-  when server is already running and healthy on the port (e.g. module re-evaluated mid-boot)
+  when server is already running and healthy on the port (e.g. module re-evaluated after a successful boot)
     then adopts the running server without killing or respawning
     and starts the health monitor
     and returns without writing a pid file
