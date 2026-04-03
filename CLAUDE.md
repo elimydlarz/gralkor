@@ -129,68 +129,67 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 #### Recall
 
 ```
-recall
-  auto-recall-interpretation
-    when auto-recall returns results
-      then prependContext includes an instruction to interpret facts for relevance to the task at hand
-    when memory_search tool execute returns results
-      then response includes the same interpretation instruction
-  auto-recall-further-querying
-    when auto-recall returns results
-      then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
-    when memory_search tool execute returns results
-      then response contains facts and interpretation instruction
-      and response does not contain further querying instruction
-  unified-search (memory_search tool)
-    when searching
-      then searches native memory and graph in parallel
-      and combines results into a single response
-      when both native and graph return results
-        then response includes native results and graph facts
-        and response includes interpretation instruction
-      when only graph returns results (native unavailable)
-        then response includes graph facts only
-      when only native returns results (graph empty)
-        then response includes native results only
-      when neither returns results
-        then response is "No memories found."
-      native memory delegation
-        when manager is available
-          then calls manager.search with query and options
-          and returns JSON with results array
-        when manager is unavailable
-          then returns null
-        when native search throws
-          then returns null (does not propagate error)
-    when server is not ready
-      then throws error
-    memory_get tool
-      when path is valid
-        then reads file via native memory SDK
-        and returns JSON result
-      when read fails
-        then returns JSON with error
-  extractUserMessageFromPrompt
-    when prompt has leading "System: ..." lines
-      then strips them and returns user message
-    when prompt has multiple leading System: lines
-      then strips all of them
-    when prompt has session-start instruction followed by user message
-      then strips session-start and returns user message
-    when prompt is only a session-start instruction
-      then returns empty string
-    when prompt has metadata wrapper followed by user message
-      then strips wrapper and returns user message
-    when prompt is only metadata wrapper
-      then falls back to last user message from event.messages
-    when prompt is metadata wrapper + whitespace only
-      then falls back to messages
-    when fallback messages contain only non-text blocks
-      then returns empty string
-    when System: appears mid-string (not at start)
-      then does NOT strip it
-    when session-start text appears mid-string
-      then does NOT strip it
+auto-recall-interpretation
+  when auto-recall returns results
+    then prependContext includes an instruction to interpret facts for relevance to the task at hand
+  when memory_search tool execute returns results
+    then response includes the same interpretation instruction
+auto-recall-further-querying
+  when auto-recall returns results
+    then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
+  when memory_search tool execute returns results
+    then response contains facts and interpretation instruction
+    and response does not contain further querying instruction
+unified-search (memory_search tool)
+  when searching
+    then searches native memory and graph in parallel
+    and combines results into a single response
+    when both native and graph return results
+      then response includes native results and graph facts
+      and response includes interpretation instruction
+    when only graph returns results (native unavailable)
+      then response includes graph facts only
+    when only native returns results (graph empty)
+      then response includes native results only
+    when neither returns results
+      then response is "No memories found."
+    native memory delegation
+      when manager is available
+        then calls manager.search with query and options
+        and returns JSON with results array
+      when manager is unavailable
+        then returns null
+      when native search throws
+        then returns null (does not propagate error)
+  when server is not ready
+    then throws error
+  memory_get tool
+    when path is valid
+      then reads file via native memory SDK
+      and returns JSON result
+    when read fails
+      then returns JSON with error
+extractUserMessageFromPrompt
+  when prompt has leading "System: ..." lines
+    then strips them and returns user message
+  when prompt has multiple leading System: lines
+    then strips all of them
+  when prompt has session-start instruction followed by user message
+    then strips session-start and returns user message
+  when prompt is only a session-start instruction
+    then returns empty string
+  when prompt has metadata wrapper followed by user message
+    then strips wrapper and returns user message
+  when prompt is only metadata wrapper
+    then falls back to last user message from event.messages
+  when prompt is metadata wrapper + whitespace only
+    then falls back to messages
+  when fallback messages contain only non-text blocks
+    then returns empty string
+  when System: appears mid-string (not at start)
+    then does NOT strip it
+  when session-start text appears mid-string
+    then does NOT strip it
 ```
 
 #### Capture
