@@ -83,14 +83,10 @@ openclaw config set plugins.entries.gralkor.config.test true
 
 ### 3. Set your LLM API key
 
-Graphiti needs an LLM to extract entities and relationships from conversations. Configure your API key via plugin config — either as a plaintext string or a SecretRef that references an environment variable:
+Graphiti needs an LLM to extract entities and relationships from conversations. Configure your API key in plugin config:
 
 ```bash
-# Plaintext
 openclaw config set plugins.entries.gralkor.config.googleApiKey 'your-key-here'
-
-# Or reference an env var (SecretRef)
-openclaw config set plugins.entries.gralkor.config.googleApiKey '{"$ref": "env:GOOGLE_API_KEY"}'
 ```
 
 Supported providers:
