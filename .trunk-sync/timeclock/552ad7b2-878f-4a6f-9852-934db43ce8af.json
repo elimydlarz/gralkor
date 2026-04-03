@@ -1,9 +1,9 @@
 {
   "sessionId": "552ad7b2-878f-4a6f-9852-934db43ce8af",
-  "pid": 88017,
+  "pid": 88217,
   "hostname": "Eli Mydlarz",
   "clockedInAt": "2026-04-03T12:20:28.978Z",
-  "lastActiveAt": "2026-04-03T12:24:00.920Z",
+  "lastActiveAt": "2026-04-03T12:24:13.487Z",
   "branch": "main",
   "task": "Error starting on agent:"
 }
