@@ -58,7 +58,10 @@ export function registerServerService(
   pluginDir: string,
   serverReady?: ReadyGate,
 ): ServerManager {
-  const dataDir = config.dataDir ?? join(pluginDir, "..", ".gralkor-data");
+  if (!config.dataDir) {
+    throw new Error("[gralkor] dataDir is required — set plugins.entries.gralkor.config.dataDir");
+  }
+  const dataDir = config.dataDir;
   const serverDir = join(pluginDir, "server");
 
   const manager = createServerManager({
