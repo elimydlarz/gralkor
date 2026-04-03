@@ -39,10 +39,10 @@ let sigTermHandlerInstalled = false;
 // Cached server manager — survives register() reloads so we don't spawn twice
 let cachedManager: ReturnType<typeof registerServerService> | undefined;
 
-/** @internal Reset module-level guards for testing only */
+/** @internal Reset module-level guards for testing only.
+ *  Does NOT reset sigTermHandlerInstalled — handlers can't be cleanly removed. */
 export function _resetForTesting() {
   configLogged = false;
-  sigTermHandlerInstalled = false;
   cachedManager = undefined;
 }
 
