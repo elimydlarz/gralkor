@@ -296,18 +296,34 @@ export function serializeOntologyYaml(ontology: OntologyConfig): string {
 
 async function waitForHealth(port: number): Promise<void> {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
+  const start = Date.now();
+  let polls = 0;
+  let lastError = "";
 
   while (Date.now() < deadline) {
+    polls++;
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`);
-      if (res.ok) return;
-    } catch {
-      // not ready yet
+      if (res.ok) {
+        console.log(`[gralkor] boot: health poll succeeded after ${polls} attempts (${((Date.now() - start) / 1000).toFixed(1)}s)`);
+        return;
+      }
+      const newError = `HTTP ${res.status}`;
+      if (newError !== lastError) {
+        console.log(`[gralkor] boot: health poll — ${newError}`);
+        lastError = newError;
+      }
+    } catch (err) {
+      const newError = err instanceof Error ? err.message : String(err);
+      if (newError !== lastError) {
+        console.log(`[gralkor] boot: health poll — ${newError}`);
+        lastError = newError;
+      }
     }
     await new Promise((r) => setTimeout(r, HEALTH_POLL_INTERVAL_MS));
   }
 
   throw new Error(
-    `Graphiti server did not become healthy within ${HEALTH_TIMEOUT_MS / 1000}s`,
+    `Graphiti server did not become healthy within ${HEALTH_TIMEOUT_MS / 1000}s (${polls} polls, last error: ${lastError})`,
   );
 }
