@@ -61,9 +61,14 @@ export function registerServerService(
 
   console.log("[gralkor] boot: registering service gralkor-server");
   const registeredAt = Date.now();
+  let hostStarted = false;
+
   api.registerService({
     id: "gralkor-server",
     async start() {
+      hostStarted = true;
+      clearTimeout(warnTimer);
+      clearTimeout(selfStartTimer);
       const waitMs = Date.now() - registeredAt;
       console.log(`[gralkor] boot: service start() called by host (waited ${waitMs}ms after registration)`);
       try {
@@ -80,16 +85,30 @@ export function registerServerService(
     },
   });
 
-  // Watchdog: warn if start() hasn't been called after a reasonable delay
-  const startWatchdog = setTimeout(() => {
-    if (!serverReady?.isReady()) {
+  // Watchdog: warn at 30s if start() hasn't been called
+  const warnTimer = setTimeout(() => {
+    if (!hostStarted) {
       console.warn(
         `[gralkor] boot: WARNING — service start() has not been called ${((Date.now() - registeredAt) / 1000).toFixed(0)}s after registration. ` +
-        "The host gateway may not be starting registered services. Check gateway logs for service lifecycle errors."
+        "The host gateway may not be starting registered services. Will self-start at 60s."
       );
     }
   }, 30_000);
-  if (startWatchdog.unref) startWatchdog.unref();
+  if (warnTimer.unref) warnTimer.unref();
+
+  // Self-start: start the server ourselves at 60s if host hasn't
+  const selfStartTimer = setTimeout(async () => {
+    if (hostStarted) return;
+    console.log("[gralkor] boot: self-starting server (host did not call start() within 60s)");
+    try {
+      await manager.start();
+      serverReady?.resolve();
+      console.log("[gralkor] boot: self-start succeeded");
+    } catch (err) {
+      console.error("[gralkor] boot: self-start failed:", err instanceof Error ? err.message : err);
+    }
+  }, 60_000);
+  if (selfStartTimer.unref) selfStartTimer.unref();
 
   return manager;
 }
