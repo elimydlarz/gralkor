@@ -520,8 +520,6 @@ rate-limit-retry
 
 #### startup
 
-##### startup
-
 ```
 startup
   then the server is started as fire-and-forget during registration
