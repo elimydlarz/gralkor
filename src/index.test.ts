@@ -165,6 +165,28 @@ describe("register()", () => {
     expect(cmdNames).toEqual(["status", "search <group_id> <query...>"]);
   });
 
+  it("subsequent register() calls reuse the existing manager (no duplicate starts)", async () => {
+    const { register, _resetForTesting } = await import("./index.js");
+    _resetForTesting();
+
+    const freshApi = () => ({
+      registerTool: vi.fn(),
+      on: vi.fn(),
+      registerService: vi.fn(),
+      registerCli: vi.fn(),
+    });
+
+    const api1 = freshApi();
+    const api2 = freshApi();
+
+    register(api1);
+    register(api2);
+
+    // First call registers the service, second does not
+    expect(api1.registerService).toHaveBeenCalledOnce();
+    expect(api2.registerService).not.toHaveBeenCalled();
+  });
+
   it("reads plugin config from api.pluginConfig (OpenClaw contract)", async () => {
     const { register } = await import("./index.js");
 
