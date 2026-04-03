@@ -46,12 +46,7 @@ export function registerServerService(
     dataDir,
     serverDir,
     port: GRAPHITI_PORT,
-    resolveSecretEnv: () => resolveSecretEnv({
-      googleApiKey: config.googleApiKey,
-      openaiApiKey: config.openaiApiKey,
-      anthropicApiKey: config.anthropicApiKey,
-      groqApiKey: config.groqApiKey,
-    }),
+    secretEnv: buildSecretEnv(config),
     llmConfig: config.llm,
     embedderConfig: config.embedder,
     ontologyConfig: config.ontology,
