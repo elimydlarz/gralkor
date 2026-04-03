@@ -418,8 +418,6 @@ DebouncedFlush
   idle timeout
     when idle timeout elapses after set
       then flushes the value
-    when idle flush fails after retries
-      then error is warned (not silently swallowed)
     when set called again before timeout
       then resets the timer (debounce)
   state queries
