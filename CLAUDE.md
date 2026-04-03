@@ -605,7 +605,7 @@ startup
 
 ## Environment Variables
 
-API keys are configured via plugin config using the OpenClaw secret-input SDK (supports plaintext strings and SecretRef objects like `{ "$ref": "env:GOOGLE_API_KEY" }`). Resolved at server start via `src/resolve-secrets.ts`.
+API keys are configured as strings in plugin config (`api.pluginConfig`). The OpenClaw gateway resolves SecretRef objects before they reach the plugin — we receive plain strings. `buildSecretEnv()` in `src/register.ts` maps config fields to env vars passed to the server manager.
 
 - `FALKORDB_URI` — (Optional) legacy Docker mode
 
