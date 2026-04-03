@@ -131,14 +131,12 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 ```
 secret-resolution
   when config contains a plaintext API key string
-    then resolved value is that string
-  when config contains a SecretRef object
-    then resolved value is the dereferenced secret
-  when config value is null or absent
-    then resolved value is undefined
-  when resolved value is empty or whitespace
-    then resolved value is undefined
-  then resolved API keys are passed to the server manager as env vars
+    then env var is set to that string (trimmed)
+  when config value is empty or whitespace
+    then env var is not set
+  when config value is undefined or absent
+    then env var is not set
+  then env vars are built synchronously and passed to the server manager
   then process.env is not read for API keys
 ```
 

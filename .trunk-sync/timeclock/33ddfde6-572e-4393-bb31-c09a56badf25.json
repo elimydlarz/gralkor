@@ -1,9 +1,9 @@
 {
   "sessionId": "33ddfde6-572e-4393-bb31-c09a56badf25",
-  "pid": 37188,
+  "pid": 37750,
   "hostname": "Eli Mydlarz",
   "clockedInAt": "2026-04-03T11:39:35.728Z",
-  "lastActiveAt": "2026-04-03T11:41:13.294Z",
+  "lastActiveAt": "2026-04-03T11:41:28.545Z",
   "branch": "main",
   "task": "Still trouble loading secrets the new way:"
 }
