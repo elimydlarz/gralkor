@@ -48,9 +48,11 @@ else
   echo "Plugin tarball: test/harness/plugin.tgz"
 fi
 
+PLATFORM="${PLATFORM:-linux/amd64}"
+
 echo ""
-echo "=== Building Docker image ==="
-docker build ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gralkor-harness:latest "$HARNESS_DIR"
+echo "=== Building Docker image (platform: $PLATFORM) ==="
+docker build --platform "$PLATFORM" ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gralkor-harness:latest "$HARNESS_DIR"
 
 # Clean up tarball
 rm -f "$HARNESS_DIR/plugin.tgz"
