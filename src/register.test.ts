@@ -169,7 +169,6 @@ describe("registerCli with ServerManager", () => {
     const client = {
       health: vi.fn().mockResolvedValue({ status: "ok" }),
       search: vi.fn().mockResolvedValue({ facts: [], nodes: [], episodes: [], communities: [] }),
-      clearGraph: vi.fn(),
     };
     const config: GralkorConfig = {
       autoCapture: { enabled: true },
