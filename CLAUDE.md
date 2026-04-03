@@ -420,6 +420,13 @@ test-mode-query-logging
     then the query argument is logged
   when test mode is disabled
     then queries are not logged
+cross-encoder-selection
+  when llm provider is gemini
+    then uses GeminiRerankerClient
+  when llm provider is not gemini and OPENAI_API_KEY is set
+    then uses OpenAIRerankerClient
+  when llm provider is not gemini and OPENAI_API_KEY is not set
+    then cross_encoder is None
 ```
 
 #### Operations
