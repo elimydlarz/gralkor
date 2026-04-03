@@ -317,10 +317,6 @@ describe("register()", () => {
       const { register, _resetForTesting } = await import("./index.js");
       _resetForTesting();
 
-      // Also reset sigTermHandlerInstalled
-      const mod = await import("./index.js");
-      (mod as Record<string, unknown>)._resetSigTermForTesting?.();
-
       register(api);
 
       expect(sigTermHandler).toBeDefined();
