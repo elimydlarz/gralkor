@@ -492,7 +492,7 @@ export async function flushSessionBuffer(
     return;
   }
 
-  const groupId = buffer.agentId ?? "default";
+  const groupId = sanitizeGroupId(buffer.agentId ?? "default");
   const userFiltered = filtered.filter(m => m.role === "user").length;
   const assistantFiltered = filtered.filter(m => m.role === "assistant").length;
   const assistantBlocks = filtered.filter(m => m.role === "assistant").flatMap(m => m.content);
