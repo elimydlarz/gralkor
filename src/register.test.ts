@@ -224,29 +224,23 @@ describe("registerCli with ServerManager", () => {
 
 describe("service-self-start", () => {
   let api: PluginApiBase;
-  let registeredService: { id: string; start: () => Promise<void>; stop: () => Promise<void> };
   let serverReady: ReadyGate;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     serverReady = { isReady: vi.fn().mockReturnValue(false), resolve: vi.fn() };
     api = {
       registerTool: vi.fn(),
       on: vi.fn(),
-      registerService: vi.fn().mockImplementation((svc: any) => { registeredService = svc; }),
+      registerService: vi.fn(),
       registerCli: vi.fn(),
     } as unknown as PluginApiBase;
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    vi.useRealTimers();
-    warnSpy.mockRestore();
     logSpy.mockRestore();
     errorSpy.mockRestore();
   });
@@ -257,109 +251,20 @@ describe("service-self-start", () => {
     idleTimeoutMs: 300_000,
   };
 
-  describe("when the host calls start() before 30s", () => {
-    it("starts normally and no warning is logged", async () => {
+  it("starts the server as fire-and-forget during registration", async () => {
+    const { createServerManager } = await import("./server-manager.js");
+    const mockStart = vi.fn().mockResolvedValue(undefined);
+    (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+      start: mockStart,
+      stop: vi.fn(),
+      isRunning: vi.fn().mockReturnValue(false),
+    });
+
     registerServerService(api, config, "/fake/plugin", serverReady);
 
-    // Host calls start() at 5s — well before the 30s warning
-    vi.advanceTimersByTime(5_000);
-    await registeredService.start();
+    // Fire-and-forget is async — flush microtasks
+    await vi.dynamicImportSettled();
 
-    // Advance past both 30s and 60s — no warning should fire
-    vi.advanceTimersByTime(60_000);
-
-    const warnings = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(warnings).not.toContain("WARNING");
-    expect(serverReady.resolve).toHaveBeenCalled();
-    });
-  });
-
-  describe("when the host has not called start() after 30s", () => {
-    it("logs a warning", async () => {
-      registerServerService(api, config, "/fake/plugin", serverReady);
-
-      vi.advanceTimersByTime(30_000);
-
-      const warnings = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-      expect(warnings).toContain("WARNING");
-      expect(warnings).toContain("start() has not been called");
-    });
-
-    describe("when the host has not called start() after 60s", () => {
-      it("starts the server itself", async () => {
-        const { createServerManager } = await import("./server-manager.js");
-        const mockStart = vi.fn().mockResolvedValue(undefined);
-        (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
-          start: mockStart,
-          stop: vi.fn(),
-          isRunning: vi.fn().mockReturnValue(false),
-        });
-
-        registerServerService(api, config, "/fake/plugin", serverReady);
-
-        // Advance past 60s — self-start should fire
-        await vi.advanceTimersByTimeAsync(60_000);
-
-        expect(mockStart).toHaveBeenCalled();
-        const logs = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-        expect(logs).toContain("self-starting server");
-      });
-
-      it("when self-start succeeds, serverReady resolves", async () => {
-        const { createServerManager } = await import("./server-manager.js");
-        (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
-          start: vi.fn().mockResolvedValue(undefined),
-          stop: vi.fn(),
-          isRunning: vi.fn().mockReturnValue(false),
-        });
-
-        registerServerService(api, config, "/fake/plugin", serverReady);
-        await vi.advanceTimersByTimeAsync(60_000);
-
-        expect(serverReady.resolve).toHaveBeenCalled();
-      });
-
-      it("when self-start fails, logs error and serverReady remains unresolved", async () => {
-        const { createServerManager } = await import("./server-manager.js");
-        (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
-          start: vi.fn().mockRejectedValue(new Error("uv not found")),
-          stop: vi.fn(),
-          isRunning: vi.fn().mockReturnValue(false),
-        });
-
-        registerServerService(api, config, "/fake/plugin", serverReady);
-        await vi.advanceTimersByTimeAsync(60_000);
-
-        const errors = errorSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-        expect(errors).toContain("self-start failed");
-        expect(errors).toContain("uv not found");
-        expect(serverReady.resolve).not.toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe("when the host calls start() after self-start has begun", () => {
-    it("duplicate start is a no-op", async () => {
-      const { createServerManager } = await import("./server-manager.js");
-      const mockStart = vi.fn().mockResolvedValue(undefined);
-      (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
-        start: mockStart,
-        stop: vi.fn(),
-        isRunning: vi.fn().mockReturnValue(false),
-      });
-
-      registerServerService(api, config, "/fake/plugin", serverReady);
-
-      // Self-start fires at 60s
-      await vi.advanceTimersByTimeAsync(60_000);
-      expect(mockStart).toHaveBeenCalledTimes(1);
-
-      // Host calls start() late
-      await registeredService.start();
-
-      // manager.start() should only have been called once (by self-start)
-      // The host's start() should be a no-op since server is already starting/started
-      expect(mockStart).toHaveBeenCalledTimes(1);
-    });
+    expect(mockStart).toHaveBeenCalled();
   });
 });
