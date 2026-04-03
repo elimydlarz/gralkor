@@ -17,7 +17,6 @@ function mockClient(): {
     addEpisode: vi.fn(),
     ingestMessages: vi.fn(),
     search: vi.fn(),
-    clearGraph: vi.fn(),
     buildIndices: vi.fn(),
     buildCommunities: vi.fn(),
   };
