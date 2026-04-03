@@ -176,6 +176,11 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       proc = null;
     });
 
+    // Record PID so a subsequent start() can kill this process if the module is re-evaluated
+    if (proc.pid !== undefined) {
+      await writeFile(pidFile, String(proc.pid), "utf-8");
+    }
+
     console.log("[gralkor] boot: server process spawned (pid:", proc.pid, "), polling health...");
 
     // Wait for server to become healthy
