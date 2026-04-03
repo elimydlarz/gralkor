@@ -57,7 +57,7 @@ function registerFullPlugin(
   // Shared group ID: hooks capture agentId, tools read it
   let currentGroupId = "default";
   const getGroupId = () => currentGroupId;
-  const setGroupId = (id: string) => { currentGroupId = id; };
+  const setGroupId = (id: string) => { currentGroupId = sanitizeGroupId(id); };
 
   // Shared native search function: factory sets it at agent start, hook reads it
   let nativeSearchFn: NativeSearchFn | null = null;
