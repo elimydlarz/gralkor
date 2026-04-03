@@ -369,7 +369,7 @@ startup
     and returns without writing a pid file
   when a previous pid is on record
     then sends SIGTERM to the previous pid
-    and waits for the port to free before spawning
+    and polls until the port is free (up to 10s) before spawning
   when stop() is called
     then deletes the pid file
   when self-start succeeds
