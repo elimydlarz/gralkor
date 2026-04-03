@@ -359,14 +359,12 @@ describe("createServerManager", () => {
 
   it("when a previous pid is on record, sends SIGTERM and waits before spawning", async () => {
     vi.useFakeTimers();
-    // Pre-flight fails (no server yet)
-    // waitForPortFree: first fetch succeeds (port still occupied), second rejects (port free)
-    // waitForHealth: resolves ok
+    // Pre-flight #1 fails (no server yet); pre-flight #2 + waitForPortFree + waitForHealth use
+    // { ok: true } without .text() — res.text() throws, which is caught and treated as
+    // "not responding" in both pre-flight checks and waitForPortFree (port considered free).
     mockFetch
-      .mockRejectedValueOnce(new Error("ECONNREFUSED"))  // pre-flight
-      .mockResolvedValueOnce({ ok: true, text: vi.fn().mockResolvedValue("") })  // waitForPortFree: still occupied
-      .mockRejectedValueOnce(new Error("ECONNREFUSED"))  // waitForPortFree: port free
-      .mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });     // waitForHealth
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockResolvedValue({ ok: true });
     mockReadFile.mockResolvedValueOnce("1234");
 
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
