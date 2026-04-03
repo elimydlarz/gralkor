@@ -4,45 +4,13 @@ set -euo pipefail
 echo "=== Gralkor Install Harness ==="
 echo ""
 
-# Configure API keys and provider from env vars at runtime.
-# Usage: docker run --rm -it -e OPENAI_API_KEY=... gralkor-harness:latest
-#
-# Provider auto-detection: uses the first available key.
-# Override with LLM_PROVIDER/EMBEDDER_PROVIDER env vars.
-DETECTED_PROVIDER=""
+# Configure Google API key from env at runtime.
+# Usage: docker run --rm -it -e GOOGLE_API_KEY=... gralkor-harness:latest
 if [ -n "${GOOGLE_API_KEY:-}" ]; then
   echo "Configuring googleApiKey from env..."
   npx openclaw config set plugins.entries.gralkor.config.googleApiKey "$GOOGLE_API_KEY" 2>&1
-  DETECTED_PROVIDER="${DETECTED_PROVIDER:-gemini}"
-fi
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-  echo "Configuring openaiApiKey from env..."
-  npx openclaw config set plugins.entries.gralkor.config.openaiApiKey "$OPENAI_API_KEY" 2>&1
-  DETECTED_PROVIDER="${DETECTED_PROVIDER:-openai}"
-fi
-if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  echo "Configuring anthropicApiKey from env..."
-  npx openclaw config set plugins.entries.gralkor.config.anthropicApiKey "$ANTHROPIC_API_KEY" 2>&1
-  DETECTED_PROVIDER="${DETECTED_PROVIDER:-anthropic}"
-fi
-if [ -n "${GROQ_API_KEY:-}" ]; then
-  echo "Configuring groqApiKey from env..."
-  npx openclaw config set plugins.entries.gralkor.config.groqApiKey "$GROQ_API_KEY" 2>&1
-  DETECTED_PROVIDER="${DETECTED_PROVIDER:-groq}"
-fi
-
-# Set LLM provider (anthropic/groq need openai for embeddings)
-LLM_PROVIDER="${LLM_PROVIDER:-$DETECTED_PROVIDER}"
-EMBEDDER_PROVIDER="${EMBEDDER_PROVIDER:-}"
-if [ -n "$LLM_PROVIDER" ] && [ "$LLM_PROVIDER" != "gemini" ]; then
-  echo "Setting llm.provider=$LLM_PROVIDER..."
-  npx openclaw config set plugins.entries.gralkor.config.llm '{"provider":"'"$LLM_PROVIDER"'"}' 2>&1
-fi
-if [ -n "$LLM_PROVIDER" ] && [ "$LLM_PROVIDER" != "gemini" ]; then
-  # Anthropic/Groq don't have embedders — fall back to openai
-  EMBEDDER_PROVIDER="${EMBEDDER_PROVIDER:-openai}"
-  echo "Setting embedder.provider=$EMBEDDER_PROVIDER..."
-  npx openclaw config set plugins.entries.gralkor.config.embedder '{"provider":"'"$EMBEDDER_PROVIDER"'"}' 2>&1
+else
+  echo "WARNING: GOOGLE_API_KEY not set — server will fail to start"
 fi
 echo ""
 
@@ -53,7 +21,7 @@ echo ""
 
 # 2. Show plugin config (redact API keys)
 echo "--- npx openclaw config get plugins ---"
-npx openclaw config get plugins 2>&1 | sed -E 's/("(google|openai|anthropic|groq)Api[Kk]ey"\s*:\s*")[^"]+/\1***REDACTED***/g' || true
+npx openclaw config get plugins 2>&1 | sed -E 's/("googleApiKey"\s*:\s*")[^"]+/\1***REDACTED***/g' || true
 echo ""
 
 # 3. Check installed plugin files
