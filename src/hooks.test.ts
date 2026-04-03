@@ -1990,8 +1990,11 @@ describe("idle timeout flush", () => {
 
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
+    // Trigger idle timer, then advance through all retry delays
     vi.advanceTimersByTime(IDLE_MS);
-    await vi.advanceTimersByTimeAsync(0);
+    for (let i = 0; i < 10; i++) {
+      await vi.advanceTimersByTimeAsync(5000);
+    }
 
     // The flush was attempted (ingestMessages called at least once)
     expect(client.ingestMessages).toHaveBeenCalled();
