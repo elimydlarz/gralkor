@@ -534,11 +534,12 @@ publish-version-integrity
     and no git commit or tag is created
 ```
 
-#### service-self-start
+#### startup
 
 ```
-service-self-start
+startup
   then the server is started as fire-and-forget during registration
+  then subsequent register() calls reuse the existing manager (no duplicate starts)
   when self-start succeeds
     then serverReady resolves
   when self-start fails
