@@ -47,7 +47,7 @@ fi
 
 echo ""
 echo "=== Building Docker image ==="
-docker build "${DOCKER_ARGS[@]}" -t gralkor-harness:latest "$HARNESS_DIR"
+docker build ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gralkor-harness:latest "$HARNESS_DIR"
 
 # Clean up tarball
 rm -f "$HARNESS_DIR/plugin.tgz"
