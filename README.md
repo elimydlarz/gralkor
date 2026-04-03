@@ -142,7 +142,6 @@ In memory mode, `memory_search` searches both the knowledge graph and native Mar
 
 ```bash
 openclaw gralkor status              # Server state, config, graph stats, data dir, venv
-openclaw gralkor check               # Validate configuration and environment
 openclaw gralkor search <group_id> <query>  # Search the knowledge graph
 ```
 
