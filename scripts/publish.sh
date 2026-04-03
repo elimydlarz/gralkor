@@ -51,7 +51,8 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   trap rollback ERR
 
   $build_cmd
-  bash scripts/build-arm64-wheel.sh
+  wheel_cmd="${PUBLISH_WHEEL_CMD:-bash scripts/build-arm64-wheel.sh}"
+  $wheel_cmd
   $publish_cmd
   rm -rf server/wheels
 
