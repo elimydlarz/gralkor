@@ -438,9 +438,7 @@ export class DebouncedFlush<T> {
       const val = this.entries.get(key);
       if (!val) return;
       this.entries.delete(key);
-      this.onFlush(key, val).catch((err) => {
-        console.warn(`[gralkor] idle flush failed for "${key}":`, err instanceof Error ? err.message : err);
-      });
+      this.onFlush(key, val).catch(() => {});
     }, this.delayMs);
     timer.unref();
     this.timers.set(key, timer);
