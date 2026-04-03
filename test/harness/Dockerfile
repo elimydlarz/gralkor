@@ -12,14 +12,17 @@ ENV PATH="/root/.local/bin:$PATH"
 # Install Python 3.13 via uv (Bookworm ships 3.11 but server needs 3.12+)
 RUN uv python install 3.13
 
+# Install OpenClaw globally (avoids slow npx re-downloads under emulation)
+RUN npm install -g openclaw
+
 # Verify tools
-RUN node --version && uv --version && uv python list --only-installed
+RUN node --version && openclaw --version && uv --version && uv python list --only-installed
 
 # OpenClaw HOME
 ENV HOME=/root
 RUN mkdir -p /root/.openclaw
 
-# Install plugin via the same npx method operators use.
+# Install plugin.
 # PLUGIN_SOURCE is either:
 #   - "@susu-eng/gralkor"          (npm, matches real operator flow)
 #   - "/tmp/plugin.tgz"            (local tarball, for testing local changes)
@@ -29,11 +32,11 @@ RUN mkdir -p /root/.openclaw
 ARG PLUGIN_SOURCE=/tmp/plugin.tgz
 COPY plugin.tgz /tmp/plugin.tgz
 
-RUN npx openclaw plugins install ${PLUGIN_SOURCE} --dangerously-force-unsafe-install
+RUN openclaw plugins install ${PLUGIN_SOURCE} --dangerously-force-unsafe-install
 
 # Configure plugin: assign memory slot + enable with test logging
-RUN npx openclaw config set plugins.slots.memory gralkor && \
-    npx openclaw config set plugins.entries.gralkor.config.test true
+RUN openclaw config set plugins.slots.memory gralkor && \
+    openclaw config set plugins.entries.gralkor.config.test true
 
 WORKDIR /root
 
