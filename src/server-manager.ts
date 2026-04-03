@@ -36,9 +36,26 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
   async function start(): Promise<void> {
     const bootStart = Date.now();
-    console.log("[gralkor] boot: starting...");
 
     await mkdir(opts.dataDir, { recursive: true });
+
+    // Fast pre-flight: if the server is already healthy (e.g. module was
+    // re-evaluated by the host after a successful boot), adopt it immediately
+    // without re-running setup or killing the running process.
+    try {
+      const res = await fetch(`http://127.0.0.1:${opts.port}/health`,
+        { signal: AbortSignal.timeout(2000) });
+      if (res.ok) {
+        await res.text();
+        console.log("[gralkor] boot: server already running and healthy, adopting");
+        startMonitor();
+        return;
+      }
+    } catch {
+      // Not running yet — proceed with full boot
+    }
+
+    console.log("[gralkor] boot: starting...");
 
     const venvDir = join(opts.dataDir, "venv");
     const venvPython = join(venvDir, "bin", "python");
