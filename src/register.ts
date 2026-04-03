@@ -60,17 +60,36 @@ export function registerServerService(
   });
 
   console.log("[gralkor] boot: registering service gralkor-server");
+  const registeredAt = Date.now();
   api.registerService({
     id: "gralkor-server",
     async start() {
-      console.log("[gralkor] boot: service start() called by host");
-      await manager.start();
-      serverReady?.resolve();
+      const waitMs = Date.now() - registeredAt;
+      console.log(`[gralkor] boot: service start() called by host (waited ${waitMs}ms after registration)`);
+      try {
+        await manager.start();
+        serverReady?.resolve();
+      } catch (err) {
+        console.error("[gralkor] boot: service start() failed:", err instanceof Error ? err.message : err);
+        throw err;
+      }
     },
     async stop() {
+      console.log("[gralkor] boot: service stop() called by host");
       await manager.stop();
     },
   });
+
+  // Watchdog: warn if start() hasn't been called after a reasonable delay
+  const startWatchdog = setTimeout(() => {
+    if (!serverReady?.isReady()) {
+      console.warn(
+        `[gralkor] boot: WARNING — service start() has not been called ${((Date.now() - registeredAt) / 1000).toFixed(0)}s after registration. ` +
+        "The host gateway may not be starting registered services. Check gateway logs for service lifecycle errors."
+      );
+    }
+  }, 30_000);
+  if (startWatchdog.unref) startWatchdog.unref();
 
   return manager;
 }
