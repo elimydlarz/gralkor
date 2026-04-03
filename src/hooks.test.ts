@@ -1073,7 +1073,7 @@ describe("before_prompt_build handler", () => {
           { prompt: "Tell me about the project", messages: [] },
           { agentId: "agent-42" },
         ),
-      ).rejects.toThrow("[gralkor] auto-recall failed: server is not ready");
+      ).rejects.toThrow("server is not ready (service start() may not have been called by host)");
       expect(client.search).not.toHaveBeenCalled();
     });
   });
