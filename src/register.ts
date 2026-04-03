@@ -58,9 +58,24 @@ export function registerServerService(
     test: config.test,
   });
 
+  // Start the server directly — OpenClaw's registerService lifecycle may not
+  // invoke start() reliably (observed: service registered but start() never
+  // called, leaving the server permanently "not ready").
+  manager.start().then(
+    () => serverReady?.resolve(),
+    (err) => console.error("[gralkor] boot: server start failed:", err instanceof Error ? err.message : err),
+  );
+
+  // Register service for cleanup on shutdown
   api.registerService({
     id: "gralkor-server",
     async start() {
+      // Server already started above; just resolve the gate if not yet ready
+      // (handles the case where OpenClaw also calls start())
+      if (manager.isRunning()) {
+        serverReady?.resolve();
+        return;
+      }
       await manager.start();
       serverReady?.resolve();
     },
