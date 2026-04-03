@@ -304,6 +304,20 @@ describe("service-self-start", () => {
         const logs = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
         expect(logs).toContain("self-starting server");
       });
+
+      it("when self-start succeeds, serverReady resolves", async () => {
+        const { createServerManager } = await import("./server-manager.js");
+        (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+          start: vi.fn().mockResolvedValue(undefined),
+          stop: vi.fn(),
+          isRunning: vi.fn().mockReturnValue(false),
+        });
+
+        registerServerService(api, config, "/fake/plugin", serverReady);
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(serverReady.resolve).toHaveBeenCalled();
+      });
     });
   });
 });
