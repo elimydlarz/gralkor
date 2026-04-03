@@ -382,6 +382,36 @@ describe("register()", () => {
 
       consoleSpy.mockRestore();
     });
+
+    it("when register() is called multiple times, then only one SIGTERM handler is installed", async () => {
+      const { register, _resetForTesting } = await import("./index.js");
+      _resetForTesting();
+
+      const freshApi = () => ({
+        registerTool: vi.fn(),
+        on: vi.fn(),
+        registerService: vi.fn(),
+        registerCli: vi.fn(),
+      });
+
+      register(freshApi());
+      const firstHandler = sigTermHandler;
+
+      // Second register — sigTermHandler should NOT be replaced
+      sigTermHandler = undefined;
+      register(freshApi());
+
+      // Handler should not have been re-assigned (guard prevented second install)
+      expect(sigTermHandler).toBeUndefined();
+      // First handler still exists
+      expect(firstHandler).toBeDefined();
+
+      // process.on("SIGTERM") should have been called exactly once
+      const sigTermCalls = processOnSpy.mock.calls.filter(
+        (call) => call[0] === "SIGTERM",
+      );
+      expect(sigTermCalls).toHaveLength(1);
+    });
   });
 
   describe("when ontology config is invalid", () => {
