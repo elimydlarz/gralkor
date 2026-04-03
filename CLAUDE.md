@@ -494,7 +494,7 @@ install-sequencing-docs
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts,
 │                                     # native-memory.ts, types.ts, config.ts, *.test.ts
-├── resources/memory/                 # canonical manifest for make pack
+├── resources/memory/                 # canonical manifest for pnpm run pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/functional/
 ├── server/                           # Python/FastAPI: main.py, tests/, wheels/
