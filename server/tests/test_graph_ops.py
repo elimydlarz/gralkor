@@ -1,21 +1,8 @@
-"""Tests for graph operations: POST /clear, POST /build-indices, POST /build-communities."""
+"""Tests for graph operations: POST /build-indices, POST /build-communities."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
-
-
-@pytest.mark.asyncio
-async def test_clear_graph_returns_deleted_true(client, mock_graphiti):
-    with patch("main.Node") as MockNode:
-        MockNode.delete_by_group_id = AsyncMock()
-        resp = await client.post("/clear", json={"group_id": "g1"})
-
-    assert resp.status_code == 200
-    assert resp.json() == {"deleted": True}
-    MockNode.delete_by_group_id.assert_called_once_with(mock_graphiti.driver, "g1")
 
 
 @pytest.mark.asyncio
@@ -43,24 +30,9 @@ async def test_build_communities_returns_counts(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
-async def test_clear_missing_group_id_returns_422(client):
-    resp = await client.post("/clear", json={})
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
 async def test_build_communities_missing_group_id_returns_422(client):
     resp = await client.post("/build-communities", json={})
     assert resp.status_code == 422
-
-
-
-@pytest.mark.asyncio
-async def test_clear_graph_backend_error_propagates(client, mock_graphiti):
-    with patch("main.Node") as MockNode:
-        MockNode.delete_by_group_id = AsyncMock(side_effect=RuntimeError("DB down"))
-        with pytest.raises(RuntimeError, match="DB down"):
-            await client.post("/clear", json={"group_id": "g1"})
 
 
 @pytest.mark.asyncio
