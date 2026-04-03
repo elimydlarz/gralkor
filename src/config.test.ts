@@ -3,6 +3,7 @@ import {
   resolveConfig,
   validateOntologyConfig,
   defaultConfig,
+  sanitizeGroupId,
   GRAPHITI_URL,
   GRAPHITI_PORT,
   DEFAULT_LLM_PROVIDER,
