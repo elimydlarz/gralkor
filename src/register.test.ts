@@ -244,6 +244,7 @@ describe("startup", () => {
     autoCapture: { enabled: false },
     autoRecall: { enabled: false, maxResults: 10 },
     idleTimeoutMs: 300_000,
+    dataDir: "/tmp/gralkor-test-data",
   };
 
   it("starts the server as fire-and-forget during registration", async () => {
