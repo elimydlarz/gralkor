@@ -451,6 +451,24 @@ install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
 
+##### publish-version-integrity
+
+```
+publish-version-integrity
+  when publish succeeds
+    then version is bumped in package.json, openclaw.plugin.json, and resources/memory/package.json
+    and a git commit and tag are created and pushed for the new version
+  when publish fails (build error or npm reject)
+    then version files are rolled back to their pre-publish values
+    and no git commit or tag is created
+  when successive publishes fail
+    then version does not increment multiple times
+  when DRY_RUN is set
+    then version is bumped and synced across manifests
+    and build and publish are skipped
+    and no git commit or tag is created
+```
+
 #### config-defaults-single-source
 
 ```
