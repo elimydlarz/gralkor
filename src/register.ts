@@ -61,12 +61,16 @@ export function registerServerService(
 
   console.log("[gralkor] boot: registering service gralkor-server");
   const registeredAt = Date.now();
-  let hostStarted = false;
+  let started = false;
 
   api.registerService({
     id: "gralkor-server",
     async start() {
-      hostStarted = true;
+      if (started) {
+        console.log("[gralkor] boot: start() called but server already started — no-op");
+        return;
+      }
+      started = true;
       clearTimeout(warnTimer);
       clearTimeout(selfStartTimer);
       const waitMs = Date.now() - registeredAt;
