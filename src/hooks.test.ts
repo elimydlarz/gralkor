@@ -1586,7 +1586,7 @@ describe("flushSessionBuffer", () => {
           { role: "assistant", content: [{ type: "text", text: "Hi" }] },
         ],
         source_description: "auto-capture",
-        group_id: "agent-42",
+        group_id: "agent_42",
       }),
     );
   });
