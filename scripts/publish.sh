@@ -24,6 +24,7 @@ const fs = require('fs');
   fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n');
 });
 " || true
+  rm -rf server/wheels
 }
 
 npm version "$level" --no-git-tag-version
