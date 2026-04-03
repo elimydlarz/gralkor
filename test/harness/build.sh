@@ -34,8 +34,12 @@ else
 
   pnpm run --silent build
 
-  # Build the arm64 wheel (same as make pack)
-  bash scripts/build-arm64-wheel.sh
+  # Build the arm64 wheel (same as make pack) — skip if already present
+  if ls server/wheels/falkordblite-*.whl >/dev/null 2>&1; then
+    echo "Using existing arm64 wheel: $(ls server/wheels/*.whl)"
+  else
+    bash scripts/build-arm64-wheel.sh
+  fi
 
   # Pack with resources/memory manifests
   cp resources/memory/package.json package.json
