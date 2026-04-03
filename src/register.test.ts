@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach} from "vitest";
 import { registerCli, registerServerService } from "./register.js";
 import type { PluginApiBase } from "./types.js";
 import type { GraphitiClient } from "./client.js";
