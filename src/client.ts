@@ -182,10 +182,6 @@ export class GraphitiClient {
     });
   }
 
-  async clearGraph(groupId: string): Promise<void> {
-    await this.request("POST", "/clear", { group_id: groupId });
-  }
-
   async buildIndices(): Promise<{ status: string }> {
     return this.request("POST", "/build-indices");
   }
