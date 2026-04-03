@@ -18,9 +18,12 @@ vi.mock("node:fs", () => ({
 
 // Mock fs/promises
 const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+const mockReadFile = vi.fn().mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
 vi.mock("node:fs/promises", () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   writeFile: (...args: unknown[]) => mockWriteFile(...args),
+  readFile: (...args: unknown[]) => mockReadFile(...args),
+  unlink: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock fetch globally
