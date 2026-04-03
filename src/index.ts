@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { GraphitiClient } from "./client.js";
-import { resolveConfig, validateOntologyConfig, GRAPHITI_URL, resolveProviders, createReadyGate, defaultConfig, type GralkorConfig } from "./config.js";
+import { resolveConfig, validateOntologyConfig, GRAPHITI_URL, resolveProviders, createReadyGate, defaultConfig, sanitizeGroupId, type GralkorConfig } from "./config.js";
 import {
   createMemoryStoreTool,
   createBuildIndicesTool,
