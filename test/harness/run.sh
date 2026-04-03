@@ -5,13 +5,13 @@ echo "=== Gralkor Install Harness ==="
 echo ""
 
 # 1. Verify OpenClaw sees the plugin
-echo "--- openclaw plugins list ---"
-openclaw plugins list 2>&1 || true
+echo "--- npx openclaw plugins list ---"
+npx openclaw plugins list 2>&1 || true
 echo ""
 
 # 2. Show plugin config
-echo "--- openclaw config get plugins ---"
-openclaw config get plugins 2>&1 || true
+echo "--- npx openclaw config get plugins ---"
+npx openclaw config get plugins 2>&1 || true
 echo ""
 
 # 3. Check installed plugin files
