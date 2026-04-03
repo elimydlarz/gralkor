@@ -482,7 +482,7 @@ install-sequencing-docs
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
 | prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch) |
-| bundled-arm64-wheel | `make pack` builds falkordblite for linux/arm64 via Docker |
+| bundled-arm64-wheel | `pnpm run pack` builds falkordblite for linux/arm64 via Docker |
 | configurable-providers | `llm`/`embedder` in config; dynamic `config.yaml` at startup |
 | episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime) |
 
