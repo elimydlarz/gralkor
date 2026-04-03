@@ -9,26 +9,28 @@ RUN apt-get update -qq && \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
-# Install OpenClaw globally
-RUN npm install -g openclaw
-
 # Verify tools
-RUN node --version && openclaw --version && uv --version && python3 --version
+RUN node --version && uv --version && python3 --version
 
-# OpenClaw HOME — plugin data lives here
+# OpenClaw HOME
 ENV HOME=/root
 RUN mkdir -p /root/.openclaw
 
-# Copy plugin tarball (built by host)
+# Install plugin via the same npx method operators use.
+# PLUGIN_SOURCE is either:
+#   - "@susu-eng/gralkor"          (npm, matches real operator flow)
+#   - "/tmp/plugin.tgz"            (local tarball, for testing local changes)
+#
+# To test from npm:   docker build --build-arg PLUGIN_SOURCE=@susu-eng/gralkor ...
+# To test from local: copy plugin.tgz into build context first (build.sh does this)
+ARG PLUGIN_SOURCE=/tmp/plugin.tgz
 COPY plugin.tgz /tmp/plugin.tgz
 
-# Install the plugin
-RUN openclaw plugins install /tmp/plugin.tgz --dangerously-force-unsafe-install
+RUN npx openclaw plugins install ${PLUGIN_SOURCE} --dangerously-force-unsafe-install
 
-# Configure plugin: assign memory slot + enable with minimal config
-# (no API key — we just want to verify the install + load cycle)
-RUN openclaw config set plugins.slots.memory gralkor && \
-    openclaw config set plugins.entries.gralkor.config.test true
+# Configure plugin: assign memory slot + enable with test logging
+RUN npx openclaw config set plugins.slots.memory gralkor && \
+    npx openclaw config set plugins.entries.gralkor.config.test true
 
 WORKDIR /root
 
