@@ -11,6 +11,7 @@ import {
   type RecallOpts,
   type SessionBuffer,
 } from "./hooks.js";
+import { resolveSecretEnv } from "./resolve-secrets.js";
 import { createServerManager, type ServerManager } from "./server-manager.js";
 import type { PluginApiBase } from "./types.js";
 
