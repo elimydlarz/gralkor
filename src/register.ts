@@ -59,29 +59,12 @@ export function registerServerService(
     test: config.test,
   });
 
+  // Register service for graceful shutdown (host calls stop() on SIGTERM)
   console.log("[gralkor] boot: registering service gralkor-server");
-  const registeredAt = Date.now();
-  let started = false;
-
   api.registerService({
     id: "gralkor-server",
     async start() {
-      if (started) {
-        console.log("[gralkor] boot: start() called but server already started — no-op");
-        return;
-      }
-      started = true;
-      clearTimeout(warnTimer);
-      clearTimeout(selfStartTimer);
-      const waitMs = Date.now() - registeredAt;
-      console.log(`[gralkor] boot: service start() called by host (waited ${waitMs}ms after registration)`);
-      try {
-        await manager.start();
-        serverReady?.resolve();
-      } catch (err) {
-        console.error("[gralkor] boot: service start() failed:", err instanceof Error ? err.message : err);
-        throw err;
-      }
+      // No-op: server is self-started below. Host may call this but we don't depend on it.
     },
     async stop() {
       console.log("[gralkor] boot: service stop() called by host");
@@ -89,22 +72,9 @@ export function registerServerService(
     },
   });
 
-  // Watchdog: warn at 30s if start() hasn't been called
-  const warnTimer = setTimeout(() => {
-    if (!started) {
-      console.warn(
-        `[gralkor] boot: WARNING — service start() has not been called ${((Date.now() - registeredAt) / 1000).toFixed(0)}s after registration. ` +
-        "The host gateway may not be starting registered services. Will self-start at 60s."
-      );
-    }
-  }, 30_000);
-  if (warnTimer.unref) warnTimer.unref();
-
-  // Self-start: start the server ourselves at 60s if host hasn't
-  const selfStartTimer = setTimeout(async () => {
-    if (started) return;
-    started = true;
-    console.log("[gralkor] boot: self-starting server (host did not call start() within 60s)");
+  // Self-start: fire-and-forget — don't wait for host to call start()
+  console.log("[gralkor] boot: self-starting server");
+  void (async () => {
     try {
       await manager.start();
       serverReady?.resolve();
@@ -112,8 +82,7 @@ export function registerServerService(
     } catch (err) {
       console.error("[gralkor] boot: self-start failed:", err instanceof Error ? err.message : err);
     }
-  }, 60_000);
-  if (selfStartTimer.unref) selfStartTimer.unref();
+  })();
 
   return manager;
 }
