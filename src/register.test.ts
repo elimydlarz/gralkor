@@ -284,5 +284,26 @@ describe("service-self-start", () => {
       expect(warnings).toContain("WARNING");
       expect(warnings).toContain("start() has not been called");
     });
+
+    describe("when the host has not called start() after 60s", () => {
+      it("starts the server itself", async () => {
+        const { createServerManager } = await import("./server-manager.js");
+        const mockStart = vi.fn().mockResolvedValue(undefined);
+        (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+          start: mockStart,
+          stop: vi.fn(),
+          isRunning: vi.fn().mockReturnValue(false),
+        });
+
+        registerServerService(api, config, "/fake/plugin", serverReady);
+
+        // Advance past 60s — self-start should fire
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(mockStart).toHaveBeenCalled();
+        const logs = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+        expect(logs).toContain("self-starting server");
+      });
+    });
   });
 });
