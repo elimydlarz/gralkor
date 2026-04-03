@@ -186,6 +186,7 @@ describe("registerCli with ServerManager", () => {
     const config: GralkorConfig = {
       autoCapture: { enabled: true },
       autoRecall: { enabled: true, maxResults: 10 },
+      dataDir: "/tmp/gralkor-test-data",
     };
     const manager: ServerManager = {
       start: vi.fn(),
