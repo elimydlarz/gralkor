@@ -22,6 +22,15 @@ function defaultLoadSecretInputSDK(): Promise<SecretInputSDK> {
 
 let sdkLoader: () => Promise<SecretInputSDK> = defaultLoadSecretInputSDK;
 
+/**
+ * Eagerly start loading the SDK module. Call during register() while the
+ * OpenClaw jiti loader context is still active — the returned promise is
+ * cached so resolveSecretEnv() reuses it later.
+ */
+export function preloadSecretInputSDK(): void {
+  sdkLoader();
+}
+
 /** Replace the SDK loader (for testing). */
 export function setSecretInputSDKLoader(loader: () => Promise<SecretInputSDK>): void {
   sdkLoader = loader;
