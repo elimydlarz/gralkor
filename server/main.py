@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, create_model
 from graphiti_core import Graphiti
 from graphiti_core.driver.falkordb_driver import FalkorDriver
 from graphiti_core.edges import EntityEdge
-from graphiti_core.nodes import EpisodicNode, EpisodeType, Node
+from graphiti_core.nodes import EpisodicNode, EpisodeType
 from graphiti_core.llm_client import LLMConfig
 
 
