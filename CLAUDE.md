@@ -126,20 +126,6 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | secret-resolution | API key strings from plugin config mapped to env vars and passed to server manager synchronously |
 | startup | Self-starts server fire-and-forget during registration; module-level manager survives host reloads |
 
-#### secret-resolution
-
-```
-secret-resolution
-  when config contains a plaintext API key string
-    then env var is set to that string (trimmed)
-  when config value is empty or whitespace
-    then env var is not set
-  when config value is undefined or absent
-    then env var is not set
-  then env vars are built synchronously and passed to the server manager
-  then process.env is not read for API keys
-```
-
 #### auto-recall-interpretation
 
 ```
