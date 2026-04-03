@@ -36,14 +36,14 @@ let configLogged = false;
 // Guard against duplicate SIGTERM handlers across multiple register() calls
 let sigTermHandlerInstalled = false;
 
-// Guard against duplicate server starts across multiple register() calls
-let serverStarted = false;
+// Cached server manager — survives register() reloads so we don't spawn twice
+let cachedManager: ReturnType<typeof registerServerService> | undefined;
 
 /** @internal Reset module-level guards for testing only */
 export function _resetForTesting() {
   configLogged = false;
   sigTermHandlerInstalled = false;
-  serverStarted = false;
+  cachedManager = undefined;
 }
 
 function registerFullPlugin(
