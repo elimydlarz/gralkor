@@ -382,40 +382,39 @@ secret-resolution
 #### Configuration
 
 ```
-configuration
-  validateOntologyConfig
-    when ontology is undefined
-      then does not throw
-    when ontology is valid
-      then does not throw
-    when entity name is a reserved graph label
-      then rejects Entity, Episodic, Community, Saga
-    when entity attribute uses a protected EntityNode field name
-      then rejects uuid, name, group_id, labels, created_at, summary, attributes, name_embedding
-    when edge attribute uses a protected EntityEdge field name
-      then rejects uuid, group_id, source_node_uuid, target_node_uuid, created_at, name, fact, fact_embedding, episodes, expired_at, valid_at, invalid_at, attributes
-    when edgeMap key format is invalid
-      then rejects (expected "EntityA,EntityB")
-    when edgeMap references undeclared entity
-      then rejects
-    when edgeMap references undeclared edge
-      then rejects
-    when excludedEntityTypes contains a declared entity
-      then rejects (contradictory)
-  config-defaults-single-source
-    when configSchema is read from index.ts
-      then defaults match defaultConfig in config.ts
-    when plugin manifest (openclaw.plugin.json) is read
-      then defaults match defaultConfig in config.ts
-    when resources/memory/openclaw.plugin.json is read
-      then defaults match defaultConfig in config.ts
-  test-mode-query-logging
-    when auto-recall searches in test mode
-      then the extracted user message (search query) is logged
-    when memory_search tool executes in test mode
-      then the query argument is logged
-    when test mode is disabled
-      then queries are not logged
+validateOntologyConfig
+  when ontology is undefined
+    then does not throw
+  when ontology is valid
+    then does not throw
+  when entity name is a reserved graph label
+    then rejects Entity, Episodic, Community, Saga
+  when entity attribute uses a protected EntityNode field name
+    then rejects uuid, name, group_id, labels, created_at, summary, attributes, name_embedding
+  when edge attribute uses a protected EntityEdge field name
+    then rejects uuid, group_id, source_node_uuid, target_node_uuid, created_at, name, fact, fact_embedding, episodes, expired_at, valid_at, invalid_at, attributes
+  when edgeMap key format is invalid
+    then rejects (expected "EntityA,EntityB")
+  when edgeMap references undeclared entity
+    then rejects
+  when edgeMap references undeclared edge
+    then rejects
+  when excludedEntityTypes contains a declared entity
+    then rejects (contradictory)
+config-defaults-single-source
+  when configSchema is read from index.ts
+    then defaults match defaultConfig in config.ts
+  when plugin manifest (openclaw.plugin.json) is read
+    then defaults match defaultConfig in config.ts
+  when resources/memory/openclaw.plugin.json is read
+    then defaults match defaultConfig in config.ts
+test-mode-query-logging
+  when auto-recall searches in test mode
+    then the extracted user message (search query) is logged
+  when memory_search tool executes in test mode
+    then the query argument is logged
+  when test mode is disabled
+    then queries are not logged
 ```
 
 #### Operations
