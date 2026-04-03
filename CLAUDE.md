@@ -123,7 +123,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
 | build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
 | build-communities-tool | `memory_build_communities` agent tool triggers `POST /build-communities` via `client.buildCommunities(groupId)` |
-| secret-resolution | API keys resolved via OpenClaw secret-input SDK from plugin config; passed to server manager as env vars |
+| secret-resolution | API key strings from plugin config mapped to env vars and passed to server manager synchronously |
 | startup | Self-starts server fire-and-forget during registration; module-level manager survives host reloads |
 
 #### secret-resolution
