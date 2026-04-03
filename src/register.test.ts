@@ -267,4 +267,18 @@ describe("service-self-start", () => {
 
     expect(mockStart).toHaveBeenCalled();
   });
+
+  it("when self-start succeeds, serverReady resolves", async () => {
+    const { createServerManager } = await import("./server-manager.js");
+    (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn(),
+      isRunning: vi.fn().mockReturnValue(false),
+    });
+
+    registerServerService(api, config, "/fake/plugin", serverReady);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(serverReady.resolve).toHaveBeenCalled();
+  });
 });
