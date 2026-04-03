@@ -352,4 +352,23 @@ describe("validateOntologyConfig()", () => {
   });
 });
 
+describe("sanitizeGroupId", () => {
+  it("replaces hyphens with underscores", () => {
+    expect(sanitizeGroupId("agent-42")).toBe("agent_42");
+  });
+
+  it("replaces multiple hyphens", () => {
+    expect(sanitizeGroupId("my-cool-agent")).toBe("my_cool_agent");
+  });
+
+  it("returns unchanged when no hyphens", () => {
+    expect(sanitizeGroupId("default")).toBe("default");
+    expect(sanitizeGroupId("agent42")).toBe("agent42");
+  });
+
+  it("handles empty string", () => {
+    expect(sanitizeGroupId("")).toBe("");
+  });
+});
+
 
