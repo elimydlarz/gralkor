@@ -1177,7 +1177,7 @@ describe("agent_end handler", () => {
     await debouncer.flush("agent-42");
 
     expect(client.ingestMessages).toHaveBeenCalledWith(
-      expect.objectContaining({ group_id: "agent-42" }),
+      expect.objectContaining({ group_id: "agent_42" }),
     );
   });
 
