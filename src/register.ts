@@ -23,7 +23,8 @@ const SECRET_ENV_MAP: Record<string, keyof GralkorConfig> = {
   GROQ_API_KEY: "groqApiKey",
 };
 
-function buildSecretEnv(config: GralkorConfig): Record<string, string> {
+/** @internal Exported for testing. */
+export function buildSecretEnv(config: GralkorConfig): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [envVar, field] of Object.entries(SECRET_ENV_MAP)) {
     const val = config[field];
