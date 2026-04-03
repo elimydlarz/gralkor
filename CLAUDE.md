@@ -295,30 +295,6 @@ SIGTERM handler
     then only one SIGTERM handler is installed
 ```
 
-#### config-check
-
-```
-validateConfig
-  when LLM provider is known and env var is present
-    then LLM check passes
-  when LLM provider is known but env var is missing
-    then LLM check fails with expected env var name
-  when embedder provider is known and env var is present
-    then embedder check passes
-  when embedder provider is known but env var is missing
-    then embedder check fails with expected env var name
-  when provider is unknown
-    then check warns with provider name
-  when uv is on PATH
-    then uv check passes
-  when uv is not on PATH
-    then uv check fails
-  when all checks pass
-    then result.ok is true
-  when any check fails
-    then result.ok is false
-```
-
 #### rich-status
 
 ```
