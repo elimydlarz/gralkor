@@ -84,6 +84,8 @@ describe("createServerManager", () => {
     // No wheels dir by default
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false);
     (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([]);
+    // Default: no pid file
+    mockReadFile.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
   });
 
   it("isRunning returns false before start", () => {
