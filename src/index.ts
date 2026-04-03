@@ -262,6 +262,12 @@ export function register(api: MemoryPluginApi) {
         ` dataDir=${config.dataDir ?? 'default'}`
       );
     }
+    // Eagerly start loading the secret-input SDK while the OpenClaw jiti
+    // loader context is active. The async self-start in registerServerService
+    // runs after register() returns, by which point jiti may no longer resolve
+    // the 'openclaw' package. Preloading caches the import promise.
+    preloadSecretInputSDK();
+
     const client = new GraphitiClient({ baseUrl: GRAPHITI_URL });
     registerFullPlugin(api, client, config, pluginDir);
   } catch (err) {
