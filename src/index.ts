@@ -223,7 +223,7 @@ export const configSchema = {
     },
     dataDir: {
       type: "string" as const,
-      description: "Directory for backend data (venv, database). Defaults to .gralkor-data alongside the plugin directory.",
+      description: "Required. Directory for persistent backend data (venv, FalkorDB database). Operator must set this path.",
     },
     test: {
       type: "boolean" as const,
