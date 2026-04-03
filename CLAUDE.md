@@ -488,7 +488,7 @@ install-sequencing-docs
 | prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch) |
 | bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by both `pack.sh` and `publish.sh` |
-| configurable-providers | `llm`/`embedder` in config; dynamic `config.yaml` at startup |
+| configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`, OpenAI key present → `OpenAIRerankerClient`, otherwise `None`). |
 | episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime) |
 
 ## Repo Map
