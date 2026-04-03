@@ -48,7 +48,15 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       if (res.ok) {
         await res.text();
         console.log("[gralkor] boot: server already running and healthy, adopting");
-        startMonitor();
+        monitorTimer = setInterval(async () => {
+          try {
+            const r = await fetch(`http://127.0.0.1:${opts.port}/health`);
+            await r.text();
+            if (!r.ok) console.warn("[gralkor] Server health check returned", r.status);
+          } catch (err) {
+            console.warn("[gralkor] Server health check failed:", err instanceof Error ? err.message : err);
+          }
+        }, MONITOR_INTERVAL_MS);
         return;
       }
     } catch {
