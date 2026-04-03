@@ -531,7 +531,7 @@ startup
     and serverReady remains unresolved
 ```
 
-##### secret-resolution
+#### secret-resolution
 
 ```
 secret-resolution
