@@ -104,10 +104,10 @@ export interface GralkorConfig {
   ontology?: OntologyConfig;
   dataDir?: string;
   test?: boolean;
-  googleApiKey?: unknown;
-  openaiApiKey?: unknown;
-  anthropicApiKey?: unknown;
-  groqApiKey?: unknown;
+  googleApiKey?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  groqApiKey?: string;
 }
 
 export const defaultConfig: GralkorConfig = {
