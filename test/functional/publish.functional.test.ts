@@ -204,6 +204,7 @@ describe("publish-version-integrity", () => {
         env: {
           ...process.env,
           PUBLISH_BUILD_CMD: "true",
+          PUBLISH_WHEEL_CMD: "true",
           PUBLISH_PUBLISH_CMD: "true",
           PUBLISH_GIT_PUSH_CMD: "true",
           GIT_AUTHOR_NAME: "test",
@@ -233,6 +234,7 @@ describe("publish-version-integrity", () => {
         env: {
           ...process.env,
           PUBLISH_BUILD_CMD: "true",
+          PUBLISH_WHEEL_CMD: "true",
           PUBLISH_PUBLISH_CMD: "true",
           PUBLISH_GIT_PUSH_CMD: "true",
           GIT_AUTHOR_NAME: "test",
