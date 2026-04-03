@@ -562,13 +562,25 @@ pnpm run setup:server                 # first time: sync server venv
 
 TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
+### Test Strategy
+
+Three layers, each with a distinct purpose:
+
+| Layer | Location | Mocks? | Purpose |
+|---|---|---|---|
+| **Unit** | `src/*.test.ts` | Yes — isolated | Fast feedback; drive internal design |
+| **Integration** | `test/integration/*.integration.test.ts` | Yes — mocked collaborators | Cross-module wiring; multi-load, lifecycle |
+| **Functional** | `test/functional/` *(planned)* | No — real OpenClaw harness | End-to-end against a running gateway |
+
+The functional layer requires the OpenClaw test harness (Docker image). Use integration tests until the harness is available.
+
 ### Test Commands
 
 | Command | Scope | Reporter |
 |---|---|---|
-| `pnpm test` | All (plugin + functional + server) | tree |
+| `pnpm test` | All (plugin + integration + server) | tree |
 | `pnpm run test:plugin` | TS unit tests | tree |
-| `pnpm run test:functional` | TS functional tests | tree |
+| `pnpm run test:integration` | TS integration tests | tree |
 | `pnpm run test:server` | Python | spec |
 | `pnpm run test:server:changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
