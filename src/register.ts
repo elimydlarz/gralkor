@@ -102,7 +102,8 @@ export function registerServerService(
 
   // Self-start: start the server ourselves at 60s if host hasn't
   const selfStartTimer = setTimeout(async () => {
-    if (hostStarted) return;
+    if (started) return;
+    started = true;
     console.log("[gralkor] boot: self-starting server (host did not call start() within 60s)");
     try {
       await manager.start();
