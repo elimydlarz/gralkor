@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { registerCli, registerServerService } from "./register.js";
+import { registerCli, registerServerService, buildSecretEnv } from "./register.js";
 import type { PluginApiBase } from "./types.js";
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
