@@ -35,6 +35,10 @@ let configLogged = false;
 // Guard against duplicate SIGTERM handlers across multiple register() calls
 let sigTermHandlerInstalled = false;
 
+// Module-level server manager — survives re-registrations so we don't spawn
+// multiple server processes.  The service registration only handles stop().
+let moduleServerManager: import("./register.js").ServerManager | null = null;
+let serverStartPromise: Promise<void> | null = null;
 
 function registerFullPlugin(
   api: MemoryPluginApi,
