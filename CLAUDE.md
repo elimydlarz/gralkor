@@ -77,6 +77,8 @@ graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_epis
 
 Service `gralkor-server` (`src/server-manager.ts`): `uv sync --no-dev --frozen` (venv in `dataDir`), force-install bundled wheels, write `config.yaml`, spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`/API keys. No `FALKORDB_URI` → embedded FalkorDBLite. Poll `/health` 500ms (120s timeout), monitor 60s. On healthy: `serverReady.resolve()` (module-level). SIGTERM → 5s → SIGKILL. First start ~1-2 min.
 
+**Self-start:** `index.ts` starts the server directly during `register()` via module-level `moduleServerManager` guard (prevents duplicate starts across re-registrations). This bypasses OpenClaw's `registerService` → `startPluginServices` lifecycle, which may not reliably call `start()` (observed: deferred channel reload can replace the plugin registry, losing registered services). The service is still registered for `stop()` cleanup; its `start()` is idempotent (no-ops if already running).
+
 ### Communication Path
 
 Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search()` → `POST /search` returning `{ facts }` (edges only).
