@@ -361,23 +361,22 @@ memory_build_communities tool
 
 ```
 startup
-  startup
-    then the server is started as fire-and-forget during registration
-    then subsequent register() calls reuse the existing manager (no duplicate starts)
-    when self-start succeeds
-      then serverReady resolves
-    when self-start fails
-      then the error is logged
-      and serverReady remains unresolved
-  secret-resolution
-    when config contains a plaintext API key string
-      then env var is set to that string (trimmed)
-    when config value is empty or whitespace
-      then env var is not set
-    when config value is undefined or absent
-      then env var is not set
-    then env vars are built synchronously and passed to the server manager
-    then process.env is not read for API keys
+  then the server is started as fire-and-forget during registration
+  then subsequent register() calls reuse the existing manager (no duplicate starts)
+  when self-start succeeds
+    then serverReady resolves
+  when self-start fails
+    then the error is logged
+    and serverReady remains unresolved
+secret-resolution
+  when config contains a plaintext API key string
+    then env var is set to that string (trimmed)
+  when config value is empty or whitespace
+    then env var is not set
+  when config value is undefined or absent
+    then env var is not set
+  then env vars are built synchronously and passed to the server manager
+  then process.env is not read for API keys
 ```
 
 #### Configuration
