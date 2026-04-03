@@ -363,10 +363,11 @@ memory_build_communities tool
 startup
   then the server is started as fire-and-forget during registration
   then subsequent register() calls reuse the existing manager (no duplicate starts)
-  when server is already running on the port at startup (e.g. module re-evaluated by host)
-    then skips spawning
-    and returns without error
-    and serverReady resolves
+  when a previous server pid is recorded (e.g. module re-evaluated by host)
+    then sends SIGTERM to the previous pid
+    and waits for the port to free before spawning
+  when stop() is called
+    then deletes the pid file
   when self-start succeeds
     then serverReady resolves
   when self-start fails
