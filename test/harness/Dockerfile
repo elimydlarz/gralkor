@@ -1,4 +1,7 @@
-FROM node:22-bookworm
+# Default amd64 — matches most operator environments and avoids
+# the falkordb.so arch mismatch on Apple Silicon.
+# Override with: docker build --platform linux/arm64 ...
+FROM --platform=${TARGETPLATFORM:-linux/amd64} node:22-bookworm
 
 # Build tools for falkordblite native extensions
 RUN apt-get update -qq && \
