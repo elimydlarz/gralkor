@@ -13,7 +13,7 @@ ENV PATH="/root/.local/bin:$PATH"
 RUN uv python install 3.13
 
 # Verify tools
-RUN node --version && uv --version && python3 --version
+RUN node --version && uv --version && uv python list --only-installed
 
 # OpenClaw HOME
 ENV HOME=/root
