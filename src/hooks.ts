@@ -1,6 +1,6 @@
 import type { GraphitiClient, EpisodeMessage, EpisodeBlock } from "./client.js";
 import type { GralkorConfig } from "./config.js";
-import { type ReadyGate } from "./config.js";
+import { type ReadyGate, sanitizeGroupId } from "./config.js";
 import { formatFact, INTERPRETATION_INSTRUCTION } from "./tools.js";
 
 /**
