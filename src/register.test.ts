@@ -222,7 +222,7 @@ describe("registerCli with ServerManager", () => {
   });
 });
 
-describe("service-self-start", () => {
+describe("startup", () => {
   let api: PluginApiBase;
   let serverReady: ReadyGate;
   let logSpy: ReturnType<typeof vi.spyOn>;
