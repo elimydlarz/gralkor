@@ -195,7 +195,7 @@ describe("register()", () => {
     // Simulate OpenClaw passing config via api.pluginConfig, not as 2nd arg
     const apiWithConfig = {
       ...api,
-      pluginConfig: { autoRecall: { enabled: false } },
+      pluginConfig: { autoRecall: { enabled: false }, dataDir: "/tmp/gralkor-test-data" },
     };
 
     // Should not throw — config is read and applied
