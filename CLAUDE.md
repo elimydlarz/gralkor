@@ -75,7 +75,7 @@ graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_epis
 
 ### Server Manager Lifecycle
 
-Service `gralkor-server` (`src/server-manager.ts`): `uv sync --no-dev --frozen` (venv in `dataDir`), force-install bundled wheels, write `config.yaml`, spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`/API keys. No `FALKORDB_URI` → embedded FalkorDBLite. Poll `/health` 500ms (120s timeout), monitor 60s. On healthy: `serverReady.resolve()` (module-level). SIGTERM → 5s → SIGKILL. First start ~1-2 min.
+Service `gralkor-server` (`src/server-manager.ts`): `uv sync --no-dev --frozen` (venv in `dataDir`), force-install bundled wheels, write `config.yaml`, resolve API keys via `resolveSecretEnv()` callback (OpenClaw secret-input SDK), spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`/resolved API keys. No `FALKORDB_URI` → embedded FalkorDBLite. Poll `/health` 500ms (120s timeout), monitor 60s. On healthy: `serverReady.resolve()` (module-level). SIGTERM → 5s → SIGKILL. First start ~1-2 min.
 
 ### Communication Path
 
