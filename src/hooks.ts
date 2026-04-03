@@ -348,7 +348,7 @@ export function createBeforePromptBuildHandler(
       const limit = config.autoRecall.maxResults;
 
       if (serverReady && !serverReady.isReady()) {
-        throw new Error("[gralkor] auto-recall failed: server is not ready");
+        throw new Error("server is not ready (service start() may not have been called by host)");
       }
 
       const nativeSearch = getNativeSearch?.();
