@@ -1,9 +1,0 @@
-{
-  "sessionId": "49ad1c09-bc9d-4f50-9a13-b17298d9725a",
-  "pid": 63594,
-  "hostname": "Eli Mydlarz",
-  "clockedInAt": "2026-04-03T11:59:28.852Z",
-  "lastActiveAt": "2026-04-03T12:01:53.339Z",
-  "branch": "main",
-  "task": "Let's fully switch from make to pnpm for DX. No more make at all when we"
-}
