@@ -83,16 +83,24 @@ openclaw config set plugins.entries.gralkor.config.test true
 
 ### 3. Set your LLM API key
 
-Graphiti needs an LLM to extract entities and relationships from conversations. Make sure the API key for your chosen provider is available in the environment (see [OpenClaw docs](https://openclaw.dev/docs) for where env vars are configured).
+Graphiti needs an LLM to extract entities and relationships from conversations. Configure your API key via plugin config — either as a plaintext string or a SecretRef that references an environment variable:
+
+```bash
+# Plaintext
+openclaw config set plugins.entries.gralkor.config.googleApiKey 'your-key-here'
+
+# Or reference an env var (SecretRef)
+openclaw config set plugins.entries.gralkor.config.googleApiKey '{"$ref": "env:GOOGLE_API_KEY"}'
+```
 
 Supported providers:
 
-| Provider | Env var | Notes |
+| Provider | Config field | Notes |
 |---|---|---|
-| **Google Gemini** (default) | `GOOGLE_API_KEY` | Fully self-contained (LLM + embeddings + reranking) |
-| **OpenAI** | `OPENAI_API_KEY` | Handles LLM + embeddings out of the box |
-| **Anthropic** | `ANTHROPIC_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
-| **Groq** | `GROQ_API_KEY` | LLM only — still needs `OPENAI_API_KEY` for embeddings |
+| **Google Gemini** (default) | `googleApiKey` | Fully self-contained (LLM + embeddings + reranking) |
+| **OpenAI** | `openaiApiKey` | Handles LLM + embeddings out of the box |
+| **Anthropic** | `anthropicApiKey` | LLM only — still needs `openaiApiKey` for embeddings |
+| **Groq** | `groqApiKey` | LLM only — still needs `openaiApiKey` for embeddings |
 
 To switch away from Gemini, set `llm` and `embedder` in the plugin config. For example, with OpenAI:
 
