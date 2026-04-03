@@ -121,6 +121,23 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
 | build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
 | build-communities-tool | `memory_build_communities` agent tool triggers `POST /build-communities` via `client.buildCommunities(groupId)` |
+| secret-resolution | API keys resolved via OpenClaw secret-input SDK from plugin config; passed to server manager as env vars |
+
+#### secret-resolution
+
+```
+secret-resolution
+  when config contains a plaintext API key string
+    then resolved value is that string
+  when config contains a SecretRef object
+    then resolved value is the dereferenced secret
+  when config value is null or absent
+    then resolved value is undefined
+  when resolved value is empty or whitespace
+    then resolved value is undefined
+  then resolved API keys are passed to the server manager as env vars
+  then process.env is not read for API keys
+```
 
 #### auto-recall-interpretation
 
