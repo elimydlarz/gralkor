@@ -123,6 +123,34 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
     delete env.FALKORDB_URI;
 
+    // Pre-flight health check: if the server is already running and healthy
+    // (e.g. module was re-evaluated by the host mid-boot), adopt it rather
+    // than killing and respawning. This is the primary guard against the
+    // "enable plugin via live config update" case where the gateway reloads
+    // the module while the server is still starting.
+    try {
+      const res = await fetch(`http://127.0.0.1:${opts.port}/health`,
+        { signal: AbortSignal.timeout(2000) });
+      if (res.ok) {
+        await res.text(); // drain
+        const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
+        console.log(`[gralkor] boot: server already running and healthy, adopting (${bootDuration}s)`);
+        // Start monitor and return without spawning
+        monitorTimer = setInterval(async () => {
+          try {
+            const r = await fetch(`http://127.0.0.1:${opts.port}/health`);
+            await r.text();
+            if (!r.ok) console.warn("[gralkor] Server health check returned", r.status);
+          } catch (err) {
+            console.warn("[gralkor] Server health check failed:", err instanceof Error ? err.message : err);
+          }
+        }, MONITOR_INTERVAL_MS);
+        return;
+      }
+    } catch {
+      // Not running yet — proceed with normal boot
+    }
+
     // Kill any previously-spawned server. This handles the case where the host
     // re-evaluates the module (resetting the in-process serverManager cache),
     // and ensures the new server always starts with current config.
