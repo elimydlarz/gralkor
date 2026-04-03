@@ -111,7 +111,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
-| cli-diagnostics | `status/check/search` under `openclaw gralkor`; group ID for search |
+| cli-diagnostics | `status/search` under `openclaw gralkor`; group ID for search |
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
 | error-propagation | Flush retries 3x exponential; final failure logs error (message dropped) without crashing |
