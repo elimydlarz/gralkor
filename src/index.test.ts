@@ -359,6 +359,29 @@ describe("register()", () => {
       consoleSpy.mockRestore();
       vi.unstubAllGlobals();
     });
+
+    it("when SIGTERM is received with no pending buffers, then flushAll is not called", async () => {
+      const { register, _resetForTesting } = await import("./index.js");
+      _resetForTesting();
+
+      register(api);
+
+      expect(sigTermHandler).toBeDefined();
+
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      // No messages buffered — just fire SIGTERM
+      sigTermHandler!();
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      const sigTermLogs = consoleSpy.mock.calls.filter(
+        (args) => typeof args[0] === "string" && args[0].includes("SIGTERM"),
+      );
+      expect(sigTermLogs).toHaveLength(0);
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe("when ontology config is invalid", () => {
