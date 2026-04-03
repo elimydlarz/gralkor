@@ -1818,7 +1818,7 @@ describe("test mode logging", () => {
     expect(testLogs[0][0]).toContain("What color is the sky?");
   });
 
-  it("does not log auto-recall context when test mode is off", async () => {
+  it("does not log auto-recall query or context when test mode is off", async () => {
     client.search.mockResolvedValue({
       ...emptySearchResults(),
       facts: [makeFact({ fact: "Sky is blue" })],
