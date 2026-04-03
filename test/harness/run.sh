@@ -120,12 +120,13 @@ echo ""
 
 # ── 5. Reinstall (upgrade-safe) ────────────────────────────
 echo "--- 5. Reinstall ---"
-kill $PLUGINS_PID 2>/dev/null || true
-wait $PLUGINS_PID 2>/dev/null || true
 
-# Kill the running server — reinstall should handle stale state
+# Kill everything from the first boot — server, openclaw-plugins, redis
 pkill -f "uvicorn main:app" 2>/dev/null || true
-sleep 2
+pkill -f "openclaw-plugins" 2>/dev/null || true
+pkill -f "redis-server" 2>/dev/null || true
+kill $PLUGINS_PID 2>/dev/null || true
+sleep 3
 
 # Clear the memory slot before removing — otherwise install fails validation
 openclaw config set plugins.slots.memory "" >/dev/null 2>&1 || true
