@@ -257,7 +257,8 @@ describe("service-self-start", () => {
     idleTimeoutMs: 300_000,
   };
 
-  it("when the host calls start() before 30s, starts normally and no warning is logged", async () => {
+  describe("when the host calls start() before 30s", () => {
+    it("starts normally and no warning is logged", async () => {
     registerServerService(api, config, "/fake/plugin", serverReady);
 
     // Host calls start() at 5s — well before the 30s warning
