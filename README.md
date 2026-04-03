@@ -180,7 +180,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 | `autoRecall.enabled` | `true` | Automatically recall relevant context before each turn |
 | `autoRecall.maxResults` | `10` | Maximum number of facts injected as context |
 | `idleTimeoutMs` | `300000` | How long (ms) after the last agent response to wait before flushing buffered messages to the graph. Prevents data loss when sessions aren't explicitly ended (e.g. user walks away, gateway restarts). Set to `0` to disable idle flushing. |
-| `dataDir` | `{pluginDir}/../.gralkor-data` | Directory for backend data (Python venv, FalkorDB database) |
+| `dataDir` | **(required)** | Directory for persistent backend data (Python venv, FalkorDB database). No default — operator must set. |
 | `test` | `false` | Test mode — logs full episode bodies and search results at plugin boundaries for debugging |
 
 ### Graph partitioning
