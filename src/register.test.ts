@@ -271,5 +271,18 @@ describe("service-self-start", () => {
     const warnings = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(warnings).not.toContain("WARNING");
     expect(serverReady.resolve).toHaveBeenCalled();
+    });
+  });
+
+  describe("when the host has not called start() after 30s", () => {
+    it("logs a warning", async () => {
+      registerServerService(api, config, "/fake/plugin", serverReady);
+
+      vi.advanceTimersByTime(30_000);
+
+      const warnings = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+      expect(warnings).toContain("WARNING");
+      expect(warnings).toContain("start() has not been called");
+    });
   });
 });
