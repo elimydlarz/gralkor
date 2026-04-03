@@ -1,5 +1,6 @@
 .PHONY: test test-plugin test-functional test-server test-mutate \
-        typecheck pack build-server up down logs setup-server help
+        typecheck pack build-server up down logs setup-server help \
+        harness harness-npm harness-run harness-shell
 
 
 help:
