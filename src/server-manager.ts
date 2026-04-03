@@ -123,20 +123,24 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
     delete env.FALKORDB_URI;
 
-    // Check if a gralkor server is already running before spawning a new one.
-    // This handles the case where a previous session left a server running
-    // and the module-level manager cache was lost (e.g. process restart).
-    // We verify the response shape (status + graph keys) to avoid mistakenly
-    // reusing an unrelated service that happens to be on this port.
+    // Kill any previously-spawned server. This handles the case where the host
+    // re-evaluates the module (resetting the in-process serverManager cache),
+    // and ensures the new server always starts with current config.
+    const pidFile = join(opts.dataDir, "server.pid");
     try {
-      const res = await fetch(`http://127.0.0.1:${opts.port}/health`);
-      if (res.ok) {
-        const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
-        console.log(`[gralkor] boot: server already running on port ${opts.port}, reusing (${bootDuration}s)`);
-        return;
+      const pid = parseInt(await readFile(pidFile, "utf-8"), 10);
+      if (!isNaN(pid)) {
+        console.log(`[gralkor] boot: killing previous server (pid ${pid})...`);
+        try {
+          process.kill(pid, "SIGTERM");
+        } catch {
+          // Already dead — that's fine
+        }
+        // Wait for the port to free
+        await new Promise((r) => setTimeout(r, 1500));
       }
     } catch {
-      // Not running — proceed with spawn
+      // No PID file — nothing to kill
     }
 
     console.log("[gralkor] Starting Graphiti server on port", opts.port);
