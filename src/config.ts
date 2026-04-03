@@ -132,6 +132,10 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
     ontology: raw.ontology,
     dataDir: raw.dataDir,
     test: raw.test ?? false,
+    googleApiKey: raw.googleApiKey,
+    openaiApiKey: raw.openaiApiKey,
+    anthropicApiKey: raw.anthropicApiKey,
+    groqApiKey: raw.groqApiKey,
   };
 }
 
