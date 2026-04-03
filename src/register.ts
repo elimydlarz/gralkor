@@ -16,6 +16,24 @@ import type { PluginApiBase } from "./types.js";
 
 export type { ServerManager } from "./server-manager.js";
 
+const SECRET_ENV_MAP: Record<string, keyof GralkorConfig> = {
+  GOOGLE_API_KEY: "googleApiKey",
+  OPENAI_API_KEY: "openaiApiKey",
+  ANTHROPIC_API_KEY: "anthropicApiKey",
+  GROQ_API_KEY: "groqApiKey",
+};
+
+function buildSecretEnv(config: GralkorConfig): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [envVar, field] of Object.entries(SECRET_ENV_MAP)) {
+    const val = config[field];
+    if (typeof val === "string" && val.trim().length > 0) {
+      env[envVar] = val.trim();
+    }
+  }
+  return env;
+}
+
 export function registerHooks(
   api: PluginApiBase,
   client: GraphitiClient,
