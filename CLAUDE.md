@@ -536,11 +536,11 @@ Server manager generates `config.yaml` and forwards all keys at startup.
 
 ```bash
 openclaw plugins install -l .         # install locally for dev
-make typecheck                        # type-check TypeScript
-make test                             # all tests (plugin + server)
-make test-plugin                      # vitest only
-make test-server                      # pytest only (no Docker needed)
-make setup-server                     # first time: sync server venv
+pnpm run typecheck                    # type-check TypeScript
+pnpm test                             # all tests (plugin + server)
+pnpm run test:plugin                  # vitest only
+pnpm run test:server                  # pytest only (no Docker needed)
+pnpm run setup:server                 # first time: sync server venv
 ```
 
 TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
