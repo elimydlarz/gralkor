@@ -338,6 +338,54 @@ describe("createServerManager", () => {
     expect(written).not.toContain("ontology:");
   });
 
+  it("when the port is already healthy, adopts without running setup or spawning", async () => {
+    mockFetch.mockResolvedValue({ ok: true, text: vi.fn().mockResolvedValue("") });
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    expect(execFile).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+    const pidWrites = mockWriteFile.mock.calls.filter((c: unknown[]) =>
+      typeof c[0] === "string" && (c[0] as string).includes("server.pid"),
+    );
+    expect(pidWrites).toHaveLength(0);
+  });
+
+  it("when a previous pid is on record, sends SIGTERM and waits before spawning", async () => {
+    vi.useFakeTimers();
+    // Pre-flight fails (no server yet), health poll succeeds
+    mockFetch
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockResolvedValue({ ok: true });
+    mockReadFile.mockResolvedValueOnce("1234");
+
+    const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    const startPromise = manager.start();
+    await vi.advanceTimersByTimeAsync(2000);
+    await startPromise;
+
+    expect(killSpy).toHaveBeenCalledWith(1234, "SIGTERM");
+    expect(spawn).toHaveBeenCalled();
+
+    killSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
   it("stop sends SIGTERM to the process", async () => {
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
