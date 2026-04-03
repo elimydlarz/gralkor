@@ -2,12 +2,12 @@
 # Build the harness Docker image with the current plugin code.
 #
 # Usage:
-#   bash test/harness/build.sh              # local tarball (test your changes)
+#   bash test/harness/build.sh              # local tarball on linux/arm64 (matches Mac operators)
 #   bash test/harness/build.sh --npm        # from npm (test what operators get)
 #   bash test/harness/build.sh --no-cache   # rebuild without Docker cache
 #
-# Runs as linux/amd64 by default (matches most operators, avoids falkordb.so
-# arch mismatch on Apple Silicon). Override: PLATFORM=linux/arm64 bash test/harness/build.sh
+# linux/arm64 by default — matches macOS Apple Silicon and Hetzner CAX31.
+# Override: PLATFORM=linux/amd64 bash test/harness/build.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -34,10 +34,16 @@ else
 
   pnpm run --silent build
 
-  # Pack with resources/memory manifests (like pack.sh, but skip arm64 wheel)
+  # Build the arm64 wheel (same as make pack)
+  bash scripts/build-arm64-wheel.sh
+
+  # Pack with resources/memory manifests
   cp resources/memory/package.json package.json
   cp resources/memory/openclaw.plugin.json openclaw.plugin.json
   pnpm pack --pack-destination "$HARNESS_DIR" >/dev/null 2>&1
+
+  # Clean up wheels from repo (they're in the tarball now)
+  rm -rf server/wheels
 
   # Restore dev manifests
   git checkout package.json openclaw.plugin.json 2>/dev/null || true
@@ -48,7 +54,7 @@ else
   echo "Plugin tarball: test/harness/plugin.tgz"
 fi
 
-PLATFORM="${PLATFORM:-linux/amd64}"
+PLATFORM="${PLATFORM:-linux/arm64}"
 
 echo ""
 echo "=== Building Docker image (platform: $PLATFORM) ==="
