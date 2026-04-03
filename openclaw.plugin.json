@@ -109,6 +109,18 @@
     },
     "test": {
       "label": "Test mode (verbose logging)"
+    },
+    "googleApiKey": {
+      "label": "Google API key"
+    },
+    "openaiApiKey": {
+      "label": "OpenAI API key"
+    },
+    "anthropicApiKey": {
+      "label": "Anthropic API key"
+    },
+    "groqApiKey": {
+      "label": "Groq API key"
     }
   },
   "version": "26.0.11"
