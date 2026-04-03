@@ -321,41 +321,40 @@ sigterm-flush
 #### Tools
 
 ```
-tools
-  _prioritize_facts
-    when all facts are valid (no invalid_at)
-      then all facts returned up to limit
-      and original relevance order preserved
-    when mix of valid and invalid facts
-      then reserved slots (70% of limit) filled with valid facts first
-      and remaining slots filled by original relevance order (valid or invalid)
-      and total never exceeds limit
-    when fewer valid facts than reserved slots
-      then all valid facts placed in reserved slots
-      and remaining slots filled with non-valid facts by relevance
-    when all facts are invalid
-      then invalid facts returned up to limit (no empty results)
-    when invalid_at is set but expired_at is also set (superseded)
-      then treated same as any invalid fact (invalid_at is the signal)
-    when more candidates than limit (over-fetch scenario)
-      then valid facts from beyond original limit can displace invalid facts
-  /search endpoint
-    when searching
-      then over-fetches 2x num_results from Graphiti
-      and applies _prioritize_facts before returning
-      and logs valid/non-valid breakdown
-  memory_build_indices tool
-    when server is ready
-      then calls client.buildIndices
-      and returns success message
-    when server is not ready
-      then throws error
-  memory_build_communities tool
-    when server is ready
-      then calls client.buildCommunities with group ID
-      and returns community and edge counts
-    when server is not ready
-      then throws error
+_prioritize_facts
+  when all facts are valid (no invalid_at)
+    then all facts returned up to limit
+    and original relevance order preserved
+  when mix of valid and invalid facts
+    then reserved slots (70% of limit) filled with valid facts first
+    and remaining slots filled by original relevance order (valid or invalid)
+    and total never exceeds limit
+  when fewer valid facts than reserved slots
+    then all valid facts placed in reserved slots
+    and remaining slots filled with non-valid facts by relevance
+  when all facts are invalid
+    then invalid facts returned up to limit (no empty results)
+  when invalid_at is set but expired_at is also set (superseded)
+    then treated same as any invalid fact (invalid_at is the signal)
+  when more candidates than limit (over-fetch scenario)
+    then valid facts from beyond original limit can displace invalid facts
+/search endpoint
+  when searching
+    then over-fetches 2x num_results from Graphiti
+    and applies _prioritize_facts before returning
+    and logs valid/non-valid breakdown
+memory_build_indices tool
+  when server is ready
+    then calls client.buildIndices
+    and returns success message
+  when server is not ready
+    then throws error
+memory_build_communities tool
+  when server is ready
+    then calls client.buildCommunities with group ID
+    and returns community and edge counts
+  when server is not ready
+    then throws error
 ```
 
 #### Startup
