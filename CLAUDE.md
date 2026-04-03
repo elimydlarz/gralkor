@@ -531,6 +531,26 @@ publish-version-integrity
     and no git commit or tag is created
 ```
 
+#### service-self-start
+
+```
+service-self-start
+  when the host calls start() before 30s
+    then the server starts normally
+    and no warning is logged
+  when the host has not called start() after 30s
+    then a warning is logged
+    when the host has not called start() after 60s
+      then the plugin starts the server itself
+      when self-start succeeds
+        then serverReady resolves
+      when self-start fails
+        then the error is logged
+        and serverReady remains unresolved
+  when the host calls start() after self-start has begun
+    then the duplicate start is a no-op
+```
+
 ### Cross-functional
 
 | Requirement | Implementation |
