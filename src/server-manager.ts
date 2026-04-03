@@ -382,6 +382,23 @@ export function serializeOntologyYaml(ontology: OntologyConfig): string {
   return lines.join("\n") + "\n";
 }
 
+async function waitForPortFree(port: number, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`,
+        { signal: AbortSignal.timeout(500) });
+      await res.text();
+      // Still responding — wait and retry
+      await new Promise((r) => setTimeout(r, 300));
+    } catch {
+      // Port no longer accepting connections — it's free
+      return;
+    }
+  }
+  console.warn("[gralkor] boot: port did not free within timeout, proceeding anyway");
+}
+
 async function waitForHealth(port: number): Promise<void> {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS;
   const start = Date.now();
