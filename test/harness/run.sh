@@ -10,7 +10,7 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 echo "=== Gralkor Install Harness ==="
 echo ""
 
-# ── Configure ──────────────────────────────────────────────
+# ── Configure ─────────────────��────────────────────────────
 API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
 if [ -n "$API_KEY" ]; then
   echo "Configuring googleApiKey from env..."
@@ -23,45 +23,24 @@ echo ""
 # ── 1. Plugin install ─────────────────────────────────────
 echo "--- 1. Plugin install ---"
 PLUGIN_DIR="$HOME/.openclaw/extensions/gralkor"
-if [ -d "$PLUGIN_DIR" ]; then
-  pass "plugin directory exists"
-else
-  fail "plugin directory missing"
-fi
 
-if [ -f "$PLUGIN_DIR/openclaw.plugin.json" ]; then
-  pass "openclaw.plugin.json present"
-else
-  fail "openclaw.plugin.json missing"
-fi
-
-if [ -f "$PLUGIN_DIR/dist/index.js" ]; then
-  pass "dist/index.js present"
-else
-  fail "dist/index.js missing"
-fi
-
-if [ -f "$PLUGIN_DIR/server/main.py" ]; then
-  pass "server/main.py present"
-else
-  fail "server/main.py missing"
-fi
+[ -d "$PLUGIN_DIR" ] && pass "plugin directory exists" || fail "plugin directory missing"
+[ -f "$PLUGIN_DIR/openclaw.plugin.json" ] && pass "manifest present" || fail "manifest missing"
+[ -f "$PLUGIN_DIR/dist/index.js" ] && pass "dist/index.js present" || fail "dist/index.js missing"
+[ -f "$PLUGIN_DIR/server/main.py" ] && pass "server/main.py present" || fail "server/main.py missing"
 echo ""
 
-# ── 2. Plugin loads in OpenClaw ───────────────────────────
-echo "--- 2. Plugin loads ---"
-LIST_OUTPUT=$(openclaw plugins list 2>&1)
-if echo "$LIST_OUTPUT" | grep -q "gralkor.*loaded"; then
-  pass "plugin listed as loaded"
-else
-  fail "plugin not loaded"
-  echo "$LIST_OUTPUT" | grep -i gralkor || true
-fi
-echo ""
+# ── 2. Boot server via OpenClaw plugin load ───────────────
+echo "--- 2. Server boot ---"
+echo "Loading plugin (triggers server self-start)..."
 
-# ── 3. Server health ─────────────────────────────────────
-echo "--- 3. Server health ---"
-echo "Waiting for server (up to 120s)..."
+# openclaw plugins list loads the plugin which self-starts the server.
+# Run in background — we only care about the server coming up.
+openclaw plugins list >/dev/null 2>&1 &
+PLUGINS_PID=$!
+
+# Wait for server health
+echo "Waiting for server health (up to 120s)..."
 SERVER_OK=false
 for i in $(seq 1 120); do
   HEALTH=$(curl -s http://127.0.0.1:8001/health 2>/dev/null) && {
@@ -84,8 +63,8 @@ else
 fi
 echo ""
 
-# ── 4. Ingest (capture) smoke test ───────────────────────
-echo "--- 4. Ingest smoke test ---"
+# ── 3. Ingest (capture) smoke test ───────────────────────
+echo "--- 3. Ingest smoke test ---"
 if [ "$SERVER_OK" = true ]; then
   INGEST_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/ingest-messages \
     -H 'Content-Type: application/json' \
@@ -107,17 +86,16 @@ if [ "$SERVER_OK" = true ]; then
     pass "ingest returned 200"
   else
     fail "ingest returned $INGEST_CODE"
-    echo "  $INGEST_BODY"
+    echo "  $INGEST_BODY" | head -5
   fi
 else
   fail "ingest skipped (server not healthy)"
 fi
 echo ""
 
-# ── 5. Search (recall) smoke test ────────────────────────
-echo "--- 5. Search smoke test ---"
+# ── 4. Search (recall) smoke test ──────────���─────────────
+echo "--- 4. Search smoke test ---"
 if [ "$SERVER_OK" = true ]; then
-  # Give graphiti a moment to process the episode
   sleep 3
 
   SEARCH_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/search \
@@ -133,13 +111,16 @@ if [ "$SERVER_OK" = true ]; then
     echo "  facts returned: $FACT_COUNT"
   else
     fail "search returned $SEARCH_CODE"
-    echo "  $SEARCH_BODY"
+    echo "  $SEARCH_BODY" | head -5
   fi
 else
   fail "search skipped (server not healthy)"
 fi
 echo ""
 
-# ── Summary ──────────────────────────────────────────────
+# ── Cleanup ──��───────────────────────────────────────────
+kill $PLUGINS_PID 2>/dev/null || true
+
+# ── Summary ─────���────────────────────────────────────────
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
