@@ -131,20 +131,12 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     try {
       const res = await fetch(`http://127.0.0.1:${opts.port}/health`);
       if (res.ok) {
-        const body = await res.json() as unknown;
-        if (
-          body !== null &&
-          typeof body === "object" &&
-          "status" in body &&
-          "graph" in body
-        ) {
-          const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
-          console.log(`[gralkor] boot: gralkor server already running on port ${opts.port}, reusing (${bootDuration}s)`);
-          return;
-        }
+        const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
+        console.log(`[gralkor] boot: server already running on port ${opts.port}, reusing (${bootDuration}s)`);
+        return;
       }
     } catch {
-      // Not running or not our server — proceed with spawn
+      // Not running — proceed with spawn
     }
 
     console.log("[gralkor] Starting Graphiti server on port", opts.port);
