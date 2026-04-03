@@ -189,8 +189,8 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
         } catch {
           // Already dead — that's fine
         }
-        // Wait for the port to free
-        await new Promise((r) => setTimeout(r, 1500));
+        // Poll until the port is free (up to 10s)
+        await waitForPortFree(opts.port, 10_000);
       }
     } catch {
       // No PID file — nothing to kill
