@@ -1662,10 +1662,11 @@ describe("flushSessionBuffer", () => {
       agentId: "agent-42",
     };
 
-    await expect(
-      flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
-    ).rejects.toThrow("422");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 });
     expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("message dropped"));
+    errorSpy.mockRestore();
   });
 
 });
