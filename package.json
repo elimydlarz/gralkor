@@ -11,6 +11,23 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm run typecheck && pnpm run test:plugin && pnpm run test:functional && pnpm run test:server",
+    "test:plugin": "vitest run",
+    "test:functional": "vitest run --config test/functional/vitest.config.ts",
+    "test:server": "cd server && uv run pytest tests/",
+    "test:server:changed": "cd server && files=$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py') && [ -n \"$files\" ] && uv run pytest $files || echo 'No changed server test files'",
+    "test:mutate": "stryker run",
+    "setup:server": "cd server && uv sync",
+    "pack": "bash scripts/pack.sh",
+    "docker:build": "docker build -t gralkor-server:latest server/",
+    "docker:up": "pnpm run docker:build && docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs graphiti",
+    "harness": "bash test/harness/build.sh",
+    "harness:npm": "bash test/harness/build.sh --npm",
+    "harness:run": "docker run --rm -it --platform linux/amd64 gralkor-harness:latest",
+    "harness:shell": "docker run --rm -it --platform linux/amd64 gralkor-harness:latest bash",
     "publish:npm": "bash scripts/publish.sh"
   },
   "files": [
