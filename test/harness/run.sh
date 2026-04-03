@@ -127,6 +127,9 @@ wait $PLUGINS_PID 2>/dev/null || true
 pkill -f "uvicorn main:app" 2>/dev/null || true
 sleep 2
 
+# Clear the memory slot before removing — otherwise install fails validation
+openclaw config set plugins.slots.memory "" >/dev/null 2>&1 || true
+
 # Wipe the plugin dir (simulates what agents/init.sh does)
 rm -rf "$HOME/.openclaw/extensions/gralkor"
 
