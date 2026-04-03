@@ -58,6 +58,6 @@ docker build --platform "$PLATFORM" ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gra
 rm -f "$HARNESS_DIR/plugin.tgz"
 
 echo ""
-echo "=== Done ==="
-echo "  docker run --rm -it gralkor-harness:latest          # run test script"
-echo "  docker run --rm -it gralkor-harness:latest bash      # interactive shell"
+echo "=== Done (platform: $PLATFORM) ==="
+echo "  docker run --rm -it --platform $PLATFORM gralkor-harness:latest          # run test script"
+echo "  docker run --rm -it --platform $PLATFORM gralkor-harness:latest bash      # interactive shell"
