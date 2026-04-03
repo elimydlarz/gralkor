@@ -178,23 +178,6 @@ function registerFullPlugin(
   const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
   const manager = registerServerService(api, config, dir, serverReady);
 
-  // Start the server directly — OpenClaw's registerService lifecycle does not
-  // reliably invoke start() (observed: service registered but start() never
-  // called, leaving the server permanently "not ready").  The module-level
-  // guard ensures only one server process is spawned across re-registrations.
-  if (!moduleServerManager) {
-    moduleServerManager = manager;
-    serverStartPromise = manager.start().then(
-      () => {
-        serverReady.resolve();
-        console.log("[gralkor] boot: server ready (self-started)");
-      },
-      (err) => {
-        console.error("[gralkor] boot: server start failed:", err instanceof Error ? err.message : err);
-      },
-    );
-  }
-
   // CLI — gralkor commands
   registerCli(api, client, config, manager, resolvedDataDir);
 }
