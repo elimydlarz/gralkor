@@ -150,10 +150,16 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       }
     });
 
+    proc.on("error", (err) => {
+      console.error("[gralkor] Server process error:", err.message);
+    });
+
     proc.on("exit", (code, signal) => {
       console.log("[gralkor] Server process exited — code:", code, "signal:", signal);
       proc = null;
     });
+
+    console.log("[gralkor] boot: server process spawned (pid:", proc.pid, "), polling health...");
 
     // Wait for server to become healthy
     await waitForHealth(opts.port);
