@@ -294,3 +294,60 @@ describe("startup", () => {
     expect(serverReady.resolve).not.toHaveBeenCalled();
   });
 });
+
+describe("secret-resolution", () => {
+  const base: GralkorConfig = {
+    autoCapture: { enabled: true },
+    autoRecall: { enabled: true, maxResults: 10 },
+    idleTimeoutMs: 300_000,
+  };
+
+  describe("when config contains a plaintext API key string", () => {
+    it("then env var is set to that string (trimmed)", () => {
+      const env = buildSecretEnv({ ...base, googleApiKey: "  sk-abc123  " });
+      expect(env.GOOGLE_API_KEY).toBe("sk-abc123");
+    });
+  });
+
+  describe("when config value is empty or whitespace", () => {
+    it("then env var is not set", () => {
+      const env = buildSecretEnv({ ...base, googleApiKey: "   ", openaiApiKey: "" });
+      expect(env.GOOGLE_API_KEY).toBeUndefined();
+      expect(env.OPENAI_API_KEY).toBeUndefined();
+    });
+  });
+
+  describe("when config value is undefined or absent", () => {
+    it("then env var is not set", () => {
+      const env = buildSecretEnv({ ...base, googleApiKey: undefined });
+      expect(env.GOOGLE_API_KEY).toBeUndefined();
+      expect(env.OPENAI_API_KEY).toBeUndefined();
+    });
+  });
+
+  it("then env vars are built synchronously and passed to the server manager", () => {
+    const env = buildSecretEnv({
+      ...base,
+      googleApiKey: "gk-123",
+      openaiApiKey: "sk-456",
+      anthropicApiKey: "ak-789",
+      groqApiKey: "gsk-012",
+    });
+    expect(env).toEqual({
+      GOOGLE_API_KEY: "gk-123",
+      OPENAI_API_KEY: "sk-456",
+      ANTHROPIC_API_KEY: "ak-789",
+      GROQ_API_KEY: "gsk-012",
+    });
+  });
+
+  it("then process.env is not read for API keys", () => {
+    process.env.GOOGLE_API_KEY = "from-env";
+    try {
+      const env = buildSecretEnv(base);
+      expect(env.GOOGLE_API_KEY).toBeUndefined();
+    } finally {
+      delete process.env.GOOGLE_API_KEY;
+    }
+  });
+});
