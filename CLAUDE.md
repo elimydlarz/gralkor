@@ -363,6 +363,10 @@ memory_build_communities tool
 startup
   then the server is started as fire-and-forget during registration
   then subsequent register() calls reuse the existing manager (no duplicate starts)
+  when server is already running on the port at startup (orphaned from prior process)
+    then skips spawning
+    and returns without error
+    and serverReady resolves
   when self-start succeeds
     then serverReady resolves
   when self-start fails
