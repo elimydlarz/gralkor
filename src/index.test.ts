@@ -295,6 +295,76 @@ describe("register()", () => {
     });
   });
 
+  describe("SIGTERM handler", () => {
+    let processOnSpy: ReturnType<typeof vi.spyOn>;
+    let sigTermHandler: (() => void) | undefined;
+
+    beforeEach(() => {
+      processOnSpy = vi.spyOn(process, "on").mockImplementation((event, handler) => {
+        if (event === "SIGTERM") {
+          sigTermHandler = handler as () => void;
+        }
+        return process;
+      });
+    });
+
+    afterEach(() => {
+      processOnSpy.mockRestore();
+      sigTermHandler = undefined;
+    });
+
+    it("when SIGTERM is received with pending buffers, then flushAll is called and pending count is logged", async () => {
+      const { register, _resetForTesting } = await import("./index.js");
+      _resetForTesting();
+
+      // Also reset sigTermHandlerInstalled
+      const mod = await import("./index.js");
+      (mod as Record<string, unknown>)._resetSigTermForTesting?.();
+
+      register(api);
+
+      expect(sigTermHandler).toBeDefined();
+
+      // Buffer a message via agent_end to create a pending entry
+      const agentEndHandler = api.on.mock.calls.find(
+        (call: unknown[]) => call[0] === "agent_end",
+      )?.[1] as (event: unknown, ctx: unknown) => Promise<void>;
+
+      await agentEndHandler(
+        {
+          messages: [{
+            role: "user",
+            content: [{ type: "text", text: "hello" }],
+          }],
+        },
+        { agentId: "test-agent" },
+      );
+
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({}),
+        text: async () => "",
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      sigTermHandler!();
+
+      // Wait for async flush
+      await new Promise((r) => setTimeout(r, 50));
+
+      const sigTermLogs = consoleSpy.mock.calls.filter(
+        (args) => typeof args[0] === "string" && args[0].includes("SIGTERM received"),
+      );
+      expect(sigTermLogs).toHaveLength(1);
+      expect(sigTermLogs[0][0]).toContain("flushing 1 pending session buffer");
+
+      consoleSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+  });
+
   describe("when ontology config is invalid", () => {
     it("then throws validation error", async () => {
       const { register } = await import("./index.js");
