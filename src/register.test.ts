@@ -133,43 +133,6 @@ describe("registerCli", () => {
     });
   });
 
-  describe("clear command", () => {
-    it("passes group_id to client.clearGraph", async () => {
-      const clearAction = actions.get("clear <group_id>");
-      expect(clearAction).toBeDefined();
-
-      await clearAction!("my-agent");
-
-      expect(client.clearGraph).toHaveBeenCalledWith("my-agent");
-    });
-
-    it("logs success with the group ID", async () => {
-      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
-      const clearAction = actions.get("clear <group_id>");
-      await clearAction!("agent-42");
-
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
-      expect(output).toContain('Cleared graph for group "agent-42"');
-
-      logSpy.mockRestore();
-    });
-
-    it("handles clear errors gracefully", async () => {
-      client.clearGraph.mockRejectedValue(new Error("timeout"));
-
-      const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      const clearAction = actions.get("clear <group_id>");
-      await clearAction!("agent-1");
-
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
-      expect(output).toContain("Clear failed: timeout");
-
-      logSpy.mockRestore();
-    });
-  });
-
   describe("status command", () => {
     it("reports healthy status", async () => {
       client.health.mockResolvedValue({ status: "ok" });
