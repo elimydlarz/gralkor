@@ -148,6 +148,16 @@ export function resolveProviders(config: GralkorConfig) {
   };
 }
 
+/**
+ * Normalize an agentId into a RediSearch-safe group_id.
+ * Hyphens are special operators in RediSearch fulltext queries;
+ * replacing them prevents syntax errors in graphiti-core's
+ * fulltext search which embeds group_id in query strings.
+ */
+export function sanitizeGroupId(id: string): string {
+  return id.replace(/-/g, "_");
+}
+
 export interface ReadyGate {
   isReady(): boolean;
   resolve(): void;
