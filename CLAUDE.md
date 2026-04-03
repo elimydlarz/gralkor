@@ -581,12 +581,15 @@ publish-version-integrity
 | `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edges |
 | `ontology.excludedEntityTypes` | `string[]` | — | Exclude from extraction |
 | `test` | boolean | `false` | Verbose logging both layers |
+| `googleApiKey` | secret | — | Google API key for Gemini |
+| `openaiApiKey` | secret | — | OpenAI API key |
+| `anthropicApiKey` | secret | — | Anthropic API key |
+| `groqApiKey` | secret | — | Groq API key |
 
 ## Environment Variables
 
-- `GOOGLE_API_KEY` — Gemini (self-contained: LLM + embeddings + reranking)
-- `OPENAI_API_KEY` — OpenAI; also needed for embeddings with Anthropic/Groq
-- `ANTHROPIC_API_KEY` / `GROQ_API_KEY` — need `OPENAI_API_KEY` for embeddings
+API keys are configured via plugin config using the OpenClaw secret-input SDK (supports plaintext strings and SecretRef objects like `{ "$ref": "env:GOOGLE_API_KEY" }`). Resolved at server start via `src/resolve-secrets.ts`.
+
 - `FALKORDB_URI` — (Optional) legacy Docker mode
 
 Server manager generates `config.yaml` and forwards all keys at startup.
