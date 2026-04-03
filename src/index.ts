@@ -39,6 +39,13 @@ let sigTermHandlerInstalled = false;
 // Guard against duplicate server starts across multiple register() calls
 let serverStarted = false;
 
+/** @internal Reset module-level guards for testing only */
+export function _resetForTesting() {
+  configLogged = false;
+  sigTermHandlerInstalled = false;
+  serverStarted = false;
+}
+
 function registerFullPlugin(
   api: MemoryPluginApi,
   client: GraphitiClient,
