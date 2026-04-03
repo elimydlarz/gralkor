@@ -112,12 +112,10 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     }
     await writeFile(configPath, configYaml, "utf-8");
 
-    const secretEnv = opts.resolveSecretEnv ? await opts.resolveSecretEnv() : {};
-
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
       ...opts.env,
-      ...secretEnv,
+      ...opts.secretEnv,
       FALKORDB_DATA_DIR: join(opts.dataDir, "falkordb"),
       CONFIG_PATH: configPath,
     };
