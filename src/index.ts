@@ -37,13 +37,13 @@ let configLogged = false;
 let sigTermHandlerInstalled = false;
 
 // Cached server manager — survives register() reloads so we don't spawn twice
-let cachedManager: ReturnType<typeof registerServerService> | undefined;
+let serverManager: ReturnType<typeof registerServerService> | undefined;
 
 /** @internal Reset module-level guards for testing only.
  *  Does NOT reset sigTermHandlerInstalled — handlers can't be cleanly removed. */
 export function _resetForTesting() {
   configLogged = false;
-  cachedManager = undefined;
+  serverManager = undefined;
 }
 
 function registerFullPlugin(
@@ -187,12 +187,12 @@ function registerFullPlugin(
   }
 
   const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
-  if (!cachedManager) {
-    cachedManager = registerServerService(api, config, dir, serverReady);
+  if (!serverManager) {
+    serverManager = registerServerService(api, config, dir, serverReady);
   }
 
   // CLI — gralkor commands
-  registerCli(api, client, config, cachedManager, resolvedDataDir);
+  registerCli(api, client, config, serverManager, resolvedDataDir);
 }
 
 export const id = "gralkor";
