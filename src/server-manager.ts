@@ -215,6 +215,13 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
     if (!proc) return;
 
+    // Remove PID file so a future start() doesn't try to kill a dead process
+    try {
+      await unlink(join(opts.dataDir, "server.pid"));
+    } catch {
+      // Already gone
+    }
+
     const child = proc;
     proc = null;
 
