@@ -281,4 +281,21 @@ describe("service-self-start", () => {
 
     expect(serverReady.resolve).toHaveBeenCalled();
   });
+
+  it("when self-start fails, logs error and serverReady remains unresolved", async () => {
+    const { createServerManager } = await import("./server-manager.js");
+    (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+      start: vi.fn().mockRejectedValue(new Error("uv not found")),
+      stop: vi.fn(),
+      isRunning: vi.fn().mockReturnValue(false),
+    });
+
+    registerServerService(api, config, "/fake/plugin", serverReady);
+    await new Promise((r) => setTimeout(r, 0));
+
+    const errors = errorSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(errors).toContain("self-start failed");
+    expect(errors).toContain("uv not found");
+    expect(serverReady.resolve).not.toHaveBeenCalled();
+  });
 });
