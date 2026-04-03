@@ -364,12 +364,9 @@ startup
   then the server is started as fire-and-forget during registration
   then subsequent register() calls reuse the existing manager (no duplicate starts)
   when server is already running on the port at startup (orphaned from prior process)
-    when health response has status and graph keys (gralkor signature)
-      then skips spawning
-      and returns without error
-      and serverReady resolves
-    when health response does not match gralkor signature (unrelated service)
-      then proceeds with spawn
+    then skips spawning
+    and returns without error
+    and serverReady resolves
   when self-start succeeds
     then serverReady resolves
   when self-start fails
