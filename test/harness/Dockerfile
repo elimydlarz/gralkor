@@ -1,13 +1,16 @@
 FROM node:22-bookworm
 
-# Python 3.12+ and build tools for falkordblite
+# Build tools for falkordblite native extensions
 RUN apt-get update -qq && \
-    apt-get install -y -qq python3 python3-venv python3-dev build-essential curl && \
+    apt-get install -y -qq build-essential curl && \
     rm -rf /var/lib/apt/lists/*
 
-# uv (Python package manager)
+# uv (Python package manager) — also provides Python 3.12+ via managed installs
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
+
+# Install Python 3.13 via uv (Bookworm ships 3.11 but server needs 3.12+)
+RUN uv python install 3.13
 
 # Verify tools
 RUN node --version && uv --version && python3 --version
