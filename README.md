@@ -54,7 +54,25 @@ The agent gets a unified memory interface where it doesn't need to think about w
 - `uv` on PATH ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - An API key for a supported LLM provider (see below)
 
-### 2. Install the plugin
+### 2. Configure before installing
+
+Config must be set **before** `plugins.allow`, because OpenClaw validates all listed plugins' config on every write.
+
+```bash
+# Required: data directory for persistent state (venv, FalkorDB database).
+# Choose a path YOU control — Gralkor has no default.
+# This directory survives plugin reinstalls; the plugin dir does not.
+openclaw config set plugins.entries.gralkor.config.dataDir /path/to/gralkor-data
+
+# Required: LLM API key for knowledge extraction.
+# Gemini is the default provider (LLM + embeddings + reranking, one key).
+openclaw config set plugins.entries.gralkor.config.googleApiKey 'your-key-here'
+
+# Optional
+openclaw config set plugins.entries.gralkor.config.test true
+```
+
+### 3. Install the plugin
 
 ```bash
 openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
@@ -63,33 +81,65 @@ openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
 From a tarball (e.g. for air-gapped deploys):
 
 ```bash
-openclaw plugins install ./susu-eng-gralkor-memory-26.0.8.tgz --dangerously-force-unsafe-install
+openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-force-unsafe-install
 ```
 
 The `--dangerously-force-unsafe-install` flag is required because Gralkor is not in OpenClaw's verified plugin registry.
 
-Then configure:
+### 4. Enable and assign the memory slot
 
 ```bash
-# Set allowlist (if you use one)
+# Allowlist (if you use one)
 openclaw config set --json plugins.allow '["gralkor"]'
 
-# Assign the memory slot
+# Assign the memory slot — replaces the built-in memory-core
 openclaw config set plugins.slots.memory gralkor
-
-# Optional: set plugin config
-openclaw config set plugins.entries.gralkor.config.test true
 ```
 
-### 3. Set your LLM API key
+### 5. Restart and go
 
-Graphiti needs an LLM to extract entities and relationships from conversations. Configure your API key in plugin config:
+Restart OpenClaw. On first start, Gralkor automatically:
+- Creates a Python virtual environment in `dataDir/venv/`
+- Installs Graphiti and its dependencies (~1-2 min first time)
+- Starts the Graphiti server with embedded FalkorDB
+- Subsequent restarts are fast (venv reused)
+
+Verify the plugin loaded:
 
 ```bash
-openclaw config set plugins.entries.gralkor.config.googleApiKey 'your-key-here'
+openclaw plugins list
+openclaw gralkor status
 ```
 
-Supported providers:
+Start chatting with your agent. Gralkor works in the background:
+- **Auto-capture**: Full multi-turn conversations are stored in the knowledge graph after each agent run
+- **Auto-recall**: Before the agent responds, relevant facts and entities are retrieved and injected as context
+
+### Reinstalling / upgrading
+
+The plugin dir (`~/.openclaw/extensions/gralkor`) is ephemeral — it can be deleted and reinstalled freely. The `dataDir` is persistent — the venv and FalkorDB database survive across reinstalls.
+
+To reinstall:
+
+```bash
+# Clear the memory slot first (otherwise install fails config validation)
+openclaw config set plugins.slots.memory ""
+
+# Remove old plugin code
+rm -rf ~/.openclaw/extensions/gralkor
+
+# Reinstall
+openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
+
+# Re-assign slot
+openclaw config set plugins.slots.memory gralkor
+```
+
+The second boot is fast (~4s) because the venv in `dataDir` is reused.
+
+### LLM providers
+
+Graphiti needs an LLM to extract entities and relationships from conversations.
 
 | Provider | Config field | Notes |
 |---|---|---|
@@ -103,13 +153,11 @@ To switch away from Gemini, set `llm` and `embedder` in the plugin config. For e
 ```json
 {
   "plugins": {
-    "slots": {
-      "memory": "gralkor"
-    },
     "entries": {
       "gralkor": {
         "enabled": true,
         "config": {
+          "dataDir": "/path/to/gralkor-data",
           "openaiApiKey": { "$ref": "env:OPENAI_API_KEY" },
           "llm": { "provider": "openai", "model": "gpt-4.1-mini" },
           "embedder": { "provider": "openai", "model": "text-embedding-3-small" }
@@ -119,25 +167,6 @@ To switch away from Gemini, set `llm` and `embedder` in the plugin config. For e
   }
 }
 ```
-
-### 4. Restart and go
-
-Restart OpenClaw. On first start, Gralkor automatically:
-- Creates a Python virtual environment
-- Installs Graphiti and its dependencies (~1-2 min first time)
-- Starts the Graphiti server with embedded FalkorDB
-- Subsequent restarts are fast (venv reused, pip skipped)
-
-Verify the plugin loaded:
-
-```bash
-openclaw plugins list
-openclaw gralkor status
-```
-
-Start chatting with your agent. Gralkor works in the background:
-- **Auto-capture**: Full multi-turn conversations are stored in the knowledge graph after each agent run
-- **Auto-recall**: Before the agent responds, relevant facts and entities are retrieved and injected as context
 
 ## Native memory search
 
