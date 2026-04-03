@@ -187,14 +187,12 @@ function registerFullPlugin(
   }
 
   const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
-  let manager: ReturnType<typeof registerServerService> | undefined;
-  if (!serverStarted) {
-    serverStarted = true;
-    manager = registerServerService(api, config, dir, serverReady);
+  if (!cachedManager) {
+    cachedManager = registerServerService(api, config, dir, serverReady);
   }
 
   // CLI — gralkor commands
-  registerCli(api, client, config, manager, resolvedDataDir);
+  registerCli(api, client, config, cachedManager, resolvedDataDir);
 }
 
 export const id = "gralkor";
