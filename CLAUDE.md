@@ -534,25 +534,9 @@ rate-limit-retry
     then 429 retries are independent of the 5xx/network retry budget
 ```
 
-#### publish-version-integrity
-
-```
-publish-version-integrity
-  when publish succeeds
-    then version is bumped in package.json, openclaw.plugin.json, and resources/memory/package.json
-    and a git commit and tag are created and pushed for the new version
-  when publish fails (build error or npm reject)
-    then version files are rolled back to their pre-publish values
-    and no git commit or tag is created
-  when successive publishes fail
-    then version does not increment multiple times
-  when DRY_RUN is set
-    then version is bumped and synced across manifests
-    and build and publish are skipped
-    and no git commit or tag is created
-```
-
 #### startup
+
+##### startup
 
 ```
 startup
@@ -563,6 +547,20 @@ startup
   when self-start fails
     then the error is logged
     and serverReady remains unresolved
+```
+
+##### secret-resolution
+
+```
+secret-resolution
+  when config contains a plaintext API key string
+    then resolved value is that string
+  when config value is null or absent
+    then resolved value is undefined
+  when resolved value is empty or whitespace
+    then resolved value is undefined
+  then resolved API keys are passed to the server manager as env vars
+  then process.env is not read for API keys
 ```
 
 ### Cross-functional
