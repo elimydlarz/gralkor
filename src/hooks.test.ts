@@ -1991,9 +1991,9 @@ describe("idle timeout flush", () => {
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
-  it("idle flush error is caught and warned (no unhandled rejection)", async () => {
+  it("idle flush error is logged without crashing (no unhandled rejection)", async () => {
     client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const handler = createAgentEndHandler(idleConfig, debouncer);
 
@@ -2007,12 +2007,11 @@ describe("idle timeout flush", () => {
 
     // The flush was attempted (ingestMessages called at least once)
     expect(client.ingestMessages).toHaveBeenCalled();
-    // The error is logged as a warning, not silently swallowed
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[gralkor] idle flush failed"),
-      expect.stringContaining("ECONNREFUSED"),
+    // Final failure logged as error with "message dropped"
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("message dropped"),
     );
-    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });
 
