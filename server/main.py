@@ -220,18 +220,11 @@ async def lifespan(_app: FastAPI):
             raise
         driver = FalkorDriver(falkor_db=db)
 
-    # cross_encoder defaults to OpenAIRerankerClient which requires OPENAI_API_KEY.
-    # Disable it when no OpenAI key is available (e.g. Gemini-only setups).
-    cross_encoder = None
-    if os.environ.get("OPENAI_API_KEY"):
-        from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
-        cross_encoder = OpenAIRerankerClient()
-
     graphiti = Graphiti(
         graph_driver=driver,
         llm_client=_build_llm_client(cfg),
         embedder=_build_embedder(cfg),
-        cross_encoder=cross_encoder,
+        cross_encoder=_build_cross_encoder(cfg),
     )
     # Only build indices on first boot; skip if they already exist.
     existing = await graphiti.driver.execute_query("CALL db.indexes()")
