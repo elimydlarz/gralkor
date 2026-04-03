@@ -1,37 +1,58 @@
 #!/usr/bin/env bash
 # Build the harness Docker image with the current plugin code.
-# Usage: bash test/harness/build.sh [--no-cache]
+#
+# Usage:
+#   bash test/harness/build.sh              # local tarball (test your changes)
+#   bash test/harness/build.sh --npm        # from npm (test what operators get)
+#   bash test/harness/build.sh --no-cache   # rebuild without Docker cache
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HARNESS_DIR="$REPO_ROOT/test/harness"
 
-echo "=== Building plugin tarball ==="
-cd "$REPO_ROOT"
+FROM_NPM=false
+DOCKER_ARGS=()
+for arg in "$@"; do
+  if [ "$arg" = "--npm" ]; then
+    FROM_NPM=true
+  else
+    DOCKER_ARGS+=("$arg")
+  fi
+done
 
-# Build TypeScript
-pnpm run --silent build
+if [ "$FROM_NPM" = true ]; then
+  echo "=== Installing from npm (operator flow) ==="
+  # Still need a dummy plugin.tgz for COPY directive
+  touch "$HARNESS_DIR/plugin.tgz"
+  DOCKER_ARGS+=(--build-arg "PLUGIN_SOURCE=@susu-eng/gralkor")
+else
+  echo "=== Building plugin tarball from local source ==="
+  cd "$REPO_ROOT"
 
-# Pack without the arm64 wheel build (we're testing install, not prod deploy).
-# Use resources/memory manifests like pack.sh does.
-cp resources/memory/package.json package.json
-cp resources/memory/openclaw.plugin.json openclaw.plugin.json
-pnpm pack --pack-destination "$HARNESS_DIR" >/dev/null 2>&1
+  pnpm run --silent build
 
-# Restore dev package.json
-git checkout package.json openclaw.plugin.json 2>/dev/null || true
+  # Pack with resources/memory manifests (like pack.sh, but skip arm64 wheel)
+  cp resources/memory/package.json package.json
+  cp resources/memory/openclaw.plugin.json openclaw.plugin.json
+  pnpm pack --pack-destination "$HARNESS_DIR" >/dev/null 2>&1
 
-# Rename to stable name the Dockerfile expects
-VERSION=$(node -p "require('./resources/memory/package.json').version")
-mv "$HARNESS_DIR/susu-eng-gralkor-${VERSION}.tgz" "$HARNESS_DIR/plugin.tgz"
+  # Restore dev manifests
+  git checkout package.json openclaw.plugin.json 2>/dev/null || true
 
-echo "Plugin tarball: test/harness/plugin.tgz"
+  VERSION=$(node -p "require('./resources/memory/package.json').version")
+  mv "$HARNESS_DIR/susu-eng-gralkor-${VERSION}.tgz" "$HARNESS_DIR/plugin.tgz"
+
+  echo "Plugin tarball: test/harness/plugin.tgz"
+fi
+
 echo ""
-
 echo "=== Building Docker image ==="
-docker build "$@" -t gralkor-harness:latest "$HARNESS_DIR"
+docker build "${DOCKER_ARGS[@]}" -t gralkor-harness:latest "$HARNESS_DIR"
+
+# Clean up tarball
+rm -f "$HARNESS_DIR/plugin.tgz"
 
 echo ""
-echo "=== Done. Run with: ==="
-echo "  docker run --rm -it gralkor-harness:latest"
-echo "  docker run --rm -it gralkor-harness:latest bash   # interactive shell"
+echo "=== Done ==="
+echo "  docker run --rm -it gralkor-harness:latest          # run test script"
+echo "  docker run --rm -it gralkor-harness:latest bash      # interactive shell"
