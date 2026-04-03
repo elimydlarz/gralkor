@@ -28,7 +28,10 @@ let sdkLoader: () => Promise<SecretInputSDK> = defaultLoadSecretInputSDK;
  * cached so resolveSecretEnv() reuses it later.
  */
 export function preloadSecretInputSDK(): void {
-  sdkLoader();
+  sdkLoader().catch(() => {
+    // Expected in test environments where 'openclaw' package isn't available.
+    // resolveSecretEnv() will surface the real error if the SDK is needed.
+  });
 }
 
 /** Replace the SDK loader (for testing). */
