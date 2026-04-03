@@ -43,6 +43,7 @@ describe("plugin export shape", () => {
 
 describe("register()", () => {
   let api: {
+    pluginConfig?: Record<string, unknown>;
     registerTool: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
     registerService: ReturnType<typeof vi.fn>;
