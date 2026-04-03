@@ -538,20 +538,12 @@ publish-version-integrity
 
 ```
 service-self-start
-  when the host calls start() before 30s
-    then the server starts normally
-    and no warning is logged
-  when the host has not called start() after 30s
-    then a warning is logged
-    when the host has not called start() after 60s
-      then the plugin starts the server itself
-      when self-start succeeds
-        then serverReady resolves
-      when self-start fails
-        then the error is logged
-        and serverReady remains unresolved
-  when the host calls start() after self-start has begun
-    then the duplicate start is a no-op
+  then the server is started as fire-and-forget during registration
+  when self-start succeeds
+    then serverReady resolves
+  when self-start fails
+    then the error is logged
+    and serverReady remains unresolved
 ```
 
 ### Cross-functional
