@@ -489,7 +489,7 @@ install-sequencing-docs
 ## Repo Map
 
 ```
-├── CLAUDE.md / Makefile / package.json / tsconfig.json / vitest.config.ts
+├── CLAUDE.md / package.json / tsconfig.json / vitest.config.ts
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts,
