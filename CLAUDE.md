@@ -428,9 +428,7 @@ createAgentEndHandler
     then buffers messages in debouncer keyed by sessionKey || agentId || "default"
 ```
 
-#### publication
-
-##### publish-version-integrity
+#### publish-version-integrity
 
 ```
 publish-version-integrity
