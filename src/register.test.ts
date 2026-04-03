@@ -1,9 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { registerCli } from "./register.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { registerCli, registerServerService } from "./register.js";
 import type { PluginApiBase } from "./types.js";
 import type { GraphitiClient } from "./client.js";
-import type { GralkorConfig } from "./config.js";
+import type { GralkorConfig, ReadyGate } from "./config.js";
 import type { ServerManager } from "./server-manager.js";
+
+// Mock createServerManager so we don't spawn real processes
+vi.mock("./server-manager.js", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("./server-manager.js")>();
+  return {
+    ...orig,
+    createServerManager: vi.fn(() => ({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      isRunning: vi.fn().mockReturnValue(false),
+    })),
+  };
+});
+
+// Mock resolveSecretEnv
+vi.mock("./resolve-secrets.js", () => ({
+  resolveSecretEnv: vi.fn().mockResolvedValue({}),
+}));
 
 /**
  * Build a mock Commander chain that captures subcommands and their action handlers.
