@@ -91,7 +91,7 @@ export function registerServerService(
 
   // Watchdog: warn at 30s if start() hasn't been called
   const warnTimer = setTimeout(() => {
-    if (!hostStarted) {
+    if (!started) {
       console.warn(
         `[gralkor] boot: WARNING — service start() has not been called ${((Date.now() - registeredAt) / 1000).toFixed(0)}s after registration. ` +
         "The host gateway may not be starting registered services. Will self-start at 60s."
