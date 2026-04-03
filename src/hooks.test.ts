@@ -1712,8 +1712,9 @@ describe("session_end handler", () => {
     expect(client.ingestMessages).not.toHaveBeenCalled();
   });
 
-  it("propagates error when flush fails", async () => {
+  it("logs error when flush fails without crashing", async () => {
     client.ingestMessages.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     debouncer.set("session-abc", {
       messages: [
@@ -1726,9 +1727,10 @@ describe("session_end handler", () => {
 
     const handler = createSessionEndHandler(debouncer);
 
-    await expect(
-      handler({}, { sessionId: "sid-1", sessionKey: "session-abc" }),
-    ).rejects.toThrow("422");
+    // Does not throw — errors are logged, not propagated
+    await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("message dropped"));
+    errorSpy.mockRestore();
   });
 });
 
