@@ -69,7 +69,7 @@ Flush retries 3x exponential (1s/2s/4s). 4xx not retried. SIGTERM → `flushAll(
 
 ### Graph Partitioning
 
-Tools don't receive ctx (`execute(toolCallId, params)`). `before_prompt_build` captures `ctx.agentId` via `setGroupId`; tools read via `getGroupId`. Resolution: `agentId ?? "default"`.
+Tools don't receive ctx (`execute(toolCallId, params)`). `before_prompt_build` captures `ctx.agentId` via `setGroupId`; tools read via `getGroupId`. Resolution: `sanitizeGroupId(agentId ?? "default")` — hyphens replaced with underscores to avoid RediSearch syntax errors in graphiti-core's fulltext queries.
 
 graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_episode()` clones the driver per group, but `search()` doesn't route (uses current graph — `'default_db'` on fresh boot → empty). Fix: `_ensure_driver_graph()` in `main.py`.
 
