@@ -61,12 +61,6 @@ export function registerServerService(
   api.registerService({
     id: "gralkor-server",
     async start() {
-      // Server may already be running via the self-start path in index.ts.
-      // If so, just ensure the ready gate is resolved.
-      if (manager.isRunning()) {
-        serverReady?.resolve();
-        return;
-      }
       await manager.start();
       serverReady?.resolve();
     },
