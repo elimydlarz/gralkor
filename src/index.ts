@@ -186,13 +186,15 @@ function registerFullPlugin(
     });
   }
 
-  const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
+  if (!config.dataDir) {
+    throw new Error("[gralkor] dataDir is required — set plugins.entries.gralkor.config.dataDir");
+  }
   if (!serverManager) {
     serverManager = registerServerService(api, config, dir, serverReady);
   }
 
   // CLI — gralkor commands
-  registerCli(api, client, config, serverManager, resolvedDataDir);
+  registerCli(api, client, config, serverManager, config.dataDir);
 }
 
 export const id = "gralkor";
