@@ -337,4 +337,29 @@ describe("service-self-start", () => {
       });
     });
   });
+
+  describe("when the host calls start() after self-start has begun", () => {
+    it("duplicate start is a no-op", async () => {
+      const { createServerManager } = await import("./server-manager.js");
+      const mockStart = vi.fn().mockResolvedValue(undefined);
+      (createServerManager as ReturnType<typeof vi.fn>).mockReturnValue({
+        start: mockStart,
+        stop: vi.fn(),
+        isRunning: vi.fn().mockReturnValue(false),
+      });
+
+      registerServerService(api, config, "/fake/plugin", serverReady);
+
+      // Self-start fires at 60s
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockStart).toHaveBeenCalledTimes(1);
+
+      // Host calls start() late
+      await registeredService.start();
+
+      // manager.start() should only have been called once (by self-start)
+      // The host's start() should be a no-op since server is already starting/started
+      expect(mockStart).toHaveBeenCalledTimes(1);
+    });
+  });
 });
