@@ -195,128 +195,127 @@ extractUserMessageFromPrompt
 #### Capture
 
 ```
-capture
-  createAgentEndHandler
-    when autoCapture is disabled
-      then skips buffering
-    when event.messages is empty
-      then skips buffering
-    when autoCapture is enabled and messages present
-      then buffers messages in debouncer keyed by sessionKey || agentId || "default"
-  capture-hygiene
-    extractMessagesFromCtx
-      message roles
-        when role is "user"
-          then text/output_text blocks extracted and cleaned via cleanUserMessageText
-        when role is "assistant"
-          then text blocks checked individually via isSystemMessage, system blocks dropped
-          and thinking blocks extracted (type "thinking")
-          and tool call blocks (toolCall/toolUse/functionCall) serialized as tool_use
-        when role is "toolResult"
-          then converted to assistant message with tool_result block
-          and text truncated to 1000 chars
-        when role is "tool" (Ollama adapter)
-          then treated same as "toolResult"
-        when role is "compactionSummary" or unknown
-          then silently dropped
-    cleanUserMessageText
-      when message contains (untrusted metadata) JSON block
-        then block stripped, surrounding user content preserved
-      when message contains <gralkor-memory> XML
-        then XML removed (feedback loop prevention)
-      when message contains Untrusted context (metadata...) footer block
-        then entire footer block stripped (header + JSON body)
-      when message contains system lines mixed with user content
-        then system lines stripped per-line via isSystemLine
-        and real user content preserved
-      when message is entirely system content
-        then returns empty string (message dropped)
-    SYSTEM_MESSAGE_PATTERNS (isSystemLine / isSystemMessage)
-      then matches "A new session was started..."
-      then matches "Current time:..." (case insensitive)
-      then matches "✅ New session started..." (with or without emoji)
-      then matches "System: [timestamp] ..." event lines
-      then matches "[User sent media without caption]"
-  behaviour-distillation
-    _format_transcript (server-side)
-      when assistant message has thinking blocks
-        then grouped into behaviour for that turn
-      when assistant message has tool_use blocks
-        then grouped into behaviour for that turn
-      when assistant message has tool_result blocks
-        then grouped into behaviour for that turn
-      when turn has behaviour blocks and llm_client available
-        then blocks joined with --- separator
-        and distilled via LLM into first-person past-tense summary
-        and injected as "Assistant: (behaviour: {summary})" before assistant text
-      when behaviour blocks contain memory_search results (recalled facts)
-        then distillation describes the intent (e.g. "consulted memory")
-        and does NOT restate the recalled fact content
-      when behaviour blocks contain thinking that references recalled data
-        then distillation captures the reasoning and decisions
-        and does NOT echo the specific data that was recalled
-      when distillation fails for a turn
-        then behaviour line silently dropped, assistant text preserved
-      when turn has only text blocks (no behaviour)
-        then text rendered as "Assistant: {text}" with no behaviour line
-      user messages
-        then rendered as "User: {text}"
-  flushSessionBuffer
-    when flush succeeds on first attempt
-      then returns without retry
-    when flush fails with retryable error
-      then retries up to 3 times with exponential backoff (1s/2s/4s)
-    when flush fails with 4xx client error
-      then does not retry
-    when all retries exhausted
-      then logs error (message dropped) without crashing
-    when messages are empty after filtering
-      then skips flush (no API call)
-  DebouncedFlush
-    set and flush
-      when set then flush for same key
-        then delivers value exactly once
-      when set called twice for same key
-        then replaces previous value
-      when flush called for non-existing key
-        then is a no-op
-    idle timeout
-      when idle timeout elapses after set
-        then flushes the value
-      when set called again before timeout
-        then resets the timer (debounce)
-    state queries
-      when entries exist
-        then has() returns true, pendingCount reflects count
-      when no entries
-        then has() returns false, pendingCount is 0
-    dispose
-      when dispose called with pending entries
-        then cancels all timers and clears entries
-    flushAll
-      when multiple keys have pending entries
-        then all entries are flushed and all timers cleared
-      when no entries are pending
-        then flushAll is a no-op
-      when one flush fails and another succeeds
-        then successful flush still completes (allSettled)
-  sigterm-flush
-    DebouncedFlush.flushAll
-      when multiple keys have pending entries
-        then all entries are flushed
-        and all timers are cleared
-      when no entries are pending
-        then flushAll is a no-op
-      when one flush fails and another succeeds
-        then the successful flush still completes (allSettled)
-    SIGTERM handler
-      when SIGTERM is received with pending buffers
-        then flushAll is called
-        and pending count is logged
-      when SIGTERM is received with no pending buffers
-        then flushAll is not called
-      when register() is called multiple times
-        then only one SIGTERM handler is installed
+createAgentEndHandler
+  when autoCapture is disabled
+    then skips buffering
+  when event.messages is empty
+    then skips buffering
+  when autoCapture is enabled and messages present
+    then buffers messages in debouncer keyed by sessionKey || agentId || "default"
+capture-hygiene
+  extractMessagesFromCtx
+    message roles
+      when role is "user"
+        then text/output_text blocks extracted and cleaned via cleanUserMessageText
+      when role is "assistant"
+        then text blocks checked individually via isSystemMessage, system blocks dropped
+        and thinking blocks extracted (type "thinking")
+        and tool call blocks (toolCall/toolUse/functionCall) serialized as tool_use
+      when role is "toolResult"
+        then converted to assistant message with tool_result block
+        and text truncated to 1000 chars
+      when role is "tool" (Ollama adapter)
+        then treated same as "toolResult"
+      when role is "compactionSummary" or unknown
+        then silently dropped
+  cleanUserMessageText
+    when message contains (untrusted metadata) JSON block
+      then block stripped, surrounding user content preserved
+    when message contains <gralkor-memory> XML
+      then XML removed (feedback loop prevention)
+    when message contains Untrusted context (metadata...) footer block
+      then entire footer block stripped (header + JSON body)
+    when message contains system lines mixed with user content
+      then system lines stripped per-line via isSystemLine
+      and real user content preserved
+    when message is entirely system content
+      then returns empty string (message dropped)
+  SYSTEM_MESSAGE_PATTERNS (isSystemLine / isSystemMessage)
+    then matches "A new session was started..."
+    then matches "Current time:..." (case insensitive)
+    then matches "✅ New session started..." (with or without emoji)
+    then matches "System: [timestamp] ..." event lines
+    then matches "[User sent media without caption]"
+behaviour-distillation
+  _format_transcript (server-side)
+    when assistant message has thinking blocks
+      then grouped into behaviour for that turn
+    when assistant message has tool_use blocks
+      then grouped into behaviour for that turn
+    when assistant message has tool_result blocks
+      then grouped into behaviour for that turn
+    when turn has behaviour blocks and llm_client available
+      then blocks joined with --- separator
+      and distilled via LLM into first-person past-tense summary
+      and injected as "Assistant: (behaviour: {summary})" before assistant text
+    when behaviour blocks contain memory_search results (recalled facts)
+      then distillation describes the intent (e.g. "consulted memory")
+      and does NOT restate the recalled fact content
+    when behaviour blocks contain thinking that references recalled data
+      then distillation captures the reasoning and decisions
+      and does NOT echo the specific data that was recalled
+    when distillation fails for a turn
+      then behaviour line silently dropped, assistant text preserved
+    when turn has only text blocks (no behaviour)
+      then text rendered as "Assistant: {text}" with no behaviour line
+    user messages
+      then rendered as "User: {text}"
+flushSessionBuffer
+  when flush succeeds on first attempt
+    then returns without retry
+  when flush fails with retryable error
+    then retries up to 3 times with exponential backoff (1s/2s/4s)
+  when flush fails with 4xx client error
+    then does not retry
+  when all retries exhausted
+    then logs error (message dropped) without crashing
+  when messages are empty after filtering
+    then skips flush (no API call)
+DebouncedFlush
+  set and flush
+    when set then flush for same key
+      then delivers value exactly once
+    when set called twice for same key
+      then replaces previous value
+    when flush called for non-existing key
+      then is a no-op
+  idle timeout
+    when idle timeout elapses after set
+      then flushes the value
+    when set called again before timeout
+      then resets the timer (debounce)
+  state queries
+    when entries exist
+      then has() returns true, pendingCount reflects count
+    when no entries
+      then has() returns false, pendingCount is 0
+  dispose
+    when dispose called with pending entries
+      then cancels all timers and clears entries
+  flushAll
+    when multiple keys have pending entries
+      then all entries are flushed and all timers cleared
+    when no entries are pending
+      then flushAll is a no-op
+    when one flush fails and another succeeds
+      then successful flush still completes (allSettled)
+sigterm-flush
+  DebouncedFlush.flushAll
+    when multiple keys have pending entries
+      then all entries are flushed
+      and all timers are cleared
+    when no entries are pending
+      then flushAll is a no-op
+    when one flush fails and another succeeds
+      then the successful flush still completes (allSettled)
+  SIGTERM handler
+    when SIGTERM is received with pending buffers
+      then flushAll is called
+      and pending count is logged
+    when SIGTERM is received with no pending buffers
+      then flushAll is not called
+    when register() is called multiple times
+      then only one SIGTERM handler is installed
 ```
 
 #### Tools
