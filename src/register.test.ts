@@ -221,3 +221,54 @@ describe("registerCli with ServerManager", () => {
     logSpy.mockRestore();
   });
 });
+
+describe("service-self-start", () => {
+  let api: PluginApiBase;
+  let registeredService: { id: string; start: () => Promise<void>; stop: () => Promise<void> };
+  let serverReady: ReadyGate;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    serverReady = { isReady: vi.fn().mockReturnValue(false), resolve: vi.fn() };
+    api = {
+      registerTool: vi.fn(),
+      on: vi.fn(),
+      registerService: vi.fn().mockImplementation((svc: any) => { registeredService = svc; }),
+      registerCli: vi.fn(),
+    } as unknown as PluginApiBase;
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    warnSpy.mockRestore();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  const config: GralkorConfig = {
+    autoCapture: { enabled: false },
+    autoRecall: { enabled: false, maxResults: 10 },
+    idleTimeoutMs: 300_000,
+  };
+
+  it("when the host calls start() before 30s, starts normally and no warning is logged", async () => {
+    registerServerService(api, config, "/fake/plugin", serverReady);
+
+    // Host calls start() at 5s — well before the 30s warning
+    vi.advanceTimersByTime(5_000);
+    await registeredService.start();
+
+    // Advance past both 30s and 60s — no warning should fire
+    vi.advanceTimersByTime(60_000);
+
+    const warnings = warnSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(warnings).not.toContain("WARNING");
+    expect(serverReady.resolve).toHaveBeenCalled();
+  });
+});
