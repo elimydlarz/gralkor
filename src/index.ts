@@ -35,8 +35,6 @@ let configLogged = false;
 // Guard against duplicate SIGTERM handlers across multiple register() calls
 let sigTermHandlerInstalled = false;
 
-// Guard against duplicate server starts across multiple register() calls
-let serverStarted = false;
 
 function registerFullPlugin(
   api: MemoryPluginApi,
