@@ -35,10 +35,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
   let monitorTimer: ReturnType<typeof setInterval> | undefined;
 
   async function start(): Promise<void> {
-    if (proc) {
-      console.log("[gralkor] boot: start() called but server process already exists (pid:", proc.pid, ")");
-      return;
-    }
     const bootStart = Date.now();
     console.log("[gralkor] boot: starting...");
 
