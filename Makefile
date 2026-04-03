@@ -78,7 +78,7 @@ harness-npm:
 	bash test/harness/build.sh --npm
 
 harness-run:
-	docker run --rm -it gralkor-harness:latest
+	docker run --rm -it --platform linux/amd64 gralkor-harness:latest
 
 harness-shell:
-	docker run --rm -it gralkor-harness:latest bash
+	docker run --rm -it --platform linux/amd64 gralkor-harness:latest bash
