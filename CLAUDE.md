@@ -549,13 +549,13 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 | Command | Scope | Reporter |
 |---|---|---|
-| `make test` | All (plugin + functional + server) | tree |
-| `make test-plugin` | TS unit tests | tree |
-| `make test-functional` | TS functional tests | tree |
-| `make test-server` | Python | spec |
-| `make test-server-changed` | Changed Python tests | spec |
+| `pnpm test` | All (plugin + functional + server) | tree |
+| `pnpm run test:plugin` | TS unit tests | tree |
+| `pnpm run test:functional` | TS functional tests | tree |
+| `pnpm run test:server` | Python | spec |
+| `pnpm run test:server:changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
-| `make test-mutate` | Mutation testing (Stryker) | clear-text |
+| `pnpm run test:mutate` | Mutation testing (Stryker) | clear-text |
 | `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation (real LLM) | stdout |
 
 **Live distillation tests:** Run after changing `_DISTILL_SYSTEM_PROMPT` or default LLM. Uses `server/tests/fixtures/distillation_cases.json`. Writes results to `server/tests/distillation_results/` (gitignored) for review against the behaviour-distillation test tree. `-s` to eyeball.
