@@ -49,7 +49,10 @@ describe("register()", () => {
     registerCli: ReturnType<typeof vi.fn>;
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { _resetForTesting } = await import("./index.js");
+    _resetForTesting();
+
     api = {
       registerTool: vi.fn(),
       on: vi.fn(),
