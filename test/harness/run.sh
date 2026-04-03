@@ -119,7 +119,7 @@ fi
 echo ""
 
 # ── 5. Reinstall (upgrade-safe) ────────────────────────────
-echo "--- 5. Reinstall smoke test ---"
+echo "--- 5. Reinstall ---"
 kill $PLUGINS_PID 2>/dev/null || true
 wait $PLUGINS_PID 2>/dev/null || true
 
