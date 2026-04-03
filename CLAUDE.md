@@ -555,7 +555,8 @@ publish-version-integrity
 ├── CLAUDE.md / Makefile / package.json / tsconfig.json / vitest.config.ts
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
-│                                     # client.ts, server-manager.ts, types.ts, config.ts, *.test.ts
+│                                     # client.ts, server-manager.ts, resolve-secrets.ts,
+│                                     # native-memory.ts, types.ts, config.ts, *.test.ts
 ├── resources/memory/                 # canonical manifest for make pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/functional/
