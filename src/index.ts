@@ -43,6 +43,7 @@ let serverManager: ReturnType<typeof registerServerService> | undefined;
 export function _resetForTesting() {
   configLogged = false;
   serverManager = undefined;
+  sigTermHandlerInstalled = false;
 }
 
 function registerFullPlugin(
