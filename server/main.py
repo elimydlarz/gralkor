@@ -714,14 +714,6 @@ async def search(req: SearchRequest):
 
 
 
-@app.post("/clear")
-async def clear_graph(req: GroupIdRequest):
-    _ensure_driver_graph([req.group_id])
-    driver = graphiti.driver
-    await Node.delete_by_group_id(driver, req.group_id)
-    return {"deleted": True}
-
-
 @app.post("/build-indices")
 async def build_indices():
     await graphiti.build_indices_and_constraints()
