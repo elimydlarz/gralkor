@@ -118,9 +118,84 @@ else
 fi
 echo ""
 
-# ── Cleanup ──��───────────────────────────────────────────
+# ── 5. Reinstall (upgrade-safe) ────────────────────────────
+echo "--- 5. Reinstall smoke test ---"
 kill $PLUGINS_PID 2>/dev/null || true
+wait $PLUGINS_PID 2>/dev/null || true
 
-# ── Summary ─────���────────────────────────────────────────
+# Kill the running server — reinstall should handle stale state
+pkill -f "uvicorn main:app" 2>/dev/null || true
+sleep 2
+
+# Wipe the plugin dir (simulates what agents/init.sh does)
+rm -rf "$HOME/.openclaw/extensions/gralkor"
+
+# Reinstall from the original tarball
+if [ -f /tmp/plugin.tgz ]; then
+  openclaw plugins install /tmp/plugin.tgz --dangerously-force-unsafe-install >/dev/null 2>&1
+  REINSTALL_OK=$?
+else
+  # npm install path
+  openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install >/dev/null 2>&1
+  REINSTALL_OK=$?
+fi
+
+if [ "$REINSTALL_OK" -eq 0 ]; then
+  pass "reinstall succeeded"
+else
+  fail "reinstall failed (exit $REINSTALL_OK)"
+fi
+
+# Re-apply config (config survives, but verify)
+openclaw config set plugins.slots.memory gralkor >/dev/null 2>&1
+openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor >/dev/null 2>&1
+openclaw config set plugins.entries.gralkor.config.test true >/dev/null 2>&1
+if [ -n "$API_KEY" ]; then
+  openclaw config set plugins.entries.gralkor.config.googleApiKey "$API_KEY" >/dev/null 2>&1
+fi
+
+# Boot server again via plugin load
+openclaw plugins list >/dev/null 2>&1 &
+PLUGINS_PID2=$!
+
+echo "Waiting for server health after reinstall (up to 120s)..."
+REINSTALL_SERVER_OK=false
+for i in $(seq 1 120); do
+  HEALTH=$(curl -s http://127.0.0.1:8001/health 2>/dev/null) && {
+    REINSTALL_SERVER_OK=true
+    echo "  Server healthy after ${i}s"
+    break
+  }
+  sleep 1
+done
+
+if [ "$REINSTALL_SERVER_OK" = true ]; then
+  pass "server healthy after reinstall"
+
+  # Verify data survived — search for the fact we ingested earlier
+  SEARCH_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/search \
+    -H 'Content-Type: application/json' \
+    -d '{"query": "favorite color", "group_ids": ["harness"], "num_results": 5}' 2>&1)
+  SEARCH_CODE=$(echo "$SEARCH_RESP" | tail -1)
+  SEARCH_BODY=$(echo "$SEARCH_RESP" | sed '$d')
+
+  if [ "$SEARCH_CODE" = "200" ]; then
+    FACT_COUNT=$(echo "$SEARCH_BODY" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('facts',[])))" 2>/dev/null || echo "0")
+    if [ "$FACT_COUNT" -gt 0 ] 2>/dev/null; then
+      pass "data survived reinstall ($FACT_COUNT facts)"
+    else
+      fail "data lost after reinstall (0 facts)"
+    fi
+  else
+    fail "search after reinstall returned $SEARCH_CODE"
+  fi
+else
+  fail "server not healthy after reinstall"
+fi
+
+kill $PLUGINS_PID2 2>/dev/null || true
+echo ""
+
+# ── Summary ──────────────────────────────────────────────
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
