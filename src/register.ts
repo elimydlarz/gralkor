@@ -43,16 +43,16 @@ export function registerServerService(
   const dataDir = config.dataDir ?? join(pluginDir, "..", ".gralkor-data");
   const serverDir = join(pluginDir, "server");
 
-  const env: Record<string, string> = {};
-  for (const key of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY"]) {
-    if (process.env[key]) env[key] = process.env[key]!;
-  }
-
   const manager = createServerManager({
     dataDir,
     serverDir,
     port: GRAPHITI_PORT,
-    env,
+    resolveSecretEnv: () => resolveSecretEnv({
+      googleApiKey: config.googleApiKey,
+      openaiApiKey: config.openaiApiKey,
+      anthropicApiKey: config.anthropicApiKey,
+      groqApiKey: config.groqApiKey,
+    }),
     llmConfig: config.llm,
     embedderConfig: config.embedder,
     ontologyConfig: config.ontology,
