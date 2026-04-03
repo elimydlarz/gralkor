@@ -114,6 +114,7 @@ To switch away from Gemini, set `llm` and `embedder` in the plugin config. For e
       "gralkor": {
         "enabled": true,
         "config": {
+          "openaiApiKey": { "$ref": "env:OPENAI_API_KEY" },
           "llm": { "provider": "openai", "model": "gpt-4.1-mini" },
           "embedder": { "provider": "openai", "model": "text-embedding-3-small" }
         }
