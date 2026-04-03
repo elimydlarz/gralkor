@@ -442,7 +442,9 @@ createAgentEndHandler
     then buffers messages in debouncer keyed by sessionKey || agentId || "default"
 ```
 
-#### install-sequencing-docs
+#### installation
+
+##### install-sequencing-docs
 
 ```
 install-sequencing-docs
