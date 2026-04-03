@@ -122,6 +122,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
 | build-communities-tool | `memory_build_communities` agent tool triggers `POST /build-communities` via `client.buildCommunities(groupId)` |
 | secret-resolution | API keys resolved via OpenClaw secret-input SDK from plugin config; passed to server manager as env vars |
+| service-self-start | Warns at 30s if host hasn't called `start()`; self-starts server at 60s; guards against duplicate starts |
 
 #### secret-resolution
 
