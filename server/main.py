@@ -76,6 +76,21 @@ def _build_embedder(cfg: dict):
     return OpenAIEmbedder(ecfg)
 
 
+def _build_cross_encoder(cfg: dict):
+    """Match cross-encoder to LLM provider; fall back to OpenAI only if key is present."""
+    provider = cfg.get("llm", {}).get("provider", "gemini")
+
+    if provider == "gemini":
+        from graphiti_core.cross_encoder.gemini_reranker_client import GeminiRerankerClient
+        return GeminiRerankerClient()
+
+    if os.environ.get("OPENAI_API_KEY"):
+        from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
+        return OpenAIRerankerClient()
+
+    return None
+
+
 _TYPE_MAP: dict[str, type] = {
     "string": str,
     "int": int,
