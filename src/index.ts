@@ -181,6 +181,17 @@ function registerFullPlugin(
   const resolvedDataDir = config.dataDir ?? join(dir, "..", ".gralkor-data");
   const manager = registerServerService(api, config, dir, serverReady);
 
+  // Start the server directly — OpenClaw's registerService lifecycle may not
+  // invoke start() reliably (observed: service registered but start() never
+  // called, leaving the server permanently "not ready").
+  if (!serverStarted) {
+    serverStarted = true;
+    manager.start().then(
+      () => serverReady.resolve(),
+      (err) => console.error("[gralkor] boot: server start failed:", err instanceof Error ? err.message : err),
+    );
+  }
+
   // CLI — gralkor commands
   registerCli(api, client, config, manager, resolvedDataDir);
 }
