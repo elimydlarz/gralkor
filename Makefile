@@ -35,23 +35,23 @@ help:
 test: typecheck test-plugin test-functional test-server
 
 test-plugin:
-	pnpm exec vitest run
+	pnpm vitest run
 
 test-functional:
-	pnpm exec vitest run --config test/functional/vitest.config.ts
+	pnpm vitest run --config test/functional/vitest.config.ts
 
 test-server:
 	cd server && uv run pytest tests/
 
 test-mutate:
-	pnpm exec stryker run
+	pnpm stryker run
 
 test-server-changed:
 	@cd server && files=$$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py'); \
 	if [ -n "$$files" ]; then uv run pytest $$files; else echo "No changed server test files"; fi
 
 typecheck:
-	pnpm exec tsc --noEmit
+	pnpm tsc --noEmit
 
 setup-server:
 	cd server && uv sync
