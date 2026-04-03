@@ -762,10 +762,10 @@ describe("before_prompt_build handler", () => {
     expect(ctx_result).toContain("interpret these facts");
     expect(ctx_result).toContain("improves response quality significantly");
     expect(ctx_result).toContain("search memory up to 3 times in parallel");
-    // Verify correct groupId was passed to search
+    // Verify correct groupId was passed to search (hyphen sanitized to underscore)
     expect(client.search).toHaveBeenCalledWith(
       expect.any(String),
-      ["agent-42"],
+      ["agent_42"],
       expect.any(Number),
     );
   });
