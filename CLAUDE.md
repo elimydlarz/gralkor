@@ -104,7 +104,7 @@ Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core
 | self-managing-backend | Managed Python subprocess with embedded FalkorDBLite; requires `uv` |
 | lazy-index-build | `CALL db.indexes()` at boot; `build_indices_and_constraints()` only on fresh DBs |
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
-| upgrade-safe-data | `dataDir` at `{pluginDir}/../.gralkor-data` (outside plugin dir) |
+| upgrade-safe-data | `dataDir` is required config (no default) — operator owns the path and its lifecycle |
 | auto-capture | `agent_end` buffers per session; flushed on `session_end` or idle timeout |
 | behaviour-distillation | `/ingest-messages` groups+distils behaviour blocks per turn via LLM |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
