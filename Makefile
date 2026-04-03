@@ -64,3 +64,15 @@ down:
 
 logs:
 	docker compose logs graphiti
+
+harness:
+	bash test/harness/build.sh
+
+harness-npm:
+	bash test/harness/build.sh --npm
+
+harness-run:
+	docker run --rm -it gralkor-harness:latest
+
+harness-shell:
+	docker run --rm -it gralkor-harness:latest bash
