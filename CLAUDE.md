@@ -537,7 +537,7 @@ install-sequencing-docs
 | `llm.model` | string | `"gemini-3.1-flash-lite-preview"` | LLM model |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model |
-| `dataDir` | string | `{pluginDir}/../.gralkor-data` | Outside plugin dir (upgrade-safe) |
+| `dataDir` | string | **(required)** | Persistent data directory (venv, FalkorDB). No default — operator must set. |
 | `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types |
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types |
 | `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edges |
