@@ -431,6 +431,13 @@ cross-encoder-selection
     then uses OpenAIRerankerClient
   when llm provider is not gemini and OPENAI_API_KEY is not set
     then cross_encoder is None
+sanitizeGroupId
+  when agentId contains hyphens
+    then hyphens are replaced with underscores
+  when agentId has no hyphens
+    then returned unchanged
+  then applied at setGroupId boundary in index.ts
+  then applied at groupId derivation in hooks.ts (auto-recall and flush)
 ```
 
 #### Operations
