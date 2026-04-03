@@ -4,14 +4,21 @@ set -euo pipefail
 echo "=== Gralkor Install Harness ==="
 echo ""
 
-# Configure Google API key from env at runtime.
-# Usage: docker run --rm -it -e GEMINI_API_KEY=... gralkor-harness:latest
+# Configure API keys from env at runtime.
+# Usage: docker run --rm -it -e GEMINI_API_KEY=... -e OPENAI_API_KEY=... gralkor-harness:latest
+# Note: graphiti-core always needs OPENAI_API_KEY for its reranker, even with Gemini.
 API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
 if [ -n "$API_KEY" ]; then
   echo "Configuring googleApiKey from env..."
   npx openclaw config set plugins.entries.gralkor.config.googleApiKey "$API_KEY" 2>&1
 else
   echo "WARNING: GEMINI_API_KEY not set — server will fail to start"
+fi
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+  echo "Configuring openaiApiKey from env..."
+  npx openclaw config set plugins.entries.gralkor.config.openaiApiKey "$OPENAI_API_KEY" 2>&1
+else
+  echo "WARNING: OPENAI_API_KEY not set — graphiti reranker will fail"
 fi
 echo ""
 
