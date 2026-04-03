@@ -263,7 +263,7 @@ describe("service-self-start", () => {
     registerServerService(api, config, "/fake/plugin", serverReady);
 
     // Fire-and-forget is async — flush microtasks
-    await vi.dynamicImportSettled();
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(mockStart).toHaveBeenCalled();
   });
