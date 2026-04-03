@@ -428,14 +428,7 @@ createAgentEndHandler
     then buffers messages in debouncer keyed by sessionKey || agentId || "default"
 ```
 
-#### installation
-
-##### install-sequencing-docs
-
-```
-install-sequencing-docs
-  then README documents recommended install sequencing for operators
-```
+#### publication
 
 ##### publish-version-integrity
 
@@ -453,6 +446,13 @@ publish-version-integrity
     then version is bumped and synced across manifests
     and build and publish are skipped
     and no git commit or tag is created
+```
+
+##### install-sequencing-docs
+
+```
+install-sequencing-docs
+  then README documents recommended install sequencing for operators
 ```
 
 #### config-defaults-single-source
