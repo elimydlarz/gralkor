@@ -52,7 +52,6 @@ describe("registerCli", () => {
     client = {
       health: vi.fn(),
       search: vi.fn().mockResolvedValue(emptySearchResults()),
-      clearGraph: vi.fn().mockResolvedValue(undefined),
     };
     config = {
       autoCapture: { enabled: true },
