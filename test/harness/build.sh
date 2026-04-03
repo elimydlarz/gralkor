@@ -34,8 +34,12 @@ else
 
   pnpm run --silent build
 
-  # Build the arm64 wheel (same as make pack)
-  bash scripts/build-arm64-wheel.sh
+  # Build the arm64 wheel (same as make pack) — skip if cached
+  if [ ! -f server/wheels/falkordblite-*.whl ]; then
+    bash scripts/build-arm64-wheel.sh
+  else
+    echo "Using cached arm64 wheel: $(ls server/wheels/*.whl)"
+  fi
 
   # Pack with resources/memory manifests
   cp resources/memory/package.json package.json
