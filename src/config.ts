@@ -103,6 +103,7 @@ export interface GralkorConfig {
   embedder?: ModelConfig;
   ontology?: OntologyConfig;
   dataDir?: string;
+  workspaceDir?: string;
   test?: boolean;
   googleApiKey?: string;
   openaiApiKey?: string;
