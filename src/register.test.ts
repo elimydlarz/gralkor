@@ -5,6 +5,11 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 import type { ServerManager } from "./server-manager.js";
 
+// Mock native-indexer so startup tests don't attempt real filesystem work
+vi.mock("./native-indexer.js", () => ({
+  runNativeIndexer: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock createServerManager so we don't spawn real processes
 vi.mock("./server-manager.js", async (importOriginal) => {
   const orig = await importOriginal<typeof import("./server-manager.js")>();
