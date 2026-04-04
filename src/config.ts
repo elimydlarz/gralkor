@@ -126,7 +126,10 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
       maxResults: raw.search?.maxResults ?? defaultConfig.search.maxResults,
       maxEntityResults: raw.search?.maxEntityResults ?? defaultConfig.search.maxEntityResults,
     },
-    llm: raw.llm,
+    llm: {
+      provider: raw.llm?.provider ?? DEFAULT_LLM_PROVIDER,
+      model: raw.llm?.model ?? DEFAULT_LLM_MODEL,
+    },
     embedder: raw.embedder,
     ontology: raw.ontology,
     dataDir: raw.dataDir,
