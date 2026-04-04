@@ -96,6 +96,9 @@ export function registerServerService(
       await manager.start();
       serverReady?.resolve();
       console.log("[gralkor] boot: self-start succeeded");
+      void runNativeIndexer(client, config).catch((err: unknown) =>
+        console.log(`[gralkor] native-index: failed — ${err instanceof Error ? err.message : err}`)
+      );
     } catch (err) {
       console.error("[gralkor] boot: self-start failed:", err instanceof Error ? err.message : err);
     }
