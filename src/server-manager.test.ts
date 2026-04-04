@@ -144,7 +144,7 @@ describe("createServerManager", () => {
     expect(passedEnv.FALKORDB_URI).toBeUndefined();
   });
 
-  it("force-installs bundled wheels after uv sync", async () => {
+  it("skips falkordblite in uv sync and installs from bundled wheel", async () => {
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
     mockFetch.mockResolvedValue({ ok: true });
@@ -164,17 +164,19 @@ describe("createServerManager", () => {
 
     const execFileCalls = (execFile as unknown as ReturnType<typeof vi.fn>).mock.calls;
 
-    // uv sync should NOT have UV_FIND_LINKS (we use uv pip install instead)
-    const syncOpts = execFileCalls[1][2];
-    expect(syncOpts.env.UV_FIND_LINKS).toBeUndefined();
+    // uv sync must exclude falkordblite so the PyPI version (x86-64 sdist) is never installed
+    expect(execFileCalls[1][1]).toEqual([
+      "sync", "--no-dev", "--frozen", "--directory", "/server",
+      "--no-install-package", "falkordblite",
+    ]);
 
-    // Third execFile call should be uv pip install for the bundled wheel
+    // uv pip install uses VIRTUAL_ENV (not --python) and no --reinstall
     expect(execFileCalls[2][0]).toBe("uv");
     expect(execFileCalls[2][1]).toEqual([
-      "pip", "install", "--reinstall", "--no-deps",
+      "pip", "install", "--no-deps",
       "/server/wheels/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
-      "--python", "/data/venv/bin/python",
     ]);
+    expect(execFileCalls[2][2].env.VIRTUAL_ENV).toBe("/data/venv");
   });
 
   it("skips wheel install when wheels dir has no .whl files", async () => {
