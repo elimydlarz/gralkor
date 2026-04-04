@@ -487,6 +487,19 @@ rate-limit-retry
     then 429 retries are independent of the 5xx/network retry budget
 ```
 
+#### Functional Journey
+
+```
+memory-journey
+  given workspace seeded with "lucky number is 47" before gateway start
+    then injection reveals 47 as the current lucky number (indexing + search)
+    when capture ingests a conversation establishing lucky number as 99
+      then 99 is searchable as the current lucky number
+      when memory_add stores lucky number changed to 42
+        then manual search reveals 42 as the current lucky number
+        and earlier values (47, 99) appear in results as superseded (invalid_at set)
+```
+
 #### Distribution
 
 ```
