@@ -367,6 +367,30 @@ secret-resolution
     then env var is not set
   then env vars are built synchronously and passed to the server manager
   then process.env is not read for API keys
+native-memory-indexing
+  discoverFiles
+    then finds {workspaceDir}/MEMORY.md with group default
+    then finds {workspaceDir}/memory/*.md with group default
+    then finds {workspaceDir}/agents/{id}/MEMORY.md with group sanitizeGroupId(id)
+    when workspaceDir does not exist
+      then returns empty list
+  indexFile
+    when file has no marker
+      then ingests entire file content
+      and appends marker at end of file
+    when file has marker at end (nothing after it)
+      then skips ingest
+      and does not modify the file
+    when file has marker mid-file (new content after it)
+      then ingests only content after the marker
+      and moves marker to new end of file
+    when ingest fails
+      then does not move the marker (file left unchanged)
+  runNativeIndexer
+    when workspaceDir does not exist
+      then skips gracefully without error
+    when a file errors
+      then logs error and continues with remaining files
 ```
 
 #### Configuration
