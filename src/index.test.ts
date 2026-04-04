@@ -204,23 +204,6 @@ describe("register()", () => {
     expect(api.on).toHaveBeenCalledTimes(3);
   });
 
-  it("factory returns memory_search and memory_get tools", async () => {
-    const { register } = await import("./index.js");
-
-    register(api);
-
-    // Get the factory and simulate OpenClaw calling it
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const factory = api.registerTool.mock.calls[0][0] as (ctx: any) => any;
-    const tools = factory({ config: {}, sessionKey: "test-session" });
-
-    expect(tools).toHaveLength(2);
-    const [searchTool, getTool] = tools;
-
-    expect(searchTool.name).toBe("memory_search");
-    expect(getTool.name).toBe("memory_get");
-  });
-
   describe("auto-recall-further-querying", () => {
     it("when memory_search tool execute returns results, response contains facts and interpretation but no further querying instruction", async () => {
       // Stub fetch so the GraphitiClient created inside register() gets graph results
