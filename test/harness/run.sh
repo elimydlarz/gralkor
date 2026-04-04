@@ -188,7 +188,7 @@ else
   fail "server not healthy after reinstall"
 fi
 
-kill $PLUGINS_PID2 2>/dev/null || true
+kill $GATEWAY_PID2 2>/dev/null || true
 echo ""
 
 # ── Summary ──────────────────────────────────────────────
