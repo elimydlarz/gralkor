@@ -172,7 +172,7 @@ async def test_search_returns_empty_results(client, mock_graphiti):
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body == {"facts": []}
+    assert body == {"facts": [], "nodes": []}
 
 
 @pytest.mark.asyncio
