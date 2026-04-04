@@ -386,6 +386,7 @@ class SearchRequest(BaseModel):
     query: str
     group_ids: list[str]
     num_results: int = 10
+    mode: Literal["fast", "slow"] = "fast"
 
 
 class GroupIdRequest(BaseModel):
