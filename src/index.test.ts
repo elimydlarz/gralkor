@@ -458,7 +458,7 @@ describe("register()", () => {
 
         const result = await searchTool.execute("tool-1", { query: "nothing" });
 
-        expect(result).toBe("No memories found.");
+        expect(result).toBe("No facts found.");
       });
 
       describe("when mode is 'slow'", () => {
@@ -490,7 +490,7 @@ describe("register()", () => {
 
           const result = await searchTool.execute("tool-1", { query: "nothing" });
 
-          expect(result).toBe("No memories found.");
+          expect(result).toBe("No facts found.");
         });
       });
     });
