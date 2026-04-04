@@ -111,6 +111,13 @@ export const configSchema = {
         maxResults: { type: "number" as const, default: defaultConfig.autoRecall.maxResults },
       },
     },
+    search: {
+      type: "object" as const,
+      properties: {
+        maxResults: { type: "number" as const, default: defaultConfig.search.maxResults },
+        maxEntityResults: { type: "number" as const, default: defaultConfig.search.maxEntityResults },
+      },
+    },
     dataDir: {
       type: "string" as const,
       description: "Required. Directory for persistent backend data (venv, FalkorDB database). Operator must set this path.",
