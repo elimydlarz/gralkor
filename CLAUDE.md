@@ -81,7 +81,7 @@ Service `gralkor-server` (`src/server-manager.ts`): When bundled wheels exist in
 
 ### Communication Path
 
-Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search(mode)` → `POST /search` returning `{ facts, nodes }`. `mode: "fast"` (auto-recall): `graphiti.search()` — RRF, edges only, `nodes: []`. `mode: "slow"` (`memory_search` tool): `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` — cross-encoder + BFS, returns facts and entity node summaries.
+Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search(mode)` → `POST /search` returning `{ facts, nodes }`. `mode: "fast"` (auto-recall): `graphiti.search()` — RRF, edges only, `nodes: []`. `mode: "slow"` (`memory_search` tool): `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` — cross-encoder + BFS, returns facts and entity node summaries. Auto-capture: plugin calls `formatTranscript()` → `client.ingestEpisode({ episode_body })` → `POST /episodes` with pre-formatted `episode_body` string; server passes verbatim to `graphiti.add_episode()`.
 
 **Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, process lifetime).
 
