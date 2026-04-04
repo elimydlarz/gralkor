@@ -500,13 +500,18 @@ export class DebouncedFlush<T> {
 }
 
 /**
- * Flush a session buffer → episode. Retries up to 3 times with exponential backoff.
+ * Flush a session buffer → episode. Distils behaviour blocks via LLM before sending.
+ * Retries up to 3 times with exponential backoff.
  */
 export async function flushSessionBuffer(
   key: string,
   buffer: SessionBuffer,
   client: GraphitiClient,
-  { retryDelayMs = 1000, test }: { retryDelayMs?: number; test?: boolean } = {},
+  { retryDelayMs = 1000, test, llmClient = null }: {
+    retryDelayMs?: number;
+    test?: boolean;
+    llmClient?: LLMClient | null;
+  } = {},
 ): Promise<void> {
   const filtered = extractMessagesFromCtx({ messages: buffer.messages });
   if (filtered.length === 0) {
@@ -530,17 +535,23 @@ export async function flushSessionBuffer(
     console.log(`[gralkor] [test] episode messages:\n${JSON.stringify(filtered, null, 2)}`);
   }
 
+  const episodeBody = await formatTranscript(filtered, llmClient);
+
+  if (test) {
+    console.log(`[gralkor] [test] episode body:\n${episodeBody}`);
+  }
+
   const maxRetries = 3;
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const flushStart = Date.now();
-      await client.ingestMessages({
+      await client.ingestEpisode({
         name: `conversation-${Date.now()}`,
         source_description: "auto-capture",
         group_id: groupId,
-        messages: filtered,
+        episode_body: episodeBody,
       });
       const flushDuration = Date.now() - flushStart;
 
