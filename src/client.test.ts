@@ -435,28 +435,26 @@ describe("addEpisode()", () => {
   });
 });
 
-describe("ingestMessages()", () => {
-  it("sends POST to /ingest-messages with structured messages", async () => {
+describe("ingestEpisode()", () => {
+  it("sends POST to /episodes with episode_body and source=message", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
     fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
 
-    await client.ingestMessages({
+    await client.ingestEpisode({
       name: "test",
       source_description: "auto-capture",
       group_id: "g1",
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Hello" }] },
-        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
-      ],
+      episode_body: "User: Hello\nAssistant: Hi",
     });
 
     const [url, opts] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8000/ingest-messages");
+    expect(url).toBe("http://localhost:8000/episodes");
     expect(opts.method).toBe("POST");
 
     const body = JSON.parse(opts.body);
     expect(body.name).toBe("test");
-    expect(body.messages).toHaveLength(2);
+    expect(body.episode_body).toBe("User: Hello\nAssistant: Hi");
+    expect(body.source).toBe("message");
     expect(body.group_id).toBe("g1");
   });
 
@@ -465,11 +463,11 @@ describe("ingestMessages()", () => {
     fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
 
     const before = new Date().toISOString();
-    await client.ingestMessages({
+    await client.ingestEpisode({
       name: "test",
       source_description: "src",
       group_id: "g1",
-      messages: [{ role: "user", content: [{ type: "text", text: "Hi" }] }],
+      episode_body: "User: Hi",
     });
     const after = new Date().toISOString();
 
@@ -478,38 +476,15 @@ describe("ingestMessages()", () => {
     expect(body.reference_time <= after).toBe(true);
   });
 
-  it("includes thinking blocks in messages payload", async () => {
-    const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
-    fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
-
-    await client.ingestMessages({
-      name: "test",
-      source_description: "src",
-      group_id: "g1",
-      messages: [
-        { role: "assistant", content: [
-          { type: "thinking", text: "Let me think..." },
-          { type: "text", text: "Done" },
-        ]},
-      ],
-    });
-
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.messages[0].content).toEqual([
-      { type: "thinking", text: "Let me think..." },
-      { type: "text", text: "Done" },
-    ]);
-  });
-
   it("includes an idempotency_key in the request body", async () => {
     const client = new GraphitiClient({ baseUrl: "http://localhost:8000" });
     fetchMock.mockResolvedValue(jsonResponse({ uuid: "ep-1" }));
 
-    await client.ingestMessages({
+    await client.ingestEpisode({
       name: "test",
       source_description: "src",
       group_id: "g1",
-      messages: [{ role: "user", content: [{ type: "text", text: "Hi" }] }],
+      episode_body: "User: Hi",
     });
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
@@ -524,11 +499,11 @@ describe("ingestMessages()", () => {
       .mockResolvedValueOnce(jsonResponse({ error: "fail" }, 500))
       .mockResolvedValueOnce(jsonResponse({ uuid: "ep-1" }));
 
-    await client.ingestMessages({
+    await client.ingestEpisode({
       name: "test",
       source_description: "src",
       group_id: "g1",
-      messages: [{ role: "user", content: [{ type: "text", text: "Hi" }] }],
+      episode_body: "User: Hi",
     });
 
     const body1 = JSON.parse(fetchMock.mock.calls[0][1].body);
