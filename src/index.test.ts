@@ -416,12 +416,14 @@ describe("register()", () => {
     // Helper: register plugin and return the memory_search tool (plain object)
     async function setupSearchTool(opts: {
       graphFacts?: Array<{ uuid: string; name: string; fact: string; group_id: string; valid_at: string | null; invalid_at: string | null; expired_at: string | null; created_at: string }>;
+      graphNodes?: Array<{ uuid: string; name: string; summary: string | null; group_id: string }>;
     }) {
       const facts = opts.graphFacts ?? [];
+      const nodes = opts.graphNodes ?? [];
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers({ "content-type": "application/json" }),
-        json: async () => ({ facts, nodes: [] }),
+        json: async () => ({ facts, nodes }),
         text: async () => "",
       });
       vi.stubGlobal("fetch", fetchMock);
