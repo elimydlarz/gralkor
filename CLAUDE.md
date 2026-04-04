@@ -610,6 +610,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 - TypeScript, ESM, ES2022, bundler resolution. `.js` extensions required.
 - All Graphiti communication via HTTP through `src/client.ts`
 - Always target the latest version of OpenClaw — do not add compatibility shims or workarounds for older versions
+- When understanding current OpenClaw behaviour, check the clone at `/tmp/openclaw` — always run `git pull` there first to ensure it reflects the latest version
 
 ## Gotchas
 
