@@ -493,7 +493,16 @@ describe("register()", () => {
           expect(result).toBe("No facts found.");
         });
 
-        it("and nodes are limited to the same limit as facts (default 10)", async () => {
+        it("and returns at most search.maxResults facts (default 20)", async () => {
+          const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
+          await searchTool.execute("tool-1", { query: "React" });
+
+          const fetchMock = vi.mocked(globalThis.fetch as ReturnType<typeof vi.fn>);
+          const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+          expect(body.num_results).toBe(20);
+        });
+
+        it("and returns at most search.maxEntityResults entities (default 10)", async () => {
           const manyNodes = Array.from({ length: 15 }, (_, i) => ({
             uuid: `n${i}`,
             name: `Entity${i}`,
