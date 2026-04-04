@@ -219,7 +219,6 @@ describe("publish-version-integrity", () => {
           PUBLISH_BUILD_CMD: "true",
           PUBLISH_WHEEL_CMD: "true",
           PUBLISH_PUBLISH_CMD: "true",
-          PUBLISH_GIT_PUSH_CMD: "true",
           GIT_AUTHOR_NAME: "test",
           GIT_AUTHOR_EMAIL: "test@test",
           GIT_COMMITTER_NAME: "test",
