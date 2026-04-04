@@ -343,7 +343,7 @@ export function createBeforePromptBuildHandler(
       console.log(`[gralkor] auto-recall result — graph: ${factCount} facts — groupId:${groupId}`);
 
       const factsText = factCount > 0
-        ? "Memories:\n" + searchResults.facts.map(formatFact).join("\n")
+        ? "Facts:\n" + searchResults.facts.map(formatFact).join("\n")
         : "No facts found.";
 
       const furtherQuerying =
