@@ -48,7 +48,7 @@ function defaultModel(provider: string): string {
     case "openai": return "gpt-4o-mini";
     case "groq": return "llama-3.1-8b-instant";
     case "gemini":
-    default: return "gemini-2.0-flash-lite";
+    default: return "gemini-3.1-flash-lite-preview";
   }
 }
 
