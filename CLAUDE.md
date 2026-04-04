@@ -489,7 +489,7 @@ rate-limit-retry
 
 ```
 memory-journey
-  given workspace seeded with "Harness User's lucky number is 47" before gateway start
+  given workspace seeded with "Harness User has the lucky number LuckyNumber47" before gateway start
     then injection reveals 47 as the current lucky number (indexing + search)
     when capture ingests a conversation establishing lucky number as 99
       then 99 is searchable as the current lucky number
