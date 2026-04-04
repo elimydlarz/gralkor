@@ -31,10 +31,6 @@
     "docker:up": "pnpm run docker:build && docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs graphiti",
-    "harness": "bash test/harness/build.sh",
-    "harness:npm": "bash test/harness/build.sh --npm",
-    "harness:run": "docker run --rm -it --platform linux/amd64 gralkor-harness:latest",
-    "harness:shell": "docker run --rm -it --platform linux/amd64 gralkor-harness:latest bash",
     "publish:npm": "bash scripts/publish.sh"
   },
   "files": [
