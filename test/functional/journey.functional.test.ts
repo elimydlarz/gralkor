@@ -8,10 +8,9 @@
  *   → manual add updates to 42 → manual search reveals the full history.
  *
  * Assumes:
- * - OpenClaw gateway is already running (started by test/harness/run-functional-tests.sh)
- * - Workspace files were seeded by run-functional-tests.sh BEFORE gateway start
+ * - OpenClaw gateway is already running (started by test/harness/functional-env.sh up)
+ * - Workspace files were seeded by functional-env.sh BEFORE gateway start
  * - Gralkor server is healthy at http://127.0.0.1:8001
- * - Native indexer has completed (native-indexing tests must pass first)
  *
  * Run inside the Docker harness only (pnpm run test:functional).
  */
