@@ -622,12 +622,10 @@ The functional layer requires the OpenClaw test harness (Docker image).
 | `pnpm run test:server` | Python | spec |
 | `pnpm run test:server:changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
-| `pnpm run test:functional:all` | Build image + run all functional tests (one-shot) | tree |
-| `pnpm run test:functional:up` | Build image + start persistent env (pass `-- --npm` to test from npm) | — |
-| `pnpm run test:functional:reup` | Restart persistent env without rebuilding image | — |
-| `pnpm run test:functional:run [pattern]` | Run functional tests in running container | tree |
-| `pnpm run test:functional:down` | Stop + remove functional env container | — |
-| `pnpm run test:functional:shell` | Interactive shell in functional env | — |
+| `pnpm run test:functional:ci` | Build image + run journey + tear down (full CI) | tree |
+| `pnpm run test:functional:up` | Build image + start env container | — |
+| `pnpm run test:functional:run` | Run journey test in running container | tree |
+| `pnpm run test:functional:down` | Stop + remove env container | — |
 | `pnpm run test:mutate` | Mutation testing (Stryker) | clear-text |
 | `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation (real LLM) | stdout |
 
