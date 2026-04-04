@@ -14,10 +14,7 @@ import {
   registerServerService,
   registerCli,
 } from "./register.js";
-import type { NativeSearchFn } from "./hooks.js";
-import { countNativeResults } from "./hooks.js";
 import type { MemoryPluginApi } from "./types.js";
-import { searchNativeMemory, readNativeMemoryFile } from "./native-memory.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
