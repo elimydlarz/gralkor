@@ -124,13 +124,16 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 ```
 auto-recall-interpretation
   when auto-recall returns results and llmClient is available
-    then calls llmClient with last 20 conversation messages + raw facts
+    then calls llmClient with conversation messages (within token budget) and raw facts
     and prependContext includes "Interpretation:" section with LLM output after raw facts
     and INTERPRETATION_INSTRUCTION is NOT appended
+  when conversation history exceeds the token budget
+    then oldest messages are dropped until context fits
+    and most recent messages are always preserved
   when auto-recall returns results and llmClient is null or LLM call fails
     then prependContext falls back to raw facts + INTERPRETATION_INSTRUCTION
   when memory_search tool execute returns results
-    then response includes INTERPRETATION_INSTRUCTION (tool has no conversation context)
+    then response includes raw facts + INTERPRETATION_INSTRUCTION
 auto-recall-further-querying
   when auto-recall returns results
     then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
