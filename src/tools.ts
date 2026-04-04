@@ -5,11 +5,22 @@ export const INTERPRETATION_INSTRUCTION =
   "Before responding, interpret these facts for relevance to the task at hand. " +
   "Doing this step thoughtfully improves response quality significantly.";
 
+export function formatTimestamp(ts: string): string {
+  let s = ts.replace(/\.\d+/, "");
+  s = s.replace(/Z$/, "+0");
+  s = s.replace(/([+-])(\d{2}):(\d{2})$/, (_, sign, h, m) => {
+    const hours = String(parseInt(h, 10));
+    return m === "00" ? `${sign}${hours}` : `${sign}${hours}:${m}`;
+  });
+  return s;
+}
+
 export function formatFact(f: Fact): string {
-  const createdAt = f.created_at ? ` (created ${f.created_at})` : "";
-  const validAt = f.valid_at ? ` (valid from ${f.valid_at})` : "";
-  const invalidAt = f.invalid_at ? ` (invalid since ${f.invalid_at})` : "";
-  const expiredAt = f.expired_at ? ` (expired ${f.expired_at})` : "";
+  const fmt = (ts: string) => formatTimestamp(ts);
+  const createdAt = f.created_at ? ` (created ${fmt(f.created_at)})` : "";
+  const validAt = f.valid_at ? ` (valid from ${fmt(f.valid_at)})` : "";
+  const invalidAt = f.invalid_at ? ` (invalid since ${fmt(f.invalid_at)})` : "";
+  const expiredAt = f.expired_at ? ` (expired ${fmt(f.expired_at)})` : "";
   return `- ${f.fact}${createdAt}${validAt}${invalidAt}${expiredAt}`;
 }
 
