@@ -527,7 +527,8 @@ install-sequencing-docs
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts, native-indexer.ts,
-│                                     # types.ts, config.ts, *.test.ts
+│                                     # types.ts, config.ts, llm-client.ts, distill.ts,
+│                                     # *.test.ts
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/integration/                 # mocked integration tests (multi-load, publish)
 ├── test/functional/                  # real OpenClaw harness tests (Docker, no mocks)
