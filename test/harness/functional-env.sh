@@ -109,7 +109,7 @@ cmd_up() {
 
       # Seed workspace files
       mkdir -p \$HOME/.openclaw/workspace/memory
-      printf '# About Me\nMy name is Harness User and I live in Test City.\n' \
+      printf '# About Me\nMy name is Harness User and I live in Test City. My favourite number is 23.\n' \
         > \$HOME/.openclaw/workspace/MEMORY.md
       printf '# Session Notes\nI prefer Python over JavaScript for data scripts.\n' \
         > \$HOME/.openclaw/workspace/memory/session-001.md
