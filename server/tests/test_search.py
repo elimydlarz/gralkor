@@ -24,7 +24,7 @@ async def test_search_returns_facts(client, mock_graphiti):
     assert len(body["facts"]) == 1
     assert body["facts"][0]["uuid"] == "e1"
     assert body["facts"][0]["fact"] == "Alice knows Bob"
-    assert "nodes" not in body
+    assert body["nodes"] == []
     assert "episodes" not in body
     assert "communities" not in body
 
