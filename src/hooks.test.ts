@@ -1837,7 +1837,7 @@ describe("idle timeout flush", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     client = mockClient();
-    client.ingestMessages.mockResolvedValue({});
+    client.ingestEpisode.mockResolvedValue({});
     debouncer = new DebouncedFlush<SessionBuffer>(IDLE_MS, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
     );
@@ -1857,13 +1857,13 @@ describe("idle timeout flush", () => {
     const handler = createAgentEndHandler(idleConfig, debouncer);
     await handler({ messages: simpleMessages }, { agentId: "agent-1" });
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
     expect(debouncer.timerCount).toBe(1);
 
     vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     expect(debouncer.pendingCount).toBe(0);
     expect(debouncer.timerCount).toBe(0);
   });
@@ -1886,15 +1886,15 @@ describe("idle timeout flush", () => {
     // Advance to 4 min after first (2 min after second) — no flush yet
     vi.advanceTimersByTime(2 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
 
     // Advance to 5 min after second — should flush
     vi.advanceTimersByTime(3 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    expect(call.messages.some(m => m.content.some(b => b.text.includes("More")))).toBe(true);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("More");
   });
 
   it("session_end wins — timer cancelled", async () => {
@@ -1908,13 +1908,13 @@ describe("idle timeout flush", () => {
     await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
 
     expect(debouncer.timerCount).toBe(0);
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
 
     // Advance past timeout — no second flush
     vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
   });
 
   it("idle timeout wins — session_end no-ops", async () => {
@@ -1927,12 +1927,12 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
 
     // session_end fires after — should no-op (buffer already gone)
     await sessionEnd({}, { sessionId: "sid-1", sessionKey: "sess-1" });
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
   });
 
   it("independent timers per session", async () => {
@@ -1957,13 +1957,13 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(2 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
 
     // Advance remaining 3 min — sess-2 fires
     vi.advanceTimersByTime(3 * 60 * 1000);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(2);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(2);
   });
 
   it("dispose cancels all timers", async () => {
@@ -1979,11 +1979,11 @@ describe("idle timeout flush", () => {
     vi.advanceTimersByTime(IDLE_MS);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("idle flush error is logged without crashing (no unhandled rejection)", async () => {
-    client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingestEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const handler = createAgentEndHandler(idleConfig, debouncer);
@@ -1996,8 +1996,8 @@ describe("idle timeout flush", () => {
       await vi.advanceTimersByTimeAsync(5000);
     }
 
-    // The flush was attempted (ingestMessages called at least once)
-    expect(client.ingestMessages).toHaveBeenCalled();
+    // The flush was attempted (ingestEpisode called at least once)
+    expect(client.ingestEpisode).toHaveBeenCalled();
     // Final failure logged as error with "message dropped"
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("message dropped"),
