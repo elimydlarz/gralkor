@@ -13,7 +13,7 @@ docker run --rm --platform linux/arm64 \
   python:3.13-bookworm \
   bash -c "
     set -e
-    apt-get update -qq && apt-get install -y -qq build-essential git > /dev/null
+    apt-get clean && apt-get update -qq && apt-get install -y -qq build-essential git > /dev/null
     git clone --depth 1 --branch ${FALKORDBLITE_VERSION} https://github.com/FalkorDB/falkordblite.git /tmp/fdb
     cd /tmp/fdb
     python -m venv /tmp/build-env
