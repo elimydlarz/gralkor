@@ -1,5 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Mock native-indexer so startup tests don't attempt real filesystem work
+vi.mock("./native-indexer.js", () => ({
+  runNativeIndexer: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock createServerManager so we don't spawn real processes (and so the
+// fire-and-forget start() doesn't outlive the test worker, causing
+// EnvironmentTeardownError: "Closing rpc while onUserConsoleLog was pending")
+vi.mock("./server-manager.js", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("./server-manager.js")>();
+  return {
+    ...orig,
+    createServerManager: vi.fn(() => ({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      isRunning: vi.fn().mockReturnValue(false),
+    })),
+  };
+});
+
 // Verify the module's export shape — this is the test that would have
 // caught the "entry.register is not a function" bug.
 describe("plugin export shape", () => {
