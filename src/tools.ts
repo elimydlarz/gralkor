@@ -105,23 +105,28 @@ export function createMemorySearchTool(
   const { getGroupId, serverReady } = opts;
   return {
     name: "memory_search",
-    description: "Search memory for relevant context. Use specific, focused queries.",
+    description: "Search memory for relevant context. Use specific, focused queries. Pass the session_key from the gralkor-memory context block.",
     parameters: {
       type: "object" as const,
       properties: {
         query: { type: "string" as const },
+        session_key: {
+          type: "string" as const,
+          description: "Session key from the gralkor-memory context block. Pass this to search the correct agent memory partition.",
+        },
       },
       required: ["query"] as const,
     },
     async execute(
       _toolCallId: string,
-      args: { query: string },
+      args: { query: string; session_key?: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error("[gralkor] memory_search failed: server is not ready");
       }
 
-      const groupId = getGroupId?.() ?? "default";
+      const sessionKey = args.session_key ?? "default";
+      const groupId = getGroupId?.(sessionKey) ?? "default";
       const maxFacts = config.search.maxResults;
       const maxEntities = config.search.maxEntityResults;
       const results = await client.search(args.query, [groupId], maxFacts, "slow");
