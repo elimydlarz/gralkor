@@ -105,7 +105,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
 | unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native MD files are indexed into the graph at boot via `runNativeIndexer()` |
 | manual-store | `memory_add` creates episodes with `source=text` |
-| agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
+| agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph. `before_prompt_build` stores groupId in `groupIdBySession` Map keyed by `sessionKey`; injects `Session-key` into memory block; tools resolve groupId via `getGroupId(session_key)` parameter |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
 | cli-diagnostics | `status/search` under `openclaw gralkor`; group ID for search |
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
