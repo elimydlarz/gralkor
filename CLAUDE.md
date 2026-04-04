@@ -225,14 +225,14 @@ capture-hygiene
     then matches "System: [timestamp] ..." event lines
     then matches "[User sent media without caption]"
 behaviour-distillation
-  _format_transcript (server-side)
+  formatTranscript (plugin-side, src/distill.ts)
     when assistant message has thinking blocks
       then grouped into behaviour for that turn
     when assistant message has tool_use blocks
       then grouped into behaviour for that turn
     when assistant message has tool_result blocks
       then grouped into behaviour for that turn
-    when turn has behaviour blocks and llm_client available
+    when turn has behaviour blocks and llmClient available
       then blocks joined with --- separator
       and distilled via LLM into first-person past-tense summary
       and injected as "Assistant: (behaviour: {summary})" before assistant text
@@ -244,6 +244,8 @@ behaviour-distillation
       and does NOT echo the specific data that was recalled
     when distillation fails for a turn
       then behaviour line silently dropped, assistant text preserved
+    when llmClient is null
+      then behaviour blocks silently omitted, text blocks preserved
     when turn has only text blocks (no behaviour)
       then text rendered as "Assistant: {text}" with no behaviour line
     user messages
