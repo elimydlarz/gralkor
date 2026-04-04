@@ -116,6 +116,7 @@ export const defaultConfig: GralkorConfig = {
   autoCapture: { enabled: true },
   idleTimeoutMs: 5 * 60 * 1000,
   autoRecall: { enabled: true, maxResults: 10 },
+  search: { maxResults: 20, maxEntityResults: 10 },
 };
 
 export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
