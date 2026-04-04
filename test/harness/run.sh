@@ -134,7 +134,7 @@ echo "--- 5. Reinstall ---"
 pkill -f "uvicorn main:app" 2>/dev/null || true
 pkill -f "openclaw-plugins" 2>/dev/null || true
 pkill -f "redis-server" 2>/dev/null || true
-kill $PLUGINS_PID 2>/dev/null || true
+kill $GATEWAY_PID 2>/dev/null || true
 sleep 3
 
 # Clear the memory slot before removing — otherwise install fails validation
