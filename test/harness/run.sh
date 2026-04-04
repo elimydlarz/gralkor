@@ -40,14 +40,13 @@ PLUGIN_DIR="$HOME/.openclaw/extensions/gralkor"
 [ -f "$PLUGIN_DIR/server/main.py" ] && pass "server/main.py present" || fail "server/main.py missing"
 echo ""
 
-# ── 2. Boot server via OpenClaw plugin load ───────────────
+# ── 2. Boot server via OpenClaw gateway ──────────────────
 echo "--- 2. Server boot ---"
-echo "Loading plugin (triggers server self-start)..."
+echo "Starting OpenClaw gateway (triggers plugin load and server self-start)..."
 
-# openclaw plugins list loads the plugin which self-starts the server.
-# Run in background — we only care about the server coming up.
-openclaw plugins list >/dev/null 2>&1 &
-PLUGINS_PID=$!
+# Start the gateway in background — plugins self-start as part of gateway boot.
+openclaw gateway >/dev/null 2>&1 &
+GATEWAY_PID=$!
 
 # Wait for server health
 echo "Waiting for server health (up to 120s)..."
