@@ -352,6 +352,12 @@ startup
   when self-start fails
     then the error is logged
     and serverReady remains unresolved
+  native memory indexing
+    then indexer is started fire-and-forget after serverReady resolves
+    when workspace files exist at startup
+      then each file is processed by indexFile
+    when workspaceDir does not exist
+      then indexer skips without error
 secret-resolution
   when config contains a plaintext API key string
     then env var is set to that string (trimmed)
