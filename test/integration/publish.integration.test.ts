@@ -152,6 +152,36 @@ describe("publish-version-integrity", () => {
     });
   });
 
+  describe("when not logged in to npm", () => {
+    it("then exits before version bump and no rollback is needed", () => {
+      const beforePkg = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const beforePlugin = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+
+      try {
+        execSync("bash scripts/publish.sh patch", {
+          cwd: tempDir,
+          env: {
+            ...process.env,
+            PUBLISH_NPM_WHOAMI_CMD: "false", // always fails
+          },
+          stdio: "ignore",
+        });
+      } catch {
+        // expected
+      }
+
+      const afterPkg = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const afterPlugin = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+
+      expect(afterPkg).toBe(beforePkg);
+      expect(afterPlugin).toBe(beforePlugin);
+    });
+  });
+
   describe("when successive publishes fail", () => {
     it("then version does not increment multiple times", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
