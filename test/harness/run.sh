@@ -109,7 +109,7 @@ if [ "$SERVER_OK" = true ]; then
 
   SEARCH_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/search \
     -H 'Content-Type: application/json' \
-    -d '{"query": "favorite color", "group_ids": ["harness"], "num_results": 5}' 2>&1)
+    -d '{"query": "favorite color", "group_ids": ["harness"], "num_results": 5, "mode": "fast"}' 2>&1)
 
   SEARCH_CODE=$(echo "$SEARCH_RESP" | tail -1)
   SEARCH_BODY=$(echo "$SEARCH_RESP" | sed '$d')
