@@ -1551,10 +1551,10 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
 
     await sessionEnd({}, sessionCtx);
 
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    const userTexts = call.messages.filter(m => m.role === "user").map(m => m.content[0].text);
-    expect(userTexts).toEqual(["What's my name?", "And my last name?"]);
-    expect(JSON.stringify(call.messages)).not.toContain("gralkor-memory");
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("User: What's my name?");
+    expect(call.episode_body).toContain("User: And my last name?");
+    expect(call.episode_body).not.toContain("gralkor-memory");
   });
 });
 
