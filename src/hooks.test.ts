@@ -953,6 +953,47 @@ describe("before_prompt_build handler", () => {
     });
   });
 
+  describe("auto-recall-search-strategy", () => {
+    it("when auto-recall executes, then uses fast mode (RRF, edges only via graphiti.search())", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      expect(client.search).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(Number),
+        "fast",
+      );
+    });
+
+    it("and injected context contains only facts, no entity summaries", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+        nodes: [{ uuid: "n1", name: "ReactProject", summary: "A frontend project", group_id: "default" }],
+      });
+
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx = (result as { prependContext: string }).prependContext;
+      expect(ctx).toContain("Team uses React");
+      expect(ctx).not.toContain("Entities:");
+      expect(ctx).not.toContain("ReactProject");
+    });
+  });
+
   describe("auto-recall-further-querying", () => {
     it("when auto-recall returns results, prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries", async () => {
       client.search.mockResolvedValue({
