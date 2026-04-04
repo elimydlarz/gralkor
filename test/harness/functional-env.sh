@@ -111,7 +111,7 @@ cmd_up() {
       mkdir -p \$HOME/.openclaw/workspace/memory
       printf '# About Me\nMy name is Harness User and I live in Test City. My favourite number is 23.\n' \
         > \$HOME/.openclaw/workspace/MEMORY.md
-      printf '# Session Notes\nI prefer Python over JavaScript for data scripts. My lucky number is 47.\n' \
+      printf '# Session Notes\nMy lucky number is 47.\n' \
         > \$HOME/.openclaw/workspace/memory/session-001.md
 
       # Start gateway (triggers server + native indexer)
