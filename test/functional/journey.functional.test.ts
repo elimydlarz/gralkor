@@ -50,7 +50,7 @@ beforeAll(async () => {
   await poll("lucky number 47 indexed from workspace file", async () => {
     const { facts } = await search("lucky number");
     return facts.some(f => f.fact.includes("47"));
-  }, 90_000);
+  }, 30_000);
 
   // 2. Capture: ingest a conversation that updates lucky number to 99
   await fetch(`${SERVER_URL}/ingest-messages`, {
