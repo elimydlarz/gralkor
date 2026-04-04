@@ -400,6 +400,15 @@ def _ts(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
+def _serialize_node(node) -> dict[str, Any]:
+    return {
+        "uuid": node.uuid,
+        "name": node.name,
+        "summary": node.summary,
+        "group_id": node.group_id,
+    }
+
+
 def _serialize_fact(edge: EntityEdge) -> dict[str, Any]:
     return {
         "uuid": edge.uuid,
