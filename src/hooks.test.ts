@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
+import type { LLMClient } from "./llm-client.js";
 import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
 import {
   createBeforePromptBuildHandler,
