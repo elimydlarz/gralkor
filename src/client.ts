@@ -26,11 +26,11 @@ export interface AddEpisodeParams {
   source?: "message" | "text" | "json";
 }
 
-export interface IngestMessagesParams {
+export interface IngestEpisodeParams {
   name: string;
   source_description: string;
   group_id: string;
-  messages: EpisodeMessage[];
+  episode_body: string;
 }
 
 export type SearchMode = "fast" | "slow";
