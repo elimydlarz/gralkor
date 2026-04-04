@@ -402,9 +402,6 @@ OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools b
 
 You can also allow all Gralkor tools with `"alsoAllow": ["gralkor"]` or all plugin tools with `"alsoAllow": ["group:plugins"]`. Note that `memory_add` is not required for Gralkor to work — auto-capture already stores everything your agent hears, says, thinks, and does. `memory_add` is only needed if you want the agent to selectively store specific insights or conclusions on its own.
 
-**`memory_search` returns empty in memory mode**
-Native memory indexing needs an embedding provider key in the OpenClaw gateway's environment. See the "Native memory search" section above.
-
 ## Legacy Docker mode
 
 If you prefer to run FalkorDB as a separate Docker container (e.g. for production deployments with specific resource constraints), you can set `FALKORDB_URI` to bypass the embedded mode:
