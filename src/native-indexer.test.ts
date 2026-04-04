@@ -23,7 +23,7 @@ function mockClient(): GraphitiClient {
     health: vi.fn(),
     search: vi.fn(),
     addEpisode: vi.fn().mockResolvedValue({ uuid: "ep-1", name: "test", content: "", source_description: "", group_id: "default", created_at: "" }),
-    ingestMessages: vi.fn(),
+    ingestEpisode: vi.fn(),
     buildIndices: vi.fn(),
     buildCommunities: vi.fn(),
   } as unknown as GraphitiClient;
