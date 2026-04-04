@@ -78,44 +78,39 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       );
     }
 
-    // Sync Python environment
+    // Sync Python environment.
+    // Skip falkordblite when a bundled arch-specific wheel is present — the PyPI
+    // arm64 wheel requires manylinux_2_39 (glibc 2.39+) but many linux/arm64 hosts
+    // run glibc 2.36 (Debian Bookworm), causing uv to fall back to the sdist which
+    // embeds x86-64 binaries. The bundled wheel is built for the correct arch.
+    const wheelsDir = join(opts.serverDir, "wheels");
+    const bundledWheels = existsSync(wheelsDir)
+      ? readdirSync(wheelsDir).filter((f) => f.endsWith(".whl")).map((f) => join(wheelsDir, f))
+      : [];
+
     const syncEnv: Record<string, string> = {
       ...process.env as Record<string, string>,
       UV_PROJECT_ENVIRONMENT: venvDir,
     };
 
+    const syncArgs = [
+      "sync", "--no-dev", "--frozen", "--directory", opts.serverDir,
+      ...(bundledWheels.length > 0 ? ["--no-install-package", "falkordblite"] : []),
+    ];
+
     console.log("[gralkor] boot: syncing python env...");
-    await execFileAsync(
-      "uv",
-      ["sync", "--no-dev", "--frozen", "--directory", opts.serverDir],
-      { env: syncEnv, timeout: 300_000 },
-    );
+    await execFileAsync("uv", syncArgs, { env: syncEnv, timeout: 300_000 });
     console.log("[gralkor] boot: python env ready");
 
-    // Force-install bundled wheels to override broken PyPI packages.
-    // UV_FIND_LINKS doesn't work with `uv sync --frozen` (lockfile hash
-    // verification rejects locally-built wheels), so we use a separate
-    // `uv pip install` step that bypasses the lockfile entirely.
-    const wheelsDir = join(opts.serverDir, "wheels");
-    if (existsSync(wheelsDir)) {
-      const wheelPaths = readdirSync(wheelsDir)
-        .filter((f) => f.endsWith(".whl"))
-        .map((f) => join(wheelsDir, f));
-      for (const wheelPath of wheelPaths) {
-        try {
-          console.log("[gralkor] Installing bundled wheel:", wheelPath);
-          await execFileAsync(
-            "uv",
-            ["pip", "install", "--reinstall", "--no-deps", wheelPath, "--python", venvPython],
-            { timeout: 60_000 },
-          );
-        } catch {
-          // Wheel might not be compatible with this platform (e.g. arm64
-          // wheel on a macOS dev machine) — that's OK, uv sync already
-          // installed compatible packages from PyPI.
-          console.log("[gralkor] Bundled wheel not compatible, using PyPI version");
-        }
-      }
+    // Install bundled wheels — no PyPI fallback, must succeed.
+    const pipEnv = { ...process.env as Record<string, string>, VIRTUAL_ENV: venvDir };
+    for (const wheelPath of bundledWheels) {
+      console.log("[gralkor] Installing bundled wheel:", wheelPath);
+      await execFileAsync(
+        "uv",
+        ["pip", "install", "--no-deps", wheelPath],
+        { env: pipEnv, timeout: 60_000 },
+      );
     }
 
     // Write dynamic config.yaml from plugin settings (with defaults)
