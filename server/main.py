@@ -136,10 +136,10 @@ def _build_ontology(
     dict[tuple[str, str], list[str]] | None,
     list[str] | None,
 ]:
-    """Build ontology from config. Returns (entity_types, edge_types, edge_type_map, excluded)."""
+    """Build ontology from config. Returns (entity_types, edge_types, edge_type_map)."""
     raw = cfg.get("ontology")
     if not raw:
-        return None, None, None, None
+        return None, None, None
 
     entity_defs = raw.get("entities") or {}
     edge_defs = raw.get("edges") or {}
