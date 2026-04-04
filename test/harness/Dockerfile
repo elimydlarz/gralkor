@@ -54,6 +54,6 @@ COPY gralkor-src/ /app/gralkor-src/
 RUN cd /app/gralkor-src && pnpm install --frozen-lockfile
 
 # Default: run the harness test script
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-CMD ["/run.sh"]
+COPY run-functional-tests.sh /run-functional-tests.sh
+RUN chmod +x /run-functional-tests.sh
+CMD ["/run-functional-tests.sh"]
