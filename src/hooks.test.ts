@@ -1412,15 +1412,15 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     }, agentCtx);
 
     // No episodes created yet
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
 
     // Session ends
     await sessionEnd({}, sessionCtx);
 
-    // Exactly 1 episode with all 3 turns as structured messages
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string }> };
-    expect(call.messages).toHaveLength(6); // 3 user + 3 assistant
+    // Exactly 1 episode with all 3 turns as formatted transcript
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body.split("\n")).toHaveLength(6); // 3 user + 3 assistant lines
     expect(debouncer.pendingCount).toBe(0);
   });
 
