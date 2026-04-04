@@ -460,6 +460,39 @@ describe("register()", () => {
 
         expect(result).toBe("No memories found.");
       });
+
+      describe("when mode is 'slow'", () => {
+        it("then uses slow mode (fetch body contains mode: slow)", async () => {
+          const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
+          await searchTool.execute("tool-1", { query: "React" });
+
+          // fetch is stubbed globally — verify the POST body sent to /search
+          const fetchMock = vi.mocked(globalThis.fetch as ReturnType<typeof vi.fn>);
+          const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+          expect(body.mode).toBe("slow");
+        });
+
+        it("when node summaries are returned, then nodes appear in output under 'Entities:' section", async () => {
+          const searchTool = await setupSearchTool({
+            graphFacts: [sampleFact],
+            graphNodes: [{ uuid: "n1", name: "ReactProject", summary: "A frontend project using React", group_id: "default" }],
+          });
+
+          const result = await searchTool.execute("tool-1", { query: "React" });
+
+          expect(result).toContain("Entities:");
+          expect(result).toContain("ReactProject");
+          expect(result).toContain("A frontend project using React");
+        });
+
+        it("when no facts and no nodes are returned, then response is 'No memories found.'", async () => {
+          const searchTool = await setupSearchTool({ graphFacts: [], graphNodes: [] });
+
+          const result = await searchTool.execute("tool-1", { query: "nothing" });
+
+          expect(result).toBe("No memories found.");
+        });
+      });
     });
 
     describe("when server is not ready", () => {
