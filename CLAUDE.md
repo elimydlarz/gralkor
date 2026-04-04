@@ -103,8 +103,8 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | auto-capture | `agent_end` buffers per session; flushed on `session_end` or idle timeout |
 | behaviour-distillation | `/ingest-messages` groups+distils behaviour blocks per turn via LLM |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
-| auto-recall | `before_prompt_build` searches graph+native in parallel, injects facts+instructions |
-| unified-search | `memory_search` combines native Markdown memory + graph facts; `memory_get` reads native files. Delegates to OpenClaw memory SDK. See test tree below. |
+| auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
+| unified-search | `memory_search` is graph-only; native content reaches the graph via the indexing agent |
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
