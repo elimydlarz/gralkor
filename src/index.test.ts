@@ -258,10 +258,7 @@ describe("register()", () => {
       const { register } = await import("./index.js");
       register(testApi);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const factory = testApi.registerTool.mock.calls[0][0] as (ctx: any) => any;
-      const tools = factory({ config: {}, sessionKey: "test-session" });
-      const [searchTool] = tools;
+      const searchTool = testApi.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
 
       await searchTool.execute("tool-1", { query: "React patterns" });
 
