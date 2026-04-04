@@ -50,7 +50,7 @@
     "node": ">=18"
   },
   "peerDependencies": {
-    "openclaw": ">= 2026.1.26"
+    "openclaw": ">= 2026.4.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
