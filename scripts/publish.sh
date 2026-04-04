@@ -7,6 +7,14 @@ if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch)$ ]]; then
   exit 1
 fi
 
+# Guard: must be logged in to npm before doing any work
+if [[ -z "${DRY_RUN:-}" ]]; then
+  if ! npm whoami >/dev/null 2>&1; then
+    echo "Error: not logged in to npm. Run 'npm login' first." >&2
+    exit 1
+  fi
+fi
+
 # Save pre-bump versions for rollback
 old_version=$(node -p "require('./package.json').version")
 
