@@ -498,6 +498,8 @@ memory-journey
       when memory_add stores lucky number changed to 42
         then manual search reveals 42 as the current lucky number
         and earlier values (47, 99) appear in results as superseded (invalid_at set)
+        when manual search uses slow mode
+          then facts and entity nodes are returned
 ```
 
 #### Distribution
