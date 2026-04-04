@@ -142,8 +142,19 @@ unified-search (memory_search tool)
       then response includes graph facts and interpretation instruction
     when neither returns results
       then response is "No memories found."
+    when mode is "slow"
+      then uses cross-encoder + BFS search (graphiti.search_())
+      and entity node summaries are returned alongside facts
+      when node summaries are returned
+        then nodes appear in output under "Entities:" section
+      when no facts and no nodes are returned
+        then response is "No memories found."
   when server is not ready
     then throws error
+auto-recall-search-strategy
+  when auto-recall executes
+    then uses fast mode (RRF, edges only via graphiti.search())
+    and injected context contains only facts, no entity summaries
 extractUserMessageFromPrompt
   when prompt has leading "System: ..." lines
     then strips them and returns user message
