@@ -38,12 +38,14 @@ is_created() {
 }
 
 wait_healthy() {
-  echo "Waiting for server health (up to 120s)..."
+  echo "Waiting for server health (up to 120s, first boot ~60-90s)..."
   for i in $(seq 1 120); do
     HEALTH=$(docker exec "$CONTAINER" curl -s http://127.0.0.1:8001/health 2>/dev/null) && {
       echo "  Server healthy after ${i}s"
       return 0
     }
+    # Print a dot every 10s so the user knows we're still waiting
+    [ $((i % 10)) -eq 0 ] && echo "  ...${i}s elapsed"
     sleep 1
   done
   echo "ERROR: server did not become healthy within 120s" >&2
