@@ -599,7 +599,7 @@ async def add_episode(req: AddEpisodeRequest):
         entity_types=ontology_entity_types,
         edge_types=ontology_edge_types,
         edge_type_map=ontology_edge_type_map,
-        excluded_entity_types=ontology_excluded,
+        excluded_entity_types=None,
     )
     duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
@@ -641,7 +641,7 @@ async def ingest_messages(req: IngestMessagesRequest):
         entity_types=ontology_entity_types,
         edge_types=ontology_edge_types,
         edge_type_map=ontology_edge_type_map,
-        excluded_entity_types=ontology_excluded,
+        excluded_entity_types=None,
     )
     duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
