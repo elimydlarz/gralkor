@@ -264,7 +264,7 @@ describe("startup", () => {
       isRunning: vi.fn().mockReturnValue(false),
     });
 
-    registerServerService(api, config, "/fake/plugin", serverReady);
+    registerServerService(api, client, config, "/fake/plugin", serverReady);
 
     // Fire-and-forget is async — flush microtasks
     await new Promise((r) => setTimeout(r, 0));
@@ -280,7 +280,7 @@ describe("startup", () => {
       isRunning: vi.fn().mockReturnValue(false),
     });
 
-    registerServerService(api, config, "/fake/plugin", serverReady);
+    registerServerService(api, client, config, "/fake/plugin", serverReady);
     await new Promise((r) => setTimeout(r, 0));
 
     expect(serverReady.resolve).toHaveBeenCalled();
@@ -294,7 +294,7 @@ describe("startup", () => {
       isRunning: vi.fn().mockReturnValue(false),
     });
 
-    registerServerService(api, config, "/fake/plugin", serverReady);
+    registerServerService(api, client, config, "/fake/plugin", serverReady);
     await new Promise((r) => setTimeout(r, 0));
 
     const errors = errorSpy.mock.calls.map((c) => c.join(" ")).join("\n");
