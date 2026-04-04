@@ -279,10 +279,10 @@ def _find_rate_limit_error(exc: Exception) -> Exception | None:
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        # Match openai.RateLimitError, anthropic.RateLimitError, etc.
-        if type(current).__name__ == "RateLimitError" or (
-            hasattr(current, "status_code") and getattr(current, "status_code", None) == 429
-        ):
+        # Match openai.RateLimitError, anthropic.RateLimitError, google.genai.errors.ClientError, etc.
+        # Note: Google's APIError uses .code, most others use .status_code.
+        http_code = getattr(current, "status_code", None) or getattr(current, "code", None)
+        if type(current).__name__ == "RateLimitError" or http_code == 429:
             return current
         current = current.__cause__ or current.__context__
     return None
