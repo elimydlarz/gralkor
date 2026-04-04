@@ -132,6 +132,7 @@ export function resolveConfig(raw: Partial<GralkorConfig> = {}): GralkorConfig {
     embedder: raw.embedder,
     ontology: raw.ontology,
     dataDir: raw.dataDir,
+    workspaceDir: raw.workspaceDir,
     test: raw.test ?? false,
     googleApiKey: raw.googleApiKey,
     openaiApiKey: raw.openaiApiKey,
