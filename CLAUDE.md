@@ -495,7 +495,7 @@ install-sequencing-docs
 ├── resources/memory/                 # canonical manifest for pnpm run pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/integration/                 # mocked integration tests (multi-load, publish)
-├── test/functional/                  # (planned) real OpenClaw harness tests
+├── test/functional/                  # real OpenClaw harness tests (Docker, no mocks)
 ├── server/                           # Python/FastAPI: main.py, tests/, wheels/
 └── dist/                             # compiled JS (git-ignored)
 ```
