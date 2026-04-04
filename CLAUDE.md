@@ -622,7 +622,7 @@ The functional layer requires the OpenClaw test harness (Docker image).
 | `pnpm run test:server` | Python | spec |
 | `pnpm run test:server:changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
-| `pnpm run test:functional:ci` | Build image + run journey + tear down (full CI) | tree |
+| `pnpm run test:functional` | Build image + run journey + tear down | tree |
 | `pnpm run test:functional:up` | Build image + start env container | — |
 | `pnpm run test:functional:run` | Run journey test in running container | tree |
 | `pnpm run test:functional:down` | Stop + remove env container | — |
