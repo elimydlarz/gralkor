@@ -43,7 +43,7 @@ async def test_search_forwards_params(client, mock_graphiti):
     call_kwargs = mock_graphiti.search.call_args.kwargs
     assert call_kwargs["query"] == "test query"
     assert call_kwargs["group_ids"] == ["g1", "g2"]
-    assert call_kwargs["num_results"] == 6  # 2x over-fetch for fact prioritization
+    assert call_kwargs["num_results"] == 3
 
 
 @pytest.mark.asyncio
