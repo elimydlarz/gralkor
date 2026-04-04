@@ -19,7 +19,7 @@
     "test:functional:up": "bash test/harness/functional-env.sh up",
     "test:functional:run": "bash test/harness/functional-env.sh run",
     "test:functional:down": "bash test/harness/functional-env.sh down",
-    "test:functional:ci": "bash test/harness/functional-env.sh test",
+
     "test:server": "cd server && uv run pytest tests/",
     "test:server:changed": "cd server && files=$(git diff --name-only --diff-filter=d HEAD -- 'tests/*.py') && [ -n \"$files\" ] && uv run pytest $files || echo 'No changed server test files'",
     "test:mutate": "stryker run",
