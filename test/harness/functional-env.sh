@@ -73,6 +73,7 @@ cmd_up() {
   docker run -d \
     --name "$CONTAINER" \
     --platform "$PLATFORM" \
+    -v "$REPO_ROOT/test/functional:/app/gralkor-src/test/functional:ro" \
     "${KEY_ARGS[@]}" \
     "$IMAGE" \
     bash -c "
