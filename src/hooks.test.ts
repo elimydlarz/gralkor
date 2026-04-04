@@ -895,6 +895,7 @@ describe("before_prompt_build handler", () => {
       expect.any(String),
       expect.any(Array),
       3,
+      "fast",
     );
   });
 
