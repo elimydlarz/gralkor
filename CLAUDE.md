@@ -648,7 +648,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 - `register()` must be synchronous — async silently registers nothing
 - `falkordblite` installs as Python module `redislite`, not `falkordblite`
-- `falkordblite` 0.9.0 sdist x86-64 only; aarch64 → `RedisLiteServerStartError`. Fix: `pnpm run pack` (arm64 wheel).
+- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: bundled wheel in `server/wheels/` (built by `build-arm64-wheel.sh`). Server-manager and Dockerfile both skip PyPI falkordblite (`--no-install-package falkordblite`) and install only the bundled wheel — hard failure if missing.
 - Graphiti requires LLM API key — starts without one but all operations fail
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)
