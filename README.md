@@ -130,7 +130,7 @@ openclaw config set plugins.slots.memory ""
 rm -rf ~/.openclaw/extensions/gralkor
 
 # Reinstall
-openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
+openclaw plugins install @susu-eng/gralkor
 
 # Re-assign slot
 openclaw config set plugins.slots.memory gralkor
