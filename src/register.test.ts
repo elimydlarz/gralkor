@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { registerCli, registerServerService, buildSecretEnv } from "./register.js";
 import type { PluginApiBase } from "./types.js";
 import type { GraphitiClient } from "./client.js";
-import type { GralkorConfig, ReadyGate } from "./config.js";
+import { defaultConfig, type GralkorConfig, type ReadyGate } from "./config.js";
 import type { ServerManager } from "./server-manager.js";
 
 // Mock native-indexer so startup tests don't attempt real filesystem work
