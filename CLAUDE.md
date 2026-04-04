@@ -400,8 +400,6 @@ validateOntologyConfig
     then rejects
   when edgeMap references undeclared edge
     then rejects
-  when excludedEntityTypes contains a declared entity
-    then rejects (contradictory)
 config-defaults-single-source
   when configSchema is read from index.ts
     then defaults match defaultConfig in config.ts
