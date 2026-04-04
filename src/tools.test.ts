@@ -7,6 +7,7 @@ import {
   createBuildIndicesTool,
   createBuildCommunitiesTool,
   formatFacts,
+  formatTimestamp,
 } from "./tools.js";
 
 function mockClient(): {
