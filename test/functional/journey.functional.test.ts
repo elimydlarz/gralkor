@@ -95,8 +95,10 @@ beforeAll(async () => {
     }),
   });
   await poll("lucky number 42 searchable after manual add", async () => {
-    const { facts } = await search("lucky number");
-    return facts.some(f => f.fact.includes("42"));
+    try {
+      const { facts } = await search("lucky number");
+      return facts.some(f => f.fact.includes("42"));
+    } catch { return false; }
   }, 90_000);
 }, 300_000);
 
