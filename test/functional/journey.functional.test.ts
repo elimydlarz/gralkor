@@ -40,7 +40,7 @@ async function poll(condition: string, fn: () => Promise<boolean>, timeoutMs = 6
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await fn()) return;
-    await new Promise(r => setTimeout(r, 2_000));
+    await new Promise(r => setTimeout(r, 10_000));
   }
   throw new Error(`Timed out waiting for: ${condition}`);
 }
