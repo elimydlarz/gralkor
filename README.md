@@ -172,8 +172,6 @@ openclaw gralkor status              # Server state, config, graph stats, data d
 openclaw gralkor search <group_id> <query>  # Search the knowledge graph
 ```
 
-The native `openclaw memory` commands also remain available.
-
 ## Configuration
 
 Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
