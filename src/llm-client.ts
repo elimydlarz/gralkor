@@ -14,8 +14,8 @@ export interface LLMClient {
  * Returns null if the configured provider has no API key set.
  */
 export function createLLMClient(config: GralkorConfig): LLMClient | null {
-  const provider = config.llm?.provider ?? "gemini";
-  const model = config.llm?.model ?? defaultModel(provider);
+  const provider = config.llm.provider;
+  const model = config.llm.model;
 
   switch (provider) {
     case "anthropic": {
@@ -39,16 +39,6 @@ export function createLLMClient(config: GralkorConfig): LLMClient | null {
       if (!key) return null;
       return geminiClient(key, model);
     }
-  }
-}
-
-function defaultModel(provider: string): string {
-  switch (provider) {
-    case "anthropic": return "claude-haiku-4-5-20251001";
-    case "openai": return "gpt-4o-mini";
-    case "groq": return "llama-3.1-8b-instant";
-    case "gemini":
-    default: return "gemini-3.1-flash-lite-preview";
   }
 }
 
