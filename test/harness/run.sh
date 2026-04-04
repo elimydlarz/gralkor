@@ -141,7 +141,7 @@ fi
 echo ""
 
 # ── 6. Reinstall (upgrade-safe) ────────────────────────────
-echo "--- 5. Reinstall ---"
+echo "--- 6. Reinstall ---"
 
 # Kill everything from the first boot — server, openclaw-plugins, redis
 pkill -f "uvicorn main:app" 2>/dev/null || true
