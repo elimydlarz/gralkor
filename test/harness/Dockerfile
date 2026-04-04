@@ -41,6 +41,11 @@ RUN openclaw config set plugins.slots.memory gralkor && \
 
 WORKDIR /root
 
+# Source tree for running functional tests (src + test/functional + dev deps).
+# Copied in by build.sh as gralkor-src/ in the build context.
+COPY gralkor-src/ /app/gralkor-src/
+RUN cd /app/gralkor-src && pnpm install --frozen-lockfile
+
 # Default: run the harness test script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
