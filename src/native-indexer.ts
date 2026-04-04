@@ -108,7 +108,11 @@ export async function indexFile(client: GraphitiClient, file: DiscoveredFile): P
     group_id: file.groupId,
   });
 
-  await writeFile(file.absPath, `${prefix}\n${GRALKOR_MARKER}\n`);
+  // Preserve all content: everything before old marker position + new content + marker at end
+  const body = markerPos === -1
+    ? prefix
+    : `${prefix}\n${newContent}`;
+  await writeFile(file.absPath, `${body}\n${GRALKOR_MARKER}\n`);
   return true;
 }
 
