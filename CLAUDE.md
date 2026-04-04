@@ -83,8 +83,6 @@ Service `gralkor-server` (`src/server-manager.ts`): When bundled wheels exist in
 
 Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search(mode)` → `POST /search` returning `{ facts, nodes }`. `mode: "fast"` (auto-recall): `graphiti.search()` — RRF, edges only, `nodes: []`. `mode: "slow"` (`memory_search` tool): `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` — cross-encoder + BFS, returns facts and entity node summaries.
 
-**Fact prioritization:** Over-fetches 2x, `_prioritize_facts()` reserves 70% slots for valid facts (`invalid_at` null), fills rest by relevance. `invalid_at` is the signal.
-
 **Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, process lifetime).
 
 **Rate-limit passthrough:** Middleware: `RateLimitError` → 429 + `Retry-After` header (from upstream or default 5s). Client retries 429s indefinitely guided by `Retry-After`, independent of the 5xx/network retry budget. Cancellable via AbortSignal.
