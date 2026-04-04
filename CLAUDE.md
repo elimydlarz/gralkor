@@ -490,7 +490,7 @@ install-sequencing-docs
 ├── CLAUDE.md / package.json / tsconfig.json / vitest.config.ts
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
-│                                     # client.ts, server-manager.ts,
+│                                     # client.ts, server-manager.ts, native-indexer.ts,
 │                                     # types.ts, config.ts, *.test.ts
 ├── resources/memory/                 # canonical manifest for pnpm run pack
 ├── scripts/pack.sh                   # deployment tarball
