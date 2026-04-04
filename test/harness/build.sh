@@ -41,18 +41,12 @@ else
     bash scripts/build-arm64-wheel.sh
   fi
 
-  # Pack with resources/memory manifests
-  cp resources/memory/package.json package.json
-  cp resources/memory/openclaw.plugin.json openclaw.plugin.json
   pnpm pack --pack-destination "$HARNESS_DIR" >/dev/null 2>&1
 
   # Clean up wheels from repo (they're in the tarball now)
   rm -rf server/wheels
 
-  # Restore dev manifests
-  git checkout package.json openclaw.plugin.json 2>/dev/null || true
-
-  VERSION=$(node -p "require('./resources/memory/package.json').version")
+  VERSION=$(node -p "require('./package.json').version")
   mv "$HARNESS_DIR/susu-eng-gralkor-${VERSION}.tgz" "$HARNESS_DIR/plugin.tgz"
 
   echo "Plugin tarball: test/harness/plugin.tgz"
