@@ -46,6 +46,15 @@ RUN mkdir -p /data/gralkor && \
     UV_PROJECT_ENVIRONMENT=/data/gralkor/venv \
     uv sync --no-dev --frozen --directory /root/.openclaw/extensions/gralkor/server
 
+# Force-install bundled arm64 wheel over the x86-64 PyPI sdist.
+# falkordblite 0.9.0's PyPI sdist embeds x86-64 binaries; the plugin tarball
+# includes a linux/arm64 wheel built specifically for this platform.
+RUN for whl in /root/.openclaw/extensions/gralkor/server/wheels/*.whl; do \
+      [ -f "$whl" ] || continue; \
+      echo "Installing bundled wheel: $whl"; \
+      VIRTUAL_ENV=/data/gralkor/venv uv pip install --reinstall --no-deps "$whl"; \
+    done
+
 WORKDIR /root
 
 # Source tree for running functional tests (src + test/functional + dev deps).
