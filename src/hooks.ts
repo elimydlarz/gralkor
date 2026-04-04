@@ -303,6 +303,30 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
 export interface RecallOpts {
   setGroupId?: (id: string) => void;
   serverReady?: ReadyGate;
+  llmClient?: LLMClient | null;
+}
+
+const INTERPRET_SYSTEM_PROMPT =
+  "You are reviewing recalled memory facts for an agent mid-conversation. " +
+  "Given the conversation so far and the facts retrieved from memory, identify " +
+  "which facts are relevant to the current task and explain concisely how each " +
+  "one helps. Skip facts with no bearing on the current task. " +
+  "Be direct — one sentence per fact. Output only the interpretation, nothing else.";
+
+const INTERPRET_CONTEXT_LIMIT = 20;
+
+function buildInterpretationContext(messages: MessageEntry[], factsText: string): string {
+  const recent = messages.slice(-INTERPRET_CONTEXT_LIMIT);
+  const lines: string[] = [];
+  for (const msg of recent) {
+    const blocks = normalizeContent(msg.content);
+    const text = blocks.filter(isTextBlock).map((b: ContentBlock) => b.text!).join(" ");
+    const cleaned = msg.role === "user" ? cleanUserMessageText(text) : text.trim();
+    if (!cleaned) continue;
+    const role = msg.role === "user" ? "User" : "Assistant";
+    lines.push(`${role}: ${cleaned}`);
+  }
+  return `Conversation context:\n${lines.join("\n")}\n\nMemory facts to interpret:\n${factsText}`;
 }
 
 export function createBeforePromptBuildHandler(
