@@ -1,22 +1,16 @@
 #!/usr/bin/env bash
-# Manage the functional test environment (long-lived container for iterative test runs).
+# Manage the functional test environment.
 #
 # Usage:
-#   bash test/harness/functional-env.sh up               # build image + start env
-#   bash test/harness/functional-env.sh down             # stop + remove container
-#   bash test/harness/functional-env.sh run [pattern]    # run functional tests (optional vitest filter)
-#   bash test/harness/functional-env.sh shell            # interactive bash in the container
+#   bash test/harness/functional-env.sh up     # build image + start env
+#   bash test/harness/functional-env.sh run    # run journey functional test
+#   bash test/harness/functional-env.sh down   # stop + remove container
+#   bash test/harness/functional-env.sh test   # up + run + down
 #
 # Environment:
 #   GEMINI_API_KEY / GOOGLE_API_KEY  — passed to container at 'up' time
 #   PLATFORM                         — docker platform (default: linux/arm64)
 #   GRALKOR_FUNC_CONTAINER           — container name (default: gralkor-functional)
-#
-# Examples:
-#   bash test/harness/functional-env.sh up
-#   bash test/harness/functional-env.sh run native-indexing
-#   bash test/harness/functional-env.sh shell
-#   bash test/harness/functional-env.sh down
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -45,13 +39,11 @@ wait_healthy() {
       echo "  Server healthy after ${i}s"
       return 0
     }
-    # Print a dot every 15s so the user knows we're still waiting
     [ $((i % 15)) -eq 0 ] && echo "  ...${i}s elapsed"
     sleep 1
   done
   echo ""
   echo "ERROR: server did not become healthy within ${timeout}s" >&2
-  echo "--- Container logs (last 40 lines) ---" >&2
   docker logs --tail 40 "$CONTAINER" >&2
   return 1
 }
@@ -59,26 +51,8 @@ wait_healthy() {
 # ── Commands ─────────────────────────────────────────────────────────────────
 
 cmd_up() {
-  local rebuild=true
-  local build_args=()
-  for arg in "$@"; do
-    if [ "$arg" = "--no-rebuild" ]; then
-      rebuild=false
-    else
-      build_args+=("$arg")
-    fi
-  done
-
-  if [ "$rebuild" = true ]; then
-    echo "=== Building harness image ==="
-    bash "$REPO_ROOT/test/harness/build.sh" "${build_args[@]+"${build_args[@]}"}"
-  else
-    echo "=== Skipping image build (--no-rebuild) ==="
-    if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-      echo "ERROR: image '$IMAGE' not found — run without --no-rebuild first." >&2
-      exit 1
-    fi
-  fi
+  echo "=== Building harness image ==="
+  bash "$REPO_ROOT/test/harness/build.sh"
 
   if is_running; then
     echo "Container '$CONTAINER' already running — use 'down' first to restart."
@@ -102,12 +76,11 @@ cmd_up() {
     "${KEY_ARGS[@]}" \
     "$IMAGE" \
     bash -c "
-      # Configure API key if available
       if [ -n \"\$GEMINI_API_KEY\" ]; then
         openclaw config set plugins.entries.gralkor.config.googleApiKey \"\$GEMINI_API_KEY\" >/dev/null 2>&1
       fi
 
-      # Seed workspace files
+      # Seed workspace files before gateway start (native indexer reads these at boot)
       mkdir -p \$HOME/.openclaw/workspace/memory
       printf '# About Me\nMy name is Harness User and I live in Test City. My favourite number is 23.\n' \
         > \$HOME/.openclaw/workspace/MEMORY.md
@@ -117,24 +90,22 @@ cmd_up() {
       # Start gateway (triggers server + native indexer)
       openclaw gateway &
 
-      # Keep alive
       tail -f /dev/null
     "
 
   wait_healthy
+  echo ""
+  echo "Functional env ready. Run: bash test/harness/functional-env.sh run"
+}
 
-  echo ""
-  echo "Functional env is ready."
-  echo ""
-  echo "Available tests:"
+cmd_run() {
+  if ! is_running; then
+    echo "ERROR: container '$CONTAINER' is not running. Start it with:" >&2
+    echo "  bash test/harness/functional-env.sh up" >&2
+    exit 1
+  fi
   docker exec "$CONTAINER" bash -c \
-    "cd /app/gralkor-src && pnpm exec vitest list --config test/functional/vitest.config.ts 2>/dev/null" \
-    | sed 's/^/  /'
-  echo ""
-  echo "  Run all:     bash test/harness/functional-env.sh run"
-  echo "  Run filter:  bash test/harness/functional-env.sh run <pattern>"
-  echo "  Shell:       bash test/harness/functional-env.sh shell"
-  echo "  Stop:        bash test/harness/functional-env.sh down"
+    "cd /app/gralkor-src && pnpm run test:functional"
 }
 
 cmd_down() {
@@ -147,47 +118,27 @@ cmd_down() {
   fi
 }
 
-cmd_run() {
-  if ! is_running; then
-    echo "ERROR: container '$CONTAINER' is not running. Start it with:" >&2
-    echo "  bash test/harness/functional-env.sh up" >&2
-    exit 1
-  fi
-
-  FILTER="${1:-}"
-  if [ -n "$FILTER" ]; then
-    docker exec "$CONTAINER" bash -c \
-      "cd /app/gralkor-src && pnpm run test:functional -- --reporter=verbose -t '$FILTER'"
-  else
-    docker exec "$CONTAINER" bash -c \
-      "cd /app/gralkor-src && pnpm run test:functional"
-  fi
-}
-
-cmd_shell() {
-  if ! is_running; then
-    echo "ERROR: container '$CONTAINER' is not running. Start it with:" >&2
-    echo "  bash test/harness/functional-env.sh up" >&2
-    exit 1
-  fi
-  docker exec -it "$CONTAINER" bash
+cmd_test() {
+  cmd_up
+  cmd_run
+  cmd_down
 }
 
 cmd_help() {
-  sed -n '2,20p' "$0" | grep '^#' | sed 's/^# \?//'
+  sed -n '2,10p' "$0" | grep '^#' | sed 's/^# \?//'
 }
 
 # ── Dispatch ─────────────────────────────────────────────────────────────────
 
 case "$cmd" in
-  up)    cmd_up "$@" ;;
-  down)  cmd_down ;;
-  run)   cmd_run "$@" ;;
-  shell) cmd_shell ;;
+  up)   cmd_up ;;
+  run)  cmd_run ;;
+  down) cmd_down ;;
+  test) cmd_test ;;
   help|--help|-h) cmd_help ;;
   *)
     echo "Unknown command: $cmd" >&2
-    echo "Usage: $0 {up|down|run|shell}" >&2
+    echo "Usage: $0 {up|run|down|test}" >&2
     exit 1
     ;;
 esac
