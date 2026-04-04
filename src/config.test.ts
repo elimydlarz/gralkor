@@ -101,9 +101,13 @@ describe("resolveConfig()", () => {
     expect(config.embedder).toEqual({ provider: "openai", model: "text-embedding-3-small" });
   });
 
-  it("defaults llm and embedder to undefined when not provided", () => {
+  it("defaults llm to gemini provider and default model when not provided", () => {
     const config = resolveConfig({});
-    expect(config.llm).toBeUndefined();
+    expect(config.llm).toEqual({ provider: DEFAULT_LLM_PROVIDER, model: DEFAULT_LLM_MODEL });
+  });
+
+  it("defaults embedder to undefined when not provided", () => {
+    const config = resolveConfig({});
     expect(config.embedder).toBeUndefined();
   });
 
