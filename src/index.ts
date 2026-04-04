@@ -50,10 +50,12 @@ function registerFullPlugin(
 ) {
   const serverReady = createReadyGate();
 
-  // Shared group ID: hooks capture agentId, tools read it
-  let currentGroupId = "default";
-  const getGroupId = () => currentGroupId;
-  const setGroupId = (id: string) => { currentGroupId = sanitizeGroupId(id); };
+  // Session-keyed group ID: hooks store (sessionKey → groupId), tools look up by session_key param
+  const groupIdBySession = new Map<string, string>();
+  const getGroupId = (sessionKey: string) => groupIdBySession.get(sessionKey) ?? "default";
+  const setSessionData = (sessionKey: string, groupId: string) => {
+    groupIdBySession.set(sessionKey, sanitizeGroupId(groupId));
+  };
 
   const toolOpts = { getGroupId, serverReady };
   api.registerTool(createMemorySearchTool(client, config, toolOpts));
@@ -61,7 +63,7 @@ function registerFullPlugin(
   api.registerTool(createBuildIndicesTool(client, toolOpts));
   api.registerTool(createBuildCommunitiesTool(client, toolOpts));
 
-  const debouncer = registerHooks(api, client, config, { setGroupId, serverReady });
+  const debouncer = registerHooks(api, client, config, { setSessionData, serverReady });
 
   // Flush pending session buffers on SIGTERM to prevent data loss on shutdown
   if (!sigTermHandlerInstalled) {
