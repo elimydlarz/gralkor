@@ -68,7 +68,7 @@ describe("register()", () => {
 
     register(api);
 
-    // 4 registerTool calls: 1 factory (memory_search + memory_get) + 3 plain (memory_add, memory_build_indices, memory_build_communities)
+    // 4 registerTool calls: memory_search, memory_add, memory_build_indices, memory_build_communities
     expect(api.registerTool).toHaveBeenCalledTimes(4);
     expect(api.on).toHaveBeenCalledTimes(3);
     expect(api.registerService).toHaveBeenCalledOnce();
