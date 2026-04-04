@@ -12,6 +12,7 @@ import {
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
+  INTERPRET_CHAR_BUDGET,
   type HookAgentContext,
   type SessionBuffer,
 } from "./hooks.js";
