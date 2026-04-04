@@ -12,6 +12,7 @@ import {
   type RecallOpts,
   type SessionBuffer,
 } from "./hooks.js";
+import { createLLMClient } from "./llm-client.js";
 import { createServerManager, type ServerManager } from "./server-manager.js";
 import type { PluginApiBase } from "./types.js";
 
