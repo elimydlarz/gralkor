@@ -1446,14 +1446,14 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
       ],
     }, agentCtx);
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
 
     // New session starts → previous session ends
     await sessionEnd({}, sessionCtx);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string }> };
-    expect(call.messages).toHaveLength(4); // latest snapshot: 2 user + 2 assistant
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body.split("\n")).toHaveLength(4); // latest snapshot: 2 user + 2 assistant lines
     expect(debouncer.pendingCount).toBe(0);
   });
 
