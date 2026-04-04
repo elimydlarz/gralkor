@@ -453,7 +453,7 @@ describe("register()", () => {
         expect(result).toContain("interpret these facts for relevance");
       });
 
-      it("when neither returns results, then response is 'No memories found.'", async () => {
+      it("when neither returns results, then response is 'No facts found.'", async () => {
         const searchTool = await setupSearchTool({ graphFacts: [] });
 
         const result = await searchTool.execute("tool-1", { query: "nothing" });
@@ -485,7 +485,7 @@ describe("register()", () => {
           expect(result).toContain("A frontend project using React");
         });
 
-        it("when no facts and no nodes are returned, then response is 'No memories found.'", async () => {
+        it("when no facts and no nodes are returned, then response is 'No facts found.'", async () => {
           const searchTool = await setupSearchTool({ graphFacts: [], graphNodes: [] });
 
           const result = await searchTool.execute("tool-1", { query: "nothing" });
