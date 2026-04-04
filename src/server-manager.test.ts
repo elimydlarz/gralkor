@@ -200,10 +200,7 @@ describe("createServerManager", () => {
     expect(execFileCalls).toHaveLength(2);
   });
 
-  it("continues gracefully when bundled wheel is incompatible", async () => {
-    const mockProc = createMockProcess();
-    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
-    mockFetch.mockResolvedValue({ ok: true });
+  it("throws when bundled wheel install fails", async () => {
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
       "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
@@ -235,9 +232,8 @@ describe("createServerManager", () => {
       port: 8001,
     });
 
-    // Should not throw — graceful degradation
-    await manager.start();
-    expect(manager.isRunning()).toBe(true);
+    // Must throw — no silent fallback to x86-64 PyPI version
+    await expect(manager.start()).rejects.toThrow("No matching distribution found");
   });
 
   it("throws when uv is not found", async () => {
