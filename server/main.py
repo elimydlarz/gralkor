@@ -710,8 +710,8 @@ def _prioritize_facts(
 
 @app.post("/search")
 async def search(req: SearchRequest):
-    logger.info("[gralkor] search — query:%d chars group_ids:%s num_results:%d",
-                len(req.query), req.group_ids, req.num_results)
+    logger.info("[gralkor] search — mode:%s query:%d chars group_ids:%s num_results:%d",
+                req.mode, len(req.query), req.group_ids, req.num_results)
     # graphiti.add_episode() clones the driver to target the correct FalkorDB
     # named graph (database=group_id), but graphiti.search() does not — it just
     # uses whatever graph the driver currently points at. Before the first
@@ -722,23 +722,40 @@ async def search(req: SearchRequest):
     # Over-fetch to compensate for expired facts that will be deprioritized.
     fetch_limit = req.num_results * 2
     try:
-        edges = await graphiti.search(
-            query=_sanitize_query(req.query),
-            group_ids=req.group_ids,
-            num_results=fetch_limit,
-        )
+        if req.mode == "slow":
+            # Cross-encoder + BFS: higher quality, also returns entity node summaries.
+            # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
+            # constant; mutating .limit directly would corrupt it across requests.
+            config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
+            config.limit = fetch_limit
+            search_result = await graphiti.search_(
+                query=_sanitize_query(req.query),
+                group_ids=req.group_ids,
+                config=config,
+            )
+            edges = search_result.edges
+            nodes = search_result.nodes
+        else:
+            edges = await graphiti.search(
+                query=_sanitize_query(req.query),
+                group_ids=req.group_ids,
+                num_results=fetch_limit,
+            )
+            nodes = []
     except Exception as e:
         duration_ms = (time.monotonic() - t0) * 1000
-        logger.error("[gralkor] search failed — %.0fms: %s", duration_ms, e)
+        logger.error("[gralkor] search failed — mode:%s %.0fms: %s", req.mode, duration_ms, e)
         raise
     duration_ms = (time.monotonic() - t0) * 1000
     prioritized = _prioritize_facts(edges, req.num_results)
     valid_count = sum(1 for e in prioritized if e.invalid_at is None)
     result = [_serialize_fact(e) for e in prioritized]
-    logger.info("[gralkor] search result — %d facts (%d valid, %d non-valid) from %d fetched %.0fms",
-                len(prioritized), valid_count, len(prioritized) - valid_count, len(edges), duration_ms)
+    serialized_nodes = [_serialize_node(n) for n in nodes]
+    logger.info("[gralkor] search result — mode:%s %d facts (%d valid, %d non-valid) %d nodes from %d fetched %.0fms",
+                req.mode, len(prioritized), valid_count, len(prioritized) - valid_count,
+                len(serialized_nodes), len(edges), duration_ms)
     logger.debug("[gralkor] search facts: %s", result)
-    return {"facts": result}
+    return {"facts": result, "nodes": serialized_nodes}
 
 
 
