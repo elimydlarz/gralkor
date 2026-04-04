@@ -479,7 +479,7 @@ memory-journey
 publish-version-integrity
   when publish succeeds
     then version is bumped in package.json and openclaw.plugin.json
-    and a git commit and tag are created and pushed for the new version
+    and a git commit and tag are created for the new version (push manually)
   when not logged in to npm
     then exits before version bump
     and no rollback is needed
