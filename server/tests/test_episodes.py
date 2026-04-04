@@ -207,9 +207,8 @@ async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti
         assert call_kwargs["entity_types"] == {"Person": FakeEntity}
         assert call_kwargs["edge_types"] is None
         assert call_kwargs["edge_type_map"] == {("Person", "Project"): ["WorksOn"]}
-        assert call_kwargs["excluded_entity_types"] == ["Generic"]
+        assert call_kwargs["excluded_entity_types"] is None
     finally:
         main_mod.ontology_entity_types = None
         main_mod.ontology_edge_types = None
         main_mod.ontology_edge_type_map = None
-        main_mod.ontology_excluded = None
