@@ -513,6 +513,7 @@ install-sequencing-docs
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
 | `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model |
 | `dataDir` | string | **(required)** | Persistent data directory (venv, FalkorDB). No default — operator must set. |
+| `workspaceDir` | string | `~/.openclaw/workspace` | Native memory workspace root. Scanned at startup for MD files to index. |
 | `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types |
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types |
 | `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edges |
