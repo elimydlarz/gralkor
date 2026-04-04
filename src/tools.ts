@@ -27,7 +27,7 @@ export function formatFact(f: Fact): string {
 export function formatFacts(facts: Fact[]): string {
   if (facts.length === 0) return "No graph facts found.";
   const lines = facts.map(formatFact).join("\n");
-  return `Memories:\n${lines}`;
+  return `Facts:\n${lines}`;
 }
 
 export function formatNode(n: EntityNode): string {
