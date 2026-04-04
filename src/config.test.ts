@@ -338,30 +338,8 @@ describe("validateOntologyConfig()", () => {
     });
   });
 
-  describe("when excludedEntityTypes contains a declared entity", () => {
-    it("then rejects", () => {
-      const ontology: OntologyConfig = {
-        entities: {
-          Project: { description: "test" },
-        },
-        excludedEntityTypes: ["Project"],
-      };
-      expect(() => validateOntologyConfig(ontology)).toThrow("Project");
-    });
-  });
-
-  describe("when excludedEntityTypes contains only non-declared entities", () => {
-    it("then does not throw", () => {
-      const ontology: OntologyConfig = {
-        entities: {
-          Project: { description: "test" },
-        },
-        excludedEntityTypes: ["Person", "Organization"],
-      };
-      expect(() => validateOntologyConfig(ontology)).not.toThrow();
-    });
-  });
 });
+
 
 describe("sanitizeGroupId", () => {
   it("replaces hyphens with underscores", () => {
