@@ -788,7 +788,7 @@ describe("before_prompt_build handler", () => {
     // Facts separated by \n (not empty string)
     expect(ctx_result).toMatch(/- Fact A[^\n]*\n- Fact B/);
     // Sections separated by \n\n
-    expect(ctx_result).toMatch(/No native results\.\n\n/);
+    expect(ctx_result).toMatch(/- Fact A[^\n]*\n- Fact B[^\n]*\n\n/);
   });
 
   it("includes temporal info on recalled facts", async () => {
