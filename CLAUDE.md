@@ -433,7 +433,7 @@ sanitizeGroupId
     then hyphens are replaced with underscores
   when agentId has no hyphens
     then returned unchanged
-  then applied at setGroupId boundary in index.ts
+  then applied at setSessionData boundary in index.ts
   then applied at groupId derivation in hooks.ts (auto-recall and flush)
 ```
 
