@@ -61,7 +61,7 @@ describe("formatTimestamp", () => {
 describe("formatFacts", () => {
   it("formats facts with header", () => {
     const result = formatFacts([makeFact({ fact: "remembered fact" })]);
-    expect(result).toContain("Memories:");
+    expect(result).toContain("Facts:");
     expect(result).toContain("- remembered fact");
   });
 
