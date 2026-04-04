@@ -1206,11 +1206,11 @@ describe("agent_end handler", () => {
     });
 
     expect(debouncer.pendingCount).toBe(0);
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("logs error when Graphiti is unreachable on flush (after retries) without crashing", async () => {
-    client.ingestMessages.mockRejectedValue(new Error("ECONNREFUSED"));
+    client.ingestEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
@@ -1226,7 +1226,7 @@ describe("agent_end handler", () => {
 
     // Does not throw — errors are logged, not propagated
     await errorDebouncer.flush("default");
-    expect(client.ingestMessages).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("message dropped"),
     );
@@ -1245,12 +1245,12 @@ describe("agent_end handler", () => {
 
     await debouncer.flush("default");
 
-    const call = client.ingestMessages.mock.calls[0][0] as {
-      messages: unknown[];
+    const call = client.ingestEpisode.mock.calls[0][0] as {
+      episode_body: string;
       source_description: string;
       name: string;
     };
-    expect(call.messages).toHaveLength(2);
+    expect(call.episode_body.split("\n")).toHaveLength(2);
     expect(call.source_description).toBe("auto-capture");
     expect(call.name).toMatch(/^conversation-\d+$/);
   });
@@ -1267,11 +1267,10 @@ describe("agent_end handler", () => {
 
     await debouncer.flush("default");
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    const userText = call.messages.find(m => m.role === "user")!.content[0].text;
-    expect(userText).toBe("What is the weather?");
-    expect(userText).not.toContain("gralkor-memory");
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("User: What is the weather?");
+    expect(call.episode_body).not.toContain("gralkor-memory");
   });
 
   it("falls back to 'default' group when agentId is missing", async () => {
@@ -1285,7 +1284,7 @@ describe("agent_end handler", () => {
 
     await debouncer.flush("default");
 
-    expect(client.ingestMessages).toHaveBeenCalledWith(
+    expect(client.ingestEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "default" }),
     );
   });
@@ -1310,7 +1309,7 @@ describe("agent_end handler", () => {
     });
 
     expect(debouncer.pendingCount).toBe(1);
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("uses sessionKey as buffer key when available", async () => {
