@@ -76,13 +76,6 @@ export function validateOntologyConfig(ontology?: OntologyConfig): void {
     }
   }
 
-  if (ontology.excludedEntityTypes) {
-    for (const name of ontology.excludedEntityTypes) {
-      if (entityNames.has(name)) {
-        throw new Error(`excludedEntityTypes contains declared entity '${name}' — contradictory`);
-      }
-    }
-  }
 }
 
 
