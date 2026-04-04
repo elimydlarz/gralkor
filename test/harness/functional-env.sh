@@ -59,9 +59,26 @@ wait_healthy() {
 # ── Commands ─────────────────────────────────────────────────────────────────
 
 cmd_up() {
-  # Build image if it doesn't exist or source has changed
-  echo "=== Building harness image ==="
-  bash "$REPO_ROOT/test/harness/build.sh" "$@"
+  local rebuild=true
+  local build_args=()
+  for arg in "$@"; do
+    if [ "$arg" = "--no-rebuild" ]; then
+      rebuild=false
+    else
+      build_args+=("$arg")
+    fi
+  done
+
+  if [ "$rebuild" = true ]; then
+    echo "=== Building harness image ==="
+    bash "$REPO_ROOT/test/harness/build.sh" "${build_args[@]+"${build_args[@]}"}"
+  else
+    echo "=== Skipping image build (--no-rebuild) ==="
+    if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+      echo "ERROR: image '$IMAGE' not found — run without --no-rebuild first." >&2
+      exit 1
+    fi
+  fi
 
   if is_running; then
     echo "Container '$CONTAINER' already running — use 'down' first to restart."
