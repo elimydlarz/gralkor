@@ -184,7 +184,7 @@ export class GraphitiClient {
     query: string,
     groupIds: string[],
     limit = 10,
-    mode: "fast" | "slow" = "fast",
+    mode: SearchMode = "fast",
   ): Promise<SearchResults> {
     return this.request("POST", "/search", {
       query,
