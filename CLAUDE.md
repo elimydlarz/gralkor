@@ -537,7 +537,9 @@ install-sequencing-docs
 |---|---|---|---|
 | `autoCapture.enabled` | boolean | `true` | Auto-store conversations |
 | `autoRecall.enabled` | boolean | `true` | Auto-inject context |
-| `autoRecall.maxResults` | number | `10` | Max facts injected |
+| `autoRecall.maxResults` | number | `10` | Max facts injected by auto-recall |
+| `search.maxResults` | number | `20` | Max facts returned by memory_search tool |
+| `search.maxEntityResults` | number | `10` | Max entities returned by memory_search tool |
 | `idleTimeoutMs` | number | `300000` | Flush timeout (ms); races `session_end` |
 | `llm.provider` | string | `"gemini"` | LLM provider (gemini, openai, anthropic, groq) |
 | `llm.model` | string | `"gemini-3.1-flash-lite-preview"` | LLM model |
