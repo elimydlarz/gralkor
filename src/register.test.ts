@@ -225,6 +225,7 @@ describe("registerCli with ServerManager", () => {
 
 describe("startup", () => {
   let api: PluginApiBase;
+  let client: GraphitiClient;
   let serverReady: ReadyGate;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
