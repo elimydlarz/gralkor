@@ -90,7 +90,7 @@ beforeAll(async () => {
   await poll("lucky number 42 searchable after manual add", async () => {
     const { facts } = await search("lucky number");
     return facts.some(f => f.fact.includes("42"));
-  }, 90_000);
+  }, 30_000);
 }, 300_000);
 
 describe("memory journey", () => {
