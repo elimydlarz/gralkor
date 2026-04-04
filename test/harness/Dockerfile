@@ -34,8 +34,9 @@ COPY plugin.tgz /tmp/plugin.tgz
 
 RUN openclaw plugins install ${PLUGIN_SOURCE} --dangerously-force-unsafe-install
 
-# Configure plugin: assign memory slot, set required dataDir, enable test logging
-RUN openclaw config set plugins.slots.memory gralkor && \
+# Configure gateway mode and plugin: assign memory slot, set required dataDir, enable test logging
+RUN openclaw config set gateway.mode local && \
+    openclaw config set plugins.slots.memory gralkor && \
     openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor && \
     openclaw config set plugins.entries.gralkor.config.test true
 
