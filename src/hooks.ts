@@ -349,7 +349,7 @@ export function createBeforePromptBuildHandler(
       const furtherQuerying =
         "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${factsText}\n\n${INTERPRETATION_INSTRUCTION}\n\n${furtherQuerying}\n</gralkor-memory>`;
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${factsText}\n\n${INTERPRETATION_INSTRUCTION} ${furtherQuerying}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall query: ${userMessage}`);
