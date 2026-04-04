@@ -15,7 +15,7 @@
     "test": "pnpm run typecheck && pnpm run test:plugin && pnpm run test:integration && pnpm run test:server",
     "test:plugin": "vitest run",
     "test:integration": "vitest run --config test/integration/vitest.config.ts",
-    "test:functional": "vitest run --config test/functional/vitest.config.ts",
+    "test:functional": "bash test/harness/functional-env.sh test",
     "test:functional:up": "bash test/harness/functional-env.sh up",
     "test:functional:run": "bash test/harness/functional-env.sh run",
     "test:functional:down": "bash test/harness/functional-env.sh down",
