@@ -98,6 +98,7 @@ export const DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview";
 export interface GralkorConfig {
   autoCapture: { enabled: boolean };
   autoRecall: { enabled: boolean; maxResults: number };
+  search: { maxResults: number; maxEntityResults: number };
   idleTimeoutMs: number;
   llm?: ModelConfig;
   embedder?: ModelConfig;
