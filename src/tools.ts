@@ -2,8 +2,8 @@ import type { GraphitiClient, Fact, EntityNode, SearchMode } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 
 export const INTERPRETATION_INSTRUCTION =
-  "Before responding, interpret these facts for relevance to the task at hand. " +
-  "Doing this step thoughtfully improves response quality significantly.";
+  "Review memory search results for relevant facts. " +
+  "For each relevant fact, explain how it can help you deal with the task at hand.";
 
 export function formatTimestamp(ts: string): string {
   let s = ts.replace(/\.\d+/, "");
