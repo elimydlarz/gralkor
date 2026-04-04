@@ -38,7 +38,7 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 }
 
 const config: GralkorConfig = defaultConfig;
-const getGroupId = () => "agent-42";
+const getGroupId = (_sessionKey: string) => "agent-42";
 
 describe("formatTimestamp", () => {
   it("converts Z to +0", () => {
