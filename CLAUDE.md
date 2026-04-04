@@ -20,7 +20,7 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 |---|---|---|
 | Episode | `Episode` | Captured conversation or manual store. `source`: `message` (auto-capture) or `text` (`memory_add`). |
 | Fact (edge) | `Fact` | Extracted relationship. 4 timestamps: `created_at`, `valid_at`/`invalid_at`, `expired_at`. Via `formatFact()`. |
-| Entity (node) | (Graphiti-internal) | Person/concept/thing with `summary`. Not exposed (we use edge-only `search()`). |
+| Entity (node) | `EntityNode` | Person/concept/thing with `summary`. Returned by `memory_search` (slow mode via `search_()`). Auto-recall uses fast mode (`search()`) — nodes not returned. |
 | Community | (Graphiti-internal) | Entity cluster. Not exposed. |
 | Group | `string` | Partition key from `agentId` (fallback `"default"`). One graph per agent. |
 | SessionBuffer | `SessionBuffer` | In-memory `messages` snapshot. `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. |
