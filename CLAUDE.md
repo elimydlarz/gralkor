@@ -597,6 +597,7 @@ The functional layer requires the OpenClaw test harness (Docker image).
 | `pnpm run test:server` | Python | spec |
 | `pnpm run test:server:changed` | Changed Python tests | spec |
 | `pnpm exec vitest run --changed` | Changed TS tests | tree |
+| `pnpm run test:functional` | Functional (Docker harness only) | tree |
 | `pnpm run test:mutate` | Mutation testing (Stryker) | clear-text |
 | `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation (real LLM) | stdout |
 
