@@ -46,14 +46,15 @@ async function poll(condition: string, fn: () => Promise<boolean>, timeoutMs = 6
 }
 
 beforeAll(async () => {
-  // Give native indexer time to process both workspace files before polling competes for Gemini quota.
-  // MEMORY.md takes ~10s, session-001.md takes ~10s — poll only after both should be done.
+  // Allow ~20s for native indexer to finish before search polls compete for Gemini quota.
   await new Promise(r => setTimeout(r, 20_000));
 
   // 1. Wait for native indexing to complete (lucky number 47 from session-001.md)
   await poll("lucky number 47 indexed from workspace file", async () => {
-    const { facts } = await search("lucky number");
-    return facts.some(f => f.fact.includes("47"));
+    try {
+      const { facts } = await search("lucky number");
+      return facts.some(f => f.fact.includes("47"));
+    } catch { return false; }
   }, 90_000);
 
   // 2. Capture: ingest a conversation that updates lucky number to 99

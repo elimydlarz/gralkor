@@ -367,13 +367,6 @@ export function serializeOntologyYaml(ontology: OntologyConfig): string {
     }
   }
 
-  if (ontology.excludedEntityTypes && ontology.excludedEntityTypes.length > 0) {
-    lines.push("  excludedEntityTypes:");
-    for (const name of ontology.excludedEntityTypes) {
-      lines.push(`    - ${yamlQuote(name)}`);
-    }
-  }
-
   return lines.join("\n") + "\n";
 }
 
