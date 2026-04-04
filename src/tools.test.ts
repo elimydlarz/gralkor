@@ -42,7 +42,7 @@ const getGroupId = () => "agent-42";
 describe("formatFacts", () => {
   it("formats facts with header", () => {
     const result = formatFacts([makeFact({ fact: "remembered fact" })]);
-    expect(result).toContain("Facts (knowledge graph):");
+    expect(result).toContain("Memories:");
     expect(result).toContain("- remembered fact");
   });
 
