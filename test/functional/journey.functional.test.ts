@@ -36,18 +36,18 @@ async function search(query: string, mode: "fast" | "slow" = "fast"): Promise<{ 
   return res.json() as Promise<{ facts: Fact[]; nodes: unknown[] }>;
 }
 
-async function poll(fn: () => Promise<boolean>, timeoutMs = 60_000): Promise<void> {
+async function poll(condition: string, fn: () => Promise<boolean>, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await fn()) return;
     await new Promise(r => setTimeout(r, 2_000));
   }
-  throw new Error("Timed out waiting for condition");
+  throw new Error(`Timed out waiting for: ${condition}`);
 }
 
 beforeAll(async () => {
   // 1. Wait for native indexing to complete (lucky number 47 from session-001.md)
-  await poll(async () => {
+  await poll("lucky number 47 indexed from workspace file", async () => {
     const { facts } = await search("lucky number");
     return facts.some(f => f.fact.includes("47"));
   }, 90_000);
@@ -68,7 +68,7 @@ beforeAll(async () => {
       ],
     }),
   });
-  await poll(async () => {
+  await poll("lucky number 99 searchable after capture ingest", async () => {
     const { facts } = await search("lucky number");
     return facts.some(f => f.fact.includes("99"));
   }, 90_000);
@@ -87,7 +87,7 @@ beforeAll(async () => {
       reference_time: new Date().toISOString(),
     }),
   });
-  await poll(async () => {
+  await poll("lucky number 42 searchable after manual add", async () => {
     const { facts } = await search("lucky number");
     return facts.some(f => f.fact.includes("42"));
   }, 90_000);
