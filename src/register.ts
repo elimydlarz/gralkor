@@ -43,8 +43,9 @@ export function registerHooks(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ): DebouncedFlush<SessionBuffer> {
+  const llmClient = opts.llmClient !== undefined ? opts.llmClient : createLLMClient(config);
   const debouncer = new DebouncedFlush<SessionBuffer>(config.idleTimeoutMs, (key, buf) =>
-    flushSessionBuffer(key, buf, client, { test: config.test }),
+    flushSessionBuffer(key, buf, client, { test: config.test, llmClient }),
   );
 
   api.on("before_prompt_build", createBeforePromptBuildHandler(client, config, opts));
