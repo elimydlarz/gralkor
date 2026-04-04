@@ -431,7 +431,7 @@ config-defaults-single-source
     then defaults match defaultConfig in config.ts
   when plugin manifest (openclaw.plugin.json) is read
     then defaults match defaultConfig in config.ts
-  when resources/memory/openclaw.plugin.json is read
+  when openclaw.plugin.json is read
     then defaults match defaultConfig in config.ts
 test-mode-query-logging
   when auto-recall searches in test mode
