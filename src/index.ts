@@ -4,11 +4,10 @@ import { dirname, join } from "node:path";
 import { GraphitiClient } from "./client.js";
 import { resolveConfig, validateOntologyConfig, GRAPHITI_URL, resolveProviders, createReadyGate, defaultConfig, sanitizeGroupId, type GralkorConfig } from "./config.js";
 import {
+  createMemorySearchTool,
   createMemoryStoreTool,
   createBuildIndicesTool,
   createBuildCommunitiesTool,
-  formatFacts,
-  INTERPRETATION_INSTRUCTION,
 } from "./tools.js";
 import {
   registerHooks,
