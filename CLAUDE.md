@@ -2,15 +2,15 @@
 
 ## What is this?
 
-Memory plugin (`kind: "memory"`) replacing native `memory-core` with persistent, temporally-aware knowledge graphs (Graphiti + FalkorDB). Auto-recall searches graph+native Markdown before each turn; auto-capture buffers and flushes one episode per session.
+Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledge graphs (Graphiti + FalkorDB). Auto-recall searches the graph before each turn; auto-capture buffers and flushes one episode per session.
 
 | | |
 |---|---|
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
-| Tools | `memory_search` (unified), `memory_get` (native), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
+| Tools | `memory_search` (graph-only), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
 | Hooks | `before_prompt_build` (auto-recall), `agent_end`/`session_end` (auto-capture) |
-| CLI | `openclaw memory`, `openclaw gralkor` (plugin) |
+| CLI | `openclaw gralkor` (plugin) |
 
 ## Mental Model
 
