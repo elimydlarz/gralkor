@@ -22,10 +22,15 @@ function mockClient(): {
   return {
     health: vi.fn(),
     addEpisode: vi.fn(),
-    ingestMessages: vi.fn(),
+    ingestEpisode: vi.fn(),
     search: vi.fn(),
-    clearGraph: vi.fn(),
+    buildIndices: vi.fn(),
+    buildCommunities: vi.fn(),
   };
+}
+
+function mockLLMClient(response = "Interpreted facts"): LLMClient {
+  return { generate: vi.fn().mockResolvedValue(response) };
 }
 
 function emptySearchResults() {
