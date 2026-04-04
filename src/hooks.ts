@@ -308,7 +308,7 @@ export function createBeforePromptBuildHandler(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
-  const { setGroupId, getNativeSearch, serverReady } = opts;
+  const { setGroupId, serverReady } = opts;
 
   return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
@@ -338,34 +338,18 @@ export function createBeforePromptBuildHandler(
         throw new Error("server is not ready (service start() may not have been called by host)");
       }
 
-      const nativeSearch = getNativeSearch?.();
-      const [searchResults, nativeResult] = await Promise.all([
-        client.search(userMessage, [groupId], limit),
-        nativeSearch ? nativeSearch(userMessage) : Promise.resolve(null),
-      ]);
-
+      const searchResults = await client.search(userMessage, [groupId], limit);
       const factCount = searchResults.facts.length;
-      const nativeCount = countNativeResults(nativeResult);
-      console.log(`[gralkor] auto-recall result — graph: ${factCount} facts, native: ${nativeCount} results — groupId:${groupId}`);
+      console.log(`[gralkor] auto-recall result — graph: ${factCount} facts — groupId:${groupId}`);
 
-      const sections: string[] = [];
-
-      if (factCount > 0) {
-        sections.push("Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n"));
-      } else {
-        sections.push("No facts found.");
-      }
-
-      if (nativeCount > 0 && nativeResult) {
-        sections.push("From native memory:\n" + nativeResult);
-      } else {
-        sections.push("No native results.");
-      }
+      const factsText = factCount > 0
+        ? "Facts from knowledge graph:\n" + searchResults.facts.map(formatFact).join("\n")
+        : "No facts found.";
 
       const furtherQuerying =
         "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${sections.join("\n\n")}\n\n${INTERPRETATION_INSTRUCTION}\n\n${furtherQuerying}\n</gralkor-memory>`;
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${factsText}\n\n${INTERPRETATION_INSTRUCTION}\n\n${furtherQuerying}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall query: ${userMessage}`);
