@@ -100,7 +100,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
 | upgrade-safe-data | `dataDir` is required config (no default) — operator owns the path and its lifecycle |
 | auto-capture | `agent_end` buffers per session; flushed on `session_end` or idle timeout |
-| behaviour-distillation | `/ingest-messages` groups+distils behaviour blocks per turn via LLM |
+| behaviour-distillation | Plugin-side: `formatTranscript()` in `src/distill.ts` groups+distils behaviour blocks per turn via `llmClient`; `episode_body` string posted to `/episodes` |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
 | auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
 | unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native MD files are indexed into the graph at boot via `runNativeIndexer()` |
