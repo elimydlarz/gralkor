@@ -943,7 +943,7 @@ describe("before_prompt_build handler", () => {
   });
 
   describe("auto-recall-interpretation", () => {
-    it("when auto-recall returns results, prependContext includes an instruction to interpret facts for relevance to the task at hand", async () => {
+    it("when auto-recall returns results and no llmClient, prependContext includes fallback instruction", async () => {
       client.search.mockResolvedValue({
         ...emptySearchResults(),
         facts: [makeFact({ fact: "Team uses React" })],
@@ -957,6 +957,49 @@ describe("before_prompt_build handler", () => {
 
       const ctx_result = (result as { prependContext: string }).prependContext;
       expect(ctx_result).toContain("interpret these facts for relevance to the task at hand");
+    });
+
+    it("when llmClient is provided and returns interpretation, prependContext includes raw facts and Interpretation section", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+      const llmClient = mockLLMClient("React is relevant because you are asking about the frontend framework.");
+
+      const handler = createBeforePromptBuildHandler(
+        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+      );
+      const result = await handler(
+        { prompt: "What framework?", messages: [{ role: "user", content: [{ type: "text", text: "What framework?" }] }] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("Team uses React");
+      expect(ctx_result).toContain("Facts:");
+      expect(ctx_result).toContain("Interpretation:");
+      expect(ctx_result).toContain("React is relevant because");
+      expect(ctx_result).not.toContain("interpret these facts for relevance");
+    });
+
+    it("when llmClient.generate throws, falls back to instruction", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+      const llmClient: LLMClient = { generate: vi.fn().mockRejectedValue(new Error("API down")) };
+
+      const handler = createBeforePromptBuildHandler(
+        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+      );
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("Team uses React");
+      expect(ctx_result).toContain("interpret these facts for relevance");
     });
   });
 
