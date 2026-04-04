@@ -1731,7 +1731,7 @@ describe("test mode logging", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.ingestMessages.mockResolvedValue({});
+    client.ingestEpisode.mockResolvedValue({});
     client.search.mockResolvedValue(emptySearchResults());
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
