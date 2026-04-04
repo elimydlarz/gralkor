@@ -210,7 +210,7 @@ describe("register()", () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers({ "content-type": "application/json" }),
-        json: async () => ({ facts: [{ uuid: "1", name: "test", fact: "Team uses React", group_id: "default", valid_at: null, invalid_at: null, expired_at: null, created_at: "2025-01-01T00:00:00Z" }] }),
+        json: async () => ({ facts: [{ uuid: "1", name: "test", fact: "Team uses React", group_id: "default", valid_at: null, invalid_at: null, expired_at: null, created_at: "2025-01-01T00:00:00Z" }], nodes: [] }),
         text: async () => "",
       });
       vi.stubGlobal("fetch", fetchMock);
