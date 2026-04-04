@@ -1483,18 +1483,18 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
     // End session 1 only
     await sessionEnd({}, { ...ctx1, sessionId: "sid-1" });
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call1 = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    expect(call1.messages[0].content[0].text).toContain("Session 1");
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call1 = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call1.episode_body).toContain("Session 1");
     expect(debouncer.pendingCount).toBe(1);
     expect(debouncer.has("sess-2")).toBe(true);
 
     // End session 2
     await sessionEnd({}, { ...ctx2, sessionId: "sid-2" });
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(2);
-    const call2 = client.ingestMessages.mock.calls[1][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    expect(call2.messages[0].content[0].text).toContain("Session 2");
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(2);
+    const call2 = client.ingestEpisode.mock.calls[1][0] as { episode_body: string };
+    expect(call2.episode_body).toContain("Session 2");
     expect(debouncer.pendingCount).toBe(0);
   });
 
