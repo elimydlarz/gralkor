@@ -53,11 +53,11 @@ describe("native memory indexing", () => {
     const res = await fetch(`${SERVER_URL}/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: "Python JavaScript scripting", group_ids: ["default"], num_results: 5 }),
+      body: JSON.stringify({ query: "lucky number", group_ids: ["default"], num_results: 5 }),
     });
     expect(res.ok).toBe(true);
     const { facts } = await res.json() as { facts: { fact: string }[] };
     const allFacts = facts.map(f => f.fact).join(" ");
-    expect(allFacts).toMatch(/python|javascript/i);
+    expect(allFacts).toContain("47");
   });
 });
