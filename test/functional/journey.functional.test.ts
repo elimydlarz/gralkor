@@ -79,7 +79,7 @@ beforeAll(async () => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "journey-manual-add",
-      episode_body: "Harness User's lucky number has changed once more. It is now 42.",
+      episode_body: "Harness User's lucky number changed from LuckyNumber99 to LuckyNumber42.",
       source_description: "manual memory_add",
       group_id: GROUP,
       source: "text",
