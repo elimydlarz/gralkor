@@ -1,4 +1,4 @@
-import type { GraphitiClient, Fact, EntityNode } from "./client.js";
+import type { GraphitiClient, Fact, EntityNode, SearchMode } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 
 export const INTERPRETATION_INSTRUCTION =
