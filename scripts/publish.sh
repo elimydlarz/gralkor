@@ -9,7 +9,8 @@ fi
 
 # Guard: must be logged in to npm before doing any work
 if [[ -z "${DRY_RUN:-}" ]]; then
-  if ! npm whoami >/dev/null 2>&1; then
+  whoami_cmd="${PUBLISH_NPM_WHOAMI_CMD:-npm whoami}"
+  if ! $whoami_cmd >/dev/null 2>&1; then
     echo "Error: not logged in to npm. Run 'npm login' first." >&2
     exit 1
   fi
