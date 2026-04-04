@@ -90,10 +90,6 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 **Modes:** No `FALKORDB_URI` → embedded FalkorDBLite. `FALKORDB_URI` → legacy TCP.
 
-### Native Memory Indexing (OpenClaw internals)
-
-Native memory via `getMemorySearchManager` from `openclaw/plugin-sdk/memory-core` (lazy dynamic import). Uses SQLite FTS5 + optional vector embeddings. **Bug:** FTS-only mode (no embedding key) → `syncMemoryFiles()` returns early → empty. Workaround: configure embedding provider.
-
 ## Requirements
 
 ### Functional
