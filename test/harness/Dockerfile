@@ -40,15 +40,11 @@ RUN openclaw config set gateway.mode local && \
     openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor && \
     openclaw config set plugins.entries.gralkor.config.test true
 
-# Pre-warm: sync server venv into /data/gralkor at build time (avoids slow uv sync on first boot)
+# Pre-warm: sync server venv at build time (avoids slow uv sync on first container boot)
+# server-manager uses UV_PROJECT_ENVIRONMENT={dataDir}/venv with --directory={serverDir}
 RUN mkdir -p /data/gralkor && \
-    cp -r /root/.openclaw/extensions/gralkor/server /tmp/gralkor-server-prewarm && \
-    cd /tmp/gralkor-server-prewarm && \
-    uv sync --no-dev --frozen --python 3.13 --project . \
-      --extra-index-url https://pypi.org/simple/ 2>/dev/null || \
-    uv sync --no-dev --frozen --python 3.13 --project . && \
-    cp -r .venv /data/gralkor/.venv && \
-    rm -rf /tmp/gralkor-server-prewarm
+    UV_PROJECT_ENVIRONMENT=/data/gralkor/venv \
+    uv sync --no-dev --frozen --directory /root/.openclaw/extensions/gralkor/server
 
 WORKDIR /root
 
