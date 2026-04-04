@@ -11,7 +11,6 @@ import {
   extractMessagesFromCtx,
   extractUserMessageFromPrompt,
   extractLastUserMessageFromMessages,
-  countNativeResults,
   type HookAgentContext,
   type SessionBuffer,
 } from "./hooks.js";
