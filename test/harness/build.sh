@@ -60,12 +60,23 @@ fi
 
 PLATFORM="${PLATFORM:-linux/arm64}"
 
+# Copy source tree for functional tests into build context
+echo ""
+echo "=== Staging source for functional tests ==="
+mkdir -p "$HARNESS_DIR/gralkor-src/test"
+cp -r "$REPO_ROOT/src" "$HARNESS_DIR/gralkor-src/"
+cp -r "$REPO_ROOT/test/functional" "$HARNESS_DIR/gralkor-src/test/"
+cp "$REPO_ROOT/package.json" "$REPO_ROOT/pnpm-lock.yaml" \
+   "$REPO_ROOT/tsconfig.json" "$REPO_ROOT/vitest.config.ts" \
+   "$HARNESS_DIR/gralkor-src/"
+
 echo ""
 echo "=== Building Docker image (platform: $PLATFORM) ==="
 docker build --platform "$PLATFORM" ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gralkor-harness:latest "$HARNESS_DIR"
 
-# Clean up tarball
+# Clean up
 rm -f "$HARNESS_DIR/plugin.tgz"
+rm -rf "$HARNESS_DIR/gralkor-src"
 
 echo ""
 echo "=== Done (platform: $PLATFORM) ==="
