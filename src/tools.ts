@@ -131,7 +131,7 @@ export function createMemorySearchTool(
       const nodeSection = nodeCount > 0
         ? "\n\nEntities:\n" + nodes.map(formatNode).join("\n")
         : "";
-      const output = formatFacts(results.facts) + nodeSection + "\n\n" + INTERPRETATION_INSTRUCTION;
+      const output = formatFacts(facts) + nodeSection + "\n\n" + INTERPRETATION_INSTRUCTION;
 
       if (config.test) {
         console.log(`[gralkor] [test] memory_search query: ${args.query}`);
