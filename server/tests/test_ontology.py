@@ -19,12 +19,12 @@ class TestBuildOntology:
         def test_returns_all_none(self):
             """then returns all None"""
             result = _build_ontology({})
-            assert result == (None, None, None, None)
+            assert result == (None, None, None)
 
         def test_returns_all_none_for_empty_ontology(self):
             """then returns all None for empty ontology dict"""
             result = _build_ontology({"ontology": {}})
-            assert result == (None, None, None, None)
+            assert result == (None, None, None)
 
     class TestWhenEntitiesHaveStringAttributes:
         """when entities have string attributes"""
@@ -43,7 +43,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             assert "Project" in entities
             model = entities["Project"]
             assert issubclass(model, BaseModel)
@@ -62,7 +62,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             assert entities["Project"].__doc__ == "A software project."
 
     class TestWhenEntitiesHaveEnumAttributes:
@@ -82,7 +82,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             hints = get_type_hints(entities["Project"])
             assert get_origin(hints["status"]) is Literal
             assert set(get_args(hints["status"])) == {"active", "completed", "paused"}
@@ -114,7 +114,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             hints = get_type_hints(entities["Thing"])
             assert hints["field"] is expected_type
 
@@ -138,7 +138,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             hints = get_type_hints(entities["Task"])
             assert get_origin(hints["priority"]) is Literal
             assert set(get_args(hints["priority"])) == {"low", "medium", "high"}
@@ -158,7 +158,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            _, edges, _, _ = _build_ontology(cfg)
+            _, edges, _ = _build_ontology(cfg)
             assert "WorksOn" in edges
             assert issubclass(edges["WorksOn"], BaseModel)
             hints = get_type_hints(edges["WorksOn"])
@@ -183,22 +183,9 @@ class TestBuildOntology:
                     },
                 }
             }
-            _, _, edge_type_map, _ = _build_ontology(cfg)
+            _, _, edge_type_map = _build_ontology(cfg)
             assert ("Person", "Project") in edge_type_map
             assert edge_type_map[("Person", "Project")] == ["WorksOn"]
-
-    class TestWhenExcludedEntityTypesAreDefined:
-        """when excludedEntityTypes is defined"""
-
-        def test_passes_through_as_list(self):
-            """then passes through as list"""
-            cfg = {
-                "ontology": {
-                    "excludedEntityTypes": ["Generic", "Abstract"],
-                }
-            }
-            _, _, _, excluded = _build_ontology(cfg)
-            assert excluded == ["Generic", "Abstract"]
 
     class TestWhenEntitiesHaveNoAttributes:
         """when entities have no attributes"""
@@ -212,7 +199,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             assert "Preference" in entities
             assert entities["Preference"].__doc__ == "A user preference."
 
@@ -236,7 +223,7 @@ class TestBuildOntology:
                     }
                 }
             }
-            entities, _, _, _ = _build_ontology(cfg)
+            entities, _, _ = _build_ontology(cfg)
             hints = get_type_hints(entities["Project"])
             assert hints["language"] is str
             assert get_origin(hints["status"]) is Literal
@@ -286,8 +273,6 @@ ontology:
   edgeMap:
     "Project,Technology":
       - "Uses"
-  excludedEntityTypes:
-    - "Generic"
 """
 
     @pytest.fixture
@@ -296,7 +281,7 @@ ontology:
 
     def test_builds_entity_models_with_correct_field_types(self, parsed_config):
         """then builds entity models with correct field types"""
-        entities, _, _, _ = _build_ontology(parsed_config)
+        entities, _, _ = _build_ontology(parsed_config)
         assert "Project" in entities
         assert "Technology" in entities
 
@@ -313,18 +298,13 @@ ontology:
 
     def test_builds_edge_models_with_correct_field_types(self, parsed_config):
         """then builds edge models with correct field types"""
-        _, edges, _, _ = _build_ontology(parsed_config)
+        _, edges, _ = _build_ontology(parsed_config)
         assert "Uses" in edges
         hints = get_type_hints(edges["Uses"])
         assert hints["version"] is str
 
     def test_converts_edgeMap_keys_to_tuples(self, parsed_config):
         """then converts edgeMap keys to tuples"""
-        _, _, edge_type_map, _ = _build_ontology(parsed_config)
+        _, _, edge_type_map = _build_ontology(parsed_config)
         assert ("Project", "Technology") in edge_type_map
         assert edge_type_map[("Project", "Technology")] == ["Uses"]
-
-    def test_passes_through_excludedEntityTypes(self, parsed_config):
-        """then passes through excludedEntityTypes"""
-        _, _, _, excluded = _build_ontology(parsed_config)
-        assert excluded == ["Generic"]
