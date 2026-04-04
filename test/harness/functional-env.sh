@@ -83,9 +83,9 @@ cmd_up() {
 
       # Seed workspace files before gateway start (native indexer reads these at boot)
       mkdir -p \$HOME/.openclaw/workspace/memory
-      printf '# About Me\nMy name is Harness User and I live in Test City. My favourite number is 23.\n' \
+      printf '# About Me\nMy name is Eli and I live in Test City.\n' \
         > \$HOME/.openclaw/workspace/MEMORY.md
-      printf '# Session Notes\nHarness User has the lucky number LuckyNumber47.\n' \
+      printf '# Session Notes\nEli has the lucky number LuckyNumber47.\n' \
         > \$HOME/.openclaw/workspace/memory/session-001.md
 
       # Start gateway (triggers server + native indexer)
