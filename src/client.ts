@@ -45,8 +45,16 @@ export interface IngestMessagesParams {
   messages: EpisodeMessage[];
 }
 
+export interface EntityNode {
+  uuid: string;
+  name: string;
+  summary: string | null;
+  group_id: string;
+}
+
 export interface SearchResults {
   facts: Fact[];
+  nodes: EntityNode[];
 }
 
 export interface HealthResponse {
