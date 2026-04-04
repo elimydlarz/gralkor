@@ -18,18 +18,6 @@ export interface Fact {
   created_at: string;
 }
 
-/** A filtered content block for episode ingestion. */
-export interface EpisodeBlock {
-  type: "text" | "thinking" | "tool_use" | "tool_result";
-  text: string;
-}
-
-/** A filtered message for episode ingestion. */
-export interface EpisodeMessage {
-  role: "user" | "assistant";
-  content: EpisodeBlock[];
-}
-
 export interface AddEpisodeParams {
   name: string;
   episode_body: string;
