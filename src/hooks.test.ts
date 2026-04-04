@@ -1668,7 +1668,7 @@ describe("session_end handler", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.ingestMessages.mockResolvedValue({});
+    client.ingestEpisode.mockResolvedValue({});
     debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
       flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
     );
@@ -1692,7 +1692,7 @@ describe("session_end handler", () => {
     const handler = createSessionEndHandler(debouncer);
     await handler({}, { sessionId: "sid-1", sessionKey: "session-abc" });
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     expect(debouncer.pendingCount).toBe(0);
   });
 
@@ -1700,11 +1700,11 @@ describe("session_end handler", () => {
     const handler = createSessionEndHandler(debouncer);
     await handler({}, { sessionId: "sid-1", sessionKey: "nonexistent" });
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("logs error when flush fails without crashing", async () => {
-    client.ingestMessages.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
+    client.ingestEpisode.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     debouncer.set("session-abc", {
