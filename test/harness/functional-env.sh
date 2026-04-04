@@ -125,9 +125,16 @@ cmd_up() {
 
   echo ""
   echo "Functional env is ready."
-  echo "  Run tests: bash test/harness/functional-env.sh run [pattern]"
-  echo "  Shell:     bash test/harness/functional-env.sh shell"
-  echo "  Stop:      bash test/harness/functional-env.sh down"
+  echo ""
+  echo "Available tests:"
+  docker exec "$CONTAINER" bash -c \
+    "cd /app/gralkor-src && pnpm exec vitest list --config test/functional/vitest.config.ts 2>/dev/null" \
+    | sed 's/^/  /'
+  echo ""
+  echo "  Run all:     bash test/harness/functional-env.sh run"
+  echo "  Run filter:  bash test/harness/functional-env.sh run <pattern>"
+  echo "  Shell:       bash test/harness/functional-env.sh shell"
+  echo "  Stop:        bash test/harness/functional-env.sh down"
 }
 
 cmd_down() {
