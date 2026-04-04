@@ -301,7 +301,7 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
  * For non-JSON strings, returns 1 if non-empty (opaque content).
  */
 export interface RecallOpts {
-  setGroupId?: (id: string) => void;
+  setSessionData?: (sessionKey: string, groupId: string) => void;
   serverReady?: ReadyGate;
   llmClient?: LLMClient | null;
 }
@@ -313,12 +313,13 @@ const INTERPRET_SYSTEM_PROMPT =
   "one helps. Skip facts with no bearing on the current task. " +
   "Be direct — one sentence per fact. Output only the interpretation, nothing else.";
 
-const INTERPRET_CONTEXT_LIMIT = 20;
+const INTERPRET_TOKEN_BUDGET = 250_000;
+const INTERPRET_CHARS_PER_TOKEN = 4;
+export const INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * INTERPRET_CHARS_PER_TOKEN;
 
 function buildInterpretationContext(messages: MessageEntry[], factsText: string): string {
-  const recent = messages.slice(-INTERPRET_CONTEXT_LIMIT);
   const lines: string[] = [];
-  for (const msg of recent) {
+  for (const msg of messages) {
     const blocks = normalizeContent(msg.content);
     const text = blocks.filter(isTextBlock).map((b: ContentBlock) => b.text!).join(" ");
     const cleaned = msg.role === "user" ? cleanUserMessageText(text) : text.trim();
@@ -326,7 +327,17 @@ function buildInterpretationContext(messages: MessageEntry[], factsText: string)
     const role = msg.role === "user" ? "User" : "Assistant";
     lines.push(`${role}: ${cleaned}`);
   }
-  return `Conversation context:\n${lines.join("\n")}\n\nMemory facts to interpret:\n${factsText}`;
+
+  // Trim from oldest until within token budget; most recent always preserved
+  let budget = INTERPRET_CHAR_BUDGET;
+  const trimmed: string[] = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (budget <= 0) break;
+    trimmed.unshift(lines[i]);
+    budget -= lines[i].length;
+  }
+
+  return `Conversation context:\n${trimmed.join("\n")}\n\nMemory facts to interpret:\n${factsText}`;
 }
 
 export function createBeforePromptBuildHandler(
