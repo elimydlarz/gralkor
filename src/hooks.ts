@@ -345,14 +345,15 @@ export function createBeforePromptBuildHandler(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
-  const { setGroupId, serverReady, llmClient } = opts;
+  const { setSessionData, serverReady, llmClient } = opts;
 
   return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
-    console.log(`[gralkor] auto-recall — agentId:${agentId} promptLen:${event.prompt.length} messages:${event.messages.length}`);
+    const sessionKey = ctx.sessionKey ?? ctx.sessionId ?? ctx.agentId ?? "default";
+    console.log(`[gralkor] auto-recall — agentId:${agentId} sessionKey:${sessionKey} promptLen:${event.prompt.length} messages:${event.messages.length}`);
 
-    if (setGroupId && agentId) {
-      setGroupId(agentId);
+    if (setSessionData) {
+      setSessionData(sessionKey, agentId ?? "default");
     }
 
     if (!config.autoRecall.enabled) {
