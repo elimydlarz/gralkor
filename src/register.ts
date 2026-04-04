@@ -55,6 +55,7 @@ export function registerHooks(
 
 export function registerServerService(
   api: PluginApiBase,
+  client: GraphitiClient,
   config: GralkorConfig,
   pluginDir: string,
   serverReady?: ReadyGate,
