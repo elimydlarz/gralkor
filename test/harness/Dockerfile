@@ -51,7 +51,7 @@ WORKDIR /root
 # Source tree for running functional tests (src + test/functional + dev deps).
 # Copied in by build.sh as gralkor-src/ in the build context.
 COPY gralkor-src/ /app/gralkor-src/
-RUN cd /app/gralkor-src && pnpm install --no-frozen-lockfile
+RUN cd /app/gralkor-src && pnpm install
 
 # Default: run the harness test script
 COPY run-functional-tests.sh /run-functional-tests.sh
