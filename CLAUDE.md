@@ -8,7 +8,7 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 |---|---|
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
-| Tools | `memory_search` (graph-only), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
+| Tools | `memory_search` (graph: facts + entity summaries), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
 | Hooks | `before_prompt_build` (auto-recall), `agent_end`/`session_end` (auto-capture) |
 | CLI | `openclaw gralkor` (plugin) |
 
