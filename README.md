@@ -349,18 +349,6 @@ Descriptions are the most important part of your ontology — they tell the LLM 
 
 The more specific your description, the better Graphiti will distinguish between entity types and avoid false positives.
 
-### Excluding entity types
-
-To prevent Graphiti from extracting certain default entity types:
-
-```json
-{
-  "ontology": {
-    "excludedEntityTypes": ["SomeType"]
-  }
-}
-```
-
 ### Reserved names
 
 The following entity names are used internally by Graphiti and cannot be used: `Entity`, `Episodic`, `Community`, `Saga`.
