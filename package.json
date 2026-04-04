@@ -28,7 +28,8 @@
     "docker:up": "pnpm run docker:build && docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs graphiti",
-    "publish:npm": "bash scripts/publish.sh"
+    "publish:npm": "bash scripts/publish.sh",
+    "publish:clawhub": "bash scripts/publish-clawhub.sh"
   },
   "files": [
     "dist",
