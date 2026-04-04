@@ -108,13 +108,17 @@ export function createMemorySearchTool(
 
       const groupId = getGroupId?.() ?? "default";
       const limit = args.limit ?? 10;
-      const results = await client.search(args.query, [groupId], limit);
+      const results = await client.search(args.query, [groupId], limit, "slow");
       const factCount = results.facts.length;
-      console.log(`[gralkor] memory_search result — graph: ${factCount} facts — groupId:${groupId}`);
+      const nodeCount = results.nodes.length;
+      console.log(`[gralkor] memory_search result — graph: ${factCount} facts ${nodeCount} nodes — groupId:${groupId}`);
 
-      if (factCount === 0) return "No memories found.";
+      if (factCount === 0 && nodeCount === 0) return "No memories found.";
 
-      const output = formatFacts(results.facts) + "\n\n" + INTERPRETATION_INSTRUCTION;
+      const nodeSection = nodeCount > 0
+        ? "\n\nEntities:\n" + results.nodes.map(formatNode).join("\n")
+        : "";
+      const output = formatFacts(results.facts) + nodeSection + "\n\n" + INTERPRETATION_INSTRUCTION;
 
       if (config.test) {
         console.log(`[gralkor] [test] memory_search query: ${args.query}`);
