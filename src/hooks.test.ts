@@ -766,6 +766,7 @@ describe("before_prompt_build handler", () => {
       expect.any(String),
       ["agent_42"],
       expect.any(Number),
+      "fast",
     );
   });
 
