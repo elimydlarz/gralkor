@@ -16,7 +16,7 @@ docker run --rm --platform linux/arm64 \
     apt-get update -qq && apt-get install -y -qq build-essential git > /dev/null
     git clone --depth 1 --branch ${FALKORDBLITE_VERSION} https://github.com/FalkorDB/falkordblite.git /tmp/fdb
     cd /tmp/fdb
-    pip install --quiet wheel setuptools
+    pip install --quiet --root-user-action=ignore wheel setuptools
     python setup.py bdist_wheel
     python -m wheel tags --remove --python-tag py3 --abi-tag none --platform-tag manylinux_2_36_aarch64 dist/*.whl
     cp dist/*.whl /out/
