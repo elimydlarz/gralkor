@@ -136,7 +136,7 @@ auto-recall-further-querying
 unified-search (memory_search tool)
   when searching
     when graph returns results
-      then response includes graph facts and interpretation instruction
+      then response includes graph facts under "Facts:" header and interpretation instruction
     when neither returns results
       then response is "No facts found."
     when mode is "slow"
@@ -144,6 +144,7 @@ unified-search (memory_search tool)
       and entity node summaries are returned alongside facts
       when node summaries are returned
         then nodes appear in output under "Entities:" section
+        and nodes are limited to the same limit as facts (default 10)
       when no facts and no nodes are returned
         then response is "No facts found."
   when server is not ready
