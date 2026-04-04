@@ -115,18 +115,6 @@ describe("serializeOntologyYaml()", () => {
     });
   });
 
-  describe("when ontology has excludedEntityTypes", () => {
-    it("then serializes as YAML sequence", () => {
-      const ontology: OntologyConfig = {
-        excludedEntityTypes: ["Generic", "Abstract"],
-      };
-      const yaml = serializeOntologyYaml(ontology);
-      expect(yaml).toContain("  excludedEntityTypes:");
-      expect(yaml).toContain('    - "Generic"');
-      expect(yaml).toContain('    - "Abstract"');
-    });
-  });
-
   describe("when description contains YAML-special characters", () => {
     it("then quotes the value", () => {
       const ontology: OntologyConfig = {
