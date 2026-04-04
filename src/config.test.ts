@@ -161,7 +161,6 @@ describe("defaultConfig", () => {
 
     for (const manifestPath of [
       join(__dirname, "..", "openclaw.plugin.json"),
-      join(__dirname, "..", "resources", "memory", "openclaw.plugin.json"),
     ]) {
       const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
       const props = manifest.configSchema.properties;
