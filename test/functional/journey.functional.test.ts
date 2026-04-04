@@ -74,8 +74,10 @@ beforeAll(async () => {
     }),
   });
   await poll("lucky number 99 searchable after capture ingest", async () => {
-    const { facts } = await search("lucky number");
-    return facts.some(f => f.fact.includes("99"));
+    try {
+      const { facts } = await search("lucky number");
+      return facts.some(f => f.fact.includes("99"));
+    } catch { return false; }
   }, 90_000);
 
   // 3. Manual add: store that lucky number changed to 42
