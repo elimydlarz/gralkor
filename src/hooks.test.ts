@@ -1513,15 +1513,15 @@ describe("session lifecycle (agent_end → boundary flush)", () => {
       ],
     }, agentCtx);
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
 
     await sessionEnd({}, sessionCtx);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: Array<{ role: string; content: Array<{ text: string }> }> };
-    expect(call.messages).toHaveLength(4);
-    expect(call.messages[0].content[0].text).toBe("Hello from string content");
-    expect(call.messages[3].content[0].text).toBe("Response via output_text");
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body.split("\n")).toHaveLength(4);
+    expect(call.episode_body).toContain("User: Hello from string content");
+    expect(call.episode_body).toContain("Assistant: Response via output_text");
   });
 
   it("strips gralkor-memory XML across accumulated turns", async () => {
