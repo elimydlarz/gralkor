@@ -128,6 +128,16 @@ describe("memory_store (createMemoryStoreTool)", () => {
     );
   });
 
+  it("uses session_key to look up group ID", async () => {
+    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : "default";
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId });
+    await tool.execute("call-1", { content: "Remember this", session_key: "sess-abc" });
+
+    expect(client.addEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ group_id: "agent-99" }),
+    );
+  });
+
   it("uses manual source description by default", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     await tool.execute("call-1", { content: "Remember this" });
