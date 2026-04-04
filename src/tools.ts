@@ -19,6 +19,10 @@ export function formatFacts(facts: Fact[]): string {
   return `Memories:\n${lines}`;
 }
 
+export function formatNode(n: EntityNode): string {
+  return `- ${n.name}: ${n.summary ?? "(no summary)"}`;
+}
+
 export interface ToolOpts {
   getGroupId?: () => string;
   serverReady?: ReadyGate;
