@@ -111,7 +111,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
 | temporal-awareness | 4 timestamps on facts via `formatFact()` |
 | error-propagation | Flush retries 3x exponential; final failure logs error (message dropped) without crashing |
-| custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. |
+| custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. No excluded types. |
 | sigterm-flush | `flushAll()` on SIGTERM; once via module guard |
 | rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
 | build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
