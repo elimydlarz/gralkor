@@ -298,21 +298,8 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
  *   { "results": [], "provider": "...", ... }
  * For non-JSON strings, returns 1 if non-empty (opaque content).
  */
-export function countNativeResults(nativeResult: string | null): number {
-  if (!nativeResult) return 0;
-  try {
-    const parsed = JSON.parse(nativeResult);
-    return Array.isArray(parsed.results) ? parsed.results.length : 0;
-  } catch {
-    return nativeResult.trim().length > 0 ? 1 : 0;
-  }
-}
-
-export type NativeSearchFn = (query: string) => Promise<string>;
-
 export interface RecallOpts {
   setGroupId?: (id: string) => void;
-  getNativeSearch?: () => NativeSearchFn | null;
   serverReady?: ReadyGate;
 }
 
