@@ -492,6 +492,21 @@ describe("register()", () => {
 
           expect(result).toBe("No facts found.");
         });
+
+        it("and nodes are limited to the same limit as facts (default 10)", async () => {
+          const manyNodes = Array.from({ length: 15 }, (_, i) => ({
+            uuid: `n${i}`,
+            name: `Entity${i}`,
+            summary: `Summary ${i}`,
+            group_id: "default",
+          }));
+          const searchTool = await setupSearchTool({ graphFacts: [sampleFact], graphNodes: manyNodes });
+
+          const result = await searchTool.execute("tool-1", { query: "React" });
+
+          const entityLines = result.split("\n").filter(l => l.startsWith("- Entity"));
+          expect(entityLines).toHaveLength(10);
+        });
       });
     });
 
