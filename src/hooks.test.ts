@@ -920,27 +920,53 @@ describe("before_prompt_build handler", () => {
     expect(query).toBe("Tell me about the project architecture");
   });
 
-  it("calls setGroupId with agentId when provided", async () => {
+  it("calls setSessionData with sessionKey and agentId when provided", async () => {
     client.search.mockResolvedValue(emptySearchResults());
-    const setGroupId = vi.fn();
+    const setSessionData = vi.fn();
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
+    await handler(
+      { prompt: "Tell me about the project architecture", messages: [] },
+      { agentId: "agent-42", sessionKey: "sess-abc" },
+    );
+
+    expect(setSessionData).toHaveBeenCalledWith("sess-abc", "agent-42");
+  });
+
+  it("falls back to agentId as sessionKey when sessionKey is absent", async () => {
+    client.search.mockResolvedValue(emptySearchResults());
+    const setSessionData = vi.fn();
+
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
     );
 
-    expect(setGroupId).toHaveBeenCalledWith("agent-42");
+    expect(setSessionData).toHaveBeenCalledWith("agent-42", "agent-42");
   });
 
-  it("does not call setGroupId when agentId is missing", async () => {
+  it("defaults sessionKey and groupId to 'default' when no agent context", async () => {
     client.search.mockResolvedValue(emptySearchResults());
-    const setGroupId = vi.fn();
+    const setSessionData = vi.fn();
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
     await handler({ prompt: "Tell me about the project architecture", messages: [] });
 
-    expect(setGroupId).not.toHaveBeenCalled();
+    expect(setSessionData).toHaveBeenCalledWith("default", "default");
+  });
+
+  it("injects Session-key into prependContext", async () => {
+    client.search.mockResolvedValue(emptySearchResults());
+
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const result = await handler(
+      { prompt: "Tell me about the project architecture", messages: [] },
+      { agentId: "agent-42", sessionKey: "sess-xyz" },
+    );
+
+    const ctx_result = (result as { prependContext: string }).prependContext;
+    expect(ctx_result).toContain("Session-key: sess-xyz");
   });
 
   describe("auto-recall-interpretation", () => {
