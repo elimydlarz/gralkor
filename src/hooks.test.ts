@@ -1029,14 +1029,14 @@ describe("before_prompt_build handler", () => {
       expect(ctx_result).toContain("interpret these facts for relevance");
     });
 
-    it("passes only the last 20 conversation messages to llmClient", async () => {
+    it("passes all messages when within token budget (no 20-message cap)", async () => {
       client.search.mockResolvedValue({
         ...emptySearchResults(),
         facts: [makeFact({ fact: "Sky is blue" })],
       });
       const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("Relevant") };
 
-      // 25 messages — only last 20 should appear in the interpretation context
+      // 25 messages — all should appear (budget is ~1M chars, these are tiny)
       const messages = Array.from({ length: 25 }, (_, i) => ({
         role: i % 2 === 0 ? "user" : "assistant",
         content: [{ type: "text", text: `msg-${i}` }],
@@ -1049,9 +1049,35 @@ describe("before_prompt_build handler", () => {
 
       const callArg = (llmClient.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
       const userMsg = callArg.find((m) => m.role === "user");
-      expect(userMsg?.content).not.toContain("msg-0"); // first 5 messages dropped
-      expect(userMsg?.content).toContain("msg-5");     // 6th message = start of last 20
-      expect(userMsg?.content).toContain("msg-24");    // last message included
+      // All 25 messages included — old 20-message cap no longer applies
+      expect(userMsg?.content).toContain("msg-0");
+      expect(userMsg?.content).toContain("msg-24");
+    });
+
+    it("drops oldest messages when conversation exceeds token budget", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Sky is blue" })],
+      });
+      const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("Relevant") };
+
+      // Create 3 messages each half the budget — total exceeds budget so oldest is dropped
+      const halfBudget = Math.ceil(INTERPRET_CHAR_BUDGET / 2) + 1;
+      const messages = [
+        { role: "user", content: [{ type: "text", text: `oldest: ${"o".repeat(halfBudget)}` }] },
+        { role: "user", content: [{ type: "text", text: `middle: ${"m".repeat(halfBudget)}` }] },
+        { role: "user", content: [{ type: "text", text: "newest: small" }] },
+      ];
+
+      const handler = createBeforePromptBuildHandler(
+        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+      );
+      await handler({ prompt: "Test", messages }, { agentId: "agent-42" });
+
+      const callArg = (llmClient.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
+      const userMsg = callArg.find((m) => m.role === "user");
+      expect(userMsg?.content).not.toContain("oldest:");
+      expect(userMsg?.content).toContain("newest: small");
     });
   });
 
