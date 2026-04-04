@@ -144,8 +144,6 @@ def _build_ontology(
     entity_defs = raw.get("entities") or {}
     edge_defs = raw.get("edges") or {}
     edge_map_raw = raw.get("edgeMap") or {}
-    excluded_raw = raw.get("excludedEntityTypes")
-
     entity_types = _build_type_defs(entity_defs) if entity_defs else None
     edge_types = _build_type_defs(edge_defs) if edge_defs else None
 
@@ -156,12 +154,10 @@ def _build_ontology(
             parts = key.split(",")
             edge_type_map[(parts[0], parts[1])] = values
 
-    excluded = list(excluded_raw) if excluded_raw else None
+    if not entity_types and not edge_types and not edge_type_map:
+        return None, None, None
 
-    if not entity_types and not edge_types and not edge_type_map and not excluded:
-        return None, None, None, None
-
-    return entity_types, edge_types, edge_type_map, excluded
+    return entity_types, edge_types, edge_type_map
 
 
 def _log_falkordblite_diagnostics(error: Exception) -> None:
