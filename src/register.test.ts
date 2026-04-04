@@ -190,8 +190,7 @@ describe("registerCli with ServerManager", () => {
       search: vi.fn().mockResolvedValue({ facts: [], nodes: [], episodes: [], communities: [] }),
     };
     const config: GralkorConfig = {
-      autoCapture: { enabled: true },
-      autoRecall: { enabled: true, maxResults: 10 },
+      ...defaultConfig,
       dataDir: "/tmp/gralkor-test-data",
     };
     const manager: ServerManager = {
