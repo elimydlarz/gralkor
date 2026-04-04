@@ -67,8 +67,8 @@ beforeAll(async () => {
       idempotency_key: "journey-capture-99",
       reference_time: new Date().toISOString(),
       messages: [
-        { role: "user", content: [{ type: "text", text: "Harness User's lucky number changed from LuckyNumber47 to LuckyNumber99." }] },
-        { role: "assistant", content: [{ type: "text", text: "Noted. Harness User's lucky number is now LuckyNumber99." }] },
+        { role: "user", content: [{ type: "text", text: "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99." }] },
+        { role: "assistant", content: [{ type: "text", text: "Noted. Eli's lucky number is now LuckyNumber99." }] },
       ],
     }),
   });
