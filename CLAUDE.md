@@ -141,10 +141,10 @@ unified-search (memory_search tool)
       then response is "No facts found."
     when mode is "slow"
       then uses cross-encoder + BFS search (graphiti.search_())
+      and returns at most search.maxResults facts (default 20) and search.maxEntityResults entities (default 10)
       and entity node summaries are returned alongside facts
       when node summaries are returned
         then nodes appear in output under "Entities:" section
-        and nodes are limited to the same limit as facts (default 10)
       when no facts and no nodes are returned
         then response is "No facts found."
   when server is not ready
@@ -152,7 +152,7 @@ unified-search (memory_search tool)
 auto-recall-search-strategy
   when auto-recall executes
     then uses fast mode (RRF, edges only via graphiti.search())
-    and injected context contains only facts, no entity summaries
+    and returns at most autoRecall.maxResults facts (default 10) and 0 entities
 extractUserMessageFromPrompt
   when prompt has leading "System: ..." lines
     then strips them and returns user message
