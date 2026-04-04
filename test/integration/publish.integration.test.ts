@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execSync } from "node:child_process";
-import { mkdtempSync, cpSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, cpSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -16,15 +16,9 @@ describe("publish-version-integrity", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "gralkor-publish-"));
 
-    // Copy the three version files and the publish script
-    for (const f of [
-      "package.json",
-      "openclaw.plugin.json",
-      "resources/memory/package.json",
-    ]) {
-      const dest = join(tempDir, f);
-      execSync(`mkdir -p "${join(tempDir, f, "..")}"`, { stdio: "ignore" });
-      cpSync(join(PROJECT_ROOT, f), dest);
+    // Copy the two version files and the publish script
+    for (const f of ["package.json", "openclaw.plugin.json"]) {
+      cpSync(join(PROJECT_ROOT, f), join(tempDir, f));
     }
     cpSync(
       join(PROJECT_ROOT, "scripts/publish.sh"),
@@ -64,13 +58,9 @@ describe("publish-version-integrity", () => {
         .version as string;
       const pluginVersion = readJson(join(tempDir, "openclaw.plugin.json"))
         .version as string;
-      const resVersion = readJson(
-        join(tempDir, "resources/memory/package.json"),
-      ).version as string;
 
       expect(pkgVersion).not.toBe(before);
       expect(pluginVersion).toBe(pkgVersion);
-      expect(resVersion).toBe(pkgVersion);
     });
 
     it("and build and publish are skipped", () => {
@@ -113,9 +103,6 @@ describe("publish-version-integrity", () => {
         .version as string;
       const beforePlugin = readJson(join(tempDir, "openclaw.plugin.json"))
         .version as string;
-      const beforeRes = readJson(
-        join(tempDir, "resources/memory/package.json"),
-      ).version as string;
 
       // Inject a failing build command via PUBLISH_BUILD_CMD
       try {
@@ -135,13 +122,9 @@ describe("publish-version-integrity", () => {
         .version as string;
       const afterPlugin = readJson(join(tempDir, "openclaw.plugin.json"))
         .version as string;
-      const afterRes = readJson(
-        join(tempDir, "resources/memory/package.json"),
-      ).version as string;
 
       expect(afterPkg).toBe(beforePkg);
       expect(afterPlugin).toBe(beforePlugin);
-      expect(afterRes).toBe(beforeRes);
     });
 
     it("and no git commit or tag is created", () => {
@@ -196,7 +179,7 @@ describe("publish-version-integrity", () => {
   });
 
   describe("when publish succeeds", () => {
-    it("then version is bumped in package.json, openclaw.plugin.json, and resources/memory/package.json", () => {
+    it("then version is bumped in package.json and openclaw.plugin.json", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
       execSync("bash scripts/publish.sh patch", {
@@ -219,13 +202,9 @@ describe("publish-version-integrity", () => {
         .version as string;
       const pluginVersion = readJson(join(tempDir, "openclaw.plugin.json"))
         .version as string;
-      const resVersion = readJson(
-        join(tempDir, "resources/memory/package.json"),
-      ).version as string;
 
       expect(pkgVersion).not.toBe(before);
       expect(pluginVersion).toBe(pkgVersion);
-      expect(resVersion).toBe(pkgVersion);
     });
 
     it("and a git commit and tag are created and pushed for the new version", () => {
