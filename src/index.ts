@@ -80,7 +80,7 @@ function registerFullPlugin(
     throw new Error("[gralkor] dataDir is required — set plugins.entries.gralkor.config.dataDir");
   }
   if (!serverManager) {
-    serverManager = registerServerService(api, config, dir, serverReady);
+    serverManager = registerServerService(api, client, config, dir, serverReady);
   }
 
   // CLI — gralkor commands
