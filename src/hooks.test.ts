@@ -1208,7 +1208,7 @@ describe("agent_end handler", () => {
 
   it("strips <gralkor-memory> XML from user messages before storing", async () => {
     const handler = createAgentEndHandler(defaultConfig, debouncer);
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nMemories:\n- The sky is blue\n</gralkor-memory>\n';
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- The sky is blue\n</gralkor-memory>\n';
     await handler({
       messages: [
         { role: "user", content: [{ type: "text", text: `${xml}What is the weather?` }] },
