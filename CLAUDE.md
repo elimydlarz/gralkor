@@ -105,7 +105,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | behaviour-distillation | `/ingest-messages` groups+distils behaviour blocks per turn via LLM |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
 | auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
-| unified-search | `memory_search` is graph-only; native content reaches the graph via the indexing agent |
+| unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native content reaches the graph via the indexing agent |
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
