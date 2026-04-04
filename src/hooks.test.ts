@@ -1132,18 +1132,16 @@ describe("agent_end handler", () => {
     });
 
     // Not flushed yet
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
     expect(debouncer.pendingCount).toBe(1);
 
     // Flush via debouncer
     await debouncer.flush("default");
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: unknown[] };
-    expect(call.messages).toEqual([
-      { role: "user", content: [{ type: "text", text: "What is the weather?" }] },
-      { role: "assistant", content: [{ type: "text", text: "I don't have access to weather data." }] },
-    ]);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("User: What is the weather?");
+    expect(call.episode_body).toContain("Assistant: I don't have access to weather data.");
   });
 
   it("captures multi-turn conversations on flush", async () => {
@@ -1159,8 +1157,9 @@ describe("agent_end handler", () => {
 
     await debouncer.flush("default");
 
-    const call = client.ingestMessages.mock.calls[0][0] as { messages: unknown[] };
-    expect(call.messages).toHaveLength(4);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    // Four turns → four lines in transcript
+    expect(call.episode_body.split("\n")).toHaveLength(4);
   });
 
   it("uses agent's group_id partition", async () => {
@@ -1177,7 +1176,7 @@ describe("agent_end handler", () => {
 
     await debouncer.flush("agent-42");
 
-    expect(client.ingestMessages).toHaveBeenCalledWith(
+    expect(client.ingestEpisode).toHaveBeenCalledWith(
       expect.objectContaining({ group_id: "agent_42" }),
     );
   });
@@ -1197,7 +1196,7 @@ describe("agent_end handler", () => {
     });
 
     expect(debouncer.pendingCount).toBe(0);
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("skips when no messages", async () => {
