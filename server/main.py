@@ -198,12 +198,11 @@ graphiti: Graphiti | None = None
 ontology_entity_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_type_map: dict[tuple[str, str], list[str]] | None = None
-ontology_excluded: list[str] | None = None
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global graphiti, ontology_entity_types, ontology_edge_types, ontology_edge_type_map, ontology_excluded
+    global graphiti, ontology_entity_types, ontology_edge_types, ontology_edge_type_map
     cfg = _load_config()
 
     falkordb_uri = os.getenv("FALKORDB_URI")
