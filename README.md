@@ -72,7 +72,13 @@ openclaw config set plugins.entries.gralkor.config.test true
 ### 3. Install the plugin
 
 ```bash
-openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
+openclaw plugins install @susu-eng/gralkor
+```
+
+OpenClaw checks ClawHub before npm for bare package specs, so this installs from ClawHub automatically. To be explicit:
+
+```bash
+openclaw plugins install clawhub:@susu-eng/gralkor
 ```
 
 From a tarball (e.g. for air-gapped deploys):
@@ -80,8 +86,6 @@ From a tarball (e.g. for air-gapped deploys):
 ```bash
 openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-force-unsafe-install
 ```
-
-The `--dangerously-force-unsafe-install` flag is required because Gralkor is not in OpenClaw's verified plugin registry.
 
 ### 4. Enable and assign the memory slot
 
