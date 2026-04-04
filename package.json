@@ -18,6 +18,7 @@
     "test:functional": "vitest run --config test/functional/vitest.config.ts",
     "test:functional:all": "bash test/harness/build.sh && docker run --rm --platform ${PLATFORM:-linux/arm64} -e GEMINI_API_KEY gralkor-harness:latest",
     "test:functional:up": "bash test/harness/functional-env.sh up",
+    "test:functional:reup": "bash test/harness/functional-env.sh up --no-rebuild",
     "test:functional:run": "bash test/harness/functional-env.sh run",
     "test:functional:down": "bash test/harness/functional-env.sh down",
     "test:functional:shell": "bash test/harness/functional-env.sh shell",
