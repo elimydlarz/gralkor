@@ -190,7 +190,6 @@ async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti
         main_mod.ontology_entity_types = {"Person": FakeEntity}
         main_mod.ontology_edge_types = None
         main_mod.ontology_edge_type_map = {("Person", "Project"): ["WorksOn"]}
-        main_mod.ontology_excluded = ["Generic"]
 
         ep = make_episode()
         mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
