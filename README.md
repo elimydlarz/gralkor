@@ -165,10 +165,6 @@ To switch away from Gemini, set `llm` and `embedder` in the plugin config. For e
 }
 ```
 
-## Native memory search
-
-In memory mode, `memory_search` searches both the knowledge graph and native Markdown files (`MEMORY.md`, `memory/*.md`). For native memory indexing to work, OpenClaw's gateway needs an embedding provider API key (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `VOYAGE_API_KEY`, or `MISTRAL_API_KEY`) in its environment. Without this, native `memory_search` results will be empty (this is an upstream OpenClaw bug in FTS-only mode — the FTS table is never populated without an embedding provider).
-
 ## CLI
 
 ```bash
