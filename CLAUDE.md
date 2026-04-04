@@ -490,7 +490,7 @@ install-sequencing-docs
 ├── openclaw.plugin.json              # active manifest
 ├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
 │                                     # client.ts, server-manager.ts,
-│                                     # native-memory.ts, types.ts, config.ts, *.test.ts
+│                                     # types.ts, config.ts, *.test.ts
 ├── resources/memory/                 # canonical manifest for pnpm run pack
 ├── scripts/pack.sh                   # deployment tarball
 ├── test/integration/                 # mocked integration tests (multi-load, publish)
