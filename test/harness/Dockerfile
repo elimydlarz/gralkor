@@ -16,7 +16,7 @@ RUN uv python install 3.13
 RUN npm install -g pnpm openclaw
 
 # Verify tools
-RUN node --version && openclaw --version && uv --version && uv python list --only-installed
+RUN node --version && pnpm --version && openclaw --version && uv --version && uv python list --only-installed
 
 # OpenClaw HOME
 ENV HOME=/root
