@@ -20,7 +20,7 @@ describe("plugin export shape", () => {
 
   it("exports unified tools list", async () => {
     const mod = await import("./index.js");
-    expect(mod.tools).toEqual(["memory_search", "memory_get", "memory_add"]);
+    expect(mod.tools).toEqual(["memory_search", "memory_add"]);
   });
 
   it("default export has register as a function (OpenClaw CLI loader)", async () => {
