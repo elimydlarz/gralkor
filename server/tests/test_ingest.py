@@ -1,4 +1,4 @@
-"""Tests for POST /openclaw-messages endpoint (structured message ingestion with thinking distillation)."""
+"""Tests for POST /episodes endpoint (pre-formatted episode_body ingestion)."""
 
 from __future__ import annotations
 
@@ -10,100 +10,99 @@ from .conftest import make_episode
 
 
 @pytest.mark.asyncio
-async def test_ingest_formats_transcript_and_creates_episode(client, mock_graphiti):
-    """Structured messages are formatted into a transcript and ingested as an episode."""
+async def test_ingest_episode_body_passes_through_to_graphiti(client, mock_graphiti):
+    """episode_body is passed directly to graphiti.add_episode without modification."""
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-    resp = await client.post("/ingest-messages", json={
+    body = "User: Fix the bug\nAssistant: Fixed it!"
+    resp = await client.post("/episodes", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
-        "idempotency_key": "test-key",
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
-            {"role": "assistant", "content": [{"type": "text", "text": "Fixed it!"}]},
-        ],
+        "episode_body": body,
+        "source": "message",
+        "idempotency_key": "test-key-1",
     })
 
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    assert "User: Fix the bug" in call_kwargs["episode_body"]
-    assert "Assistant: Fixed it!" in call_kwargs["episode_body"]
+    assert call_kwargs["episode_body"] == body
 
 
 @pytest.mark.asyncio
-async def test_ingest_distills_thinking_into_behaviour(client, mock_graphiti):
-    """Thinking blocks are distilled into behaviour summaries via LLM."""
+async def test_ingest_episode_with_behaviour_summary(client, mock_graphiti):
+    """Pre-distilled behaviour summary in episode_body is preserved verbatim."""
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
-    mock_graphiti.llm_client.generate_response.return_value = {
-        "content": "Investigated and resolved the null pointer issue"
+
+    body = (
+        "User: Fix the bug\n"
+        "Assistant: (behaviour: Investigated and resolved the null pointer issue)\n"
+        "Assistant: Fixed it!"
+    )
+    resp = await client.post("/episodes", json={
+        "name": "chat",
+        "source_description": "auto-capture",
+        "group_id": "g1",
+        "episode_body": body,
+        "source": "message",
+        "idempotency_key": "test-key-2",
+    })
+
+    assert resp.status_code == 200
+    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+    assert "(behaviour: Investigated and resolved the null pointer issue)" in call_kwargs["episode_body"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_episode_missing_required_field_returns_422(client):
+    """Missing required fields return 422."""
+    resp = await client.post("/episodes", json={
+        "name": "chat",
+        # episode_body missing
+        "source_description": "auto-capture",
+        "group_id": "g1",
+        "idempotency_key": "test-key-3",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_ingest_episode_idempotency(client, mock_graphiti):
+    """Duplicate idempotency_key returns the cached episode without re-calling graphiti."""
+    ep = make_episode()
+    mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
+
+    payload = {
+        "name": "chat",
+        "source_description": "auto-capture",
+        "group_id": "g1",
+        "episode_body": "User: Hello\nAssistant: Hi",
+        "source": "message",
+        "idempotency_key": "dupe-key",
     }
+    resp1 = await client.post("/episodes", json=payload)
+    resp2 = await client.post("/episodes", json=payload)
 
-    resp = await client.post("/ingest-messages", json={
-        "name": "chat",
-        "source_description": "auto-capture",
-        "group_id": "g1",
-        "idempotency_key": "test-key",
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
-            {"role": "assistant", "content": [
-                {"type": "thinking", "text": "Let me search for the auth file..."},
-                {"type": "text", "text": "Fixed it!"},
-            ]},
-        ],
-    })
-
-    assert resp.status_code == 200
-    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    body = call_kwargs["episode_body"]
-    assert "Assistant: (behaviour: Investigated and resolved the null pointer issue)" in body
-    assert "Assistant: Fixed it!" in body
-    mock_graphiti.llm_client.generate_response.assert_called_once()
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert mock_graphiti.add_episode.call_count == 1
 
 
 @pytest.mark.asyncio
-async def test_ingest_distillation_failure_drops_behaviour(client, mock_graphiti):
-    """If distillation fails, episode is still created without behaviour line."""
-    ep = make_episode()
-    mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
-    mock_graphiti.llm_client.generate_response.side_effect = RuntimeError("LLM unavailable")
-
-    resp = await client.post("/ingest-messages", json={
-        "name": "chat",
-        "source_description": "auto-capture",
-        "group_id": "g1",
-        "idempotency_key": "test-key",
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": "Fix the bug"}]},
-            {"role": "assistant", "content": [
-                {"type": "thinking", "text": "Some thinking..."},
-                {"type": "text", "text": "Fixed it!"},
-            ]},
-        ],
-    })
-
-    assert resp.status_code == 200
-    call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    assert "(behaviour:" not in call_kwargs["episode_body"]
-
-
-@pytest.mark.asyncio
-async def test_ingest_no_thinking_skips_distillation(client, mock_graphiti):
-    """Messages without thinking blocks skip LLM distillation."""
+async def test_ingest_episode_does_not_call_llm_client(client, mock_graphiti):
+    """Server no longer calls llm_client — distillation is done plugin-side."""
     ep = make_episode()
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-    resp = await client.post("/ingest-messages", json={
+    resp = await client.post("/episodes", json={
         "name": "chat",
         "source_description": "auto-capture",
         "group_id": "g1",
-        "idempotency_key": "test-key",
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
-            {"role": "assistant", "content": [{"type": "text", "text": "Hi"}]},
-        ],
+        "episode_body": "User: Fix it\nAssistant: (behaviour: Searched codebase)\nAssistant: Done",
+        "source": "message",
+        "idempotency_key": "test-key-5",
     })
 
     assert resp.status_code == 200
@@ -111,32 +110,20 @@ async def test_ingest_no_thinking_skips_distillation(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
-async def test_ingest_missing_required_field_returns_422(client):
-    """Missing required fields return 422."""
-    resp = await client.post("/ingest-messages", json={
-        "name": "chat",
-        # messages missing
-        "source_description": "auto-capture",
-        "group_id": "g1",
-        "idempotency_key": "test-key",
-    })
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_ingest_empty_messages_creates_empty_episode(client, mock_graphiti):
-    """Empty messages array produces empty episode body."""
-    ep = make_episode()
+async def test_ingest_episode_group_id_passed_to_graphiti(client, mock_graphiti):
+    """group_id is forwarded to graphiti.add_episode."""
+    ep = make_episode(group_id="my_agent")
     mock_graphiti.add_episode.return_value = SimpleNamespace(episode=ep)
 
-    resp = await client.post("/ingest-messages", json={
+    resp = await client.post("/episodes", json={
         "name": "chat",
         "source_description": "auto-capture",
-        "group_id": "g1",
-        "idempotency_key": "test-key",
-        "messages": [],
+        "group_id": "my_agent",
+        "episode_body": "User: Hello",
+        "source": "message",
+        "idempotency_key": "test-key-6",
     })
 
     assert resp.status_code == 200
     call_kwargs = mock_graphiti.add_episode.call_args.kwargs
-    assert call_kwargs["episode_body"] == ""
+    assert call_kwargs["group_id"] == "my_agent"
