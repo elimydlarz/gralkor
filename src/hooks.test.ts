@@ -810,7 +810,7 @@ describe("before_prompt_build handler", () => {
     );
 
     const ctx_result = (result as { prependContext: string }).prependContext;
-    expect(ctx_result).toContain("Team uses React (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z)");
+    expect(ctx_result).toContain("Team uses React (created 2025-01-01T00:00:00+0) (valid from 2025-01-01T00:00:00+0) (invalid since 2025-06-01T00:00:00+0)");
   });
 
   it("skips when autoRecall is disabled", async () => {
