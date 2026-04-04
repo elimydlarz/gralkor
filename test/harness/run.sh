@@ -10,7 +10,7 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 echo "=== Gralkor Install Harness ==="
 echo ""
 
-# ── Configure ─────────────────��────────────────────────────
+# ── Configure ────────────────────────────────────────────
 API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
 if [ -n "$API_KEY" ]; then
   echo "Configuring googleApiKey from env..."
@@ -72,76 +72,21 @@ else
 fi
 echo ""
 
-# ── 3. Ingest (capture) smoke test ───────────────────────
-echo "--- 3. Ingest smoke test ---"
-if [ "$SERVER_OK" = true ]; then
-  INGEST_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/ingest-messages \
-    -H 'Content-Type: application/json' \
-    -d '{
-      "name": "harness_smoke",
-      "source_description": "harness smoke test",
-      "group_id": "harness",
-      "idempotency_key": "smoke-001",
-      "messages": [
-        {"role": "user", "content": [{"type": "text", "text": "My favorite color is blue and I work at Acme Corp"}]},
-        {"role": "assistant", "content": [{"type": "text", "text": "Got it! Your favorite color is blue and you work at Acme Corp."}]}
-      ]
-    }' 2>&1)
-
-  INGEST_CODE=$(echo "$INGEST_RESP" | tail -1)
-  INGEST_BODY=$(echo "$INGEST_RESP" | sed '$d')
-
-  if [ "$INGEST_CODE" = "200" ]; then
-    pass "ingest returned 200"
-  else
-    fail "ingest returned $INGEST_CODE"
-    echo "  $INGEST_BODY" | head -5
-  fi
-else
-  fail "ingest skipped (server not healthy)"
-fi
-echo ""
-
-# ── 4. Search (recall) smoke test ──────────���─────────────
-echo "--- 4. Search smoke test ---"
-if [ "$SERVER_OK" = true ]; then
-  sleep 3
-
-  SEARCH_RESP=$(curl -s -w '\n%{http_code}' -X POST http://127.0.0.1:8001/search \
-    -H 'Content-Type: application/json' \
-    -d '{"query": "favorite color", "group_ids": ["harness"], "num_results": 5, "mode": "fast"}' 2>&1)
-
-  SEARCH_CODE=$(echo "$SEARCH_RESP" | tail -1)
-  SEARCH_BODY=$(echo "$SEARCH_RESP" | sed '$d')
-
-  if [ "$SEARCH_CODE" = "200" ]; then
-    pass "search returned 200"
-    FACT_COUNT=$(echo "$SEARCH_BODY" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('facts',[])))" 2>/dev/null || echo "?")
-    echo "  facts returned: $FACT_COUNT"
-  else
-    fail "search returned $SEARCH_CODE"
-    echo "  $SEARCH_BODY" | head -5
-  fi
-else
-  fail "search skipped (server not healthy)"
-fi
-echo ""
-
-# ── 5. Native memory indexing (functional tests) ──────────
-echo "--- 5. Native memory indexing ---"
+# ── 3. Functional tests ───────────────────────────────────
+echo "--- 3. Functional tests ---"
 if [ "$SERVER_OK" = true ]; then
   cd /app/gralkor-src && pnpm run test:functional 2>&1 | sed 's/^/  /'
   FUNCTIONAL_EXIT="${PIPESTATUS[0]}"
   cd - >/dev/null
-  [ "$FUNCTIONAL_EXIT" -eq 0 ] && pass "native memory functional tests" \
-                                 || fail "native memory functional tests"
+  [ "$FUNCTIONAL_EXIT" -eq 0 ] && pass "functional tests" \
+                                 || fail "functional tests"
 else
-  fail "native memory tests skipped (server not healthy)"
+  fail "functional tests skipped (server not healthy)"
 fi
 echo ""
 
-# ── 6. Reinstall (upgrade-safe) ────────────────────────────
-echo "--- 6. Reinstall ---"
+# ── 4. Reinstall (upgrade-safe) ────────────────────────────
+echo "--- 4. Reinstall ---"
 
 # Kill everything from the first boot — server, openclaw-plugins, redis
 pkill -f "uvicorn main:app" 2>/dev/null || true
