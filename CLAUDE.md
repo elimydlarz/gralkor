@@ -32,8 +32,7 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 ### Plugin API Contract
 
 - **`api.pluginConfig`** — `Record<string, unknown> | undefined` from `plugins.entries.<id>.config`
-- **`registerTool(tool, opts?)`** — `execute(toolCallId, params, signal, onUpdate)`. Factory: `(ctx) => Tool | Tool[] | null` with `opts: { names }`.
-- **Native memory SDK** — `openclaw/plugin-sdk/memory-core` exports `getMemorySearchManager` (returns `MemorySearchManager` with `.search()` and `.readFile()`). `openclaw/plugin-sdk/memory-core-host-runtime-files` exports `readAgentMemoryFile`. Loaded lazily at runtime via dynamic import (not available at build time). These replace the removed `api.runtime.tools` surface.
+- **`registerTool(tool)`** — `execute(toolCallId, params, signal, onUpdate)`. Plain tool object (no factory pattern needed).
 - **`api.on(event, handler)`** — Prefer over `registerHook` (crashes without `metadata: { name }`)
 - **`registerService({ id, start, stop })`** — `id` not `name`
 - **`registerCli(registrar, opts?)`** — Mounts under `openclaw` (top-level)
