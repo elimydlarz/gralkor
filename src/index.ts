@@ -61,7 +61,7 @@ function registerFullPlugin(
   api.registerTool(createBuildIndicesTool(client, toolOpts));
   api.registerTool(createBuildCommunitiesTool(client, toolOpts));
 
-  const debouncer = registerHooks(api, client, config, { setGroupId, getNativeSearch, serverReady });
+  const debouncer = registerHooks(api, client, config, { setGroupId, serverReady });
 
   // Flush pending session buffers on SIGTERM to prevent data loss on shutdown
   if (!sigTermHandlerInstalled) {
