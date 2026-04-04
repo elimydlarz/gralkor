@@ -145,12 +145,22 @@ describe("defaultConfig", () => {
     expect(defaultConfig.autoRecall.maxResults).toBe(10);
   });
 
+  it("has search maxResults of 20", () => {
+    expect(defaultConfig.search.maxResults).toBe(20);
+  });
+
+  it("has search maxEntityResults of 10", () => {
+    expect(defaultConfig.search.maxEntityResults).toBe(10);
+  });
+
   it("configSchema defaults match defaultConfig (single source of truth)", async () => {
     const { configSchema } = await import("./index.js");
     const schema = configSchema.properties;
     expect(schema.autoCapture.properties.enabled.default).toBe(defaultConfig.autoCapture.enabled);
     expect(schema.autoRecall.properties.enabled.default).toBe(defaultConfig.autoRecall.enabled);
     expect(schema.autoRecall.properties.maxResults.default).toBe(defaultConfig.autoRecall.maxResults);
+    expect(schema.search.properties.maxResults.default).toBe(defaultConfig.search.maxResults);
+    expect(schema.search.properties.maxEntityResults.default).toBe(defaultConfig.search.maxEntityResults);
   });
 
   it("plugin manifest defaults match defaultConfig (single source of truth)", async () => {
@@ -167,6 +177,8 @@ describe("defaultConfig", () => {
       expect(props.autoCapture.properties.enabled.default, `${manifestPath}: autoCapture.enabled`).toBe(defaultConfig.autoCapture.enabled);
       expect(props.autoRecall.properties.enabled.default, `${manifestPath}: autoRecall.enabled`).toBe(defaultConfig.autoRecall.enabled);
       expect(props.autoRecall.properties.maxResults.default, `${manifestPath}: autoRecall.maxResults`).toBe(defaultConfig.autoRecall.maxResults);
+      expect(props.search.properties.maxResults.default, `${manifestPath}: search.maxResults`).toBe(defaultConfig.search.maxResults);
+      expect(props.search.properties.maxEntityResults.default, `${manifestPath}: search.maxEntityResults`).toBe(defaultConfig.search.maxEntityResults);
     }
   });
 });
