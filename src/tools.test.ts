@@ -276,11 +276,21 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
       const gate = createReadyGate();
       gate.resolve();
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
-      const result = await tool.execute();
+      const result = await tool.execute("call-1", {});
 
       expect(client.buildCommunities).toHaveBeenCalledWith("agent-42");
       expect(result).toContain("5 communities");
       expect(result).toContain("12 edges");
+    });
+
+    it("uses session_key to look up group ID", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : "default";
+      const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId: sessionGetGroupId, serverReady: gate });
+      await tool.execute("call-1", { session_key: "sess-abc" });
+
+      expect(client.buildCommunities).toHaveBeenCalledWith("agent-99");
     });
   });
 
@@ -289,7 +299,7 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
       const gate = createReadyGate();
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
 
-      await expect(tool.execute()).rejects.toThrow(
+      await expect(tool.execute("call-1", {})).rejects.toThrow(
         "[gralkor] memory_build_communities failed: server is not ready",
       );
       expect(client.buildCommunities).not.toHaveBeenCalled();
