@@ -40,20 +40,18 @@ RUN openclaw config set gateway.mode local && \
     openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor && \
     openclaw config set plugins.entries.gralkor.config.test true
 
-# Pre-warm: sync server venv at build time (avoids slow uv sync on first container boot)
-# server-manager uses UV_PROJECT_ENVIRONMENT={dataDir}/venv with --directory={serverDir}
+# Pre-warm: sync server venv at build time (avoids slow uv sync on first container boot).
+# Skip falkordblite via PyPI — the PyPI arm64 wheel requires manylinux_2_39 (glibc 2.39+)
+# but Bookworm only ships glibc 2.36, so uv falls back to the sdist which embeds x86-64
+# binaries. The bundled arm64 wheel (built by build-arm64-wheel.sh) is installed instead.
 RUN mkdir -p /data/gralkor && \
     UV_PROJECT_ENVIRONMENT=/data/gralkor/venv \
-    uv sync --no-dev --frozen --directory /root/.openclaw/extensions/gralkor/server
+    uv sync --no-dev --frozen --no-install-package falkordblite \
+      --directory /root/.openclaw/extensions/gralkor/server
 
-# Force-install bundled arm64 wheel over the x86-64 PyPI sdist.
-# falkordblite 0.9.0's PyPI sdist embeds x86-64 binaries; the plugin tarball
-# includes a linux/arm64 wheel built specifically for this platform.
-RUN for whl in /root/.openclaw/extensions/gralkor/server/wheels/*.whl; do \
-      [ -f "$whl" ] || continue; \
-      echo "Installing bundled wheel: $whl"; \
-      VIRTUAL_ENV=/data/gralkor/venv uv pip install --reinstall --no-deps "$whl"; \
-    done
+# Install bundled arm64 falkordblite wheel — must succeed, no PyPI fallback.
+RUN VIRTUAL_ENV=/data/gralkor/venv uv pip install --no-deps \
+      /root/.openclaw/extensions/gralkor/server/wheels/*.whl
 
 WORKDIR /root
 
