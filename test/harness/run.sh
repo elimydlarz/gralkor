@@ -130,7 +130,7 @@ echo ""
 # ── 5. Native memory indexing (functional tests) ──────────
 echo "--- 5. Native memory indexing ---"
 if [ "$SERVER_OK" = true ]; then
-  cd "$PLUGIN_DIR" && pnpm run test:functional 2>&1 | sed 's/^/  /'
+  cd /app/gralkor-src && pnpm run test:functional 2>&1 | sed 's/^/  /'
   FUNCTIONAL_EXIT="${PIPESTATUS[0]}"
   cd - >/dev/null
   [ "$FUNCTIONAL_EXIT" -eq 0 ] && pass "native memory functional tests" \
