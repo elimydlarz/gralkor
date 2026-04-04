@@ -232,6 +232,7 @@ describe("startup", () => {
 
   beforeEach(() => {
     serverReady = { isReady: vi.fn().mockReturnValue(false), resolve: vi.fn() };
+    client = { addEpisode: vi.fn(), search: vi.fn(), health: vi.fn(), ingestMessages: vi.fn(), buildIndices: vi.fn(), buildCommunities: vi.fn() } as unknown as GraphitiClient;
     api = {
       registerTool: vi.fn(),
       on: vi.fn(),
