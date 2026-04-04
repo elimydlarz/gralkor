@@ -685,29 +685,6 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
         print(f"[gralkor] driver graph routed: {target}", flush=True)
 
 
-def _prioritize_facts(
-    edges: list[EntityEdge], limit: int, reserved_ratio: float = 0.7,
-) -> list[EntityEdge]:
-    """Reserve slots for valid facts, fill the rest by relevance.
-
-    First ~70% of slots are reserved for valid facts (no invalid_at).
-    Remaining slots are filled from whatever Graphiti ranked highest
-    among the leftovers — valid or not — preserving relevance scoring.
-    """
-    reserved_count = max(1, round(limit * reserved_ratio))
-
-    reserved: list[EntityEdge] = []
-    rest: list[EntityEdge] = []
-    for e in edges:
-        if len(reserved) < reserved_count and e.invalid_at is None:
-            reserved.append(e)
-        else:
-            rest.append(e)
-
-    remainder_count = limit - len(reserved)
-    return reserved + rest[:remainder_count]
-
-
 @app.post("/search")
 async def search(req: SearchRequest):
     logger.info("[gralkor] search — mode:%s query:%d chars group_ids:%s num_results:%d",
@@ -719,15 +696,13 @@ async def search(req: SearchRequest):
     # searches return 0 results. Fix: route to the correct graph here.
     _ensure_driver_graph(req.group_ids)
     t0 = time.monotonic()
-    # Over-fetch to compensate for expired facts that will be deprioritized.
-    fetch_limit = req.num_results * 2
     try:
         if req.mode == "slow":
             # Cross-encoder + BFS: higher quality, also returns entity node summaries.
             # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
             # constant; mutating .limit directly would corrupt it across requests.
             config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
-            config.limit = fetch_limit
+            config.limit = req.num_results
             search_result = await graphiti.search_(
                 query=_sanitize_query(req.query),
                 group_ids=req.group_ids,
@@ -739,7 +714,7 @@ async def search(req: SearchRequest):
             edges = await graphiti.search(
                 query=_sanitize_query(req.query),
                 group_ids=req.group_ids,
-                num_results=fetch_limit,
+                num_results=req.num_results,
             )
             nodes = []
     except Exception as e:
@@ -747,13 +722,10 @@ async def search(req: SearchRequest):
         logger.error("[gralkor] search failed — mode:%s %.0fms: %s", req.mode, duration_ms, e)
         raise
     duration_ms = (time.monotonic() - t0) * 1000
-    prioritized = _prioritize_facts(edges, req.num_results)
-    valid_count = sum(1 for e in prioritized if e.invalid_at is None)
-    result = [_serialize_fact(e) for e in prioritized]
+    result = [_serialize_fact(e) for e in edges]
     serialized_nodes = [_serialize_node(n) for n in nodes]
-    logger.info("[gralkor] search result — mode:%s %d facts (%d valid, %d non-valid) %d nodes from %d fetched %.0fms",
-                req.mode, len(prioritized), valid_count, len(prioritized) - valid_count,
-                len(serialized_nodes), len(edges), duration_ms)
+    logger.info("[gralkor] search result — mode:%s %d facts %d nodes %.0fms",
+                req.mode, len(result), len(serialized_nodes), duration_ms)
     logger.debug("[gralkor] search facts: %s", result)
     return {"facts": result, "nodes": serialized_nodes}
 
