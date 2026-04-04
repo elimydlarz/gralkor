@@ -463,49 +463,6 @@ async def add_episode(req: AddEpisodeRequest):
     return serialized
 
 
-@app.post("/ingest-messages")
-async def ingest_messages(req: IngestMessagesRequest):
-    cached = _idempotency_check(req.idempotency_key)
-    if cached is not None:
-        logger.info("[gralkor] ingest-messages idempotent hit — key:%s uuid:%s",
-                    req.idempotency_key, cached.get("uuid"))
-        return cached
-
-    logger.info("[gralkor] ingest-messages — group:%s messages:%d", req.group_id, len(req.messages))
-    ref_time = (
-        datetime.fromisoformat(req.reference_time)
-        if req.reference_time
-        else datetime.now(timezone.utc)
-    )
-    llm = graphiti.llm_client if graphiti else None
-    episode_body = await _format_transcript(req.messages, llm)
-
-    logger.info("[gralkor] episode body — chars:%d lines:%d", len(episode_body), episode_body.count('\n') + 1)
-    logger.debug("[gralkor] episode body:\n%s", episode_body)
-
-    t0 = time.monotonic()
-    result = await graphiti.add_episode(
-        name=req.name,
-        episode_body=episode_body,
-        source_description=req.source_description,
-        group_id=req.group_id,
-        reference_time=ref_time,
-        source=EpisodeType.message,
-        entity_types=ontology_entity_types,
-        edge_types=ontology_edge_types,
-        edge_type_map=ontology_edge_type_map,
-        excluded_entity_types=None,
-    )
-    duration_ms = (time.monotonic() - t0) * 1000
-    episode = result.episode
-    logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
-    logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
-    serialized = _serialize_episode(episode)
-    _idempotency_store_result(req.idempotency_key, serialized)
-    return serialized
-
-
-
 def _sanitize_query(query: str) -> str:
     """Strip backticks that cause RediSearch syntax errors.
 
