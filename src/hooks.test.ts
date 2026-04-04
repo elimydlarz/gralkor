@@ -1001,6 +1001,31 @@ describe("before_prompt_build handler", () => {
       expect(ctx_result).toContain("Team uses React");
       expect(ctx_result).toContain("interpret these facts for relevance");
     });
+
+    it("passes only the last 20 conversation messages to llmClient", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Sky is blue" })],
+      });
+      const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("Relevant") };
+
+      // 25 messages — only last 20 should appear in the interpretation context
+      const messages = Array.from({ length: 25 }, (_, i) => ({
+        role: i % 2 === 0 ? "user" : "assistant",
+        content: [{ type: "text", text: `msg-${i}` }],
+      }));
+
+      const handler = createBeforePromptBuildHandler(
+        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+      );
+      await handler({ prompt: "Test", messages }, { agentId: "agent-42" });
+
+      const callArg = (llmClient.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
+      const userMsg = callArg.find((m) => m.role === "user");
+      expect(userMsg?.content).not.toContain("msg-0"); // first 5 messages dropped
+      expect(userMsg?.content).toContain("msg-5");     // 6th message = start of last 20
+      expect(userMsg?.content).toContain("msg-24");    // last message included
+    });
   });
 
   describe("auto-recall-search-strategy", () => {
