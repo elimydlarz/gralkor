@@ -45,6 +45,8 @@ export interface IngestMessagesParams {
   messages: EpisodeMessage[];
 }
 
+export type SearchMode = "fast" | "slow";
+
 export interface EntityNode {
   uuid: string;
   name: string;
