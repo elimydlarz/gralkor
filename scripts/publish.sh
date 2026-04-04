@@ -8,21 +8,18 @@ if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch)$ ]]; then
 fi
 
 # Save pre-bump versions for rollback
-manifests=("openclaw.plugin.json" "resources/memory/package.json")
 old_version=$(node -p "require('./package.json').version")
 
 rollback() {
   echo "Rolling back versions to $old_version..." >&2
   # Restore package.json
   npm version "$old_version" --no-git-tag-version --allow-same-version >/dev/null 2>&1 || true
-  # Restore other manifests
+  # Restore openclaw.plugin.json
   node -e "
 const fs = require('fs');
-['openclaw.plugin.json', 'resources/memory/package.json'].forEach(f => {
-  const p = JSON.parse(fs.readFileSync(f, 'utf8'));
-  p.version = '$old_version';
-  fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n');
-});
+const p = JSON.parse(fs.readFileSync('openclaw.plugin.json', 'utf8'));
+p.version = '$old_version';
+fs.writeFileSync('openclaw.plugin.json', JSON.stringify(p, null, 2) + '\n');
 " || true
   rm -rf server/wheels
 }
@@ -30,14 +27,12 @@ const fs = require('fs');
 npm version "$level" --no-git-tag-version
 version=$(node -p "require('./package.json').version")
 
-# Sync version into openclaw.plugin.json and resources/memory/package.json
+# Sync version into openclaw.plugin.json
 node -e "
 const fs = require('fs');
-['openclaw.plugin.json', 'resources/memory/package.json'].forEach(f => {
-  const p = JSON.parse(fs.readFileSync(f, 'utf8'));
-  p.version = '$version';
-  fs.writeFileSync(f, JSON.stringify(p, null, 2) + '\n');
-});
+const p = JSON.parse(fs.readFileSync('openclaw.plugin.json', 'utf8'));
+p.version = '$version';
+fs.writeFileSync('openclaw.plugin.json', JSON.stringify(p, null, 2) + '\n');
 "
 
 echo "Bumped to $version"
@@ -58,7 +53,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
 
   trap - ERR
 
-  git commit --only package.json openclaw.plugin.json resources/memory/package.json -m "$version"
+  git commit --only package.json openclaw.plugin.json -m "$version"
   git tag "v$version"
 
   push_cmd="${PUBLISH_GIT_PUSH_CMD:-git push --follow-tags}"
