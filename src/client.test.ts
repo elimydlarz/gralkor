@@ -553,6 +553,7 @@ describe("search()", () => {
       query: "test query",
       group_ids: ["g1", "g2"],
       num_results: 5,
+      mode: "fast",
     });
   });
 
