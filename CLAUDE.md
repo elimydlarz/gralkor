@@ -583,9 +583,9 @@ Three layers, each with a distinct purpose:
 |---|---|---|---|
 | **Unit** | `src/*.test.ts` | Yes — isolated | Fast feedback; drive internal design |
 | **Integration** | `test/integration/*.integration.test.ts` | Yes — mocked collaborators | Cross-module wiring; multi-load, lifecycle |
-| **Functional** | `test/functional/` *(planned)* | No — real OpenClaw harness | End-to-end against a running gateway |
+| **Functional** | `test/functional/` | No — real OpenClaw harness | End-to-end against a running gateway |
 
-The functional layer requires the OpenClaw test harness (Docker image). Use integration tests until the harness is available.
+The functional layer requires the OpenClaw test harness (Docker image).
 
 ### Test Commands
 
