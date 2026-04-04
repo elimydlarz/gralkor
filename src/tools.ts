@@ -192,13 +192,19 @@ export function createBuildCommunitiesTool(
       "Run periodically or after significant new information has been ingested.",
     parameters: {
       type: "object" as const,
-      properties: {},
+      properties: {
+        session_key: {
+          type: "string" as const,
+          description: "Session key from the gralkor-memory context block.",
+        },
+      },
     },
-    async execute(): Promise<string> {
+    async execute(_toolCallId: string, args: { session_key?: string }): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error(`[gralkor] memory_build_communities failed: server is not ready`);
       }
-      const groupId = getGroupId?.() ?? "default";
+      const sessionKey = args.session_key ?? "default";
+      const groupId = getGroupId?.(sessionKey) ?? "default";
       console.log(`[gralkor] memory_build_communities starting — groupId:${groupId}`);
       const result = await client.buildCommunities(groupId);
       console.log(`[gralkor] memory_build_communities done — communities:${result.communities} edges:${result.edges}`);
