@@ -167,9 +167,9 @@ if [ -n "$API_KEY" ]; then
   openclaw config set plugins.entries.gralkor.config.googleApiKey "$API_KEY" >/dev/null 2>&1
 fi
 
-# Boot server again via plugin load
-openclaw plugins list >/dev/null 2>&1 &
-PLUGINS_PID2=$!
+# Boot gateway again
+openclaw gateway >/dev/null 2>&1 &
+GATEWAY_PID2=$!
 
 echo "Waiting for server health after reinstall (up to 120s)..."
 REINSTALL_SERVER_OK=false
