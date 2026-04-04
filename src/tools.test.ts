@@ -40,6 +40,24 @@ function makeFact(overrides: Partial<Fact> = {}): Fact {
 const config: GralkorConfig = defaultConfig;
 const getGroupId = () => "agent-42";
 
+describe("formatTimestamp", () => {
+  it("converts Z to +0", () => {
+    expect(formatTimestamp("2025-01-01T00:00:00Z")).toBe("2025-01-01T00:00:00+0");
+  });
+  it("converts +00:00 to +0", () => {
+    expect(formatTimestamp("2026-04-03T23:03:51+00:00")).toBe("2026-04-03T23:03:51+0");
+  });
+  it("strips sub-second precision", () => {
+    expect(formatTimestamp("2026-04-03T23:03:51.752246+00:00")).toBe("2026-04-03T23:03:51+0");
+  });
+  it("strips leading zero from offset hours and drops :00 minutes", () => {
+    expect(formatTimestamp("2025-06-01T10:00:00-05:00")).toBe("2025-06-01T10:00:00-5");
+  });
+  it("keeps non-zero minutes in offset", () => {
+    expect(formatTimestamp("2025-06-01T10:00:00+05:30")).toBe("2025-06-01T10:00:00+5:30");
+  });
+});
+
 describe("formatFacts", () => {
   it("formats facts with header", () => {
     const result = formatFacts([makeFact({ fact: "remembered fact" })]);
@@ -55,17 +73,16 @@ describe("formatFacts", () => {
       expired_at: "2025-07-01T00:00:00Z",
       fact: "fully dated fact",
     })]);
-    expect(result).toContain("- fully dated fact (created 2025-01-01T00:00:00Z) (valid from 2025-01-01T00:00:00Z) (invalid since 2025-06-01T00:00:00Z) (expired 2025-07-01T00:00:00Z)");
+    expect(result).toContain("- fully dated fact (created 2025-01-01T00:00:00+0) (valid from 2025-01-01T00:00:00+0) (invalid since 2025-06-01T00:00:00+0) (expired 2025-07-01T00:00:00+0)");
   });
 
   it("includes created_at even when valid_at and invalid_at are absent", () => {
     const result = formatFacts([makeFact({ created_at: "2025-03-15T10:00:00Z", fact: "recent fact" })]);
-    expect(result).toContain("- recent fact (created 2025-03-15T10:00:00Z)");
+    expect(result).toContain("- recent fact (created 2025-03-15T10:00:00+0)");
     expect(result).not.toContain("valid from");
     expect(result).not.toContain("invalid since");
     expect(result).not.toContain("expired");
-    // Exact format: no trailing garbage after the timestamp
-    expect(result).toMatch(/- recent fact \(created 2025-03-15T10:00:00Z\)\s*$/m);
+    expect(result).toMatch(/- recent fact \(created 2025-03-15T10:00:00\+0\)\s*$/m);
   });
 
   it("separates multiple facts with newlines", () => {
