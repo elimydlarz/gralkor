@@ -334,7 +334,7 @@ export function createBeforePromptBuildHandler(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
-  const { setGroupId, serverReady } = opts;
+  const { setGroupId, serverReady, llmClient } = opts;
 
   return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
@@ -375,7 +375,32 @@ export function createBeforePromptBuildHandler(
       const furtherQuerying =
         "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${factsText}\n\n${INTERPRETATION_INSTRUCTION} ${furtherQuerying}\n</gralkor-memory>`;
+      let contextBody = factsText;
+      let interpretationSucceeded = false;
+
+      if (factCount > 0 && llmClient) {
+        try {
+          const interpretCtx = buildInterpretationContext(event.messages, factsText);
+          const interpretMessages: LLMMessage[] = [
+            { role: "system", content: INTERPRET_SYSTEM_PROMPT },
+            { role: "user", content: interpretCtx },
+          ];
+          const interpretation = await llmClient.generate(interpretMessages, 500);
+          if (interpretation) {
+            contextBody = `${factsText}\n\nInterpretation:\n${interpretation}`;
+            interpretationSucceeded = true;
+            console.log(`[gralkor] auto-recall interpretation — chars:${interpretation.length}`);
+          }
+        } catch (err) {
+          console.warn("[gralkor] auto-recall interpretation failed, using fallback:", err instanceof Error ? err.message : err);
+        }
+      }
+
+      const trailer = interpretationSucceeded
+        ? furtherQuerying
+        : `${INTERPRETATION_INSTRUCTION} ${furtherQuerying}`;
+
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${contextBody}\n\n${trailer}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall query: ${userMessage}`);
