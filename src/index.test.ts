@@ -76,15 +76,13 @@ describe("register()", () => {
     expect(api.registerCli).toHaveBeenCalledTimes(1);
   });
 
-  it("registers native memory tools via factory with wrapping", async () => {
+  it("registers memory_search as a plain tool object", async () => {
     const { register } = await import("./index.js");
 
     register(api);
 
-    // First registerTool call is the factory for native memory tools
-    const [factory, opts] = api.registerTool.mock.calls[0];
-    expect(typeof factory).toBe("function");
-    expect(opts).toEqual({ names: ["memory_search", "memory_get"] });
+    const tool = api.registerTool.mock.calls[0][0] as { name: string };
+    expect(tool.name).toBe("memory_search");
   });
 
   it("registers memory_add as a plain tool object", async () => {
