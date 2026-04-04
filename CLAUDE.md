@@ -429,8 +429,6 @@ validateOntologyConfig
 config-defaults-single-source
   when configSchema is read from index.ts
     then defaults match defaultConfig in config.ts
-  when plugin manifest (openclaw.plugin.json) is read
-    then defaults match defaultConfig in config.ts
   when openclaw.plugin.json is read
     then defaults match defaultConfig in config.ts
 test-mode-query-logging
