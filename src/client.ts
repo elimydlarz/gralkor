@@ -160,9 +160,10 @@ export class GraphitiClient {
     });
   }
 
-  async ingestMessages(params: IngestMessagesParams): Promise<Episode> {
-    return this.request("POST", "/ingest-messages", {
+  async ingestEpisode(params: IngestEpisodeParams): Promise<Episode> {
+    return this.request("POST", "/episodes", {
       ...params,
+      source: "message",
       idempotency_key: crypto.randomUUID(),
       reference_time: new Date().toISOString(),
     });
