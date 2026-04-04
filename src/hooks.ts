@@ -338,7 +338,7 @@ export function createBeforePromptBuildHandler(
         throw new Error("server is not ready (service start() may not have been called by host)");
       }
 
-      const searchResults = await client.search(userMessage, [groupId], limit);
+      const searchResults = await client.search(userMessage, [groupId], limit, "fast");
       const factCount = searchResults.facts.length;
       console.log(`[gralkor] auto-recall result — graph: ${factCount} facts — groupId:${groupId}`);
 
