@@ -412,7 +412,7 @@ export function createBeforePromptBuildHandler(
         ? furtherQuerying
         : `${INTERPRETATION_INSTRUCTION} ${furtherQuerying}`;
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${contextBody}\n\n${trailer}\n</gralkor-memory>`;
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${contextBody}\n\nSession-key: ${sessionKey}\n${trailer}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall query: ${userMessage}`);
