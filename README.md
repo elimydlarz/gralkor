@@ -198,10 +198,44 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
 |---|---|---|
 | `autoCapture.enabled` | `true` | Automatically store conversations in the graph |
 | `autoRecall.enabled` | `true` | Automatically recall relevant context before each turn |
-| `autoRecall.maxResults` | `10` | Maximum number of facts injected as context |
+| `autoRecall.maxResults` | `10` | Maximum number of facts injected as context by auto-recall |
+| `search.maxResults` | `20` | Maximum number of facts returned by the `memory_search` tool |
+| `search.maxEntityResults` | `10` | Maximum number of entity summaries returned by the `memory_search` tool |
 | `idleTimeoutMs` | `300000` | How long (ms) after the last agent response to wait before flushing buffered messages to the graph. Prevents data loss when sessions aren't explicitly ended (e.g. user walks away, gateway restarts). Set to `0` to disable idle flushing. |
 | `dataDir` | **(required)** | Directory for persistent backend data (Python venv, FalkorDB database). No default — operator must set. |
 | `test` | `false` | Test mode — logs full episode bodies and search results at plugin boundaries for debugging |
+
+### Complete config reference
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "gralkor": {
+        "enabled": true,
+        "config": {
+          "dataDir": "/path/to/gralkor-data",
+          "workspaceDir": "~/.openclaw/workspace",
+          "googleApiKey": "your-gemini-key",
+          "llm": { "provider": "gemini", "model": "gemini-3.1-flash-lite-preview" },
+          "embedder": { "provider": "gemini", "model": "gemini-embedding-2-preview" },
+          "autoCapture": { "enabled": true },
+          "autoRecall": { "enabled": true, "maxResults": 10 },
+          "search": { "maxResults": 20, "maxEntityResults": 10 },
+          "idleTimeoutMs": 300000,
+          "ontology": {
+            "entities": {},
+            "edges": {},
+            "edgeMap": {},
+            "excludedEntityTypes": []
+          },
+          "test": false
+        }
+      }
+    }
+  }
+}
+```
 
 ### Graph partitioning
 
