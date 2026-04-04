@@ -1563,10 +1563,10 @@ describe("flushSessionBuffer", () => {
 
   beforeEach(() => {
     client = mockClient();
-    client.ingestMessages.mockResolvedValue({});
+    client.ingestEpisode.mockResolvedValue({});
   });
 
-  it("flushes buffer", async () => {
+  it("flushes buffer as formatted transcript", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Hello" }] },
@@ -1577,13 +1577,10 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
-    expect(client.ingestMessages).toHaveBeenCalledWith(
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledWith(
       expect.objectContaining({
-        messages: [
-          { role: "user", content: [{ type: "text", text: "Hello" }] },
-          { role: "assistant", content: [{ type: "text", text: "Hi" }] },
-        ],
+        episode_body: "User: Hello\nAssistant: Hi",
         source_description: "auto-capture",
         group_id: "agent_42",
       }),
@@ -1597,11 +1594,11 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
-    expect(client.ingestMessages).not.toHaveBeenCalled();
+    expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
 
   it("retries transient errors and succeeds", async () => {
-    client.ingestMessages
+    client.ingestEpisode
       .mockRejectedValueOnce(new Error("ECONNREFUSED"))
       .mockRejectedValueOnce(new Error("AbortError"))
       .mockResolvedValueOnce({});
@@ -1616,10 +1613,10 @@ describe("flushSessionBuffer", () => {
 
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 });
 
-    expect(client.ingestMessages).toHaveBeenCalledTimes(3);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(3);
   });
 
-  it("sends structured messages with thinking and tool_use blocks to ingestMessages", async () => {
+  it("formats transcript with text blocks; thinking/tool_use distilled when llmClient provided", async () => {
     const buffer: SessionBuffer = {
       messages: [
         { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
@@ -1633,25 +1630,20 @@ describe("flushSessionBuffer", () => {
       agentId: "agent-42",
     };
 
+    // Without llmClient: thinking/tool_use silently dropped, text blocks preserved
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
 
-    expect(client.ingestMessages).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [
-          { role: "user", content: [{ type: "text", text: "Fix the bug" }] },
-          { role: "assistant", content: [
-            { type: "thinking", text: "I should check auth.ts" },
-            { type: "text", text: "Let me look at the auth module." },
-            { type: "tool_use", text: 'Tool: Read\nInput: {"path":"auth.ts"}' },
-            { type: "text", text: "Found the bug on line 42." },
-          ]},
-        ],
-      }),
-    );
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).toContain("User: Fix the bug");
+    expect(call.episode_body).toContain("Assistant: Let me look at the auth module.");
+    expect(call.episode_body).toContain("Assistant: Found the bug on line 42.");
+    // Behaviour blocks not in transcript without llmClient
+    expect(call.episode_body).not.toContain("I should check auth.ts");
+    expect(call.episode_body).not.toContain("Tool: Read");
   });
 
   it("does not retry client errors (4xx)", async () => {
-    client.ingestMessages.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
+    client.ingestEpisode.mockRejectedValue(new Error("Graphiti returned 422: Unprocessable Entity"));
 
     const buffer: SessionBuffer = {
       messages: [
@@ -1663,7 +1655,7 @@ describe("flushSessionBuffer", () => {
 
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 });
-    expect(client.ingestMessages).toHaveBeenCalledTimes(1);
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("message dropped"));
     errorSpy.mockRestore();
   });
