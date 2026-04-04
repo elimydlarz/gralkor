@@ -77,6 +77,51 @@ export function createMemoryStoreTool(
   };
 }
 
+export function createMemorySearchTool(
+  client: GraphitiClient,
+  config: GralkorConfig,
+  opts: ToolOpts = {},
+) {
+  const { getGroupId, serverReady } = opts;
+  return {
+    name: "memory_search",
+    description: "Search memory for relevant context. Use specific, focused queries.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string" as const },
+        limit: { type: "number" as const },
+      },
+      required: ["query"] as const,
+    },
+    async execute(
+      _toolCallId: string,
+      args: { query: string; limit?: number },
+    ): Promise<string> {
+      if (serverReady && !serverReady.isReady()) {
+        throw new Error("[gralkor] memory_search failed: server is not ready");
+      }
+
+      const groupId = getGroupId?.() ?? "default";
+      const limit = args.limit ?? 10;
+      const results = await client.search(args.query, [groupId], limit);
+      const factCount = results.facts.length;
+      console.log(`[gralkor] memory_search result — graph: ${factCount} facts — groupId:${groupId}`);
+
+      if (factCount === 0) return "No memories found.";
+
+      const output = formatFacts(results.facts) + "\n\n" + INTERPRETATION_INSTRUCTION;
+
+      if (config.test) {
+        console.log(`[gralkor] [test] memory_search query: ${args.query}`);
+        console.log(`[gralkor] [test] memory_search result:\n${output}`);
+      }
+
+      return output;
+    },
+  };
+}
+
 export function createBuildIndicesTool(
   client: GraphitiClient,
   opts: ToolOpts = {},
