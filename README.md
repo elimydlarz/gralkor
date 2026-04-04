@@ -226,8 +226,7 @@ Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
           "ontology": {
             "entities": {},
             "edges": {},
-            "edgeMap": {},
-            "excludedEntityTypes": []
+            "edgeMap": {}
           },
           "test": false
         }
