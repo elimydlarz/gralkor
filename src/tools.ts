@@ -60,18 +60,23 @@ export function createMemoryStoreTool(
           type: "string" as const,
           description: "Optional description of where this information came from",
         },
+        session_key: {
+          type: "string" as const,
+          description: "Session key from the gralkor-memory context block. Pass this to store in the correct agent memory partition.",
+        },
       },
       required: ["content"] as const,
     },
     async execute(
       _toolCallId: string,
-      args: { content: string; source_description?: string },
+      args: { content: string; source_description?: string; session_key?: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error(`[gralkor] memory_add failed: server is not ready`);
       }
 
-      const groupId = getGroupId?.() ?? "default";
+      const sessionKey = args.session_key ?? "default";
+      const groupId = getGroupId?.(sessionKey) ?? "default";
       console.log(`[gralkor] memory_add storing — groupId:${groupId} bodySize:${args.content.length}`);
 
       if (config.test) {
