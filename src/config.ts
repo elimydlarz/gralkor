@@ -18,7 +18,6 @@ export interface OntologyConfig {
   entities?: Record<string, OntologyTypeDef>;
   edges?: Record<string, OntologyTypeDef>;
   edgeMap?: Record<string, string[]>;
-  excludedEntityTypes?: string[];
 }
 
 const RESERVED_ENTITY_NAMES = new Set(["Entity", "Episodic", "Community", "Saga"]);
