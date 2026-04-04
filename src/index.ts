@@ -115,6 +115,10 @@ export const configSchema = {
       type: "string" as const,
       description: "Required. Directory for persistent backend data (venv, FalkorDB database). Operator must set this path.",
     },
+    workspaceDir: {
+      type: "string" as const,
+      description: "Native memory workspace root. Scanned at startup for MD files to index into the graph. Defaults to ~/.openclaw/workspace.",
+    },
     test: {
       type: "boolean" as const,
       default: false,
