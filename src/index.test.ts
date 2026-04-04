@@ -90,7 +90,7 @@ describe("register()", () => {
 
     register(api);
 
-    // Second registerTool call is memory_add
+    // Second registerTool call is memory_add (after memory_search)
     const tool = api.registerTool.mock.calls[1][0] as { name: string };
     expect(tool.name).toBe("memory_add");
   });
