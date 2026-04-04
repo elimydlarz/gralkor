@@ -31,9 +31,15 @@ async function poll(fn: () => boolean, timeoutMs = 30_000): Promise<void> {
 }
 
 beforeAll(async () => {
-  // Wait until MEMORY.md contains the marker — confirms indexer ran to completion
+  // Wait until both files contain the marker — confirms all indexer runs completed.
+  // MEMORY.md is indexed first, session-001.md second (sequential loop), so
+  // we must wait for both or the second test may run before session-001.md is done.
   const memoryFile = join(WORKSPACE, "MEMORY.md");
-  await poll(() => existsSync(memoryFile) && readFileSync(memoryFile, "utf8").includes(GRALKOR_MARKER));
+  const sessionFile = join(WORKSPACE, "memory", "session-001.md");
+  await poll(() =>
+    existsSync(memoryFile) && readFileSync(memoryFile, "utf8").includes(GRALKOR_MARKER) &&
+    existsSync(sessionFile) && readFileSync(sessionFile, "utf8").includes(GRALKOR_MARKER)
+  );
 });
 
 describe("native memory indexing", () => {
