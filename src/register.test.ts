@@ -72,6 +72,7 @@ describe("registerCli", () => {
       search: vi.fn().mockResolvedValue(emptySearchResults()),
     };
     config = {
+      ...defaultConfig,
       autoCapture: { enabled: true },
       autoRecall: { enabled: true, maxResults: 10 },
     };
