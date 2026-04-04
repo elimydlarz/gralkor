@@ -548,7 +548,6 @@ install-sequencing-docs
 | `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types |
 | `ontology.edges` | `Record<string, OntologyTypeDef>` | — | Custom edge types |
 | `ontology.edgeMap` | `Record<string, string[]>` | — | `"EntityA,EntityB"` → edges |
-| `ontology.excludedEntityTypes` | `string[]` | — | Exclude from extraction |
 | `test` | boolean | `false` | Verbose logging both layers |
 | `googleApiKey` | secret | — | Google API key for Gemini |
 | `openaiApiKey` | secret | — | OpenAI API key |
