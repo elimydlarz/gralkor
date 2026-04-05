@@ -119,7 +119,7 @@ export function createMemorySearchTool(
     },
     async execute(
       _toolCallId: string,
-      args: { query: string; session_key?: string },
+      args: { query: string; session_key: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error("[gralkor] memory_search failed: server is not ready");
