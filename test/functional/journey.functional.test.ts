@@ -263,7 +263,7 @@ describe("hyphenated-agent-id-sanitization", () => {
     // sanitizeGroupId("my-hyphen-agent") → "my_hyphen_agent" and stores under that group.
     execFileSync("openclaw", [
       "agent", "--agent", AGENT_ID,
-      "--message", `${SENTINEL} is the test sentinel for hyphenated agent ID sanitization.`,
+      "--message", `${SENTINEL} is the test sentinel for hyphenated agent ID sanitization. Please acknowledge.`,
       "--json",
     ], { timeout: 120_000 });
 
