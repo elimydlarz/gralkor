@@ -44,8 +44,9 @@ export function registerHooks(
   opts: RecallOpts = {},
 ): DebouncedFlush<SessionBuffer> {
   const llmClient = opts.llmClient !== undefined ? opts.llmClient : createLLMClient(config);
+  const { getGroupId } = opts;
   const debouncer = new DebouncedFlush<SessionBuffer>(config.idleTimeoutMs, (key, buf) =>
-    flushSessionBuffer(key, buf, client, { test: config.test, llmClient }),
+    flushSessionBuffer(key, buf, client, { test: config.test, llmClient, getGroupId }),
   );
 
   api.on("before_prompt_build", createBeforePromptBuildHandler(client, config, { ...opts, llmClient }));
