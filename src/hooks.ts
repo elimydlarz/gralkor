@@ -350,7 +350,7 @@ export function createBeforePromptBuildHandler(
   config: GralkorConfig,
   opts: RecallOpts = {},
 ) {
-  const { setSessionData, serverReady, llmClient } = opts;
+  const { setSessionData, getGroupId, serverReady, llmClient } = opts;
 
   return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
@@ -372,7 +372,7 @@ export function createBeforePromptBuildHandler(
       return;
     }
 
-    const groupId = sanitizeGroupId(agentId ?? "default");
+    const groupId = getGroupId?.(sessionKey) ?? sanitizeGroupId(agentId ?? "default");
 
     try {
       const limit = config.autoRecall.maxResults;
