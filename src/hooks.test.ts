@@ -1985,11 +1985,12 @@ describe("idle timeout flush", () => {
     vi.useFakeTimers();
     client = mockClient();
     client.ingestEpisode.mockResolvedValue({});
-    debouncer = new DebouncedFlush<SessionBuffer>(IDLE_MS, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
-        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
-      }),
-    );
+    debouncer = new DebouncedFlush<SessionBuffer>(IDLE_MS, (key, buf) => {
+      const groupId = sanitizeGroupId(buf.agentId ?? key);
+      return flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+        getGroupId: (_k) => groupId,
+      });
+    });
   });
 
   afterEach(() => {
