@@ -1061,12 +1061,13 @@ describe("before_prompt_build handler", () => {
       });
       const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("Relevant") };
 
-      // Create 3 messages each half the budget — total exceeds budget so oldest is dropped
-      const halfBudget = Math.ceil(INTERPRET_CHAR_BUDGET / 2) + 1;
+      // "middle" + "newest" together fill the budget, so "oldest" hits the ≤0 check and is excluded.
+      // Each line gets a "User: " prefix (~6 chars), so halfBudget fills the remaining space.
+      const halfBudget = Math.floor(INTERPRET_CHAR_BUDGET / 2);
       const messages = [
-        { role: "user", content: [{ type: "text", text: `oldest: ${"o".repeat(halfBudget)}` }] },
+        { role: "user", content: [{ type: "text", text: "oldest: small" }] },
         { role: "user", content: [{ type: "text", text: `middle: ${"m".repeat(halfBudget)}` }] },
-        { role: "user", content: [{ type: "text", text: "newest: small" }] },
+        { role: "user", content: [{ type: "text", text: `newest: ${"n".repeat(halfBudget)}` }] },
       ];
 
       const handler = createBeforePromptBuildHandler(
@@ -1077,7 +1078,7 @@ describe("before_prompt_build handler", () => {
       const callArg = (llmClient.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
       const userMsg = callArg.find((m) => m.role === "user");
       expect(userMsg?.content).not.toContain("oldest:");
-      expect(userMsg?.content).toContain("newest: small");
+      expect(userMsg?.content).toContain("newest:");
     });
   });
 
