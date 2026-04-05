@@ -348,7 +348,7 @@ export function buildInterpretationContext(
 export function createBeforePromptBuildHandler(
   client: GraphitiClient,
   config: GralkorConfig,
-  opts: RecallOpts = {},
+  opts: RecallOpts,
 ) {
   const { setSessionData, getGroupId, serverReady, llmClient } = opts;
 
