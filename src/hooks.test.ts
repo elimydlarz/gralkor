@@ -795,7 +795,7 @@ describe("before_prompt_build handler", () => {
       facts: [makeFact({ group_id: "agent-42", fact: "Project uses microservices" })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: (k) => sanitizeGroupId(k) });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
