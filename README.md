@@ -29,7 +29,7 @@ Here's the honest field report on every OpenClaw memory plugin:
 
 **On cost.** Yes, Gralkor costs more to run than a Markdown file. Behaviour distillation adds roughly 20% to ingestion token cost. Auto-recall adds an LLM call before each turn when results need interpretation.
 
-Think of it as context management, not overhead. The alternative is stuffing increasingly large conversation histories into every prompt — paying on every read, for everything, whether it's relevant or not. Gralkor pays once on write to extract and structure what matters, then pulls only the relevant slice at read time. That's a better trade as sessions accumulate.
+Think of it as better context management, not overhead. The alternative is loading the whole world into every prompt and hoping the model finds what it needs — paying on every read, for everything, whether it's relevant or not. Gralkor pays once on write to extract and structure what matters, then pulls only the right stuff at read time.
 
 And the leverage is real. A single recalled fact — "we chose postgres over mysql because of the jsonb column support we need for X" — prevents re-litigating that decision in a new session. An agent that remembers your architectural decisions, your preferences, your debugging history, and your reasoning across sessions doesn't just save time; it changes the character of the work. You stop spending turns re-establishing context and start doing the actual work you opened the terminal for.
 
