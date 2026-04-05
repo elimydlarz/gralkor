@@ -198,8 +198,9 @@ export function createBuildCommunitiesTool(
           description: "Session key from the gralkor-memory context block.",
         },
       },
+      required: ["session_key"] as const,
     },
-    async execute(_toolCallId: string, args: { session_key?: string }): Promise<string> {
+    async execute(_toolCallId: string, args: { session_key: string }): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error(`[gralkor] memory_build_communities failed: server is not ready`);
       }
