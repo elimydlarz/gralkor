@@ -401,11 +401,13 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
     it("throws when session_key is not registered", async () => {
       const gate = createReadyGate();
       gate.resolve();
-      const notFoundGetGroupId = (_sessionKey: string) => undefined;
+      const notFoundGetGroupId = (sessionKey: string): string => {
+        throw new Error(`[gralkor] session_key '${sessionKey}' not registered — ensure before_prompt_build has run for this session`);
+      };
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId: notFoundGetGroupId, serverReady: gate });
 
       await expect(tool.execute("call-1", { session_key: "unknown" })).rejects.toThrow(
-        "[gralkor] memory_build_communities failed: session_key 'unknown' not registered",
+        "session_key 'unknown' not registered",
       );
       expect(client.buildCommunities).not.toHaveBeenCalled();
     });
