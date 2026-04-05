@@ -869,7 +869,7 @@ describe("before_prompt_build handler", () => {
       autoRecall: { enabled: false, maxResults: 5 },
     };
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -935,7 +935,7 @@ describe("before_prompt_build handler", () => {
       autoRecall: { enabled: true, maxResults: 3 },
     };
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -1896,7 +1896,7 @@ describe("test mode logging", () => {
     });
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
@@ -1913,7 +1913,7 @@ describe("test mode logging", () => {
     });
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
