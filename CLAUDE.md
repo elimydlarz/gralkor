@@ -480,6 +480,10 @@ memory-journey
         then manual search reveals 42 as the current lucky number
         and earlier values (47, 99) appear in results as superseded (invalid_at set)
         and manual search returns both facts and entity nodes
+  agent-partition-isolation
+    given data stored under one group_id (session-keyed agent)
+      then it is searchable within that group
+      and it is NOT returned when searching a different group
 ```
 
 #### Distribution
