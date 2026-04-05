@@ -377,7 +377,7 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
       const gate = createReadyGate();
       gate.resolve();
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
-      const result = await tool.execute("call-1", {});
+      const result = await tool.execute("call-1", { session_key: "s" });
 
       expect(client.buildCommunities).toHaveBeenCalledWith("agent-42");
       expect(result).toContain("5 communities");
@@ -387,11 +387,23 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
     it("uses session_key to look up group ID", async () => {
       const gate = createReadyGate();
       gate.resolve();
-      const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : "default";
+      const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : undefined;
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId: sessionGetGroupId, serverReady: gate });
       await tool.execute("call-1", { session_key: "sess-abc" });
 
       expect(client.buildCommunities).toHaveBeenCalledWith("agent-99");
+    });
+
+    it("throws when session_key is not registered", async () => {
+      const gate = createReadyGate();
+      gate.resolve();
+      const notFoundGetGroupId = (_sessionKey: string) => undefined;
+      const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId: notFoundGetGroupId, serverReady: gate });
+
+      await expect(tool.execute("call-1", { session_key: "unknown" })).rejects.toThrow(
+        "[gralkor] memory_build_communities failed: session_key 'unknown' not registered",
+      );
+      expect(client.buildCommunities).not.toHaveBeenCalled();
     });
   });
 
@@ -400,7 +412,7 @@ describe("memory_build_communities (createBuildCommunitiesTool)", () => {
       const gate = createReadyGate();
       const tool = createBuildCommunitiesTool(client as unknown as GraphitiClient, { getGroupId, serverReady: gate });
 
-      await expect(tool.execute("call-1", {})).rejects.toThrow(
+      await expect(tool.execute("call-1", { session_key: "s" })).rejects.toThrow(
         "[gralkor] memory_build_communities failed: server is not ready",
       );
       expect(client.buildCommunities).not.toHaveBeenCalled();
