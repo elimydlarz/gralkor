@@ -372,7 +372,7 @@ export function createBeforePromptBuildHandler(
       return;
     }
 
-    const groupId = getGroupId?.(sessionKey) ?? sanitizeGroupId(agentId ?? "default");
+    const groupId = getGroupId ? getGroupId(sessionKey) : sanitizeGroupId(agentId ?? "default");
 
     try {
       const limit = config.autoRecall.maxResults;
