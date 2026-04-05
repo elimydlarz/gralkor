@@ -141,6 +141,8 @@ auto-recall-further-querying
     then response contains facts and interpretation instruction
     and response does not contain further querying instruction
 unified-search (memory_search tool)
+  when session_key is not registered in the session map
+    then throws error (does not route to default group)
   when searching
     when graph returns results
       then response includes graph facts under "Facts:" header and interpretation instruction
