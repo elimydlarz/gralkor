@@ -42,7 +42,7 @@ export interface ToolOpts {
 export function createMemoryStoreTool(
   client: GraphitiClient,
   config: GralkorConfig,
-  opts: ToolOpts = {},
+  opts: ToolOpts,
 ) {
   const { getGroupId, serverReady } = opts;
   return {
