@@ -4,10 +4,12 @@ import type { GralkorConfig } from "./config.js";
 import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
 import {
   createMemoryStoreTool,
+  createMemorySearchTool,
   createBuildIndicesTool,
   createBuildCommunitiesTool,
   formatFacts,
   formatTimestamp,
+  INTERPRETATION_INSTRUCTION,
 } from "./tools.js";
 
 function mockClient(): {
