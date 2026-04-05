@@ -24,7 +24,7 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 | Community | (Graphiti-internal) | Entity cluster. Not exposed. |
 | Group | `string` | Partition key from `agentId` (fallback `"default"`). One graph per agent. |
 | SessionBuffer | `SessionBuffer` | In-memory `messages` snapshot. `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. |
-| NativeMemory | (indexer) | Native MD files indexed into graph at startup via `runNativeIndexer()`. Tracked by `GRALKOR_MARKER` embedded in each file. Workspace-level files (`MEMORY.md`, `memory/*.md`) → first agent's group (alphabetically from `agents/` dirs); skipped if no agents exist. Per-agent files (`agents/{id}/MEMORY.md`) → `sanitizeGroupId(agentId)`. No "default" partition. |
+| NativeMemory | (indexer) | Native MD files indexed into the agent's graph partition on each session start (fired fire-and-forget from `before_prompt_build`). Tracked by `GRALKOR_MARKER` embedded in each file — already-indexed files cost only a disk read. Scans `{ctx.workspaceDir}/MEMORY.md` and `{ctx.workspaceDir}/memory/*.md`; all files go to the current session's `groupId`. No per-agent dir scanning, no "default" partition. |
 
 ### Plugin Registration
 
