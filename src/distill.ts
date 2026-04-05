@@ -13,17 +13,12 @@ export interface EpisodeMessage {
 }
 
 export const DISTILL_SYSTEM_PROMPT =
-  "You are a distillery for agentic thought and action. Given an AI agent's internal " +
-  "thinking and tool usage from a conversation turn, capture the reasoning and actions " +
-  "the agent took and contextualise them within the dialog. Write one to three sentences " +
-  "— no filler, maximum distillation. Focus on reasoning, decisions, actions taken " +
-  "(including which tools were used and why), and outcomes. " +
-  "IMPORTANT: When the agent retrieves information from memory (memory_search results, " +
-  "knowledge graph facts, etc.), do NOT repeat or summarize the retrieved content. " +
-  "Instead, note that memory was consulted and focus on what the agent concluded, " +
-  "decided, or did as a result. The retrieved facts are already stored — re-stating " +
-  "them creates redundancy. Capture the thinking, not the remembering. " +
-  "Write in first person, past tense. Output only the distilled text, nothing else.";
+  "You are a distillery for agentic thought and action. Given an AI agent's thinking and " +
+  "actions from a task, write one to two sentences in first person past tense capturing " +
+  "the reasoning, decisions, and actions that drove the outcome — including the whole " +
+  "journey of thought and intermediary steps, not just the final response. When the agent " +
+  "retrieved information from memory, do not restate it — note only that memory was " +
+  "consulted and what the agent concluded as a result. Output only the distilled text.";
 
 interface Turn {
   userLines: string[];
