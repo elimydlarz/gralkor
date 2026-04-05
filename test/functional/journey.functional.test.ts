@@ -64,8 +64,8 @@ beforeAll(async () => {
   // plugin buffers it via DebouncedFlush (idleTimeoutMs=10s in the harness) and
   // flushes the formatted transcript to /episodes as source:"message".
   execFileSync("openclaw", [
-    "agent", "--message",
-    "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.",
+    "agent", "--agent", "main",
+    "--message", "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.",
     "--json",
   ], { timeout: 120_000 });
   await poll("lucky number 99 searchable after capture ingest", async () => {
