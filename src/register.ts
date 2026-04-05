@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
-import { runNativeIndexer } from "./native-indexer.js";
 import { GRAPHITI_URL, GRAPHITI_PORT, resolveProviders } from "./config.js";
 import {
   createBeforePromptBuildHandler,
