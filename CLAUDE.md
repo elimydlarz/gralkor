@@ -440,8 +440,8 @@ sanitizeGroupId
     then hyphens are replaced with underscores
   when agentId has no hyphens
     then returned unchanged
-  then applied at setSessionData boundary in index.ts
-  then applied at groupId derivation in hooks.ts (auto-recall and flush)
+  then applied exactly once: at the setSessionData write boundary in index.ts
+  then all readers (tools, auto-recall, flush) get the pre-sanitized value from the map
 ```
 
 #### Operations
