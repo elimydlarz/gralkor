@@ -374,8 +374,13 @@ secret-resolution
   then process.env is not read for API keys
 native-memory-indexing
   discoverFiles
-    then finds {workspaceDir}/MEMORY.md with group default
-    then finds {workspaceDir}/memory/*.md with group default
+    when no agent dirs exist in {workspaceDir}/agents/
+      then skips {workspaceDir}/MEMORY.md (no default partition)
+      then skips {workspaceDir}/memory/*.md (no default partition)
+    when agent dirs exist
+      then routes {workspaceDir}/MEMORY.md to first agent's sanitized group
+      then routes {workspaceDir}/memory/*.md to first agent's sanitized group
+      then uses alphabetically first agent when multiple agents exist
     then finds {workspaceDir}/agents/{id}/MEMORY.md with group sanitizeGroupId(id)
     when workspaceDir does not exist
       then returns empty list
