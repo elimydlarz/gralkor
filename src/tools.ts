@@ -115,7 +115,7 @@ export function createMemorySearchTool(
           description: "Session key from the gralkor-memory context block. Pass this to search the correct agent memory partition.",
         },
       },
-      required: ["query"] as const,
+      required: ["query", "session_key"] as const,
     },
     async execute(
       _toolCallId: string,
