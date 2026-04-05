@@ -57,22 +57,25 @@ beforeAll(async () => {
     } catch { return false; }
   }, 90_000);
 
-  // 2. Capture: ingest a conversation that updates lucky number to 99
-  await fetch(`${SERVER_URL}/ingest-messages`, {
+  // 2. Capture: ingest a conversation that updates lucky number to 99.
+  // POST to /episodes with source:"message" and a pre-formatted episode_body —
+  // this is exactly what the plugin does after formatTranscript() runs on agent_end.
+  const captureRes = await fetch(`${SERVER_URL}/episodes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "journey-capture",
+      episode_body:
+        "User: Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.\n" +
+        "Assistant: Noted. Eli's lucky number is now LuckyNumber99.",
       source_description: "functional test capture",
       group_id: GROUP,
+      source: "message",
       idempotency_key: "journey-capture-99",
       reference_time: new Date().toISOString(),
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99." }] },
-        { role: "assistant", content: [{ type: "text", text: "Noted. Eli's lucky number is now LuckyNumber99." }] },
-      ],
     }),
   });
+  if (!captureRes.ok) throw new Error(`/episodes (capture) failed: ${captureRes.status}`);
   await poll("lucky number 99 searchable after capture ingest", async () => {
     try {
       const { facts } = await search("lucky number");
