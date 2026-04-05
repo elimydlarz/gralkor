@@ -41,7 +41,7 @@ export function registerHooks(
   api: PluginApiBase,
   client: GraphitiClient,
   config: GralkorConfig,
-  opts: RecallOpts = {},
+  opts: RecallOpts,
 ): DebouncedFlush<SessionBuffer> {
   const llmClient = opts.llmClient !== undefined ? opts.llmClient : createLLMClient(config);
   const { getGroupId } = opts;
