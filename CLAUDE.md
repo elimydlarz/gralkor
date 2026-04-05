@@ -483,7 +483,7 @@ rate-limit-retry
 memory-journey
   given workspace seeded with "Eli has the lucky number LuckyNumber47" before gateway start
     then injection reveals 47 as the current lucky number (indexing + search)
-    when capture ingests a conversation establishing lucky number as 99
+    when a real openclaw agent run establishes lucky number as 99 (full capture pipeline: agent_end → formatTranscript → ingestEpisode)
       then 99 is searchable as the current lucky number
       when memory_add stores lucky number changed to 42
         then manual search reveals 42 as the current lucky number
