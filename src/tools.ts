@@ -65,7 +65,7 @@ export function createMemoryStoreTool(
           description: "Session key from the gralkor-memory context block. Pass this to store in the correct agent memory partition.",
         },
       },
-      required: ["content"] as const,
+      required: ["content", "session_key"] as const,
     },
     async execute(
       _toolCallId: string,
