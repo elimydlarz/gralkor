@@ -995,6 +995,26 @@ describe("before_prompt_build handler", () => {
     expect(setSessionData).toHaveBeenCalledWith("default", "default");
   });
 
+  it("uses groupId from map (via getGroupId) rather than re-deriving from agentId", async () => {
+    client.search.mockResolvedValue(emptySearchResults());
+    const map = new Map<string, string>([["sess-abc", "mapped_group_id"]]);
+    const setSessionData = vi.fn((key: string, id: string) => map.set(key, id));
+    const getGroupId = (key: string) => map.get(key);
+
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData, getGroupId });
+    await handler(
+      { prompt: "Tell me about the project architecture", messages: [] },
+      { agentId: "agent-42", sessionKey: "sess-abc" },
+    );
+
+    expect(client.search).toHaveBeenCalledWith(
+      expect.any(String),
+      ["mapped_group_id"],
+      expect.any(Number),
+      "fast",
+    );
+  });
+
   it("injects Session-key into prependContext", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
