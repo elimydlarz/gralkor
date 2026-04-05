@@ -1736,7 +1736,10 @@ describe("flushSessionBuffer", () => {
       agentId: "agent-42",
     };
 
-    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { retryDelayMs: 0 });
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
+      retryDelayMs: 0,
+      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+    });
 
     expect(client.ingestEpisode).toHaveBeenCalledTimes(3);
   });
