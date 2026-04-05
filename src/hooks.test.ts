@@ -1714,6 +1714,25 @@ describe("flushSessionBuffer", () => {
     );
   });
 
+  it("uses groupId from session map (via getGroupId) rather than re-deriving from agentId", async () => {
+    const buffer: SessionBuffer = {
+      messages: [
+        { role: "user", content: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", content: [{ type: "text", text: "Hi" }] },
+      ],
+      agentId: "agent-42",
+    };
+    // Return a value that would NOT match sanitizeGroupId(buf.agentId) — proves we're reading the map
+    const getGroupId = vi.fn().mockReturnValue("overridden_group");
+
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { getGroupId });
+
+    expect(getGroupId).toHaveBeenCalledWith("key-1");
+    expect(client.ingestEpisode).toHaveBeenCalledWith(
+      expect.objectContaining({ group_id: "overridden_group" }),
+    );
+  });
+
   it("skips flush when extracted conversation is empty", async () => {
     const buffer: SessionBuffer = {
       messages: [],
