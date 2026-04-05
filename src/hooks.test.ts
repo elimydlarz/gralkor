@@ -1905,7 +1905,10 @@ describe("test mode logging", () => {
       agentId: "agent-42",
     };
 
-    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, { test: false });
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
+      test: false,
+      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+    });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test]"),
