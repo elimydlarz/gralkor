@@ -1701,7 +1701,7 @@ describe("flushSessionBuffer", () => {
     };
 
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
-      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+      getGroupId: (_k) => "agent_42",
     });
 
     expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
