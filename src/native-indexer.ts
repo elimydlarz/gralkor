@@ -19,54 +19,67 @@ export interface DiscoveredFile {
  * Returns empty list if workspaceDir does not exist.
  *
  * Paths scanned:
- *   {workspaceDir}/MEMORY.md                  → group "default"
- *   {workspaceDir}/memory/*.md                → group "default"
  *   {workspaceDir}/agents/{agentId}/MEMORY.md → group sanitizeGroupId(agentId)
+ *   {workspaceDir}/MEMORY.md                  → group of first agent (alphabetically); skipped if no agents
+ *   {workspaceDir}/memory/*.md                → group of first agent (alphabetically); skipped if no agents
+ *
+ * There is no "default" partition. Workspace-level files (MEMORY.md, memory/*.md) are
+ * routed to the first agent found in {workspaceDir}/agents/, so they land in a real
+ * agent partition. If no agent directories exist yet, workspace-level files are skipped.
  */
 export async function discoverFiles(workspaceDir: string): Promise<DiscoveredFile[]> {
   if (!existsSync(workspaceDir)) return [];
 
   const files: DiscoveredFile[] = [];
 
-  // Root MEMORY.md
-  const rootMemory = join(workspaceDir, "MEMORY.md");
-  if (existsSync(rootMemory)) {
-    files.push({ absPath: rootMemory, relPath: "MEMORY.md", groupId: "default" });
-  }
-
-  // memory/*.md
-  const memoryDir = join(workspaceDir, "memory");
-  if (existsSync(memoryDir)) {
-    try {
-      const entries = await readdir(memoryDir);
-      for (const entry of entries.sort()) {
-        if (entry.endsWith(".md")) {
-          files.push({
-            absPath: join(memoryDir, entry),
-            relPath: `memory/${entry}`,
-            groupId: "default",
-          });
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
-  // agents/*/MEMORY.md
+  // Discover agent directories first — they determine routing for workspace-level files
   const agentsDir = join(workspaceDir, "agents");
+  const agentIds: string[] = [];
   if (existsSync(agentsDir)) {
     try {
-      const agentDirs = await readdir(agentsDir);
-      for (const agentId of agentDirs.sort()) {
-        const agentMemory = join(agentsDir, agentId, "MEMORY.md");
-        if (existsSync(agentMemory)) {
-          files.push({
-            absPath: agentMemory,
-            relPath: `agents/${agentId}/MEMORY.md`,
-            groupId: sanitizeGroupId(agentId),
-          });
-        }
-      }
+      agentIds.push(...(await readdir(agentsDir)).sort());
     } catch { /* ignore */ }
+  }
+
+  // Workspace-level files route to the first known agent's group.
+  // With no agents registered, workspace-level files are skipped (no default partition).
+  const workspaceGroupId = agentIds.length > 0 ? sanitizeGroupId(agentIds[0]) : null;
+
+  if (workspaceGroupId) {
+    // Root MEMORY.md
+    const rootMemory = join(workspaceDir, "MEMORY.md");
+    if (existsSync(rootMemory)) {
+      files.push({ absPath: rootMemory, relPath: "MEMORY.md", groupId: workspaceGroupId });
+    }
+
+    // memory/*.md
+    const memoryDir = join(workspaceDir, "memory");
+    if (existsSync(memoryDir)) {
+      try {
+        const entries = await readdir(memoryDir);
+        for (const entry of entries.sort()) {
+          if (entry.endsWith(".md")) {
+            files.push({
+              absPath: join(memoryDir, entry),
+              relPath: `memory/${entry}`,
+              groupId: workspaceGroupId,
+            });
+          }
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  // agents/*/MEMORY.md — each to its own group
+  for (const agentId of agentIds) {
+    const agentMemory = join(agentsDir, agentId, "MEMORY.md");
+    if (existsSync(agentMemory)) {
+      files.push({
+        absPath: agentMemory,
+        relPath: `agents/${agentId}/MEMORY.md`,
+        groupId: sanitizeGroupId(agentId),
+      });
+    }
   }
 
   return files;
