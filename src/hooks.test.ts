@@ -997,11 +997,10 @@ describe("before_prompt_build handler", () => {
 
   it("uses groupId from map (via getGroupId) rather than re-deriving from agentId", async () => {
     client.search.mockResolvedValue(emptySearchResults());
-    const map = new Map<string, string>([["sess-abc", "mapped_group_id"]]);
-    const setSessionData = vi.fn((key: string, id: string) => map.set(key, id));
-    const getGroupId = (key: string) => map.get(key);
+    // Return a value that would NOT match sanitizeGroupId(agentId) — proves we're reading the map
+    const getGroupId = (key: string) => key === "sess-abc" ? "overridden_group" : undefined;
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData, getGroupId });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42", sessionKey: "sess-abc" },
@@ -1009,7 +1008,7 @@ describe("before_prompt_build handler", () => {
 
     expect(client.search).toHaveBeenCalledWith(
       expect.any(String),
-      ["mapped_group_id"],
+      ["overridden_group"],
       expect.any(Number),
       "fast",
     );
