@@ -244,47 +244,45 @@ describe("concurrent-agent-isolation", () => {
   });
 }, 200_000);
 
-// Item 3: hyphens vs underscores in group IDs are truly different FalkorDB named
-// graphs. The plugin sanitizes agentId hyphens→underscores (sanitizeGroupId) before
-// writing. If that sanitization ever drifts between write and read, data silently
-// lands in the wrong graph. This test makes that failure mode visible.
-describe("hyphenated-group-id-isolation", () => {
-  const GROUP_UNDERSCORED = "journey_hyphen_agent"; // what sanitizeGroupId() produces
-  const GROUP_HYPHENATED  = "journey-hyphen-agent";  // the raw, unsanitized form
+// Item 3: prove the plugin correctly sanitizes hyphenated agentIds end-to-end.
+// sanitizeGroupId("my-hyphen-agent") → "my_hyphen_agent" at setSessionData write time.
+// The harness pre-creates the "my-hyphen-agent" agent via `openclaw agents add`.
+// We trigger a real agent run with that agentId; the capture pipeline writes the
+// episode under the sanitized group "my_hyphen_agent". We then verify:
+//   - the fact IS searchable under "my_hyphen_agent" (sanitized)
+//   - the fact is NOT searchable under "my-hyphen-agent" (unsanitized — a different graph)
+describe("hyphenated-agent-id-sanitization", () => {
+  const AGENT_ID       = "my-hyphen-agent";         // agentId with hyphens
+  const GROUP_SANITIZED   = "my_hyphen_agent";       // what sanitizeGroupId() produces
+  const GROUP_UNSANITIZED = "my-hyphen-agent";       // different FalkorDB named graph
   const SENTINEL = "SentinelHyphen777";
 
   beforeAll(async () => {
-    // Write under the sanitized (underscore) form — this is what the plugin does.
-    const res = await fetch(`${SERVER_URL}/episodes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "hyphen-isolation-test",
-        episode_body: `${SENTINEL} was stored under the sanitized group id.`,
-        source_description: "functional test",
-        group_id: GROUP_UNDERSCORED,
-        source: "text",
-        idempotency_key: "hyphen-isolation-sentinel",
-        reference_time: new Date().toISOString(),
-      }),
-    });
-    if (!res.ok) throw new Error(`/episodes (hyphen) failed: ${res.status}`);
+    // Trigger a real agent run under the hyphenated agent.
+    // agent_end fires with ctx.agentId = "my-hyphen-agent"; the plugin calls
+    // sanitizeGroupId("my-hyphen-agent") → "my_hyphen_agent" and stores under that group.
+    execFileSync("openclaw", [
+      "agent", "--agent", AGENT_ID,
+      "--message", `${SENTINEL} is the test sentinel for hyphenated agent ID sanitization.`,
+      "--json",
+    ], { timeout: 120_000 });
 
-    await poll(`${SENTINEL} indexed in ${GROUP_UNDERSCORED}`, async () => {
+    // Poll for the episode to appear under the sanitized group (flush within ~10s).
+    await poll(`${SENTINEL} indexed in sanitized group ${GROUP_SANITIZED}`, async () => {
       try {
-        const { facts } = await search(SENTINEL, "fast", GROUP_UNDERSCORED);
+        const { facts } = await search(SENTINEL, "fast", GROUP_SANITIZED);
         return facts.some(f => f.fact.includes(SENTINEL));
       } catch { return false; }
     }, 120_000);
-  }, 180_000);
+  }, 300_000);
 
-  it("sentinel is found under the sanitized (underscore) group", async () => {
-    const { facts } = await search(SENTINEL, "fast", GROUP_UNDERSCORED);
+  it("fact is searchable under the sanitized (underscore) group", async () => {
+    const { facts } = await search(SENTINEL, "fast", GROUP_SANITIZED);
     expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(true);
   });
 
-  it("sentinel is NOT found under the hyphenated (unsanitized) group — they are separate graphs", async () => {
-    const { facts } = await search(SENTINEL, "fast", GROUP_HYPHENATED);
+  it("fact is NOT found under the unsanitized (hyphen) group — different FalkorDB named graph", async () => {
+    const { facts } = await search(SENTINEL, "fast", GROUP_UNSANITIZED);
     expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(false);
   });
 });
