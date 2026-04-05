@@ -81,12 +81,18 @@ cmd_up() {
         openclaw config set plugins.entries.gralkor.config.googleApiKey \"\$GEMINI_API_KEY\" >/dev/null 2>&1
       fi
 
+      # Short idle timeout so the debounce-flush fires quickly in tests (default is 5 min).
+      openclaw config set plugins.entries.gralkor.config.idleTimeoutMs 10000 >/dev/null 2>&1
+
       # Seed workspace files before gateway start (native indexer reads these at boot)
       mkdir -p \$HOME/.openclaw/workspace/memory
       printf '# About Me\nMy name is Eli and I live in Test City.\n' \
         > \$HOME/.openclaw/workspace/MEMORY.md
       printf '# Session Notes\nEli has the lucky number LuckyNumber47.\n' \
         > \$HOME/.openclaw/workspace/memory/session-001.md
+
+      # Add a hyphenated-ID agent so the sanitization test can target it.
+      openclaw agents add my-hyphen-agent --non-interactive --json >/dev/null 2>&1 || true
 
       # Start gateway (triggers server + native indexer)
       openclaw gateway &
