@@ -160,7 +160,10 @@ unified-search (memory_search tool)
     then throws error
 auto-recall-search-strategy
   when auto-recall executes
-    then uses fast mode (RRF, edges only via graphiti.search())
+    then registers the session in the groupIdBySession map (setSessionData)
+    and injects Session-key into the <gralkor-memory> block
+    and retrieves groupId from the map for the search (not re-derived from agentId)
+    and uses fast mode (RRF, edges only via graphiti.search())
     and returns at most autoRecall.maxResults facts (default 10) and 0 entities
 extractUserMessageFromPrompt
   when prompt has leading "System: ..." lines
