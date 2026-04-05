@@ -1330,12 +1330,13 @@ describe("agent_end handler", () => {
   it("logs error when Graphiti is unreachable on flush (after retries) without crashing", async () => {
     client.ingestEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+    const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) => {
+      const groupId = sanitizeGroupId(buf.agentId ?? key);
+      return flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
         retryDelayMs: 0,
-        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
-      }),
-    );
+        getGroupId: (_k) => groupId,
+      });
+    });
 
     const handler = createAgentEndHandler(defaultConfig, errorDebouncer);
     await handler({
