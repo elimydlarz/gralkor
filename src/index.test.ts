@@ -285,9 +285,16 @@ describe("register()", () => {
       const { register } = await import("./index.js");
       register(testApi);
 
+      // Populate the session map so the tool can look up the group ID
+      const beforePromptBuild = testApi.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
+        | ((event: { prompt: string; messages: unknown[] }, ctx: { agentId: string; sessionKey: string }) => Promise<unknown>)
+        | undefined;
+      await beforePromptBuild?.({ prompt: "test", messages: [] }, { agentId: "test-agent", sessionKey: "test-session" });
+      fetchMock.mockClear();
+
       const searchTool = testApi.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
 
-      await searchTool.execute("tool-1", { query: "React patterns" });
+      await searchTool.execute("tool-1", { query: "React patterns", session_key: "test-session" });
 
       const testLogs = consoleSpy.mock.calls.filter(
         (args) => typeof args[0] === "string" && args[0].includes("[test] memory_search query:"),
