@@ -1790,7 +1790,7 @@ describe("flushSessionBuffer", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
       retryDelayMs: 0,
-      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+      getGroupId: (_k) => "agent_42",
     });
     expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("message dropped"));
