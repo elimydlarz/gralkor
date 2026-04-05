@@ -69,7 +69,7 @@ export function createMemoryStoreTool(
     },
     async execute(
       _toolCallId: string,
-      args: { content: string; source_description?: string; session_key?: string },
+      args: { content: string; source_description?: string; session_key: string },
     ): Promise<string> {
       if (serverReady && !serverReady.isReady()) {
         throw new Error(`[gralkor] memory_add failed: server is not ready`);
