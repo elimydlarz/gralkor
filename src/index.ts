@@ -53,7 +53,11 @@ function registerFullPlugin(
   // Session-keyed group ID: hooks store (sessionKey → groupId), tools look up by session_key param.
   // Sanitization happens once here at write time — all readers get the sanitized value.
   const groupIdBySession = new Map<string, string>();
-  const getGroupId = (sessionKey: string) => groupIdBySession.get(sessionKey);
+  const getGroupId = (sessionKey: string): string => {
+    const groupId = groupIdBySession.get(sessionKey);
+    if (groupId === undefined) throw new Error(`[gralkor] session_key '${sessionKey}' not registered — ensure before_prompt_build has run for this session`);
+    return groupId;
+  };
   const setSessionData = (sessionKey: string, groupId: string) => {
     groupIdBySession.set(sessionKey, sanitizeGroupId(groupId));
   };
