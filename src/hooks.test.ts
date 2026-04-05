@@ -1696,7 +1696,9 @@ describe("flushSessionBuffer", () => {
       agentId: "agent-42",
     };
 
-    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
+      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+    });
 
     expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     expect(client.ingestEpisode).toHaveBeenCalledWith(
@@ -1713,7 +1715,9 @@ describe("flushSessionBuffer", () => {
       messages: [],
     };
 
-    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient);
+    await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
+      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+    });
 
     expect(client.ingestEpisode).not.toHaveBeenCalled();
   });
