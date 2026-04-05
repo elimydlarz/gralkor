@@ -486,9 +486,9 @@ rate-limit-retry
 
 ```
 memory-journey
-  given workspace seeded with "Eli has the lucky number LuckyNumber47" before gateway start
-    then injection reveals 47 as the current lucky number (indexing + search)
-    when a real openclaw agent run establishes lucky number as 99 (full capture pipeline: agent_end → formatTranscript → ingestEpisode)
+  given agents/main/MEMORY.md seeded with "Eli has the lucky number LuckyNumber47" before gateway start
+    then injection reveals 47 as the current lucky number (indexed to group "main" via agents/{id}/MEMORY.md path)
+    when lucky number 99 is ingested directly as an episode to group "main"
       then 99 is searchable as the current lucky number
       when memory_add stores lucky number changed to 42
         then manual search reveals 42 as the current lucky number
