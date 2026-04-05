@@ -103,7 +103,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 | behaviour-distillation | Plugin-side: `formatTranscript()` in `src/distill.ts` groups+distils behaviour blocks per turn via `llmClient`; `episode_body` string posted to `/episodes` |
 | idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
 | auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
-| unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native MD files are indexed into the graph at boot via `runNativeIndexer()` |
+| unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native MD files are indexed into the agent's graph partition on each session start via `runNativeIndexer()` fired from `before_prompt_build` |
 | manual-store | `memory_add` creates episodes with `source=text` |
 | agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph. `before_prompt_build` registers session in `groupIdBySession` Map and injects `Session-key` into memory block; tools require `session_key` and throw on unregistered keys; hooks and flush read groupId from the same map |
 | graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
