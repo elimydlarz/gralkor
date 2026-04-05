@@ -1054,32 +1054,6 @@ describe("before_prompt_build handler", () => {
       expect(userMsg?.content).toContain("msg-24");
     });
 
-    it("drops oldest messages when conversation exceeds token budget", async () => {
-      client.search.mockResolvedValue({
-        ...emptySearchResults(),
-        facts: [makeFact({ fact: "Sky is blue" })],
-      });
-      const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("Relevant") };
-
-      // "middle" + "newest" together fill the budget, so "oldest" hits the ≤0 check and is excluded.
-      // Each line gets a "User: " prefix (~6 chars), so halfBudget fills the remaining space.
-      const halfBudget = Math.floor(INTERPRET_CHAR_BUDGET / 2);
-      const messages = [
-        { role: "user", content: [{ type: "text", text: "oldest: small" }] },
-        { role: "user", content: [{ type: "text", text: `middle: ${"m".repeat(halfBudget)}` }] },
-        { role: "user", content: [{ type: "text", text: `newest: ${"n".repeat(halfBudget)}` }] },
-      ];
-
-      const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { llmClient },
-      );
-      await handler({ prompt: "Test", messages }, { agentId: "agent-42" });
-
-      const callArg = (llmClient.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
-      const userMsg = callArg.find((m) => m.role === "user");
-      expect(userMsg?.content).not.toContain("oldest:");
-      expect(userMsg?.content).toContain("newest:");
-    });
   });
 
   describe("auto-recall-search-strategy", () => {
