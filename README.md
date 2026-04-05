@@ -8,8 +8,6 @@ Gralkor automatically remembers and recalls everything your agent says, _thinks_
 
 ## Why Gralkor
 
-After years of building with every AI memory system out there, reading the latest research daily, and doing my own cognitive architecture experiments, I am here to tell you a thing or two about AI memory, and why you should use Gralkor for your OpenClaw agents and forget everything else. I should say up front: I love this space and have enormous respect for everyone shipping in it — what follows is honest craft critique, not shade.
-
 Here's the honest field report on every OpenClaw memory plugin:
 
 | Plugin | Storage | Captures thinking | Episode scope | Temporal facts | Local |
