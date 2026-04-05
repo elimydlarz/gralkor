@@ -50,9 +50,10 @@ function registerFullPlugin(
 ) {
   const serverReady = createReadyGate();
 
-  // Session-keyed group ID: hooks store (sessionKey → groupId), tools look up by session_key param
+  // Session-keyed group ID: hooks store (sessionKey → groupId), tools look up by session_key param.
+  // Sanitization happens once here at write time — all readers get the sanitized value.
   const groupIdBySession = new Map<string, string>();
-  const getGroupId = (sessionKey: string) => groupIdBySession.get(sessionKey) ?? "default";
+  const getGroupId = (sessionKey: string) => groupIdBySession.get(sessionKey);
   const setSessionData = (sessionKey: string, groupId: string) => {
     groupIdBySession.set(sessionKey, sanitizeGroupId(groupId));
   };
@@ -60,10 +61,10 @@ function registerFullPlugin(
   const toolOpts = { getGroupId, serverReady };
   api.registerTool(createMemorySearchTool(client, config, toolOpts));
   api.registerTool(createMemoryStoreTool(client, config, toolOpts));
-  api.registerTool(createBuildIndicesTool(client, toolOpts));
+  api.registerTool(createBuildIndicesTool(client, { serverReady }));
   api.registerTool(createBuildCommunitiesTool(client, toolOpts));
 
-  const debouncer = registerHooks(api, client, config, { setSessionData, serverReady });
+  const debouncer = registerHooks(api, client, config, { setSessionData, getGroupId, serverReady });
 
   // Flush pending session buffers on SIGTERM to prevent data loss on shutdown
   if (!sigTermHandlerInstalled) {
