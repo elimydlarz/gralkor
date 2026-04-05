@@ -1055,7 +1055,7 @@ describe("before_prompt_build handler", () => {
       const llmClient = mockLLMClient("React is relevant because you are asking about the frontend framework.");
 
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+        client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
       const result = await handler(
         { prompt: "What framework?", messages: [{ role: "user", content: [{ type: "text", text: "What framework?" }] }] },
@@ -1078,7 +1078,7 @@ describe("before_prompt_build handler", () => {
       const llmClient: LLMClient = { generate: vi.fn().mockRejectedValue(new Error("API down")) };
 
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+        client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
       const result = await handler(
         { prompt: "What framework?", messages: [] },
@@ -1104,7 +1104,7 @@ describe("before_prompt_build handler", () => {
       }));
 
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { llmClient },
+        client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
       await handler({ prompt: "Test", messages }, { agentId: "agent-42" });
 
