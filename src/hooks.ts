@@ -528,7 +528,7 @@ export async function flushSessionBuffer(
     retryDelayMs?: number;
     test?: boolean;
     llmClient?: LLMClient | null;
-    getGroupId?: (sessionKey: string) => string | undefined;
+    getGroupId?: (sessionKey: string) => string;
   } = {},
 ): Promise<void> {
   const filtered = extractMessagesFromCtx({ messages: buffer.messages });
@@ -537,7 +537,7 @@ export async function flushSessionBuffer(
     return;
   }
 
-  const groupId = getGroupId?.(key) ?? sanitizeGroupId(buffer.agentId ?? "default");
+  const groupId = getGroupId ? getGroupId(key) : sanitizeGroupId(buffer.agentId ?? "default");
   const userFiltered = filtered.filter(m => m.role === "user").length;
   const assistantFiltered = filtered.filter(m => m.role === "assistant").length;
   const assistantBlocks = filtered.filter(m => m.role === "assistant").flatMap(m => m.content);
