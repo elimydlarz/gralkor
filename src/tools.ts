@@ -155,7 +155,7 @@ export function createMemorySearchTool(
 
 export function createBuildIndicesTool(
   client: GraphitiClient,
-  opts: ToolOpts = {},
+  opts: { serverReady?: ReadyGate } = {},
 ) {
   const { serverReady } = opts;
   return {
