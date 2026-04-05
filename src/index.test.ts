@@ -481,7 +481,7 @@ describe("register()", () => {
       it("when graph returns results, then response includes graph facts and interpretation instruction", async () => {
         const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
 
-        const result = await searchTool.execute("tool-1", { query: "React" });
+        const result = await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
         expect(result).toContain("Team uses React");
         expect(result).toContain("interpret these facts for relevance");
@@ -490,7 +490,7 @@ describe("register()", () => {
       it("when neither returns results, then response is 'No facts found.'", async () => {
         const searchTool = await setupSearchTool({ graphFacts: [] });
 
-        const result = await searchTool.execute("tool-1", { query: "nothing" });
+        const result = await searchTool.execute("tool-1", { query: "nothing", session_key: TEST_SESSION_KEY });
 
         expect(result).toBe("No facts found.");
       });
@@ -498,7 +498,7 @@ describe("register()", () => {
       describe("when mode is 'slow'", () => {
         it("then uses slow mode (fetch body contains mode: slow)", async () => {
           const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
-          await searchTool.execute("tool-1", { query: "React" });
+          await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
           // fetch is stubbed globally — verify the POST body sent to /search
           const fetchMock = vi.mocked(globalThis.fetch as ReturnType<typeof vi.fn>);
@@ -512,7 +512,7 @@ describe("register()", () => {
             graphNodes: [{ uuid: "n1", name: "ReactProject", summary: "A frontend project using React", group_id: "default" }],
           });
 
-          const result = await searchTool.execute("tool-1", { query: "React" });
+          const result = await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
           expect(result).toContain("Entities:");
           expect(result).toContain("ReactProject");
@@ -522,14 +522,14 @@ describe("register()", () => {
         it("when no facts and no nodes are returned, then response is 'No facts found.'", async () => {
           const searchTool = await setupSearchTool({ graphFacts: [], graphNodes: [] });
 
-          const result = await searchTool.execute("tool-1", { query: "nothing" });
+          const result = await searchTool.execute("tool-1", { query: "nothing", session_key: TEST_SESSION_KEY });
 
           expect(result).toBe("No facts found.");
         });
 
         it("and returns at most search.maxResults facts (default 20)", async () => {
           const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
-          await searchTool.execute("tool-1", { query: "React" });
+          await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
           const fetchMock = vi.mocked(globalThis.fetch as ReturnType<typeof vi.fn>);
           const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
@@ -545,7 +545,7 @@ describe("register()", () => {
           }));
           const searchTool = await setupSearchTool({ graphFacts: [sampleFact], graphNodes: manyNodes });
 
-          const result = await searchTool.execute("tool-1", { query: "React" });
+          const result = await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
           const entityLines = result.split("\n").filter(l => l.startsWith("- Entity"));
           expect(entityLines).toHaveLength(10);
