@@ -173,3 +173,210 @@ describe("agent-partition-isolation", () => {
     expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(false);
   });
 });
+
+// Item 1: concurrent agents writing simultaneously must not bleed into each other.
+describe("concurrent-agent-isolation", () => {
+  const GROUP_A = "journey_concurrent_alpha";
+  const GROUP_B = "journey_concurrent_beta";
+  const SENTINEL_A = "ConcurrentSentinelAlpha111";
+  const SENTINEL_B = "ConcurrentSentinelBeta222";
+
+  beforeAll(async () => {
+    // Both agents ingest at the same time — concurrent writes to different groups.
+    const [resA, resB] = await Promise.all([
+      fetch(`${SERVER_URL}/episodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "concurrent-alpha",
+          episode_body: `${SENTINEL_A} belongs exclusively to agent alpha.`,
+          source_description: "functional test",
+          group_id: GROUP_A,
+          source: "text",
+          idempotency_key: "concurrent-sentinel-alpha",
+          reference_time: new Date().toISOString(),
+        }),
+      }),
+      fetch(`${SERVER_URL}/episodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "concurrent-beta",
+          episode_body: `${SENTINEL_B} belongs exclusively to agent beta.`,
+          source_description: "functional test",
+          group_id: GROUP_B,
+          source: "text",
+          idempotency_key: "concurrent-sentinel-beta",
+          reference_time: new Date().toISOString(),
+        }),
+      }),
+    ]);
+    if (!resA.ok) throw new Error(`/episodes (alpha) failed: ${resA.status}`);
+    if (!resB.ok) throw new Error(`/episodes (beta) failed: ${resB.status}`);
+
+    // Poll until both are searchable in their own groups.
+    await Promise.all([
+      poll(`${SENTINEL_A} indexed in ${GROUP_A}`, async () => {
+        try {
+          const { facts } = await search(SENTINEL_A, "fast", GROUP_A);
+          return facts.some(f => f.fact.includes(SENTINEL_A));
+        } catch { return false; }
+      }, 120_000),
+      poll(`${SENTINEL_B} indexed in ${GROUP_B}`, async () => {
+        try {
+          const { facts } = await search(SENTINEL_B, "fast", GROUP_B);
+          return facts.some(f => f.fact.includes(SENTINEL_B));
+        } catch { return false; }
+      }, 120_000),
+    ]);
+  }, 180_000);
+
+  it("alpha fact is searchable in alpha group", async () => {
+    const { facts } = await search(SENTINEL_A, "fast", GROUP_A);
+    expect(facts.some(f => f.fact.includes(SENTINEL_A))).toBe(true);
+  });
+
+  it("beta fact is searchable in beta group", async () => {
+    const { facts } = await search(SENTINEL_B, "fast", GROUP_B);
+    expect(facts.some(f => f.fact.includes(SENTINEL_B))).toBe(true);
+  });
+
+  it("alpha fact does NOT appear in beta group", async () => {
+    const { facts } = await search(SENTINEL_A, "fast", GROUP_B);
+    expect(facts.some(f => f.fact.includes(SENTINEL_A))).toBe(false);
+  });
+
+  it("beta fact does NOT appear in alpha group", async () => {
+    const { facts } = await search(SENTINEL_B, "fast", GROUP_A);
+    expect(facts.some(f => f.fact.includes(SENTINEL_B))).toBe(false);
+  });
+}, 200_000);
+
+// Item 3: hyphens vs underscores in group IDs are truly different FalkorDB named
+// graphs. The plugin sanitizes agentId hyphens→underscores (sanitizeGroupId) before
+// writing. If that sanitization ever drifts between write and read, data silently
+// lands in the wrong graph. This test makes that failure mode visible.
+describe("hyphenated-group-id-isolation", () => {
+  const GROUP_UNDERSCORED = "journey_hyphen_agent"; // what sanitizeGroupId() produces
+  const GROUP_HYPHENATED  = "journey-hyphen-agent";  // the raw, unsanitized form
+  const SENTINEL = "SentinelHyphen777";
+
+  beforeAll(async () => {
+    // Write under the sanitized (underscore) form — this is what the plugin does.
+    const res = await fetch(`${SERVER_URL}/episodes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "hyphen-isolation-test",
+        episode_body: `${SENTINEL} was stored under the sanitized group id.`,
+        source_description: "functional test",
+        group_id: GROUP_UNDERSCORED,
+        source: "text",
+        idempotency_key: "hyphen-isolation-sentinel",
+        reference_time: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) throw new Error(`/episodes (hyphen) failed: ${res.status}`);
+
+    await poll(`${SENTINEL} indexed in ${GROUP_UNDERSCORED}`, async () => {
+      try {
+        const { facts } = await search(SENTINEL, "fast", GROUP_UNDERSCORED);
+        return facts.some(f => f.fact.includes(SENTINEL));
+      } catch { return false; }
+    }, 120_000);
+  }, 180_000);
+
+  it("sentinel is found under the sanitized (underscore) group", async () => {
+    const { facts } = await search(SENTINEL, "fast", GROUP_UNDERSCORED);
+    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(true);
+  });
+
+  it("sentinel is NOT found under the hyphenated (unsanitized) group — they are separate graphs", async () => {
+    const { facts } = await search(SENTINEL, "fast", GROUP_HYPHENATED);
+    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(false);
+  });
+});
+
+// Item 4: session-flush write→read symmetry. The plugin maps sessionKey→groupId in
+// before_prompt_build, stores it in an in-memory Map, then uses that same groupId
+// for both the episode flush (write) and tool searches (read). This test exercises
+// the server-side invariant that write and read routes are symmetric: an episode
+// written to groupId X is retrievable by searching groupId X, and only groupId X.
+describe("session-flush-write-read-symmetry", () => {
+  const GROUP_SESSION_A = "journey_flush_session_a";
+  const GROUP_SESSION_B = "journey_flush_session_b";
+  const SENTINEL_SA = "FlushSessionAlpha333";
+  const SENTINEL_SB = "FlushSessionBeta444";
+
+  beforeAll(async () => {
+    // Simulate two concurrent session flushes to different groups.
+    // This mirrors what DebouncedFlush does on session_end for two active sessions.
+    const [resA, resB] = await Promise.all([
+      fetch(`${SERVER_URL}/episodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "flush-session-a",
+          episode_body:
+            `User: What is ${SENTINEL_SA}?\nAssistant: It is the session A sentinel fact.`,
+          source_description: "auto-capture flush",
+          group_id: GROUP_SESSION_A,
+          source: "message",
+          idempotency_key: "flush-session-a-sentinel",
+          reference_time: new Date().toISOString(),
+        }),
+      }),
+      fetch(`${SERVER_URL}/episodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "flush-session-b",
+          episode_body:
+            `User: What is ${SENTINEL_SB}?\nAssistant: It is the session B sentinel fact.`,
+          source_description: "auto-capture flush",
+          group_id: GROUP_SESSION_B,
+          source: "message",
+          idempotency_key: "flush-session-b-sentinel",
+          reference_time: new Date().toISOString(),
+        }),
+      }),
+    ]);
+    if (!resA.ok) throw new Error(`/episodes (session-a) failed: ${resA.status}`);
+    if (!resB.ok) throw new Error(`/episodes (session-b) failed: ${resB.status}`);
+
+    await Promise.all([
+      poll(`${SENTINEL_SA} indexed in ${GROUP_SESSION_A}`, async () => {
+        try {
+          const { facts } = await search(SENTINEL_SA, "fast", GROUP_SESSION_A);
+          return facts.some(f => f.fact.includes(SENTINEL_SA));
+        } catch { return false; }
+      }, 120_000),
+      poll(`${SENTINEL_SB} indexed in ${GROUP_SESSION_B}`, async () => {
+        try {
+          const { facts } = await search(SENTINEL_SB, "fast", GROUP_SESSION_B);
+          return facts.some(f => f.fact.includes(SENTINEL_SB));
+        } catch { return false; }
+      }, 120_000),
+    ]);
+  }, 180_000);
+
+  it("session A flush is readable from session A group (write→read symmetric)", async () => {
+    const { facts } = await search(SENTINEL_SA, "fast", GROUP_SESSION_A);
+    expect(facts.some(f => f.fact.includes(SENTINEL_SA))).toBe(true);
+  });
+
+  it("session B flush is readable from session B group (write→read symmetric)", async () => {
+    const { facts } = await search(SENTINEL_SB, "fast", GROUP_SESSION_B);
+    expect(facts.some(f => f.fact.includes(SENTINEL_SB))).toBe(true);
+  });
+
+  it("session A data does NOT appear when reading session B group", async () => {
+    const { facts } = await search(SENTINEL_SA, "fast", GROUP_SESSION_B);
+    expect(facts.some(f => f.fact.includes(SENTINEL_SA))).toBe(false);
+  });
+
+  it("session B data does NOT appear when reading session A group", async () => {
+    const { facts } = await search(SENTINEL_SB, "fast", GROUP_SESSION_A);
+    expect(facts.some(f => f.fact.includes(SENTINEL_SB))).toBe(false);
+  });
+});
