@@ -26,11 +26,11 @@ interface Fact {
   [key: string]: unknown;
 }
 
-async function search(query: string, mode: "fast" | "slow" = "fast"): Promise<{ facts: Fact[]; nodes: unknown[] }> {
+async function search(query: string, mode: "fast" | "slow" = "fast", group = GROUP): Promise<{ facts: Fact[]; nodes: unknown[] }> {
   const res = await fetch(`${SERVER_URL}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, group_ids: [GROUP], num_results: 10, mode }),
+    body: JSON.stringify({ query, group_ids: [group], num_results: 10, mode }),
   });
   if (!res.ok) throw new Error(`/search failed: ${res.status}`);
   return res.json() as Promise<{ facts: Fact[]; nodes: unknown[] }>;
