@@ -302,7 +302,7 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
  */
 export interface RecallOpts {
   setSessionData?: (sessionKey: string, groupId: string) => void;
-  getGroupId?: (sessionKey: string) => string | undefined;
+  getGroupId?: (sessionKey: string) => string;
   serverReady?: ReadyGate;
   llmClient?: LLMClient | null;
 }
