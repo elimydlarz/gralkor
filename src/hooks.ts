@@ -524,10 +524,11 @@ export async function flushSessionBuffer(
   key: string,
   buffer: SessionBuffer,
   client: GraphitiClient,
-  { retryDelayMs = 1000, test, llmClient = null }: {
+  { retryDelayMs = 1000, test, llmClient = null, getGroupId }: {
     retryDelayMs?: number;
     test?: boolean;
     llmClient?: LLMClient | null;
+    getGroupId?: (sessionKey: string) => string | undefined;
   } = {},
 ): Promise<void> {
   const filtered = extractMessagesFromCtx({ messages: buffer.messages });
@@ -536,7 +537,7 @@ export async function flushSessionBuffer(
     return;
   }
 
-  const groupId = sanitizeGroupId(buffer.agentId ?? "default");
+  const groupId = getGroupId?.(key) ?? sanitizeGroupId(buffer.agentId ?? "default");
   const userFiltered = filtered.filter(m => m.role === "user").length;
   const assistantFiltered = filtered.filter(m => m.role === "assistant").length;
   const assistantBlocks = filtered.filter(m => m.role === "assistant").flatMap(m => m.content);
