@@ -966,7 +966,7 @@ describe("before_prompt_build handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setSessionData = vi.fn();
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData, getGroupId: defaultGetGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42", sessionKey: "sess-abc" },
@@ -979,7 +979,7 @@ describe("before_prompt_build handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setSessionData = vi.fn();
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData, getGroupId: defaultGetGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -992,7 +992,7 @@ describe("before_prompt_build handler", () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setSessionData = vi.fn();
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionData, getGroupId: defaultGetGroupId });
     await handler({ prompt: "Tell me about the project architecture", messages: [] });
 
     expect(setSessionData).toHaveBeenCalledWith("default", "default");
