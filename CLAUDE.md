@@ -499,11 +499,11 @@ memory-journey
       and beta fact is searchable in beta group
       and alpha fact does NOT appear in beta group
       and beta fact does NOT appear in alpha group
-  hyphenated-group-id-isolation
-    given data stored under the sanitized (underscore) form of a group id
-      then it is found when searching the underscore form
-      and it is NOT found when searching the hyphenated (unsanitized) form
-      (proving sanitization must be consistent between write and read)
+  hyphenated-agent-id-sanitization
+    given a real agent run through openclaw agent --agent my-hyphen-agent
+      then the episode is stored under the sanitized group "my_hyphen_agent"
+      and the fact IS searchable under "my_hyphen_agent"
+      and the fact is NOT searchable under "my-hyphen-agent" (a different FalkorDB named graph)
   session-flush-write-read-symmetry
     given two concurrent session flushes to different groups (source: message)
       then session A data is readable from session A group
