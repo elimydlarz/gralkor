@@ -739,6 +739,45 @@ describe("extractLastUserMessageFromMessages", () => {
   });
 });
 
+describe("buildInterpretationContext (token budget)", () => {
+  it("includes all messages when within budget", () => {
+    const messages = [
+      { role: "user", content: [{ type: "text", text: "msg-1" }] },
+      { role: "assistant", content: [{ type: "text", text: "msg-2" }] },
+      { role: "user", content: [{ type: "text", text: "msg-3" }] },
+    ];
+    const ctx = buildInterpretationContext(messages, "Facts:\n- sky is blue", 10_000);
+    expect(ctx).toContain("msg-1");
+    expect(ctx).toContain("msg-2");
+    expect(ctx).toContain("msg-3");
+  });
+
+  it("drops oldest messages when total exceeds budget", () => {
+    // Use a small budget: newest+middle fill it, oldest gets cut
+    const messages = [
+      { role: "user", content: [{ type: "text", text: "oldest: dropped" }] },
+      { role: "user", content: [{ type: "text", text: "middle: " + "m".repeat(50) }] },
+      { role: "user", content: [{ type: "text", text: "newest: " + "n".repeat(50) }] },
+    ];
+    // budget of 120 fits newest+middle (~57+57=114 chars) but not oldest
+    const ctx = buildInterpretationContext(messages, "Facts:\n- test", 120);
+    expect(ctx).not.toContain("oldest:");
+    expect(ctx).toContain("newest:");
+    expect(ctx).toContain("middle:");
+  });
+
+  it("always preserves most recent message even when it alone exceeds budget", () => {
+    const messages = [
+      { role: "user", content: [{ type: "text", text: "older" }] },
+      { role: "user", content: [{ type: "text", text: "newest: " + "n".repeat(200) }] },
+    ];
+    // budget smaller than the newest message
+    const ctx = buildInterpretationContext(messages, "Facts:\n- test", 50);
+    expect(ctx).toContain("newest:");
+    expect(ctx).not.toContain("older");
+  });
+});
+
 describe("before_prompt_build handler", () => {
   let client: ReturnType<typeof mockClient>;
 
