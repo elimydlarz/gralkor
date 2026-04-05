@@ -1806,10 +1806,12 @@ describe("session_end handler", () => {
   beforeEach(() => {
     client = mockClient();
     client.ingestEpisode.mockResolvedValue({});
-    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
-        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
-      }),
+    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) => {
+      const groupId = sanitizeGroupId(buf.agentId ?? key);
+      return flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+        getGroupId: (_k) => groupId,
+      });
+    },
     );
   });
 
