@@ -43,25 +43,55 @@ describe("discoverFiles", () => {
     });
   });
 
-  describe("then finds {workspaceDir}/MEMORY.md with group default", () => {
-    it("finds MEMORY.md", async () => {
+  describe("when no agent dirs exist", () => {
+    it("skips {workspaceDir}/MEMORY.md (no default partition)", async () => {
       vol.fromJSON({ "/ws/MEMORY.md": "# Notes\nHello world" });
       const files = await discoverFiles("/ws");
-      expect(files).toContainEqual(expect.objectContaining({ relPath: "MEMORY.md", groupId: "default" }));
+      expect(files).toEqual([]);
     });
-  });
 
-  describe("then finds {workspaceDir}/memory/*.md with group default", () => {
-    it("finds daily memory files", async () => {
+    it("skips {workspaceDir}/memory/*.md (no default partition)", async () => {
       vol.fromJSON({
         "/ws/memory/2026-01-01.md": "day one",
         "/ws/memory/2026-01-02.md": "day two",
       });
       const files = await discoverFiles("/ws");
-      const relPaths = files.map(f => f.relPath);
-      expect(relPaths).toContain("memory/2026-01-01.md");
-      expect(relPaths).toContain("memory/2026-01-02.md");
-      expect(files.every(f => f.groupId === "default")).toBe(true);
+      expect(files).toEqual([]);
+    });
+  });
+
+  describe("when agent dirs exist", () => {
+    it("routes {workspaceDir}/MEMORY.md to first agent's sanitized group", async () => {
+      vol.fromJSON({
+        "/ws/MEMORY.md": "# Notes\nHello world",
+        "/ws/agents/main/MEMORY.md": "# Agent memory",
+      });
+      const files = await discoverFiles("/ws");
+      expect(files).toContainEqual(expect.objectContaining({ relPath: "MEMORY.md", groupId: "main" }));
+    });
+
+    it("routes {workspaceDir}/memory/*.md to first agent's sanitized group", async () => {
+      vol.fromJSON({
+        "/ws/memory/2026-01-01.md": "day one",
+        "/ws/memory/2026-01-02.md": "day two",
+        "/ws/agents/my-agent/MEMORY.md": "# Agent",
+      });
+      const files = await discoverFiles("/ws");
+      const memFiles = files.filter(f => f.relPath.startsWith("memory/"));
+      expect(memFiles.map(f => f.relPath)).toContain("memory/2026-01-01.md");
+      expect(memFiles.map(f => f.relPath)).toContain("memory/2026-01-02.md");
+      expect(memFiles.every(f => f.groupId === "my_agent")).toBe(true);
+    });
+
+    it("uses alphabetically first agent when multiple agents exist", async () => {
+      vol.fromJSON({
+        "/ws/MEMORY.md": "# Notes",
+        "/ws/agents/alpha/MEMORY.md": "# alpha",
+        "/ws/agents/beta/MEMORY.md": "# beta",
+      });
+      const files = await discoverFiles("/ws");
+      const rootFile = files.find(f => f.relPath === "MEMORY.md");
+      expect(rootFile?.groupId).toBe("alpha");
     });
   });
 
