@@ -242,9 +242,16 @@ describe("register()", () => {
       const { register } = await import("./index.js");
       register(api);
 
+      // Populate the session map so the tool can look up the group ID
+      const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
+        | ((event: { prompt: string; messages: unknown[] }, ctx: { agentId: string; sessionKey: string }) => Promise<unknown>)
+        | undefined;
+      await beforePromptBuild?.({ prompt: "test", messages: [] }, { agentId: "test-agent", sessionKey: "test-session" });
+      fetchMock.mockClear();
+
       const searchTool = api.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
 
-      const result = await searchTool.execute("tool-1", { query: "React" });
+      const result = await searchTool.execute("tool-1", { query: "React", session_key: "test-session" });
 
       // Tool result should contain the fact and interpretation instruction
       expect(result).toContain("Team uses React");
