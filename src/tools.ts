@@ -75,8 +75,7 @@ export function createMemoryStoreTool(
         throw new Error(`[gralkor] memory_add failed: server is not ready`);
       }
 
-      const sessionKey = args.session_key ?? "default";
-      const groupId = getGroupId?.(sessionKey) ?? "default";
+      const groupId = getGroupId?.(args.session_key) ?? "default";
       console.log(`[gralkor] memory_add storing — groupId:${groupId} bodySize:${args.content.length}`);
 
       if (config.test) {
