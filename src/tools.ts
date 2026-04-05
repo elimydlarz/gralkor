@@ -202,8 +202,7 @@ export function createBuildCommunitiesTool(
       if (serverReady && !serverReady.isReady()) {
         throw new Error(`[gralkor] memory_build_communities failed: server is not ready`);
       }
-      const sessionKey = args.session_key ?? "default";
-      const groupId = getGroupId?.(sessionKey) ?? "default";
+      const groupId = getGroupId?.(args.session_key) ?? "default";
       console.log(`[gralkor] memory_build_communities starting — groupId:${groupId}`);
       const result = await client.buildCommunities(groupId);
       console.log(`[gralkor] memory_build_communities done — communities:${result.communities} edges:${result.edges}`);
