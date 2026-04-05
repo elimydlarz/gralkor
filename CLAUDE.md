@@ -358,9 +358,12 @@ startup
     then the error is logged
     and serverReady remains unresolved
   native memory indexing
-    then indexer is started fire-and-forget after serverReady resolves
-    when workspace files exist at startup
-      then each file is processed by indexFile
+    then indexer is fired fire-and-forget from before_prompt_build on each session start
+    then already-indexed files (marker at end) cost only a disk read — no server call
+    when ctx.workspaceDir is set
+      then uses ctx.workspaceDir as the workspace to scan
+    when ctx.workspaceDir is not set
+      then falls back to config.workspaceDir
     when workspaceDir does not exist
       then indexer skips without error
 secret-resolution
