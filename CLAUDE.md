@@ -259,6 +259,8 @@ behaviour-distillation
     user messages
       then rendered as "User: {text}"
 flushSessionBuffer
+  when groupId is retrieved from the session map for the buffer key
+    then uses that groupId for the episode (not re-derived from agentId)
   when flush succeeds on first attempt
     then returns without retry
   when flush fails with retryable error
