@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { GraphitiClient, Fact } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import type { LLMClient } from "./llm-client.js";
-import { defaultConfig, createReadyGate, resetReadyGate } from "./config.js";
+import { defaultConfig, createReadyGate, resetReadyGate, sanitizeGroupId } from "./config.js";
+
+// Default getGroupId for tests that don't care about partitioning — always returns "default"
+const defaultGetGroupId = (_sessionKey: string) => "default";
 import {
   createBeforePromptBuildHandler,
   createAgentEndHandler,
