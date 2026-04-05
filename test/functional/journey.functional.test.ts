@@ -129,3 +129,44 @@ describe("memory journey", () => {
     expect(Array.isArray(nodes)).toBe(true);
   });
 });
+
+describe("agent-partition-isolation", () => {
+  const AGENT_GROUP = "journey_agent_partition_test";
+  const SENTINEL = "CodewordAlphaSentinel999";
+
+  beforeAll(async () => {
+    // Store a unique fact under a separate agent group
+    const res = await fetch(`${SERVER_URL}/episodes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "partition-isolation-test",
+        episode_body: `${SENTINEL} is only known to agent partition ${AGENT_GROUP}.`,
+        source_description: "functional test",
+        group_id: AGENT_GROUP,
+        source: "text",
+        idempotency_key: "partition-isolation-sentinel",
+        reference_time: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) throw new Error(`/episodes failed: ${res.status}`);
+
+    // Poll until searchable in the agent group
+    await poll(`${SENTINEL} indexed in group ${AGENT_GROUP}`, async () => {
+      try {
+        const { facts } = await search(SENTINEL, "fast", AGENT_GROUP);
+        return facts.some(f => f.fact.includes(SENTINEL));
+      } catch { return false; }
+    }, 120_000);
+  }, 180_000);
+
+  it("fact is searchable within its own group", async () => {
+    const { facts } = await search(SENTINEL, "fast", AGENT_GROUP);
+    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(true);
+  });
+
+  it("fact is NOT returned when searching a different group", async () => {
+    const { facts } = await search(SENTINEL, "fast", GROUP);
+    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(false);
+  });
+});
