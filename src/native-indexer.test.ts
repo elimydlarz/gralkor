@@ -244,8 +244,8 @@ describe("runNativeIndexer", () => {
   describe("when a file errors", () => {
     it("then logs error and continues with remaining files", async () => {
       vol.fromJSON({
-        "/ws/MEMORY.md": "# First\nFirst content.",
-        "/ws/memory/second.md": "# Second\nSecond content.",
+        "/ws/agents/alpha/MEMORY.md": "# First\nFirst content.",
+        "/ws/agents/beta/MEMORY.md": "# Second\nSecond content.",
       });
       const client = mockClient();
       // First file fails, second should still be processed
