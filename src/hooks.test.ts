@@ -1764,7 +1764,7 @@ describe("flushSessionBuffer", () => {
 
     // Without llmClient: thinking/tool_use silently dropped, text blocks preserved
     await flushSessionBuffer("key-1", buffer, client as unknown as GraphitiClient, {
-      getGroupId: (k) => sanitizeGroupId(buffer.agentId ?? k),
+      getGroupId: (_k) => "agent_42",
     });
 
     const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
