@@ -4,7 +4,8 @@
  * A single coherent story through all five core capabilities using one thread
  * of data — the user's "lucky number":
  *
- *   Workspace seeded with 47 → captured conversation updates to 99
+ *   Workspace seeded with 47 → real agent run triggers session-start indexing
+ *   → 47 lands in group "main" → captured conversation updates to 99
  *   → manual add updates to 42 → manual search reveals the full history.
  *
  * Assumes:
