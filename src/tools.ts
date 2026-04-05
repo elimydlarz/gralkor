@@ -35,7 +35,7 @@ export function formatNode(n: EntityNode): string {
 }
 
 export interface ToolOpts {
-  getGroupId?: (sessionKey: string) => string;
+  getGroupId?: (sessionKey: string) => string | undefined;
   serverReady?: ReadyGate;
 }
 
