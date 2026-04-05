@@ -1228,11 +1228,12 @@ describe("agent_end handler", () => {
     client.ingestEpisode.mockResolvedValue({});
     // Use a very large delay so idle timers don't fire during tests.
     // No fake timers needed — these tests exercise buffering + explicit flush.
-    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
-        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
-      }),
-    );
+    debouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) => {
+      const groupId = sanitizeGroupId(buf.agentId ?? key);
+      return flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+        getGroupId: (_k) => groupId,
+      });
+    });
   });
 
   afterEach(() => {
