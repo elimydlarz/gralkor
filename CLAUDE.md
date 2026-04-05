@@ -373,15 +373,9 @@ secret-resolution
   then env vars are built synchronously and passed to the server manager
   then process.env is not read for API keys
 native-memory-indexing
-  discoverFiles
-    when no agent dirs exist in {workspaceDir}/agents/
-      then skips {workspaceDir}/MEMORY.md (no default partition)
-      then skips {workspaceDir}/memory/*.md (no default partition)
-    when agent dirs exist
-      then routes {workspaceDir}/MEMORY.md to first agent's sanitized group
-      then routes {workspaceDir}/memory/*.md to first agent's sanitized group
-      then uses alphabetically first agent when multiple agents exist
-    then finds {workspaceDir}/agents/{id}/MEMORY.md with group sanitizeGroupId(id)
+  discoverFiles(workspaceDir, groupId)
+    then finds {workspaceDir}/MEMORY.md with caller-provided groupId
+    then finds {workspaceDir}/memory/*.md with caller-provided groupId
     when workspaceDir does not exist
       then returns empty list
   indexFile
@@ -396,7 +390,7 @@ native-memory-indexing
       and moves marker to new end of file
     when ingest fails
       then does not move the marker (file left unchanged)
-  runNativeIndexer
+  runNativeIndexer(client, workspaceDir, groupId)
     when workspaceDir does not exist
       then skips gracefully without error
     when a file errors
