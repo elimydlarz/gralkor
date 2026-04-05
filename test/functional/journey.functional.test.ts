@@ -48,10 +48,18 @@ async function poll(condition: string, fn: () => Promise<boolean>, timeoutMs = 6
 }
 
 beforeAll(async () => {
-  // Allow ~20s for native indexer to finish before search polls compete for Gemini quota.
-  await new Promise(r => setTimeout(r, 20_000));
+  // 1. Run a real agent session. This triggers:
+  //    - before_prompt_build → native indexer fires → indexes workspace/memory/session-001.md
+  //      (lucky number 47) into group "main"
+  //    - agent processes the message about LuckyNumber99
+  //    - agent_end → debounced flush → episode captured to group "main"
+  execFileSync("openclaw", [
+    "agent", "--agent", "main",
+    "--message", "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99. Please acknowledge.",
+    "--json",
+  ], { timeout: 120_000 });
 
-  // 1. Wait for native indexing to complete (lucky number 47 from session-001.md)
+  // 2. Wait for native-indexed lucky number 47 to appear
   await poll("lucky number 47 indexed from workspace file", async () => {
     try {
       const { facts } = await search("lucky number");
@@ -59,34 +67,15 @@ beforeAll(async () => {
     } catch { return false; }
   }, 90_000);
 
-  // 2. Capture: post the conversation directly as an episode (source:"message") —
-  // same payload the plugin produces after formatTranscript() runs on agent_end.
-  // The real end-to-end capture pipeline (gateway → agent_end hook → flush) is
-  // exercised separately in the "capture-pipeline" describe block below.
-  const captureRes = await fetch(`${SERVER_URL}/episodes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: "journey-capture",
-      episode_body:
-        "User: Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.\n" +
-        "Assistant: Noted. Eli's lucky number is now LuckyNumber99.",
-      source_description: "functional test capture",
-      group_id: GROUP,
-      source: "message",
-      idempotency_key: "journey-capture-99",
-      reference_time: new Date().toISOString(),
-    }),
-  });
-  if (!captureRes.ok) throw new Error(`/episodes (capture) failed: ${captureRes.status}`);
-  await poll("lucky number 99 searchable after capture ingest", async () => {
+  // 3. Wait for captured lucky number 99 (debouncer flushes after idleTimeoutMs=10s)
+  await poll("lucky number 99 searchable after capture", async () => {
     try {
       const { facts } = await search("lucky number");
       return facts.some(f => f.fact.includes("99"));
     } catch { return false; }
   }, 90_000);
 
-  // 3. Manual add: store that lucky number changed to 42
+  // 4. Manual add: store that lucky number changed to 42
   await fetch(`${SERVER_URL}/episodes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
