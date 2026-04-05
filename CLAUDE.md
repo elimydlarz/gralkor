@@ -493,6 +493,23 @@ memory-journey
     given data stored under one group_id (session-keyed agent)
       then it is searchable within that group
       and it is NOT returned when searching a different group
+  concurrent-agent-isolation
+    given two agents writing to different groups simultaneously
+      then alpha fact is searchable in alpha group
+      and beta fact is searchable in beta group
+      and alpha fact does NOT appear in beta group
+      and beta fact does NOT appear in alpha group
+  hyphenated-group-id-isolation
+    given data stored under the sanitized (underscore) form of a group id
+      then it is found when searching the underscore form
+      and it is NOT found when searching the hyphenated (unsanitized) form
+      (proving sanitization must be consistent between write and read)
+  session-flush-write-read-symmetry
+    given two concurrent session flushes to different groups (source: message)
+      then session A data is readable from session A group
+      and session B data is readable from session B group
+      and session A data does NOT appear when reading session B group
+      and session B data does NOT appear when reading session A group
 ```
 
 #### Distribution
