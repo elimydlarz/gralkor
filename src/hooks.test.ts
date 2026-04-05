@@ -795,7 +795,7 @@ describe("before_prompt_build handler", () => {
       facts: [makeFact({ group_id: "agent-42", fact: "Project uses microservices" })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -829,7 +829,7 @@ describe("before_prompt_build handler", () => {
       ],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about it", messages: [] },
       { agentId: "agent-42" },
@@ -853,7 +853,7 @@ describe("before_prompt_build handler", () => {
       })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "What framework does the team use?", messages: [] },
       { agentId: "agent-42" },
@@ -880,7 +880,7 @@ describe("before_prompt_build handler", () => {
   });
 
   it("skips when no user message in context", async () => {
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler({ prompt: "", messages: [] }, { agentId: "agent-42" });
 
     expect(result).toBeUndefined();
@@ -890,7 +890,7 @@ describe("before_prompt_build handler", () => {
   it("searches using key terms from user message", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -904,7 +904,7 @@ describe("before_prompt_build handler", () => {
   it("shows explicit empty messages when no results from any source", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -918,7 +918,7 @@ describe("before_prompt_build handler", () => {
   it("throws when Graphiti is unreachable", async () => {
     client.search.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
 
     await expect(
       handler(
@@ -952,7 +952,7 @@ describe("before_prompt_build handler", () => {
   it("passes full user message as search query", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -1020,7 +1020,7 @@ describe("before_prompt_build handler", () => {
   it("injects Session-key into prependContext", async () => {
     client.search.mockResolvedValue(emptySearchResults());
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42", sessionKey: "sess-xyz" },
@@ -1037,7 +1037,7 @@ describe("before_prompt_build handler", () => {
         facts: [makeFact({ fact: "Team uses React" })],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       const result = await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1124,7 +1124,7 @@ describe("before_prompt_build handler", () => {
         facts: [makeFact({ fact: "Team uses React" })],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1145,7 +1145,7 @@ describe("before_prompt_build handler", () => {
         nodes: [{ uuid: "n1", name: "ReactProject", summary: "A frontend project", group_id: "default" }],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       const result = await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1165,7 +1165,7 @@ describe("before_prompt_build handler", () => {
         facts: [makeFact({ fact: "Team uses React" })],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       const result = await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1929,7 +1929,7 @@ describe("test mode logging", () => {
       facts: [makeFact({ fact: "Sky is blue" })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig);
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
