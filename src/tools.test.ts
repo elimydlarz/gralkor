@@ -137,11 +137,13 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("throws when session_key is not registered", async () => {
-    const notFoundGetGroupId = (_sessionKey: string) => undefined;
+    const notFoundGetGroupId = (sessionKey: string): string => {
+      throw new Error(`[gralkor] session_key '${sessionKey}' not registered — ensure before_prompt_build has run for this session`);
+    };
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId });
 
     await expect(tool.execute("call-1", { content: "x", session_key: "unknown" })).rejects.toThrow(
-      "[gralkor] memory_add failed: session_key 'unknown' not registered",
+      "session_key 'unknown' not registered",
     );
     expect(client.addEpisode).not.toHaveBeenCalled();
   });
