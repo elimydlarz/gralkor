@@ -317,7 +317,11 @@ const INTERPRET_TOKEN_BUDGET = 250_000;
 const INTERPRET_CHARS_PER_TOKEN = 4;
 export const INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * INTERPRET_CHARS_PER_TOKEN;
 
-function buildInterpretationContext(messages: MessageEntry[], factsText: string): string {
+export function buildInterpretationContext(
+  messages: MessageEntry[],
+  factsText: string,
+  charBudget = INTERPRET_CHAR_BUDGET,
+): string {
   const lines: string[] = [];
   for (const msg of messages) {
     const blocks = normalizeContent(msg.content);
@@ -329,7 +333,7 @@ function buildInterpretationContext(messages: MessageEntry[], factsText: string)
   }
 
   // Trim from oldest until within token budget; most recent always preserved
-  let budget = INTERPRET_CHAR_BUDGET;
+  let budget = charBudget;
   const trimmed: string[] = [];
   for (let i = lines.length - 1; i >= 0; i--) {
     if (budget <= 0) break;
