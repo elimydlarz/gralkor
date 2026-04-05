@@ -4,7 +4,7 @@
 
 Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run automatically as a managed subprocess — no Docker required.
 
-Gralkor automatically remembers and recalls everything your agents says, _thinks_, and _does_ — no prompt engineering required by the operator, no conscious (haha) effort required by the agent.
+Gralkor automatically remembers and recalls everything your agent says, _thinks_, and _does_ — no prompt engineering required by the operator, no conscious (haha) effort required by the agent.
 
 ## Why Gralkor
 
