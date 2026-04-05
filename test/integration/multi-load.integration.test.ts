@@ -109,7 +109,7 @@ describe("multi-load resilience", () => {
         const handler = createBeforePromptBuildHandler(
           client as unknown as GraphitiClient,
           defaultConfig,
-          { serverReady: gateB },
+          { serverReady: gateB, getGroupId: () => "agent_42" },
         );
 
         await expect(
