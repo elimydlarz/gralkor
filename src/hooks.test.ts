@@ -1962,7 +1962,9 @@ describe("idle timeout flush", () => {
     client = mockClient();
     client.ingestEpisode.mockResolvedValue({});
     debouncer = new DebouncedFlush<SessionBuffer>(IDLE_MS, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient),
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
+      }),
     );
   });
 
