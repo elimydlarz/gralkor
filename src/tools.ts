@@ -125,7 +125,8 @@ export function createMemorySearchTool(
         throw new Error("[gralkor] memory_search failed: server is not ready");
       }
 
-      const groupId = getGroupId?.(args.session_key) ?? "default";
+      const groupId = getGroupId?.(args.session_key);
+      if (groupId === undefined) throw new Error(`[gralkor] memory_search failed: session_key '${args.session_key}' not registered`);
       const maxFacts = config.search.maxResults;
       const maxEntities = config.search.maxEntityResults;
       const results = await client.search(args.query, [groupId], maxFacts, "slow");
