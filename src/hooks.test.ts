@@ -1329,7 +1329,10 @@ describe("agent_end handler", () => {
     client.ingestEpisode.mockRejectedValue(new Error("ECONNREFUSED"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const errorDebouncer = new DebouncedFlush<SessionBuffer>(2_000_000_000, (key, buf) =>
-      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, { retryDelayMs: 0 }),
+      flushSessionBuffer(key, buf, client as unknown as GraphitiClient, {
+        retryDelayMs: 0,
+        getGroupId: (k) => sanitizeGroupId(buf.agentId ?? k),
+      }),
     );
 
     const handler = createAgentEndHandler(defaultConfig, errorDebouncer);
