@@ -181,7 +181,7 @@ export function createBuildIndicesTool(
 
 export function createBuildCommunitiesTool(
   client: GraphitiClient,
-  opts: ToolOpts = {},
+  opts: ToolOpts,
 ) {
   const { getGroupId, serverReady } = opts;
   return {
