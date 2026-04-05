@@ -433,7 +433,9 @@ describe("register()", () => {
   });
 
   describe("unified-search (memory_search tool)", () => {
-    // Helper: register plugin and return the memory_search tool (plain object)
+    // Helper: register plugin, populate session map via before_prompt_build, and return the memory_search tool
+    const TEST_SESSION_KEY = "test-session";
+
     async function setupSearchTool(opts: {
       graphFacts?: Array<{ uuid: string; name: string; fact: string; group_id: string; valid_at: string | null; invalid_at: string | null; expired_at: string | null; created_at: string }>;
       graphNodes?: Array<{ uuid: string; name: string; summary: string | null; group_id: string }>;
@@ -453,6 +455,18 @@ describe("register()", () => {
 
       const { register } = await import("./index.js");
       register(api);
+
+      // Fire before_prompt_build to populate the session map so tools can look up the group ID
+      const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
+        | ((event: { prompt: string; messages: unknown[] }, ctx: { agentId: string; sessionKey: string }) => Promise<unknown>)
+        | undefined;
+      if (beforePromptBuild) {
+        await beforePromptBuild(
+          { prompt: "test query", messages: [] },
+          { agentId: "test-agent", sessionKey: TEST_SESSION_KEY },
+        );
+        fetchMock.mockClear(); // reset call count after the setup search
+      }
 
       return api.registerTool.mock.calls[0][0] as { name: string; execute: (id: string, args: unknown) => Promise<string> };
     }
