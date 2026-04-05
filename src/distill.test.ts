@@ -290,7 +290,7 @@ describe("DISTILL_SYSTEM_PROMPT", () => {
   });
 
   it("instructs not to repeat recalled memory content", () => {
-    expect(DISTILL_SYSTEM_PROMPT).toContain("memory");
-    expect(DISTILL_SYSTEM_PROMPT).toContain("NOT");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("do not restate");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("memory was consulted");
   });
 });
