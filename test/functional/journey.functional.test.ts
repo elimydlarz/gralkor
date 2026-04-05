@@ -58,16 +58,26 @@ beforeAll(async () => {
     } catch { return false; }
   }, 90_000);
 
-  // 2. Capture: trigger a real agent run so the full capture pipeline fires.
-  // openclaw agent --message "..." sends one message, waits for the LLM response,
-  // then exits. The gateway fires agent_end with the full message list; the Gralkor
-  // plugin buffers it via DebouncedFlush (idleTimeoutMs=10s in the harness) and
-  // flushes the formatted transcript to /episodes as source:"message".
-  execFileSync("openclaw", [
-    "agent", "--agent", "main",
-    "--message", "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.",
-    "--json",
-  ], { timeout: 120_000 });
+  // 2. Capture: post the conversation directly as an episode (source:"message") —
+  // same payload the plugin produces after formatTranscript() runs on agent_end.
+  // The real end-to-end capture pipeline (gateway → agent_end hook → flush) is
+  // exercised separately in the "capture-pipeline" describe block below.
+  const captureRes = await fetch(`${SERVER_URL}/episodes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "journey-capture",
+      episode_body:
+        "User: Eli's lucky number changed from LuckyNumber47 to LuckyNumber99.\n" +
+        "Assistant: Noted. Eli's lucky number is now LuckyNumber99.",
+      source_description: "functional test capture",
+      group_id: GROUP,
+      source: "message",
+      idempotency_key: "journey-capture-99",
+      reference_time: new Date().toISOString(),
+    }),
+  });
+  if (!captureRes.ok) throw new Error(`/episodes (capture) failed: ${captureRes.status}`);
   await poll("lucky number 99 searchable after capture ingest", async () => {
     try {
       const { facts } = await search("lucky number");
