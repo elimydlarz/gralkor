@@ -1180,7 +1180,7 @@ describe("before_prompt_build handler", () => {
     it("throws when server is not ready", async () => {
       const gate = createReadyGate();
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate, getGroupId: defaultGetGroupId },
       );
 
       await expect(
@@ -1203,7 +1203,7 @@ describe("before_prompt_build handler", () => {
       });
 
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate },
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate, getGroupId: defaultGetGroupId },
       );
       const result = await handler(
         { prompt: "Tell me about the project", messages: [] },
