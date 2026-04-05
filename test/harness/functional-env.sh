@@ -92,12 +92,11 @@ cmd_up() {
         openclaw models set google/gemini-2.0-flash >/dev/null 2>&1
       fi
 
-      # Seed workspace files before gateway start (native indexer reads these at boot)
-      mkdir -p \$HOME/.openclaw/workspace/memory
-      printf '# About Me\nMy name is Eli and I live in Test City.\n' \
-        > \$HOME/.openclaw/workspace/MEMORY.md
+      # Seed lucky number into the main agent's workspace memory before gateway start.
+      # Native indexer routes agents/{agentId}/MEMORY.md to group sanitizeGroupId(agentId) = "main".
+      mkdir -p \$HOME/.openclaw/workspace/agents/main
       printf '# Session Notes\nEli has the lucky number LuckyNumber47.\n' \
-        > \$HOME/.openclaw/workspace/memory/session-001.md
+        > \$HOME/.openclaw/workspace/agents/main/MEMORY.md
 
       # Add a hyphenated-ID agent so the sanitization test can target it.
       openclaw agents add my-hyphen-agent --non-interactive --json >/dev/null 2>&1 || true
