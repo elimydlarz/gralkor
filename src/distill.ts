@@ -31,7 +31,7 @@ async function distillOne(llmClient: LLMClient, thinking: string): Promise<strin
     { role: "system", content: DISTILL_SYSTEM_PROMPT },
     { role: "user", content: thinking },
   ];
-  return llmClient.generate(messages, 300);
+  return llmClient.generate(messages, 150);
 }
 
 async function safeDistill(llmClient: LLMClient, thinking: string): Promise<string> {
