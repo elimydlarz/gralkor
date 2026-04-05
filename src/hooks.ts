@@ -362,6 +362,16 @@ export function createBeforePromptBuildHandler(
       setSessionData(sessionKey, agentId ?? "default");
     }
 
+    // Index workspace files fire-and-forget on every session start.
+    // Already-indexed files (marker at end) cost only a disk read — fast enough to call every session.
+    const indexWorkspaceDir = ctx.workspaceDir ?? config.workspaceDir;
+    if (indexWorkspaceDir && (!serverReady || serverReady.isReady())) {
+      const wGroupId = getGroupId(sessionKey);
+      void runNativeIndexer(client, indexWorkspaceDir, wGroupId).catch((err: unknown) =>
+        console.log(`[gralkor] native-index: failed — ${err instanceof Error ? err.message : err}`)
+      );
+    }
+
     if (!config.autoRecall.enabled) {
       console.log(`[gralkor] auto-recall skip (disabled) — agentId:${agentId}`);
       return;
