@@ -1,10 +1,7 @@
-import { readdir, readFile, writeFile, stat } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import type { GraphitiClient } from "./client.js";
-import type { GralkorConfig } from "./config.js";
-import { sanitizeGroupId } from "./config.js";
 
 export const GRALKOR_MARKER = "<!-- GRALKOR:INDEXED -->";
 
@@ -19,67 +16,38 @@ export interface DiscoveredFile {
  * Returns empty list if workspaceDir does not exist.
  *
  * Paths scanned:
- *   {workspaceDir}/agents/{agentId}/MEMORY.md → group sanitizeGroupId(agentId)
- *   {workspaceDir}/MEMORY.md                  → group of first agent (alphabetically); skipped if no agents
- *   {workspaceDir}/memory/*.md                → group of first agent (alphabetically); skipped if no agents
+ *   {workspaceDir}/MEMORY.md       → groupId (provided by caller)
+ *   {workspaceDir}/memory/*.md     → groupId (provided by caller)
  *
- * There is no "default" partition. Workspace-level files (MEMORY.md, memory/*.md) are
- * routed to the first agent found in {workspaceDir}/agents/, so they land in a real
- * agent partition. If no agent directories exist yet, workspace-level files are skipped.
+ * The caller (before_prompt_build) knows the agentId and thus the correct
+ * group — no routing logic needed here.
  */
-export async function discoverFiles(workspaceDir: string): Promise<DiscoveredFile[]> {
+export async function discoverFiles(workspaceDir: string, groupId: string): Promise<DiscoveredFile[]> {
   if (!existsSync(workspaceDir)) return [];
 
   const files: DiscoveredFile[] = [];
 
-  // Discover agent directories first — they determine routing for workspace-level files
-  const agentsDir = join(workspaceDir, "agents");
-  const agentIds: string[] = [];
-  if (existsSync(agentsDir)) {
+  // Root MEMORY.md
+  const rootMemory = join(workspaceDir, "MEMORY.md");
+  if (existsSync(rootMemory)) {
+    files.push({ absPath: rootMemory, relPath: "MEMORY.md", groupId });
+  }
+
+  // memory/*.md
+  const memoryDir = join(workspaceDir, "memory");
+  if (existsSync(memoryDir)) {
     try {
-      agentIds.push(...(await readdir(agentsDir)).sort());
-    } catch { /* ignore */ }
-  }
-
-  // Workspace-level files route to the first known agent's group.
-  // With no agents registered, workspace-level files are skipped (no default partition).
-  const workspaceGroupId = agentIds.length > 0 ? sanitizeGroupId(agentIds[0]) : null;
-
-  if (workspaceGroupId) {
-    // Root MEMORY.md
-    const rootMemory = join(workspaceDir, "MEMORY.md");
-    if (existsSync(rootMemory)) {
-      files.push({ absPath: rootMemory, relPath: "MEMORY.md", groupId: workspaceGroupId });
-    }
-
-    // memory/*.md
-    const memoryDir = join(workspaceDir, "memory");
-    if (existsSync(memoryDir)) {
-      try {
-        const entries = await readdir(memoryDir);
-        for (const entry of entries.sort()) {
-          if (entry.endsWith(".md")) {
-            files.push({
-              absPath: join(memoryDir, entry),
-              relPath: `memory/${entry}`,
-              groupId: workspaceGroupId,
-            });
-          }
+      const entries = await readdir(memoryDir);
+      for (const entry of entries.sort()) {
+        if (entry.endsWith(".md")) {
+          files.push({
+            absPath: join(memoryDir, entry),
+            relPath: `memory/${entry}`,
+            groupId,
+          });
         }
-      } catch { /* ignore */ }
-    }
-  }
-
-  // agents/*/MEMORY.md — each to its own group
-  for (const agentId of agentIds) {
-    const agentMemory = join(agentsDir, agentId, "MEMORY.md");
-    if (existsSync(agentMemory)) {
-      files.push({
-        absPath: agentMemory,
-        relPath: `agents/${agentId}/MEMORY.md`,
-        groupId: sanitizeGroupId(agentId),
-      });
-    }
+      }
+    } catch { /* ignore */ }
   }
 
   return files;
@@ -132,28 +100,27 @@ export async function indexFile(client: GraphitiClient, file: DiscoveredFile): P
 /**
  * Scan the workspace for native memory files and index any new content
  * into the graph. Fire-and-forget safe — errors per file are caught.
- * Called after serverReady resolves.
+ *
+ * Called from before_prompt_build on each session start. Already-indexed
+ * files (marker at end) are skipped with only a disk read — fast enough
+ * to call every session.
  */
 export async function runNativeIndexer(
   client: GraphitiClient,
-  config: Pick<GralkorConfig, "workspaceDir">,
+  workspaceDir: string,
+  groupId: string,
 ): Promise<void> {
-  const workspaceDir = config.workspaceDir ?? join(homedir(), ".openclaw", "workspace");
-
   if (!existsSync(workspaceDir)) {
     console.log(`[gralkor] native-index: workspaceDir not found (${workspaceDir}) — skipping`);
     return;
   }
 
-  const files = await discoverFiles(workspaceDir);
+  const files = await discoverFiles(workspaceDir, groupId);
   if (files.length === 0) {
-    console.log(`[gralkor] native-index: no files found in ${workspaceDir}`);
     return;
   }
 
-  console.log(`[gralkor] native-index: starting — ${files.length} file(s)`);
   let indexed = 0;
-
   for (const file of files) {
     try {
       const ingested = await indexFile(client, file);
@@ -166,5 +133,7 @@ export async function runNativeIndexer(
     }
   }
 
-  console.log(`[gralkor] native-index: done — ${indexed} file(s) ingested`);
+  if (indexed > 0) {
+    console.log(`[gralkor] native-index: done — ${indexed} file(s) ingested`);
+  }
 }
