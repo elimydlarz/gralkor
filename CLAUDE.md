@@ -331,6 +331,8 @@ memory_build_communities tool
   when server is ready
     then calls client.buildCommunities with group ID
     and returns community and edge counts
+  when session_key is not registered in the session map
+    then throws error (does not route to default group)
   when server is not ready
     then throws error
 ```
