@@ -15,6 +15,7 @@
  * Run inside the Docker harness only (pnpm run test:functional).
  */
 import { describe, it, expect, beforeAll } from "vitest";
+import { execFileSync } from "node:child_process";
 
 const SERVER_URL = "http://127.0.0.1:8001";
 const GROUP = "default";
