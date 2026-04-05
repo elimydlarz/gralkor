@@ -240,6 +240,79 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 });
 
+describe("memory_search (createMemorySearchTool)", () => {
+  let client: ReturnType<typeof mockClient>;
+
+  beforeEach(() => {
+    resetReadyGate();
+    client = mockClient();
+  });
+
+  it("returns facts under 'Facts:' header and INTERPRETATION_INSTRUCTION when graph has results", async () => {
+    client.search.mockResolvedValue({ facts: [makeFact({ fact: "the sky is blue" })], nodes: [] });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
+    const result = await tool.execute("call-1", { query: "sky" });
+
+    expect(result).toContain("Facts:");
+    expect(result).toContain("the sky is blue");
+    expect(result).toContain(INTERPRETATION_INSTRUCTION);
+  });
+
+  it("returns 'No facts found.' when neither facts nor nodes are returned", async () => {
+    client.search.mockResolvedValue({ facts: [], nodes: [] });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
+    const result = await tool.execute("call-1", { query: "nothing" });
+
+    expect(result).toBe("No facts found.");
+  });
+
+  it("includes entity nodes under 'Entities:' section when nodes are returned", async () => {
+    client.search.mockResolvedValue({
+      facts: [makeFact({ fact: "a fact" })],
+      nodes: [{ uuid: "n-1", name: "Sky", summary: "the sky entity", group_id: "default", labels: [], created_at: "2025-01-01T00:00:00Z", attributes: {} }],
+    });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
+    const result = await tool.execute("call-1", { query: "sky" });
+
+    expect(result).toContain("Entities:");
+    expect(result).toContain("Sky: the sky entity");
+  });
+
+  it("uses session_key to look up group ID", async () => {
+    client.search.mockResolvedValue({ facts: [], nodes: [] });
+    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-77" : "default";
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId });
+    await tool.execute("call-1", { query: "x", session_key: "sess-abc" });
+
+    expect(client.search).toHaveBeenCalledWith("x", ["agent-77"], expect.any(Number), "slow");
+  });
+
+  describe("when server is not ready", () => {
+    it("throws error", async () => {
+      const gate = createReadyGate();
+      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
+
+      await expect(tool.execute("call-1", { query: "x" })).rejects.toThrow(
+        "[gralkor] memory_search failed: server is not ready",
+      );
+      expect(client.search).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("when server is ready", () => {
+    it("executes search normally", async () => {
+      client.search.mockResolvedValue({ facts: [makeFact({ fact: "some fact" })], nodes: [] });
+      const gate = createReadyGate();
+      gate.resolve();
+      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
+      const result = await tool.execute("call-1", { query: "something" });
+
+      expect(client.search).toHaveBeenCalledTimes(1);
+      expect(result).toContain("some fact");
+    });
+  });
+});
+
 describe("memory_build_indices (createBuildIndicesTool)", () => {
   let client: ReturnType<typeof mockClient>;
 
