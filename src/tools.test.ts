@@ -296,11 +296,13 @@ describe("memory_search (createMemorySearchTool)", () => {
   });
 
   it("throws when session_key is not registered", async () => {
-    const notFoundGetGroupId = (_sessionKey: string) => undefined;
+    const notFoundGetGroupId = (sessionKey: string): string => {
+      throw new Error(`[gralkor] session_key '${sessionKey}' not registered — ensure before_prompt_build has run for this session`);
+    };
     const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId });
 
     await expect(tool.execute("call-1", { query: "x", session_key: "unknown" })).rejects.toThrow(
-      "[gralkor] memory_search failed: session_key 'unknown' not registered",
+      "session_key 'unknown' not registered",
     );
     expect(client.search).not.toHaveBeenCalled();
   });
