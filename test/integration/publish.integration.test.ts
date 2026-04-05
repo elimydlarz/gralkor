@@ -216,6 +216,7 @@ describe("publish-version-integrity", () => {
         cwd: tempDir,
         env: {
           ...process.env,
+          PUBLISH_NPM_WHOAMI_CMD: "true",
           PUBLISH_BUILD_CMD: "true",
           PUBLISH_WHEEL_CMD: "true",
           PUBLISH_PUBLISH_CMD: "true",
