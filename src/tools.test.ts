@@ -109,20 +109,16 @@ describe("memory_store (createMemoryStoreTool)", () => {
     client.addEpisode.mockResolvedValue({});
   });
 
-  it("defaults to memory_add name", () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config);
+  it("is named memory_add and requires content and session_key", () => {
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
     expect(tool.name).toBe("memory_add");
     expect(tool.parameters.required).toContain("content");
-  });
-
-  it("accepts name override for memory_add", () => {
-    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { overrides: { name: "memory_add" } });
-    expect(tool.name).toBe("memory_add");
+    expect(tool.parameters.required).toContain("session_key");
   });
 
   it("writes to the agent partition", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "Remember this" });
+    await tool.execute("call-1", { content: "Remember this", session_key: "s" });
 
     expect(client.addEpisode).toHaveBeenCalledTimes(1);
     expect(client.addEpisode).toHaveBeenCalledWith(
@@ -131,7 +127,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   });
 
   it("uses session_key to look up group ID", async () => {
-    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : "default";
+    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-99" : undefined;
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId });
     await tool.execute("call-1", { content: "Remember this", session_key: "sess-abc" });
 
@@ -140,9 +136,19 @@ describe("memory_store (createMemoryStoreTool)", () => {
     );
   });
 
+  it("throws when session_key is not registered", async () => {
+    const notFoundGetGroupId = (_sessionKey: string) => undefined;
+    const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId });
+
+    await expect(tool.execute("call-1", { content: "x", session_key: "unknown" })).rejects.toThrow(
+      "[gralkor] memory_add failed: session_key 'unknown' not registered",
+    );
+    expect(client.addEpisode).not.toHaveBeenCalled();
+  });
+
   it("uses manual source description by default", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "Remember this" });
+    await tool.execute("call-1", { content: "Remember this", session_key: "s" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
     expect(call.source_description).toBe("manual memory_store");
@@ -150,7 +156,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("uses provided source description", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "Remember this", source_description: "user request" });
+    await tool.execute("call-1", { content: "Remember this", source_description: "user request", session_key: "s" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source_description: string };
     expect(call.source_description).toBe("user request");
@@ -158,14 +164,14 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("returns success message", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    const result = await tool.execute("call-1", { content: "x" });
+    const result = await tool.execute("call-1", { content: "x", session_key: "s" });
 
     expect(result).toContain("Stored successfully");
   });
 
   it("passes content as episode_body and generates name", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "Important insight" });
+    await tool.execute("call-1", { content: "Important insight", session_key: "s" });
 
     const call = client.addEpisode.mock.calls[0][0] as {
       name: string;
@@ -177,7 +183,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
 
   it("passes text as episode source type", async () => {
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "A reflection" });
+    await tool.execute("call-1", { content: "A reflection", session_key: "s" });
 
     const call = client.addEpisode.mock.calls[0][0] as { source: string };
     expect(call.source).toBe("text");
@@ -187,14 +193,14 @@ describe("memory_store (createMemoryStoreTool)", () => {
     client.addEpisode.mockRejectedValue(new Error("server down"));
 
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await expect(tool.execute("call-1", { content: "x" })).rejects.toThrow("server down");
+    await expect(tool.execute("call-1", { content: "x", session_key: "s" })).rejects.toThrow("server down");
   });
 
   it("logs episode body in test mode", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const testConfig: GralkorConfig = { ...config, test: true };
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, testConfig, { getGroupId });
-    await tool.execute("call-1", { content: "Important insight" });
+    await tool.execute("call-1", { content: "Important insight", session_key: "s" });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test] episode body:"),
@@ -207,7 +213,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
   it("does not log episode body when test mode is off", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId });
-    await tool.execute("call-1", { content: "Important insight" });
+    await tool.execute("call-1", { content: "Important insight", session_key: "s" });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test]"),
@@ -221,7 +227,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
       const gate = createReadyGate();
       const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
 
-      await expect(tool.execute("call-1", { content: "Remember this" })).rejects.toThrow(
+      await expect(tool.execute("call-1", { content: "Remember this", session_key: "s" })).rejects.toThrow(
         "[gralkor] memory_add failed: server is not ready",
       );
       expect(client.addEpisode).not.toHaveBeenCalled();
@@ -233,7 +239,7 @@ describe("memory_store (createMemoryStoreTool)", () => {
       const gate = createReadyGate();
       gate.resolve();
       const tool = createMemoryStoreTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
-      await tool.execute("call-1", { content: "Remember this" });
+      await tool.execute("call-1", { content: "Remember this", session_key: "s" });
 
       expect(client.addEpisode).toHaveBeenCalledTimes(1);
     });
@@ -251,7 +257,7 @@ describe("memory_search (createMemorySearchTool)", () => {
   it("returns facts under 'Facts:' header and INTERPRETATION_INSTRUCTION when graph has results", async () => {
     client.search.mockResolvedValue({ facts: [makeFact({ fact: "the sky is blue" })], nodes: [] });
     const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
-    const result = await tool.execute("call-1", { query: "sky" });
+    const result = await tool.execute("call-1", { query: "sky", session_key: "s" });
 
     expect(result).toContain("Facts:");
     expect(result).toContain("the sky is blue");
@@ -261,7 +267,7 @@ describe("memory_search (createMemorySearchTool)", () => {
   it("returns 'No facts found.' when neither facts nor nodes are returned", async () => {
     client.search.mockResolvedValue({ facts: [], nodes: [] });
     const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
-    const result = await tool.execute("call-1", { query: "nothing" });
+    const result = await tool.execute("call-1", { query: "nothing", session_key: "s" });
 
     expect(result).toBe("No facts found.");
   });
@@ -272,7 +278,7 @@ describe("memory_search (createMemorySearchTool)", () => {
       nodes: [{ uuid: "n-1", name: "Sky", summary: "the sky entity", group_id: "default", labels: [], created_at: "2025-01-01T00:00:00Z", attributes: {} }],
     });
     const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
-    const result = await tool.execute("call-1", { query: "sky" });
+    const result = await tool.execute("call-1", { query: "sky", session_key: "s" });
 
     expect(result).toContain("Entities:");
     expect(result).toContain("Sky: the sky entity");
@@ -280,11 +286,21 @@ describe("memory_search (createMemorySearchTool)", () => {
 
   it("uses session_key to look up group ID", async () => {
     client.search.mockResolvedValue({ facts: [], nodes: [] });
-    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-77" : "default";
+    const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-77" : undefined;
     const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId });
     await tool.execute("call-1", { query: "x", session_key: "sess-abc" });
 
     expect(client.search).toHaveBeenCalledWith("x", ["agent-77"], expect.any(Number), "slow");
+  });
+
+  it("throws when session_key is not registered", async () => {
+    const notFoundGetGroupId = (_sessionKey: string) => undefined;
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId });
+
+    await expect(tool.execute("call-1", { query: "x", session_key: "unknown" })).rejects.toThrow(
+      "[gralkor] memory_search failed: session_key 'unknown' not registered",
+    );
+    expect(client.search).not.toHaveBeenCalled();
   });
 
   describe("when server is not ready", () => {
@@ -292,7 +308,7 @@ describe("memory_search (createMemorySearchTool)", () => {
       const gate = createReadyGate();
       const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
 
-      await expect(tool.execute("call-1", { query: "x" })).rejects.toThrow(
+      await expect(tool.execute("call-1", { query: "x", session_key: "s" })).rejects.toThrow(
         "[gralkor] memory_search failed: server is not ready",
       );
       expect(client.search).not.toHaveBeenCalled();
@@ -305,7 +321,7 @@ describe("memory_search (createMemorySearchTool)", () => {
       const gate = createReadyGate();
       gate.resolve();
       const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
-      const result = await tool.execute("call-1", { query: "something" });
+      const result = await tool.execute("call-1", { query: "something", session_key: "s" });
 
       expect(client.search).toHaveBeenCalledTimes(1);
       expect(result).toContain("some fact");
