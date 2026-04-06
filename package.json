@@ -71,8 +71,11 @@
   "engines": {
     "node": ">=18"
   },
+  "dependencies": {
+    "openclaw": ">= 2026.4.5"
+  },
   "peerDependencies": {
-    "openclaw": ">= 2026.4.2"
+    "openclaw": ">= 2026.4.5"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
