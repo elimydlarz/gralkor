@@ -84,7 +84,12 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // run glibc 2.36 (Debian Bookworm), causing uv to fall back to the sdist which
     // embeds x86-64 binaries. The bundled wheel is built for the correct arch.
     const wheelsDir = join(opts.serverDir, "wheels");
-    const bundledWheels = existsSync(wheelsDir)
+    // Only use the bundled arm64 wheel on linux/arm64. The PyPI falkordblite wheel for arm64
+    // requires manylinux_2_39 (glibc 2.39+) but Bookworm ships glibc 2.36, so uv falls back
+    // to the sdist which embeds x86-64 binaries. On all other platforms (macOS, linux/x86-64)
+    // the PyPI wheel installs correctly via uv sync.
+    const useBundledWheels = process.platform === "linux" && process.arch === "arm64";
+    const bundledWheels = useBundledWheels && existsSync(wheelsDir)
       ? readdirSync(wheelsDir).filter((f) => f.endsWith(".whl")).map((f) => join(wheelsDir, f))
       : [];
 
