@@ -45,9 +45,9 @@
 
 ## File Issues (Not Commit Messages)
 
-| Priority | File | Issue |
-|---|---|---|
-| High | `.trunk-sync/` | Committed directory containing full name, session UUIDs, PIDs, verbatim prompt text. Not in `.gitignore`. Should be removed from history and gitignored. |
-| High | `.stryker-incremental.json` | Contains `"projectRoot": "/Users/elimydlarz/projects/openclaw-plugin-gralkor"` — absolute local path with username. Should be gitignored. |
-| Medium | `README.md:24` | `"trying to flatten it into into Markdown files"` — double "into" |
-| Medium | `README.md:32` | `"an invalidated_at timestamp on vector rows, bu there's no graph"` — "bu" should be "but" |
+| Priority | File | Status | Issue |
+|---|---|---|---|
+| High | `.trunk-sync/` | **TODO** | Committed directory containing full name, session UUIDs, PIDs, verbatim prompt text. Remove from history and add to `.gitignore`. |
+| High | `.stryker-incremental.json` | **TODO** | Contains absolute local path with username. Add to `.gitignore`. |
+| Done | `README.md:24` | ~~double "into"~~ | Fixed |
+| Done | `README.md:32` | ~~"bu there's"~~ | Fixed |
