@@ -65,7 +65,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
     $PUBLISH_PUBLISH_CMD
   else
     clawhub package publish . \
-      --source-repo susu-eng/gralkor \
+      --source-repo elimydlarz/gralkor \
       --source-commit "$source_commit" \
       --source-ref "v${version}"
   fi
