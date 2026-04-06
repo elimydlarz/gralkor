@@ -79,3 +79,13 @@ def test_downstream_llm_response_404_returns_500():
 def test_downstream_llm_response_422_returns_500():
     exc = _Err("unprocessable entity", status_code=422)
     assert main_mod._downstream_llm_response(exc).status_code == 500
+
+
+def test_downstream_llm_response_other_4xx_returns_502():
+    exc = _Err("conflict", status_code=409)
+    assert main_mod._downstream_llm_response(exc).status_code == 502
+
+
+def test_downstream_llm_response_5xx_returns_502():
+    exc = _Err("service unavailable", status_code=503)
+    assert main_mod._downstream_llm_response(exc).status_code == 502
