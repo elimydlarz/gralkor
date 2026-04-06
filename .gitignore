@@ -10,3 +10,4 @@ server/wheels/
 .stryker-incremental.json
 server/mutants/
 server/tests/distillation_results/
+.trunk-sync
