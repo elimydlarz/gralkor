@@ -72,7 +72,9 @@ if [[ -z "${DRY_RUN:-}" ]]; then
     fi
     tag="v${version}"
     if ! gh release view "$tag" >/dev/null 2>&1; then
-      gh release create "$tag" --title "$tag" --notes "Release $tag"
+      # --target lets gh create the tag on the remote from a commit SHA, even
+      # if the tag only exists locally (e.g. publish:npm just created it).
+      gh release create "$tag" --title "$tag" --notes "Release $tag" --target "$source_commit"
     fi
     gh release upload "$tag" "$wheel_file" --clobber
   fi
