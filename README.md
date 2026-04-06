@@ -120,25 +120,23 @@ Start chatting with your agent. Gralkor works in the background:
 - **Auto-capture**: Full multi-turn conversations are stored in the knowledge graph after each agent run
 - **Auto-recall**: Before the agent responds, relevant facts and entities are retrieved and injected as context
 
-### Reinstalling / upgrading
+### Upgrading
+
+```bash
+openclaw plugins update gralkor
+```
+
+### Reinstalling
 
 The plugin dir (`~/.openclaw/extensions/gralkor`) is ephemeral — it can be deleted and reinstalled freely. The `dataDir` is persistent — the venv and FalkorDB database survive across reinstalls.
 
-To reinstall:
-
 ```bash
-# Clear the memory slot first (otherwise install fails config validation)
-openclaw config set plugins.slots.memory ""
-
-# Remove old plugin code
-rm -rf ~/.openclaw/extensions/gralkor
-
-# Reinstall
+openclaw plugins uninstall gralkor
 openclaw plugins install @susu-eng/gralkor
-
-# Re-assign slot
 openclaw config set plugins.slots.memory gralkor
 ```
+
+`uninstall` removes the plugin files and resets the memory slot automatically.
 
 The second boot is fast (~4s) because the venv in `dataDir` is reused.
 
