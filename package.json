@@ -29,7 +29,8 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs graphiti",
     "publish:npm": "bash scripts/publish-npm.sh",
-    "publish:clawhub": "bash scripts/publish-clawhub.sh"
+    "publish:clawhub": "bash scripts/publish-clawhub.sh",
+    "publish:all": "bash scripts/publish-all.sh"
   },
   "files": [
     "dist",
