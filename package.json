@@ -46,11 +46,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/susu-eng/gralkor.git"
+    "url": "git+ssh://git@github.com/elimydlarz/gralkor.git"
   },
-  "homepage": "https://github.com/susu-eng/gralkor#readme",
+  "homepage": "https://github.com/elimydlarz/gralkor#readme",
   "bugs": {
-    "url": "https://github.com/susu-eng/gralkor/issues"
+    "url": "https://github.com/elimydlarz/gralkor/issues"
   },
   "author": "susu-eng",
   "keywords": [
