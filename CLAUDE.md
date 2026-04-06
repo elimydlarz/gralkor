@@ -477,6 +477,27 @@ rate-limit-retry
     when server returns 429 then succeeds on retry
       then the successful response is returned
     then 429 retries are independent of the 5xx/network retry budget
+downstream-error-handling
+  server side
+    when downstream LLM raises an error
+      when status is 4xx
+        when status is 429
+          then handled by rate-limit-retry (not this handler)
+        when status is 400
+          when message indicates a credential failure (e.g. "API key expired")
+            then returns 503 with {"error": "provider error", "detail": "<message>"}
+          otherwise
+            then returns 500 with {"error": "provider error", "detail": "<message>"}
+        when status is 401 or 403
+          then returns 503 with {"error": "provider error", "detail": "<message>"}
+        when status is 404 or 422
+          then returns 500 with {"error": "provider error", "detail": "<message>"}
+        when status is any other 4xx
+          then returns 502 with {"error": "provider error", "detail": "<message>"}
+      when status is 5xx
+        then returns 502 with {"error": "provider error", "detail": "<message>"}
+      when no recognizable status code
+        then propagates as 500
 ```
 
 #### Functional Journey
