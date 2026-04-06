@@ -58,7 +58,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
   publish_cmd="${PUBLISH_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}"
 
-  trap rollback ERR
+  [[ "$level" != "current" ]] && trap rollback ERR
 
   $build_cmd
   wheel_cmd="${PUBLISH_WHEEL_CMD:-bash scripts/build-arm64-wheel.sh}"
@@ -66,7 +66,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   $publish_cmd
   rm -rf server/wheels
 
-  trap - ERR
+  [[ "$level" != "current" ]] && trap - ERR
 
   git tag "v$version"
 
