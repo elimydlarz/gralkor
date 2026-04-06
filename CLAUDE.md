@@ -75,7 +75,7 @@ graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_epis
 
 ### Server Manager Lifecycle
 
-Service `gralkor-server` (`src/server-manager.ts`): On `linux/arm64` when bundled wheels exist in `server/wheels/`, runs `uv sync --no-dev --frozen --no-install-package falkordblite` (PyPI's falkordblite arm64 wheel requires manylinux_2_39/glibc 2.39+ but Bookworm ships glibc 2.36, causing fallback to the sdist which embeds x86-64 binaries), then installs each bundled wheel via `uv pip install --no-deps` with `VIRTUAL_ENV` set — must succeed, no fallback. On all other platforms (macOS, linux/x86-64), or when no bundled wheels exist, runs plain `uv sync --no-dev --frozen` (PyPI handles falkordblite correctly on those platforms). Writes `config.yaml`, passes API keys as env vars (built synchronously from `config.*ApiKey` strings by `buildSecretEnv()` in `register.ts`). Before spawning: reads `server.pid` from `dataDir`; if found, sends SIGTERM to that PID (kills the previous server instance, e.g. from a prior module evaluation) and polls until the port is free (up to 10s). Writes `server.pid` after spawn. `stop()` deletes `server.pid`. Otherwise: spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`/resolved API keys. No `FALKORDB_URI` → embedded FalkorDBLite. Poll `/health` 500ms (120s timeout), monitor 60s. On healthy: `serverReady.resolve()` (module-level). SIGTERM → 5s → SIGKILL. First start ~1-2 min.
+Service `gralkor-server` (`src/server-manager.ts`): On `linux/arm64`, resolves the falkordblite wheel via `resolveBundledWheels(serverDir, dataDir, version)` — returns wheels from `${serverDir}/wheels/` if present (npm install path), otherwise downloads `falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl` from `https://github.com/elimydlarz/gralkor/releases/download/v${version}/...` into `${dataDir}/wheels/` and caches it there (ClawHub install path: the wheel is omitted from the package because it exceeds ClawHub's 20 MB upload limit). Then runs `uv sync --no-dev --frozen --no-install-package falkordblite` (PyPI's falkordblite arm64 wheel requires manylinux_2_39/glibc 2.39+ but Bookworm ships glibc 2.36, causing fallback to the sdist which embeds x86-64 binaries) and installs the resolved wheel via `uv pip install --no-deps` with `VIRTUAL_ENV` set — must succeed, no fallback. On all other platforms (macOS, linux/x86-64) runs plain `uv sync --no-dev --frozen` (PyPI handles falkordblite correctly there). Writes `config.yaml`, passes API keys as env vars (built synchronously from `config.*ApiKey` strings by `buildSecretEnv()` in `register.ts`). Before spawning: reads `server.pid` from `dataDir`; if found, sends SIGTERM to that PID (kills the previous server instance, e.g. from a prior module evaluation) and polls until the port is free (up to 10s). Writes `server.pid` after spawn. `stop()` deletes `server.pid`. Otherwise: spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`/resolved API keys. No `FALKORDB_URI` → embedded FalkorDBLite. Poll `/health` 500ms (120s timeout), monitor 60s. On healthy: `serverReady.resolve()` (module-level). SIGTERM → 5s → SIGKILL. First start ~1-2 min.
 
 **Service self-start** (`src/register.ts`): `registerServerService()` registers the service with the host (for graceful `stop()` on SIGTERM) but does not wait for the host to call `start()`. Instead, it self-starts `manager.start()` as fire-and-forget immediately during registration. On success: `serverReady.resolve()`. On failure: error logged, `serverReady` stays unresolved. This bypasses a host bug where memory-kind plugins are excluded from the gateway startup scope (`resolveGatewayStartupPluginIds()` → `isGatewayStartupSidecar()` returns false). The manager is cached at module level (`serverManager` in `src/index.ts`); subsequent `register()` calls within the same module evaluation reuse the cached manager. However, if the host fully re-evaluates the module (fresh module registry), `serverManager` resets to `undefined` — the pre-flight health check in `manager.start()` guards against this case by detecting an already-running server and skipping the spawn.
 
@@ -370,14 +370,22 @@ startup
     when workspaceDir does not exist
       then indexer skips without error
 bundled-wheel-arch-selection
-  when on linux/arm64 and wheels dir has .whl files
-    then skips falkordblite in uv sync (--no-install-package falkordblite)
-    and installs the bundled wheel via uv pip install --no-deps
-  when on linux/arm64 and wheels dir has no .whl files
-    then uses normal uv sync (PyPI)
-  when on non-linux-arm64 (macOS, linux/x86-64) and wheels dir has .whl files
-    then ignores the bundled wheel entirely
-    and uses normal uv sync (PyPI handles falkordblite)
+  when on linux/arm64 and the install dir (serverDir/wheels) has .whl files
+    then resolveBundledWheels returns those paths (no network)
+    and uv sync skips falkordblite (--no-install-package falkordblite)
+    and the bundled wheel is installed via uv pip install --no-deps
+  when on linux/arm64 and the install dir has no wheels
+    and the cache (dataDir/wheels) already has the wheel
+    then resolveBundledWheels returns the cached path (no network)
+  when on linux/arm64 and neither the install dir nor the cache has the wheel
+    then resolveBundledWheels downloads it from
+      https://github.com/elimydlarz/gralkor/releases/download/v${version}/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl
+    and writes it into dataDir/wheels for reuse
+    when the download responds non-2xx
+      then throws (no PyPI fallback — the PyPI sdist embeds x86-64 binaries on glibc < 2.39)
+  when on non-linux-arm64 (macOS, linux/x86-64)
+    then resolveBundledWheels is not called
+    and uv sync installs falkordblite from PyPI normally
   when bundled wheel install fails on linux/arm64
     then throws (no silent fallback to PyPI)
 secret-resolution
@@ -602,6 +610,18 @@ publish-clawhub-version-integrity
   when level is current and publish fails
     then no rollback runs
     and version files remain unchanged
+clawhub-arm64-wheel-distribution
+  then publish-clawhub.sh excludes server/wheels via .clawhubignore
+    (the wheel exceeds ClawHub's 20 MB upload limit)
+  then before publishing the package, publish-clawhub.sh uploads
+    the freshly-built arm64 wheel to the matching v${version} GitHub Release
+    (creating the release if it doesn't exist) via gh release upload
+  when PUBLISH_SKIP_GH_RELEASE is set
+    then the GitHub Release upload is skipped (used by tests)
+  when no .whl file exists in server/wheels after the build step
+    then the publish aborts with an error
+  when gh release upload fails
+    then publish-clawhub.sh exits non-zero (rollback fires for non-current levels)
 publish-all
   when publish:all succeeds
     then npm is published first with the version bump
@@ -630,7 +650,7 @@ install-sequencing-docs
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
 | prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch). `sanitizeGroupId()` replaces hyphens with underscores in group IDs to avoid RediSearch syntax errors. |
-| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by both `pack.sh` and `publish-npm.sh`/`publish-clawhub.sh`. Bundled wheel is only activated on `linux/arm64` at runtime — other platforms (macOS, linux/x86-64) use PyPI via `uv sync` |
+| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by `pack.sh`, `publish-npm.sh`, and `publish-clawhub.sh`. Wheel is shipped two ways: (a) bundled inside the npm tarball under `server/wheels/`; (b) uploaded as a GitHub Release asset by `publish-clawhub.sh` (`gh release upload v${version}`) and downloaded on first start by `resolveBundledWheels()` because it exceeds ClawHub's 20 MB package upload limit. Only activated on `linux/arm64` at runtime — other platforms use PyPI via `uv sync` |
 | configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`, OpenAI key present → `OpenAIRerankerClient`, otherwise `None`). |
 | episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime) |
 
@@ -740,7 +760,7 @@ pnpm run pack                      # deployment tarball (arm64 wheel via Docker)
 
 Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
-**ClawHub upload contents** are governed by `.clawhubignore` (gitignore syntax). The clawhub CLI walks the repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — it does NOT read `package.json`'s `files` field or `.gitignore`/`.npmignore`. The ignore file uses a whitelist approach (`*` then `!`-unignores) mirroring npm's `files` whitelist, and explicitly denies `.env*` (defence in depth). ClawHub enforces a 20 MB per-package upload limit; the bundled arm64 wheel is ~24 MB, so `server/wheels/` currently exceeds the limit and ClawHub publishing of arm64 builds is blocked pending a distribution decision (out-of-band wheel hosting, drop arm64 from ClawHub channel, or raised limit).
+**ClawHub upload contents** are governed by `.clawhubignore` (gitignore syntax). The clawhub CLI walks the repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — it does NOT read `package.json`'s `files` field or `.gitignore`/`.npmignore`. The ignore file uses a whitelist approach (`*` then `!`-unignores) mirroring npm's `files` whitelist, and explicitly denies `.env*` (defence in depth). ClawHub enforces a 20 MB per-package upload limit, so `server/wheels/` is excluded; `publish-clawhub.sh` uploads the arm64 wheel to the matching `v${version}` GitHub Release instead, and `resolveBundledWheels()` in `server-manager.ts` downloads it on first start when the install dir has no bundled wheels.
 
 ## Conventions
 
@@ -754,7 +774,8 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 - `register()` must be synchronous — async silently registers nothing
 - `falkordblite` installs as Python module `redislite`, not `falkordblite`
-- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: bundled wheel in `server/wheels/` (built by `build-arm64-wheel.sh`). Server-manager gates on `process.platform === "linux" && process.arch === "arm64"` — only on that platform does it skip PyPI falkordblite (`--no-install-package falkordblite`) and install the bundled wheel (hard failure if missing). All other platforms (macOS, linux/x86-64) use PyPI via normal `uv sync`. Dockerfile mirrors this with `TARGETARCH` conditional.
+- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: prebuilt wheel from `build-arm64-wheel.sh`. Server-manager gates on `process.platform === "linux" && process.arch === "arm64"` and resolves the wheel via `resolveBundledWheels()`: install dir first (`server/wheels/*.whl`, npm publish path), else download from `github.com/elimydlarz/gralkor/releases/v${version}` into `${dataDir}/wheels/` (ClawHub publish path — wheel exceeds ClawHub's 20 MB upload limit so it's hosted as a GH release asset by `publish-clawhub.sh` instead). Hard failure if neither resolution succeeds. All other platforms (macOS, linux/x86-64) use PyPI via normal `uv sync`. Dockerfile mirrors the install-dir path with `TARGETARCH` conditional.
+- ClawHub publish walks the entire repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — NOT `.gitignore`, `.npmignore`, or `package.json`'s `files` field. Without `.clawhubignore` it would try to upload everything (including `.env`!). The whitelist there mirrors npm's `files`.
 - Graphiti requires LLM API key — starts without one but all operations fail
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)

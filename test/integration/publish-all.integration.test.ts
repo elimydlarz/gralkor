@@ -50,6 +50,7 @@ describe("publish-all", () => {
     PUBLISH_BUILD_CMD: "true",
     PUBLISH_WHEEL_CMD: "true",
     PUBLISH_PUBLISH_CMD: "true",
+    PUBLISH_SKIP_GH_RELEASE: "1",
     GIT_AUTHOR_NAME: "test",
     GIT_AUTHOR_EMAIL: "test@test",
     GIT_COMMITTER_NAME: "test",
@@ -131,7 +132,9 @@ describe("publish-all", () => {
             // publish-npm.sh uses pnpm publish; publish-clawhub.sh uses clawhub publish.
             // Use PUBLISH_PUBLISH_CMD to control the publish step in both scripts.
             // Override clawhub's publish to fail by using a script that fails on second invocation.
-            PUBLISH_PUBLISH_CMD: "false",
+            PUBLISH_NPM_PUBLISH_CMD: "true",
+            PUBLISH_CLAWHUB_PUBLISH_CMD: "false",
+            PUBLISH_SKIP_GH_RELEASE: "1",
             GIT_AUTHOR_NAME: "test",
             GIT_AUTHOR_EMAIL: "test@test",
             GIT_COMMITTER_NAME: "test",

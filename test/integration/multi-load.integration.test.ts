@@ -62,7 +62,11 @@ describe("multi-load resilience", () => {
         const handler = createBeforePromptBuildHandler(
           client as unknown as GraphitiClient,
           defaultConfig,
-          { serverReady: gateB, getGroupId: () => "agent_42" },
+          {
+            serverReady: gateB,
+            getGroupId: () => "agent_42",
+            llmClient: { generate: vi.fn().mockResolvedValue("interpreted") },
+          },
         );
 
         const result = await handler(

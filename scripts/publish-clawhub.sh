@@ -61,10 +61,27 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   $build_cmd
   $wheel_cmd
 
+  # Upload the arm64 wheel to GitHub Releases so server-manager.ts can fetch
+  # it on first start (the wheel is 24 MB > ClawHub's 20 MB upload limit, so
+  # it isn't bundled in the ClawHub package).
+  if [[ -z "${PUBLISH_SKIP_GH_RELEASE:-}" ]]; then
+    wheel_file=$(ls server/wheels/*.whl 2>/dev/null | head -n1 || true)
+    if [[ -z "$wheel_file" ]]; then
+      echo "Error: no wheel found in server/wheels/ after build" >&2
+      exit 1
+    fi
+    tag="v${version}"
+    if ! gh release view "$tag" >/dev/null 2>&1; then
+      gh release create "$tag" --title "$tag" --notes "Release $tag"
+    fi
+    gh release upload "$tag" "$wheel_file" --clobber
+  fi
+
   clawhub_log=$(mktemp)
   set +e
-  if [[ -n "${PUBLISH_PUBLISH_CMD:-}" ]]; then
-    $PUBLISH_PUBLISH_CMD 2>&1 | tee "$clawhub_log"
+  clawhub_publish_cmd="${PUBLISH_CLAWHUB_PUBLISH_CMD:-${PUBLISH_PUBLISH_CMD:-}}"
+  if [[ -n "$clawhub_publish_cmd" ]]; then
+    $clawhub_publish_cmd 2>&1 | tee "$clawhub_log"
   else
     clawhub package publish . \
       --source-repo elimydlarz/gralkor \
@@ -91,7 +108,11 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   else
     git commit --only package.json openclaw.plugin.json -m "$version"
   fi
-  git tag "v$version"
+  if git rev-parse "v$version" >/dev/null 2>&1; then
+    echo "Tag v$version already exists — skipping"
+  else
+    git tag "v$version"
+  fi
 
   echo "Published v$version to ClawHub — tag created locally. Push manually: git push --follow-tags"
 fi

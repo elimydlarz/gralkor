@@ -12,7 +12,9 @@
 !dist/
 !dist/**
 
-# Server: only the runtime files, never .venv / tests / mutants / wheels build artifacts beyond bundled ones
+# Server: only the runtime files. The arm64 wheel is NOT shipped via ClawHub
+# (24 MB > ClawHub's 20 MB upload limit). server-manager.ts downloads it from
+# GitHub Releases on first start when the install dir has no bundled wheels.
 !server/
 server/*
 !server/Dockerfile
@@ -20,8 +22,6 @@ server/*
 !server/pyproject.toml
 !server/uv.lock
 !server/requirements.txt
-!server/wheels/
-!server/wheels/**
 
 # Top-level runtime config
 !docker-compose.yml

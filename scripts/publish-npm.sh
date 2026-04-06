@@ -56,7 +56,7 @@ fi
 if [[ -z "${DRY_RUN:-}" ]]; then
   # Allow overriding commands for testing
   build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
-  publish_cmd="${PUBLISH_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}"
+  publish_cmd="${PUBLISH_NPM_PUBLISH_CMD:-${PUBLISH_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}}"
 
   [[ "$level" != "current" ]] && trap rollback ERR
 

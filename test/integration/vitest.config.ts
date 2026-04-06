@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     reporters: ["tree"],
     include: ["**/*.integration.test.ts"],
+    exclude: ["test/harness/**", "node_modules/**"],
   },
 });

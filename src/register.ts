@@ -60,6 +60,7 @@ export function registerServerService(
   client: GraphitiClient,
   config: GralkorConfig,
   pluginDir: string,
+  version: string,
   serverReady?: ReadyGate,
 ): ServerManager {
   if (!config.dataDir) {
@@ -72,6 +73,7 @@ export function registerServerService(
     dataDir,
     serverDir,
     port: GRAPHITI_PORT,
+    version,
     secretEnv: buildSecretEnv(config),
     llmConfig: config.llm,
     embedderConfig: config.embedder,
