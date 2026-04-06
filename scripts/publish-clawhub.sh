@@ -62,15 +62,17 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   $wheel_cmd
 
   clawhub_log=$(mktemp)
-  publish_failed=0
+  set +e
   if [[ -n "${PUBLISH_PUBLISH_CMD:-}" ]]; then
-    $PUBLISH_PUBLISH_CMD 2>&1 | tee "$clawhub_log"; publish_failed=${PIPESTATUS[0]}
+    $PUBLISH_PUBLISH_CMD 2>&1 | tee "$clawhub_log"
   else
     clawhub package publish . \
       --source-repo elimydlarz/gralkor \
       --source-commit "$source_commit" \
-      --source-ref "v${version}" 2>&1 | tee "$clawhub_log"; publish_failed=${PIPESTATUS[0]}
+      --source-ref "v${version}" 2>&1 | tee "$clawhub_log"
   fi
+  publish_failed=${PIPESTATUS[0]}
+  set -e
   if [[ $publish_failed -ne 0 ]]; then
     echo "" >&2
     echo "=== clawhub publish failed (exit $publish_failed) — full output ===" >&2
