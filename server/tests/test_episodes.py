@@ -180,6 +180,29 @@ async def test_add_episode_rate_limit_returns_429(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_add_episode_downstream_400_returns_500(client, mock_graphiti):
+    """Non-credential 400 from downstream LLM returns 500 with provider error body."""
+
+    class BadRequestError(Exception):
+        status_code = 400
+
+    mock_graphiti.add_episode.side_effect = BadRequestError("invalid model name")
+
+    resp = await client.post("/episodes", json={
+        "name": "chat",
+        "episode_body": "body",
+        "source_description": "src",
+        "group_id": "g1",
+        "idempotency_key": "test-key",
+    })
+
+    assert resp.status_code == 500
+    body = resp.json()
+    assert body["error"] == "provider error"
+    assert "invalid model name" in body["detail"]
+
+
+@pytest.mark.asyncio
 async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti):
     """When ontology globals are set, they are forwarded to add_episode."""
 
