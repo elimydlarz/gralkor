@@ -1,4 +1,6 @@
 {
-  "enabledPlugins": {},
+  "enabledPlugins": {
+    "trunk-sync@susu-eng": true
+  },
   "extraKnownMarketplaces": {}
 }
