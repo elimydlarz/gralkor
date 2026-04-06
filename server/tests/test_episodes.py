@@ -212,6 +212,51 @@ async def test_add_episode_downstream_400_returns_500(client, mock_graphiti):
 
 
 @pytest.mark.asyncio
+async def test_add_episode_downstream_400_credential_returns_503(client, mock_graphiti):
+    """400 with credential hint from downstream LLM returns 503."""
+
+    class ClientError(Exception):
+        code = 400
+
+    mock_graphiti.add_episode.side_effect = ClientError("400 INVALID_ARGUMENT: API key expired.")
+
+    resp = await client.post("/episodes", json=_EPISODE_PAYLOAD)
+
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "provider error"
+
+
+@pytest.mark.asyncio
+async def test_add_episode_downstream_401_returns_503(client, mock_graphiti):
+    """401 from downstream LLM returns 503."""
+
+    class AuthenticationError(Exception):
+        status_code = 401
+
+    mock_graphiti.add_episode.side_effect = AuthenticationError("invalid api key")
+
+    resp = await client.post("/episodes", json=_EPISODE_PAYLOAD)
+
+    assert resp.status_code == 503
+    assert resp.json()["error"] == "provider error"
+
+
+@pytest.mark.asyncio
+async def test_add_episode_downstream_5xx_returns_502(client, mock_graphiti):
+    """5xx from downstream LLM returns 502."""
+
+    class ServerError(Exception):
+        status_code = 503
+
+    mock_graphiti.add_episode.side_effect = ServerError("service overloaded")
+
+    resp = await client.post("/episodes", json=_EPISODE_PAYLOAD)
+
+    assert resp.status_code == 502
+    assert resp.json()["error"] == "provider error"
+
+
+@pytest.mark.asyncio
 async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti):
     """When ontology globals are set, they are forwarded to add_episode."""
 
