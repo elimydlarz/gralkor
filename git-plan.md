@@ -21,25 +21,25 @@
 | `ae9a2b0` | `"fixing interface AGAIN"` | `"Fix plugin interface"` |
 | `217d1b4` (+ ~30) | `"Don't run any tests. Just review thoroughly."` | `"Review and refactor"` |
 | `4e344d4` (+ 4) | `"How are the hooks going? We've been working on..."` | `"Implement inject and capture hooks"` |
-| `3812e5e` | `"laggard"` | TBD |
-| `386aec20` | `"1 I'm sure there was a readme, I don't know what happened to it..."` | TBD |
-| `0947229` | `"Confirmed."` | TBD |
-| `9636ace` | `"Sure, that'll work."` | TBD |
-| `368b25e` | `"Bug report. In these logs, I believe (you should check) we are saving -"` | TBD |
-| `5c21c6d` | `"Consumer had a lot of trouble with config. I think your readme is wrong?"` | TBD |
-| `5f442c8` | `"A bit confused about this agent log output:"` | TBD |
-| `ca5620b` | `"Do you think this analysis of our bug is correct?:"` | TBD |
-| `60f2b23` | `"I'm quite worried about excessively long distillations of thinking messa..."` | TBD |
-| `b8c38e0` | `"I am concerned that invalid facts are crowding out valid facts. Look at..."` | TBD |
-| `0fa81d8` | `"I'm concerned about what we're saving, see in agent logs:"` | TBD |
-| `df01528` | `"I think we published 27.1.0 but the tag is missing - what happened?"` | TBD |
-| `47971981` | `"Errors on the agent, seems like recall isn't working? Last login: Sat Ma..."` — macOS terminal banner pasted verbatim | TBD |
-| `f05f204` | `"Graphti supports declaring custom entity..."` — "Graphti" typo | TBD |
-| `363d35f` | `"The memory add tool as gone missing"` — "as" should be "has" | TBD |
-| `7d73e2d` | `"The results returned to the OpenClaw agent aren't dated! Oh no, what a d..."` | TBD |
-| `01b3936` | `"We need a publish script - like @../eli2-projects/do-together/package.js..."` — leaks private project path | TBD |
-| `71069f8` | `"Publish \`@susu-eng/gralkor\` to npm"` — exposes old npm org name | TBD |
-| ~505 commits | Commit bodies contain `Transcript: /Users/elimydlarz/...` — local username in public history | TBD |
+| `3812e5e` | `"laggard"` | `"Fix slow session flush"` |
+| `386aec20` | `"1 I'm sure there was a readme, I don't know what happened to it..."` | `"Restore README"` |
+| `0947229` | `"Confirmed."` | `"Confirm approach"` |
+| `9636ace` | `"Sure, that'll work."` | `"Approve approach"` |
+| `368b25e` | `"Bug report. In these logs, I believe (you should check) we are saving -"` | `"Investigate capture bug"` |
+| `5c21c6d` | `"Consumer had a lot of trouble with config. I think your readme is wrong?"` | `"Fix README config docs"` |
+| `5f442c8` | `"A bit confused about this agent log output:"` | `"Investigate agent log output"` |
+| `ca5620b` | `"Do you think this analysis of our bug is correct?:"` | `"Analyse and fix bug"` |
+| `60f2b23` | `"I'm quite worried about excessively long distillations of thinking messa..."` | `"Truncate distillation output"` |
+| `b8c38e0` | `"I am concerned that invalid facts are crowding out valid facts. Look at..."` | `"Fix invalid facts crowding out valid ones"` |
+| `0fa81d8` | `"I'm concerned about what we're saving, see in agent logs:"` | `"Investigate capture content"` |
+| `df01528` | `"I think we published 27.1.0 but the tag is missing - what happened?"` | `"Fix missing release tag"` |
+| `47971981` | `"Errors on the agent, seems like recall isn't working? Last login: Sat Ma..."` — macOS terminal banner pasted verbatim | `"Fix recall errors"` |
+| `f05f204` | `"Graphti supports declaring custom entity..."` — "Graphti" typo | `"Graphiti supports declaring custom entity types"` |
+| `363d35f` | `"The memory add tool as gone missing"` — "as" should be "has" | `"Fix missing memory_add tool"` |
+| `7d73e2d` | `"The results returned to the OpenClaw agent aren't dated! Oh no, what a d..."` | `"Add timestamps to recalled facts"` |
+| `01b3936` | `"We need a publish script - like @../eli2-projects/do-together/package.js..."` — leaks private project path | `"Add publish script"` |
+| `71069f8` | `"Publish \`@susu-eng/gralkor\` to npm"` — exposes old npm org name | `"Publish to npm"` |
+| ~505 commits | Commit bodies contain `Transcript: /Users/elimydlarz/...` — local username in public history | Addressed by full history squash |
 
 ---
 
