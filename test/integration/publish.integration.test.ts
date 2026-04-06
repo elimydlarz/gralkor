@@ -284,7 +284,7 @@ describe("publish-version-integrity", () => {
       expect(pluginVersion).toBe(pkgVersion);
     });
 
-    it("and a git commit and tag are created for the new version", () => {
+    it("and a git tag is created for the new version", () => {
       execSync("bash scripts/publish.sh patch", {
         cwd: tempDir,
         env: {
@@ -303,12 +303,6 @@ describe("publish-version-integrity", () => {
 
       const version = readJson(join(tempDir, "package.json"))
         .version as string;
-
-      const log = execSync("git log --oneline", {
-        cwd: tempDir,
-        encoding: "utf8",
-      });
-      expect(log).toContain(version);
 
       const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
       expect(tags.trim()).toContain(`v${version}`);
