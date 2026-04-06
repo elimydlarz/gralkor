@@ -69,3 +69,13 @@ def test_downstream_llm_response_401_returns_503():
 def test_downstream_llm_response_403_returns_503():
     exc = _Err("permission denied", status_code=403)
     assert main_mod._downstream_llm_response(exc).status_code == 503
+
+
+def test_downstream_llm_response_404_returns_500():
+    exc = _Err("model not found", status_code=404)
+    assert main_mod._downstream_llm_response(exc).status_code == 500
+
+
+def test_downstream_llm_response_422_returns_500():
+    exc = _Err("unprocessable entity", status_code=422)
+    assert main_mod._downstream_llm_response(exc).status_code == 500
