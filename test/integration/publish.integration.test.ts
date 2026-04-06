@@ -21,8 +21,8 @@ describe("publish-version-integrity", () => {
       cpSync(join(PROJECT_ROOT, f), join(tempDir, f));
     }
     cpSync(
-      join(PROJECT_ROOT, "scripts/publish.sh"),
-      join(tempDir, "scripts/publish.sh"),
+      join(PROJECT_ROOT, "scripts/publish-npm.sh"),
+      join(tempDir, "scripts/publish-npm.sh"),
       { recursive: true },
     );
 
@@ -48,7 +48,7 @@ describe("publish-version-integrity", () => {
     it("then version is bumped and synced across manifests", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
-      execSync("bash scripts/publish.sh patch", {
+      execSync("bash scripts/publish-npm.sh patch", {
         cwd: tempDir,
         env: { ...process.env, DRY_RUN: "1" },
         stdio: "ignore",
@@ -67,7 +67,7 @@ describe("publish-version-integrity", () => {
       // DRY_RUN should not fail even without a build command available
       // (no pnpm in temp dir). If build ran, it would fail.
       expect(() =>
-        execSync("bash scripts/publish.sh patch", {
+        execSync("bash scripts/publish-npm.sh patch", {
           cwd: tempDir,
           env: { ...process.env, DRY_RUN: "1" },
           stdio: "ignore",
@@ -76,7 +76,7 @@ describe("publish-version-integrity", () => {
     });
 
     it("and no git commit or tag is created", () => {
-      execSync("bash scripts/publish.sh patch", {
+      execSync("bash scripts/publish-npm.sh patch", {
         cwd: tempDir,
         env: { ...process.env, DRY_RUN: "1" },
         stdio: "ignore",
@@ -106,7 +106,7 @@ describe("publish-version-integrity", () => {
 
       // Inject a failing build command via PUBLISH_BUILD_CMD
       try {
-        execSync("bash scripts/publish.sh patch", {
+        execSync("bash scripts/publish-npm.sh patch", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -129,7 +129,7 @@ describe("publish-version-integrity", () => {
 
     it("and no git commit or tag is created", () => {
       try {
-        execSync("bash scripts/publish.sh patch", {
+        execSync("bash scripts/publish-npm.sh patch", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -160,7 +160,7 @@ describe("publish-version-integrity", () => {
         .version as string;
 
       try {
-        execSync("bash scripts/publish.sh patch", {
+        execSync("bash scripts/publish-npm.sh patch", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -189,7 +189,7 @@ describe("publish-version-integrity", () => {
       // Fail twice in a row
       for (let i = 0; i < 3; i++) {
         try {
-          execSync("bash scripts/publish.sh patch", {
+          execSync("bash scripts/publish-npm.sh patch", {
             cwd: tempDir,
             env: {
               ...process.env,
@@ -212,7 +212,7 @@ describe("publish-version-integrity", () => {
     it("then version is not incremented but synced across manifests", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
-      execSync("bash scripts/publish.sh current", {
+      execSync("bash scripts/publish-npm.sh current", {
         cwd: tempDir,
         env: { ...process.env, DRY_RUN: "1" },
         stdio: "ignore",
@@ -230,7 +230,7 @@ describe("publish-version-integrity", () => {
     it("then build and publish run and a git tag is created", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
-      execSync("bash scripts/publish.sh current", {
+      execSync("bash scripts/publish-npm.sh current", {
         cwd: tempDir,
         env: {
           ...process.env,
@@ -258,7 +258,7 @@ describe("publish-version-integrity", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
       try {
-        execSync("bash scripts/publish.sh current", {
+        execSync("bash scripts/publish-npm.sh current", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -285,7 +285,7 @@ describe("publish-version-integrity", () => {
     it("then version is bumped in package.json and openclaw.plugin.json", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
-      execSync("bash scripts/publish.sh patch", {
+      execSync("bash scripts/publish-npm.sh patch", {
         cwd: tempDir,
         env: {
           ...process.env,
@@ -311,7 +311,7 @@ describe("publish-version-integrity", () => {
     });
 
     it("and a git tag is created for the new version", () => {
-      execSync("bash scripts/publish.sh patch", {
+      execSync("bash scripts/publish-npm.sh patch", {
         cwd: tempDir,
         env: {
           ...process.env,
