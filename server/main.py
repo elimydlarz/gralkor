@@ -342,6 +342,9 @@ async def rate_limit_middleware(request, call_next):
                 content={"detail": msg},
                 headers={"retry-after": str(int(retry_after))},
             )
+        llm_err = _find_downstream_llm_error(exc)
+        if llm_err is not None:
+            return _downstream_llm_response(llm_err)
         raise
 
 
