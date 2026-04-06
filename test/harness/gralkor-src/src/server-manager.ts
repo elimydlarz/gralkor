@@ -4,7 +4,6 @@ import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type ModelConfig, type OntologyConfig, type OntologyAttributeValue } from "./config.js";
-import { buildSyncEnv, buildPipEnv, buildSpawnEnv } from "./server-env.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -17,12 +16,6 @@ export interface ServerManagerOptions {
   dataDir: string;
   serverDir: string;
   port: number;
-  /**
-   * Plugin version. Used to construct the GitHub Releases URL when the
-   * bundled arm64 wheel is missing from the install (ClawHub publishes
-   * exclude the wheel because it exceeds the 20 MB upload limit).
-   */
-  version: string;
   env?: Record<string, string>;
   secretEnv?: Record<string, string>;
   llmConfig?: ModelConfig;
@@ -30,11 +23,6 @@ export interface ServerManagerOptions {
   ontologyConfig?: OntologyConfig;
   test?: boolean;
 }
-
-/** falkordblite version that the bundled wheel is built against. Must match scripts/build-arm64-wheel.sh. */
-const FALKORDBLITE_WHEEL_VERSION = "0.9.0";
-const FALKORDBLITE_WHEEL_FILENAME = `falkordblite-${FALKORDBLITE_WHEEL_VERSION}-py3-none-manylinux_2_36_aarch64.whl`;
-const WHEEL_DOWNLOAD_REPO = "elimydlarz/gralkor";
 
 export interface ServerManager {
   start(): Promise<void>;
@@ -95,22 +83,20 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // arm64 wheel requires manylinux_2_39 (glibc 2.39+) but many linux/arm64 hosts
     // run glibc 2.36 (Debian Bookworm), causing uv to fall back to the sdist which
     // embeds x86-64 binaries. The bundled wheel is built for the correct arch.
+    const wheelsDir = join(opts.serverDir, "wheels");
     // Only use the bundled arm64 wheel on linux/arm64. The PyPI falkordblite wheel for arm64
     // requires manylinux_2_39 (glibc 2.39+) but Bookworm ships glibc 2.36, so uv falls back
     // to the sdist which embeds x86-64 binaries. On all other platforms (macOS, linux/x86-64)
     // the PyPI wheel installs correctly via uv sync.
-    //
-    // Wheel resolution order on linux/arm64:
-    //   1. Bundled in install: `${serverDir}/wheels/*.whl` (npm publish path).
-    //   2. Cached from previous download: `${dataDir}/wheels/*.whl`.
-    //   3. Download from GitHub Releases (ClawHub publish path — wheel is omitted
-    //      from the package because it exceeds ClawHub's 20 MB upload limit).
     const useBundledWheels = process.platform === "linux" && process.arch === "arm64";
-    const bundledWheels = useBundledWheels
-      ? await resolveBundledWheels(opts.serverDir, opts.dataDir, opts.version)
+    const bundledWheels = useBundledWheels && existsSync(wheelsDir)
+      ? readdirSync(wheelsDir).filter((f) => f.endsWith(".whl")).map((f) => join(wheelsDir, f))
       : [];
 
-    const syncEnv = buildSyncEnv(venvDir);
+    const syncEnv: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      UV_PROJECT_ENVIRONMENT: venvDir,
+    };
 
     const syncArgs = [
       "sync", "--no-dev", "--frozen", "--directory", opts.serverDir,
@@ -122,7 +108,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     console.log("[gralkor] boot: python env ready");
 
     // Install bundled wheels — no PyPI fallback, must succeed.
-    const pipEnv = buildPipEnv(venvDir);
+    const pipEnv = { ...process.env as Record<string, string>, VIRTUAL_ENV: venvDir };
     for (const wheelPath of bundledWheels) {
       console.log("[gralkor] Installing bundled wheel:", wheelPath);
       await execFileAsync(
@@ -151,12 +137,16 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     }
     await writeFile(configPath, configYaml, "utf-8");
 
-    const env = buildSpawnEnv({
-      extra: opts.env,
-      secretEnv: opts.secretEnv,
-      falkordbDataDir: join(opts.dataDir, "falkordb"),
-      configPath,
-    });
+    const env: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      ...opts.env,
+      ...opts.secretEnv,
+      FALKORDB_DATA_DIR: join(opts.dataDir, "falkordb"),
+      CONFIG_PATH: configPath,
+    };
+
+    // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
+    delete env.FALKORDB_URI;
 
     // Pre-flight health check: if the server is already running and healthy
     // (e.g. module was re-evaluated by the host mid-boot), adopt it rather
@@ -383,48 +373,6 @@ export function serializeOntologyYaml(ontology: OntologyConfig): string {
   }
 
   return lines.join("\n") + "\n";
-}
-
-/**
- * Resolve the bundled arm64 wheel(s) to install. Tries the install dir first
- * (npm publish path bundles them), then a cached download under dataDir, then
- * downloads from GitHub Releases for the current plugin version (ClawHub publish
- * path strips the wheel because it exceeds ClawHub's 20 MB upload limit).
- *
- * Throws on linux/arm64 if the wheel can be neither found nor downloaded — there
- * is no PyPI fallback because the PyPI wheel embeds x86-64 binaries on
- * Bookworm-class hosts (glibc 2.36 < required manylinux_2_39).
- */
-async function resolveBundledWheels(
-  serverDir: string,
-  dataDir: string,
-  version: string,
-): Promise<string[]> {
-  const installedDir = join(serverDir, "wheels");
-  if (existsSync(installedDir)) {
-    const files = readdirSync(installedDir).filter((f) => f.endsWith(".whl"));
-    if (files.length > 0) return files.map((f) => join(installedDir, f));
-  }
-
-  const cacheDir = join(dataDir, "wheels");
-  await mkdir(cacheDir, { recursive: true });
-  const cached = readdirSync(cacheDir).filter((f) => f.endsWith(".whl"));
-  if (cached.length > 0) return cached.map((f) => join(cacheDir, f));
-
-  const url = `https://github.com/${WHEEL_DOWNLOAD_REPO}/releases/download/v${version}/${FALKORDBLITE_WHEEL_FILENAME}`;
-  console.log(`[gralkor] boot: bundled wheel missing — downloading from ${url}`);
-  const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) {
-    throw new Error(
-      `Failed to download bundled falkordblite wheel from ${url}: HTTP ${res.status}. ` +
-      `On linux/arm64 the bundled wheel is required (PyPI's wheel embeds x86-64 binaries on glibc < 2.39).`,
-    );
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  const dest = join(cacheDir, FALKORDBLITE_WHEEL_FILENAME);
-  await writeFile(dest, buf);
-  console.log(`[gralkor] boot: wheel downloaded (${(buf.length / 1024 / 1024).toFixed(1)} MB) → ${dest}`);
-  return [dest];
 }
 
 async function waitForPortFree(port: number, timeoutMs: number): Promise<void> {

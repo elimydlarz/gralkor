@@ -1,0 +1,139 @@
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import type { GraphitiClient } from "./client.js";
+
+export const GRALKOR_MARKER = "<!-- GRALKOR:INDEXED -->";
+
+export interface DiscoveredFile {
+  absPath: string;
+  relPath: string;
+  groupId: string;
+}
+
+/**
+ * Discover native OpenClaw memory files under workspaceDir.
+ * Returns empty list if workspaceDir does not exist.
+ *
+ * Paths scanned:
+ *   {workspaceDir}/MEMORY.md       → groupId (provided by caller)
+ *   {workspaceDir}/memory/*.md     → groupId (provided by caller)
+ *
+ * The caller (before_prompt_build) knows the agentId and thus the correct
+ * group — no routing logic needed here.
+ */
+export async function discoverFiles(workspaceDir: string, groupId: string): Promise<DiscoveredFile[]> {
+  if (!existsSync(workspaceDir)) return [];
+
+  const files: DiscoveredFile[] = [];
+
+  // Root MEMORY.md
+  const rootMemory = join(workspaceDir, "MEMORY.md");
+  if (existsSync(rootMemory)) {
+    files.push({ absPath: rootMemory, relPath: "MEMORY.md", groupId });
+  }
+
+  // memory/*.md
+  const memoryDir = join(workspaceDir, "memory");
+  if (existsSync(memoryDir)) {
+    try {
+      const entries = await readdir(memoryDir);
+      for (const entry of entries.sort()) {
+        if (entry.endsWith(".md")) {
+          files.push({
+            absPath: join(memoryDir, entry),
+            relPath: `memory/${entry}`,
+            groupId,
+          });
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  return files;
+}
+
+/**
+ * Index a single native memory file into the graph.
+ *
+ * - No marker: ingest entire content, append marker.
+ * - Marker at end: skip (nothing new).
+ * - Marker mid-file: ingest content after marker, move marker to end.
+ *
+ * Returns true if content was ingested, false if skipped.
+ * Throws if ingest fails (file is NOT modified on failure).
+ */
+export async function indexFile(client: GraphitiClient, file: DiscoveredFile): Promise<boolean> {
+  const raw = await readFile(file.absPath, "utf8");
+  const markerPos = raw.indexOf(GRALKOR_MARKER);
+
+  let newContent: string;
+  let prefix: string;
+
+  if (markerPos === -1) {
+    newContent = raw.trim();
+    prefix = raw.trimEnd();
+  } else {
+    newContent = raw.slice(markerPos + GRALKOR_MARKER.length).trim();
+    prefix = raw.slice(0, markerPos).trimEnd();
+  }
+
+  if (!newContent) return false;
+
+  // Ingest first — only write marker if this succeeds
+  await client.addEpisode({
+    name: file.relPath,
+    episode_body: newContent,
+    source: "text",
+    source_description: "native-memory",
+    group_id: file.groupId,
+  });
+
+  // Preserve all content: everything before old marker position + new content + marker at end
+  const body = markerPos === -1
+    ? prefix
+    : `${prefix}\n${newContent}`;
+  await writeFile(file.absPath, `${body}\n${GRALKOR_MARKER}\n`);
+  return true;
+}
+
+/**
+ * Scan the workspace for native memory files and index any new content
+ * into the graph. Fire-and-forget safe — errors per file are caught.
+ *
+ * Called from before_prompt_build on each session start. Already-indexed
+ * files (marker at end) are skipped with only a disk read — fast enough
+ * to call every session.
+ */
+export async function runNativeIndexer(
+  client: GraphitiClient,
+  workspaceDir: string,
+  groupId: string,
+): Promise<void> {
+  if (!existsSync(workspaceDir)) {
+    console.log(`[gralkor] native-index: workspaceDir not found (${workspaceDir}) — skipping`);
+    return;
+  }
+
+  const files = await discoverFiles(workspaceDir, groupId);
+  if (files.length === 0) {
+    return;
+  }
+
+  let indexed = 0;
+  for (const file of files) {
+    try {
+      const ingested = await indexFile(client, file);
+      if (ingested) {
+        indexed++;
+        console.log(`[gralkor] native-index: indexed ${file.relPath} → ${file.groupId}`);
+      }
+    } catch (err) {
+      console.log(`[gralkor] native-index: error on ${file.relPath} — ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  if (indexed > 0) {
+    console.log(`[gralkor] native-index: done — ${indexed} file(s) ingested`);
+  }
+}

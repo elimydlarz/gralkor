@@ -2,7 +2,7 @@ import type { GraphitiClient } from "./client.js";
 import type { GralkorConfig } from "./config.js";
 import { type ReadyGate } from "./config.js";
 import { runNativeIndexer } from "./native-indexer.js";
-import { formatFact } from "./tools.js";
+import { formatFact, INTERPRETATION_INSTRUCTION } from "./tools.js";
 import { type EpisodeMessage, type EpisodeBlock, formatTranscript } from "./distill.js";
 import type { LLMClient, LLMMessage } from "./llm-client.js";
 
@@ -18,7 +18,7 @@ interface ContentBlock {
 /**
  * A message entry in the OpenClaw messages array.
  */
-export interface MessageEntry {
+interface MessageEntry {
   role: string;
   content: string | ContentBlock[];
 }
@@ -303,7 +303,6 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
  */
 export interface RecallOpts {
   setSessionData?: (sessionKey: string, groupId: string) => void;
-  setSessionMessages?: (sessionKey: string, messages: MessageEntry[]) => void;
   getGroupId: (sessionKey: string) => string;
   serverReady?: ReadyGate;
   llmClient?: LLMClient | null;
@@ -319,32 +318,6 @@ const INTERPRET_SYSTEM_PROMPT =
 const INTERPRET_TOKEN_BUDGET = 250_000;
 const INTERPRET_CHARS_PER_TOKEN = 4;
 export const INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * INTERPRET_CHARS_PER_TOKEN;
-
-/**
- * Interpret recalled facts in the context of the current conversation.
- * Shared by auto-recall (fast) and memory_search (slow). Fail-fast: throws
- * if `llmClient` is missing or `generate()` rejects/returns empty.
- */
-export async function interpretFacts(
-  messages: MessageEntry[],
-  factsText: string,
-  llmClient: LLMClient | null | undefined,
-): Promise<string> {
-  if (!llmClient) {
-    throw new Error("[gralkor] interpretFacts: llmClient is required (configure an LLM provider API key)");
-  }
-  const ctx = buildInterpretationContext(messages, factsText);
-  const interpretMessages: LLMMessage[] = [
-    { role: "system", content: INTERPRET_SYSTEM_PROMPT },
-    { role: "user", content: ctx },
-  ];
-  const interpretation = await llmClient.generate(interpretMessages, 500);
-  if (!interpretation) {
-    throw new Error("[gralkor] interpretFacts: llmClient returned empty interpretation");
-  }
-  console.log(`[gralkor] interpretation — chars:${interpretation.length}`);
-  return interpretation;
-}
 
 export function buildInterpretationContext(
   messages: MessageEntry[],
@@ -378,7 +351,7 @@ export function createBeforePromptBuildHandler(
   config: GralkorConfig,
   opts: RecallOpts,
 ) {
-  const { setSessionData, setSessionMessages, getGroupId, serverReady, llmClient } = opts;
+  const { setSessionData, getGroupId, serverReady, llmClient } = opts;
 
   return async (event: PromptBuildEvent, ctx: HookAgentContext = {}): Promise<{ prependContext?: string } | void> => {
     const agentId = ctx.agentId;
@@ -387,9 +360,6 @@ export function createBeforePromptBuildHandler(
 
     if (setSessionData) {
       setSessionData(sessionKey, agentId ?? "default");
-    }
-    if (setSessionMessages) {
-      setSessionMessages(sessionKey, event.messages);
     }
 
     // Index workspace files fire-and-forget on every session start.
@@ -426,19 +396,39 @@ export function createBeforePromptBuildHandler(
       const factCount = searchResults.facts.length;
       console.log(`[gralkor] auto-recall result — graph: ${factCount} facts — groupId:${groupId}`);
 
+      const factsText = factCount > 0
+        ? "Facts:\n" + searchResults.facts.map(formatFact).join("\n")
+        : "No facts found.";
+
       const furtherQuerying =
         "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
 
-      let contextBody: string;
-      if (factCount > 0) {
-        const factsText = "Facts:\n" + searchResults.facts.map(formatFact).join("\n");
-        const interpretation = await interpretFacts(event.messages, factsText, llmClient);
-        contextBody = `${factsText}\n\nInterpretation:\n${interpretation}`;
-      } else {
-        contextBody = "No facts found.";
+      let contextBody = factsText;
+      let interpretationSucceeded = false;
+
+      if (factCount > 0 && llmClient) {
+        try {
+          const interpretCtx = buildInterpretationContext(event.messages, factsText);
+          const interpretMessages: LLMMessage[] = [
+            { role: "system", content: INTERPRET_SYSTEM_PROMPT },
+            { role: "user", content: interpretCtx },
+          ];
+          const interpretation = await llmClient.generate(interpretMessages, 500);
+          if (interpretation) {
+            contextBody = `${factsText}\n\nInterpretation:\n${interpretation}`;
+            interpretationSucceeded = true;
+            console.log(`[gralkor] auto-recall interpretation — chars:${interpretation.length}`);
+          }
+        } catch (err) {
+          console.warn("[gralkor] auto-recall interpretation failed, using fallback:", err instanceof Error ? err.message : err);
+        }
       }
 
-      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${contextBody}\n\nSession-key: ${sessionKey}\n${furtherQuerying}\n</gralkor-memory>`;
+      const trailer = interpretationSucceeded
+        ? furtherQuerying
+        : `${INTERPRETATION_INSTRUCTION} ${furtherQuerying}`;
+
+      const prependContext = `<gralkor-memory source="auto-recall" trust="untrusted">\n${contextBody}\n\nSession-key: ${sessionKey}\n${trailer}\n</gralkor-memory>`;
 
       if (config.test) {
         console.log(`[gralkor] [test] auto-recall query: ${userMessage}`);

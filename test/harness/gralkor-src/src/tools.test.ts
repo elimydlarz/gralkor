@@ -9,9 +9,8 @@ import {
   createBuildCommunitiesTool,
   formatFacts,
   formatTimestamp,
+  INTERPRETATION_INSTRUCTION,
 } from "./tools.js";
-
-const stubInterpret = vi.fn(async (_sessionKey: string, _factsText: string) => "Interpreted: facts are relevant.");
 
 function mockClient(): {
   [K in keyof GraphitiClient]: ReturnType<typeof vi.fn>;
@@ -255,29 +254,24 @@ describe("memory_search (createMemorySearchTool)", () => {
   beforeEach(() => {
     resetReadyGate();
     client = mockClient();
-    stubInterpret.mockClear();
-    stubInterpret.mockResolvedValue("Interpreted: facts are relevant.");
   });
 
-  it("returns facts under 'Facts:' header and an Interpretation section when graph has results", async () => {
+  it("returns facts under 'Facts:' header and INTERPRETATION_INSTRUCTION when graph has results", async () => {
     client.search.mockResolvedValue({ facts: [makeFact({ fact: "the sky is blue" })], nodes: [] });
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, interpret: stubInterpret });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
     const result = await tool.execute("call-1", { query: "sky", session_key: "s" });
 
     expect(result).toContain("Facts:");
     expect(result).toContain("the sky is blue");
-    expect(result).toContain("Interpretation:");
-    expect(result).toContain("Interpreted: facts are relevant.");
-    expect(stubInterpret).toHaveBeenCalledWith("s", expect.stringContaining("the sky is blue"));
+    expect(result).toContain(INTERPRETATION_INSTRUCTION);
   });
 
-  it("returns 'No facts found.' and does NOT call interpret when nothing is returned", async () => {
+  it("returns 'No facts found.' when neither facts nor nodes are returned", async () => {
     client.search.mockResolvedValue({ facts: [], nodes: [] });
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, interpret: stubInterpret });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
     const result = await tool.execute("call-1", { query: "nothing", session_key: "s" });
 
     expect(result).toBe("No facts found.");
-    expect(stubInterpret).not.toHaveBeenCalled();
   });
 
   it("includes entity nodes under 'Entities:' section when nodes are returned", async () => {
@@ -285,27 +279,17 @@ describe("memory_search (createMemorySearchTool)", () => {
       facts: [makeFact({ fact: "a fact" })],
       nodes: [{ uuid: "n-1", name: "Sky", summary: "the sky entity", group_id: "default", labels: [], created_at: "2025-01-01T00:00:00Z", attributes: {} }],
     });
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, interpret: stubInterpret });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId });
     const result = await tool.execute("call-1", { query: "sky", session_key: "s" });
 
     expect(result).toContain("Entities:");
     expect(result).toContain("Sky: the sky entity");
-    // Entities are part of the text passed to interpret
-    expect(stubInterpret).toHaveBeenCalledWith("s", expect.stringContaining("Sky: the sky entity"));
-  });
-
-  it("propagates errors when interpret throws (no fallback)", async () => {
-    client.search.mockResolvedValue({ facts: [makeFact({ fact: "x" })], nodes: [] });
-    const failingInterpret = vi.fn().mockRejectedValue(new Error("LLM down"));
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, interpret: failingInterpret });
-
-    await expect(tool.execute("call-1", { query: "x", session_key: "s" })).rejects.toThrow("LLM down");
   });
 
   it("uses session_key to look up group ID", async () => {
     client.search.mockResolvedValue({ facts: [], nodes: [] });
     const sessionGetGroupId = (sessionKey: string) => sessionKey === "sess-abc" ? "agent-77" : undefined;
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId, interpret: stubInterpret });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: sessionGetGroupId });
     await tool.execute("call-1", { query: "x", session_key: "sess-abc" });
 
     expect(client.search).toHaveBeenCalledWith("x", ["agent-77"], expect.any(Number), "slow");
@@ -315,7 +299,7 @@ describe("memory_search (createMemorySearchTool)", () => {
     const notFoundGetGroupId = (sessionKey: string): string => {
       throw new Error(`[gralkor] session_key '${sessionKey}' not registered — ensure before_prompt_build has run for this session`);
     };
-    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId, interpret: stubInterpret });
+    const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId: notFoundGetGroupId });
 
     await expect(tool.execute("call-1", { query: "x", session_key: "unknown" })).rejects.toThrow(
       "session_key 'unknown' not registered",
@@ -326,7 +310,7 @@ describe("memory_search (createMemorySearchTool)", () => {
   describe("when server is not ready", () => {
     it("throws error", async () => {
       const gate = createReadyGate();
-      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate, interpret: stubInterpret });
+      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
 
       await expect(tool.execute("call-1", { query: "x", session_key: "s" })).rejects.toThrow(
         "[gralkor] memory_search failed: server is not ready",
@@ -340,7 +324,7 @@ describe("memory_search (createMemorySearchTool)", () => {
       client.search.mockResolvedValue({ facts: [makeFact({ fact: "some fact" })], nodes: [] });
       const gate = createReadyGate();
       gate.resolve();
-      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate, interpret: stubInterpret });
+      const tool = createMemorySearchTool(client as unknown as GraphitiClient, config, { getGroupId, serverReady: gate });
       const result = await tool.execute("call-1", { query: "something", session_key: "s" });
 
       expect(client.search).toHaveBeenCalledTimes(1);

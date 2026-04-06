@@ -783,12 +783,10 @@ describe("buildInterpretationContext (token budget)", () => {
 
 describe("before_prompt_build handler", () => {
   let client: ReturnType<typeof mockClient>;
-  let defaultLlm: LLMClient;
 
   beforeEach(() => {
     resetReadyGate();
     client = mockClient();
-    defaultLlm = mockLLMClient("Interpretation: facts are relevant.");
   });
 
   it("returns context with matching facts", async () => {
@@ -798,7 +796,7 @@ describe("before_prompt_build handler", () => {
     });
 
     // getGroupId returns the pre-sanitized groupId (sanitization happens at setSessionData write time)
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: (_k) => "agent_42", llmClient: defaultLlm });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: (_k) => "agent_42" });
     const result = await handler(
       { prompt: "Tell me about the project architecture", messages: [] },
       { agentId: "agent-42" },
@@ -810,7 +808,9 @@ describe("before_prompt_build handler", () => {
     expect(ctx_result).toContain("gralkor-memory");
     expect(ctx_result).toContain('trust="untrusted"');
     expect(ctx_result).toContain("Facts:");
-    expect(ctx_result).toContain("Interpretation:");
+    // No llmClient → fallback instruction
+    expect(ctx_result).toContain("interpret these facts");
+    expect(ctx_result).toContain("improves response quality significantly");
     expect(ctx_result).toContain("search memory up to 3 times in parallel");
     // Verify correct groupId was passed to search (hyphen sanitized to underscore)
     expect(client.search).toHaveBeenCalledWith(
@@ -830,7 +830,7 @@ describe("before_prompt_build handler", () => {
       ],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "Tell me about it", messages: [] },
       { agentId: "agent-42" },
@@ -854,7 +854,7 @@ describe("before_prompt_build handler", () => {
       })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     const result = await handler(
       { prompt: "What framework does the team use?", messages: [] },
       { agentId: "agent-42" },
@@ -976,17 +976,6 @@ describe("before_prompt_build handler", () => {
     expect(setSessionData).toHaveBeenCalledWith("sess-abc", "agent-42");
   });
 
-  it("calls setSessionMessages with sessionKey and event.messages", async () => {
-    client.search.mockResolvedValue(emptySearchResults());
-    const setSessionMessages = vi.fn();
-
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { setSessionMessages, getGroupId: defaultGetGroupId });
-    const messages = [{ role: "user", content: [{ type: "text", text: "hi" }] }];
-    await handler({ prompt: "hi", messages }, { agentId: "agent-42", sessionKey: "sess-abc" });
-
-    expect(setSessionMessages).toHaveBeenCalledWith("sess-abc", messages);
-  });
-
   it("falls back to agentId as sessionKey when sessionKey is absent", async () => {
     client.search.mockResolvedValue(emptySearchResults());
     const setSessionData = vi.fn();
@@ -1042,7 +1031,23 @@ describe("before_prompt_build handler", () => {
     expect(ctx_result).toContain("Session-key: sess-xyz");
   });
 
-  describe("recall-interpretation", () => {
+  describe("auto-recall-interpretation", () => {
+    it("when auto-recall returns results and no llmClient, prependContext includes fallback instruction", async () => {
+      client.search.mockResolvedValue({
+        ...emptySearchResults(),
+        facts: [makeFact({ fact: "Team uses React" })],
+      });
+
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
+      );
+
+      const ctx_result = (result as { prependContext: string }).prependContext;
+      expect(ctx_result).toContain("interpret these facts for relevance to the task at hand");
+    });
+
     it("when llmClient is provided and returns interpretation, prependContext includes raw facts and Interpretation section", async () => {
       client.search.mockResolvedValue({
         ...emptySearchResults(),
@@ -1063,21 +1068,10 @@ describe("before_prompt_build handler", () => {
       expect(ctx_result).toContain("Facts:");
       expect(ctx_result).toContain("Interpretation:");
       expect(ctx_result).toContain("React is relevant because");
+      expect(ctx_result).not.toContain("interpret these facts for relevance");
     });
 
-    it("throws when llmClient is missing and recall returns facts (no fallback)", async () => {
-      client.search.mockResolvedValue({
-        ...emptySearchResults(),
-        facts: [makeFact({ fact: "Team uses React" })],
-      });
-
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
-      await expect(
-        handler({ prompt: "What framework?", messages: [] }, { agentId: "agent-42" }),
-      ).rejects.toThrow(/llmClient is required/);
-    });
-
-    it("propagates the error when llmClient.generate throws", async () => {
+    it("when llmClient.generate throws, falls back to instruction", async () => {
       client.search.mockResolvedValue({
         ...emptySearchResults(),
         facts: [makeFact({ fact: "Team uses React" })],
@@ -1087,24 +1081,14 @@ describe("before_prompt_build handler", () => {
       const handler = createBeforePromptBuildHandler(
         client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
-      await expect(
-        handler({ prompt: "What framework?", messages: [] }, { agentId: "agent-42" }),
-      ).rejects.toThrow("API down");
-    });
-
-    it("does NOT call llmClient when recall returns no facts", async () => {
-      client.search.mockResolvedValue(emptySearchResults());
-      const llmClient: LLMClient = { generate: vi.fn().mockResolvedValue("nope") };
-
-      const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
+      const result = await handler(
+        { prompt: "What framework?", messages: [] },
+        { agentId: "agent-42" },
       );
-      const result = await handler({ prompt: "Anything?", messages: [] }, { agentId: "agent-42" });
 
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("No facts found.");
-      expect(ctx_result).not.toContain("Interpretation:");
-      expect(llmClient.generate).not.toHaveBeenCalled();
+      expect(ctx_result).toContain("Team uses React");
+      expect(ctx_result).toContain("interpret these facts for relevance");
     });
 
     it("passes all messages when within token budget (no 20-message cap)", async () => {
@@ -1141,7 +1125,7 @@ describe("before_prompt_build handler", () => {
         facts: [makeFact({ fact: "Team uses React" })],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1162,7 +1146,7 @@ describe("before_prompt_build handler", () => {
         nodes: [{ uuid: "n1", name: "ReactProject", summary: "A frontend project", group_id: "default" }],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       const result = await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1182,7 +1166,7 @@ describe("before_prompt_build handler", () => {
         facts: [makeFact({ fact: "Team uses React" })],
       });
 
-      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
+      const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       const result = await handler(
         { prompt: "What framework?", messages: [] },
         { agentId: "agent-42" },
@@ -1220,7 +1204,7 @@ describe("before_prompt_build handler", () => {
       });
 
       const handler = createBeforePromptBuildHandler(
-        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate, getGroupId: defaultGetGroupId, llmClient: defaultLlm },
+        client as unknown as GraphitiClient, defaultConfig, { serverReady: gate, getGroupId: defaultGetGroupId },
       );
       const result = await handler(
         { prompt: "Tell me about the project", messages: [] },
@@ -1964,7 +1948,7 @@ describe("test mode logging", () => {
     });
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
@@ -1981,7 +1965,7 @@ describe("test mode logging", () => {
     });
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
@@ -1997,7 +1981,7 @@ describe("test mode logging", () => {
       facts: [makeFact({ fact: "Sky is blue" })],
     });
 
-    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
+    const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
     await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(

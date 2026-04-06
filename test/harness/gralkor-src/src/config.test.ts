@@ -1,0 +1,367 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  resolveConfig,
+  validateOntologyConfig,
+  defaultConfig,
+  sanitizeGroupId,
+  GRAPHITI_URL,
+  GRAPHITI_PORT,
+  DEFAULT_LLM_PROVIDER,
+  DEFAULT_LLM_MODEL,
+  DEFAULT_EMBEDDER_PROVIDER,
+  DEFAULT_EMBEDDER_MODEL,
+  createReadyGate,
+  resetReadyGate,
+} from "./config.js";
+import type { OntologyConfig } from "./config.js";
+
+const VALID_ONTOLOGY: OntologyConfig = {
+  entities: {
+    Project: {
+      description: "A software project or initiative.",
+      attributes: {
+        status: ["active", "completed", "paused"],
+        language: "Primary programming language",
+      },
+    },
+    Technology: {
+      description: "A technology, framework, or tool.",
+      attributes: {
+        category: ["language", "framework", "database"],
+      },
+    },
+  },
+  edges: {
+    Uses: {
+      description: "A project using a technology.",
+      attributes: {
+        version: "Version in use",
+      },
+    },
+  },
+  edgeMap: {
+    "Project,Technology": ["Uses"],
+  },
+};
+
+describe("resolveConfig()", () => {
+  it("returns defaults when called with no arguments", () => {
+    const config = resolveConfig();
+    expect(config).toMatchObject(defaultConfig);
+    expect(config.test).toBe(false);
+  });
+
+  it("returns defaults when called with empty object", () => {
+    const config = resolveConfig({});
+    expect(config).toMatchObject(defaultConfig);
+    expect(config.test).toBe(false);
+  });
+
+  it("exports GRAPHITI_URL constant pointing to localhost", () => {
+    expect(GRAPHITI_URL).toBe("http://127.0.0.1:8001");
+  });
+
+  it("exports GRAPHITI_PORT constant", () => {
+    expect(GRAPHITI_PORT).toBe(8001);
+  });
+
+  it("passes through dataDir when provided", () => {
+    const config = resolveConfig({ dataDir: "/custom/data" });
+    expect(config.dataDir).toBe("/custom/data");
+  });
+
+  it("defaults dataDir to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.dataDir).toBeUndefined();
+  });
+
+  it("overrides autoCapture.enabled", () => {
+    const config = resolveConfig({ autoCapture: { enabled: false } });
+    expect(config.autoCapture.enabled).toBe(false);
+  });
+
+  it("overrides autoRecall fields independently", () => {
+    const config = resolveConfig({ autoRecall: { enabled: false, maxResults: 20 } });
+    expect(config.autoRecall.enabled).toBe(false);
+    expect(config.autoRecall.maxResults).toBe(20);
+  });
+
+  it("uses default maxResults when only enabled is overridden", () => {
+    const config = resolveConfig({ autoRecall: { enabled: true } as any });
+    expect(config.autoRecall.maxResults).toBe(10);
+  });
+
+  it("passes through llm config when provided", () => {
+    const config = resolveConfig({ llm: { provider: "gemini", model: "gemini-2.0-flash" } });
+    expect(config.llm).toEqual({ provider: "gemini", model: "gemini-2.0-flash" });
+  });
+
+  it("passes through embedder config when provided", () => {
+    const config = resolveConfig({ embedder: { provider: "openai", model: "text-embedding-3-small" } });
+    expect(config.embedder).toEqual({ provider: "openai", model: "text-embedding-3-small" });
+  });
+
+  it("defaults llm to gemini provider and default model when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.llm).toEqual({ provider: DEFAULT_LLM_PROVIDER, model: DEFAULT_LLM_MODEL });
+  });
+
+  it("defaults embedder to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.embedder).toBeUndefined();
+  });
+
+  it("defaults test to false", () => {
+    const config = resolveConfig({});
+    expect(config.test).toBe(false);
+  });
+
+  it("passes through test when true", () => {
+    const config = resolveConfig({ test: true });
+    expect(config.test).toBe(true);
+  });
+
+  it("passes through ontology when provided", () => {
+    const config = resolveConfig({ ontology: VALID_ONTOLOGY });
+    expect(config.ontology).toBe(VALID_ONTOLOGY);
+  });
+
+  it("defaults ontology to undefined when not provided", () => {
+    const config = resolveConfig({});
+    expect(config.ontology).toBeUndefined();
+  });
+});
+
+describe("defaultConfig", () => {
+  it("has autoCapture enabled by default", () => {
+    expect(defaultConfig.autoCapture.enabled).toBe(true);
+  });
+
+  it("has idleTimeoutMs of 5 minutes", () => {
+    expect(defaultConfig.idleTimeoutMs).toBe(300_000);
+  });
+
+  it("has autoRecall enabled by default", () => {
+    expect(defaultConfig.autoRecall.enabled).toBe(true);
+  });
+
+  it("has autoRecall maxResults of 10", () => {
+    expect(defaultConfig.autoRecall.maxResults).toBe(10);
+  });
+
+  it("has search maxResults of 20", () => {
+    expect(defaultConfig.search.maxResults).toBe(20);
+  });
+
+  it("has search maxEntityResults of 10", () => {
+    expect(defaultConfig.search.maxEntityResults).toBe(10);
+  });
+
+  it("configSchema defaults match defaultConfig (single source of truth)", async () => {
+    const { configSchema } = await import("./index.js");
+    const schema = configSchema.properties;
+    expect(schema.autoCapture.properties.enabled.default).toBe(defaultConfig.autoCapture.enabled);
+    expect(schema.autoRecall.properties.enabled.default).toBe(defaultConfig.autoRecall.enabled);
+    expect(schema.autoRecall.properties.maxResults.default).toBe(defaultConfig.autoRecall.maxResults);
+    expect(schema.search.properties.maxResults.default).toBe(defaultConfig.search.maxResults);
+    expect(schema.search.properties.maxEntityResults.default).toBe(defaultConfig.search.maxEntityResults);
+  });
+
+  it("plugin manifest defaults match defaultConfig (single source of truth)", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+
+    for (const manifestPath of [
+      join(__dirname, "..", "openclaw.plugin.json"),
+    ]) {
+      const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+      const props = manifest.configSchema.properties;
+      expect(props.autoCapture.properties.enabled.default, `${manifestPath}: autoCapture.enabled`).toBe(defaultConfig.autoCapture.enabled);
+      expect(props.autoRecall.properties.enabled.default, `${manifestPath}: autoRecall.enabled`).toBe(defaultConfig.autoRecall.enabled);
+      expect(props.autoRecall.properties.maxResults.default, `${manifestPath}: autoRecall.maxResults`).toBe(defaultConfig.autoRecall.maxResults);
+      expect(props.search.properties.maxResults.default, `${manifestPath}: search.maxResults`).toBe(defaultConfig.search.maxResults);
+      expect(props.search.properties.maxEntityResults.default, `${manifestPath}: search.maxEntityResults`).toBe(defaultConfig.search.maxEntityResults);
+    }
+  });
+});
+
+describe("provider defaults", () => {
+  it("DEFAULT_LLM_PROVIDER is gemini", () => {
+    expect(DEFAULT_LLM_PROVIDER).toBe("gemini");
+  });
+
+  it("DEFAULT_LLM_MODEL is gemini-3.1-flash-lite-preview", () => {
+    expect(DEFAULT_LLM_MODEL).toBe("gemini-3.1-flash-lite-preview");
+  });
+
+  it("DEFAULT_EMBEDDER_PROVIDER is gemini", () => {
+    expect(DEFAULT_EMBEDDER_PROVIDER).toBe("gemini");
+  });
+
+  it("DEFAULT_EMBEDDER_MODEL is gemini-embedding-2-preview", () => {
+    expect(DEFAULT_EMBEDDER_MODEL).toBe("gemini-embedding-2-preview");
+  });
+});
+
+describe("ReadyGate", () => {
+  it("starts not ready", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    expect(gate.isReady()).toBe(false);
+  });
+
+  it("becomes ready after resolve()", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    gate.resolve();
+    expect(gate.isReady()).toBe(true);
+  });
+
+  it("resetReadyGate() resets back to not ready", () => {
+    resetReadyGate();
+    const gate = createReadyGate();
+    gate.resolve();
+    expect(gate.isReady()).toBe(true);
+    resetReadyGate();
+    expect(gate.isReady()).toBe(false);
+  });
+
+  it("shares state across multiple createReadyGate() calls", () => {
+    resetReadyGate();
+    const gate1 = createReadyGate();
+    const gate2 = createReadyGate();
+    gate1.resolve();
+    expect(gate2.isReady()).toBe(true);
+  });
+});
+
+describe("validateOntologyConfig()", () => {
+  describe("when ontology is undefined", () => {
+    it("then does not throw", () => {
+      expect(() => validateOntologyConfig(undefined)).not.toThrow();
+    });
+  });
+
+  describe("when ontology is valid", () => {
+    it("then does not throw", () => {
+      expect(() => validateOntologyConfig(VALID_ONTOLOGY)).not.toThrow();
+    });
+  });
+
+  describe("when entity name is a reserved graph label", () => {
+    it.each(["Entity", "Episodic", "Community", "Saga"])("then rejects '%s'", (name) => {
+      const ontology: OntologyConfig = {
+        entities: { [name]: { description: "test" } },
+      };
+      expect(() => validateOntologyConfig(ontology)).toThrow(name);
+    });
+  });
+
+  describe("when entity attribute uses a protected EntityNode field name", () => {
+    it.each(["uuid", "name", "group_id", "labels", "created_at", "summary", "attributes", "name_embedding"])(
+      "then rejects '%s'",
+      (attr) => {
+        const ontology: OntologyConfig = {
+          entities: {
+            Project: {
+              description: "test",
+              attributes: { [attr]: "some description" },
+            },
+          },
+        };
+        expect(() => validateOntologyConfig(ontology)).toThrow(attr);
+      },
+    );
+  });
+
+  describe("when edge attribute uses a protected EntityEdge field name", () => {
+    it.each(["uuid", "group_id", "source_node_uuid", "target_node_uuid", "created_at", "name", "fact", "fact_embedding", "episodes", "expired_at", "valid_at", "invalid_at", "attributes"])(
+      "then rejects '%s'",
+      (attr) => {
+        const ontology: OntologyConfig = {
+          edges: {
+            Uses: {
+              description: "test",
+              attributes: { [attr]: "some description" },
+            },
+          },
+        };
+        expect(() => validateOntologyConfig(ontology)).toThrow(attr);
+      },
+    );
+  });
+
+  describe("when edgeMap references undeclared entity", () => {
+    it("then rejects", () => {
+      const ontology: OntologyConfig = {
+        entities: {
+          Project: { description: "test" },
+        },
+        edges: {
+          Uses: { description: "test" },
+        },
+        edgeMap: {
+          "Project,Unknown": ["Uses"],
+        },
+      };
+      expect(() => validateOntologyConfig(ontology)).toThrow("Unknown");
+    });
+  });
+
+  describe("when edgeMap references undeclared edge", () => {
+    it("then rejects", () => {
+      const ontology: OntologyConfig = {
+        entities: {
+          Project: { description: "test" },
+          Technology: { description: "test" },
+        },
+        edgeMap: {
+          "Project,Technology": ["Nonexistent"],
+        },
+      };
+      expect(() => validateOntologyConfig(ontology)).toThrow("Nonexistent");
+    });
+  });
+
+  describe("when edgeMap key format is invalid", () => {
+    it("then rejects with descriptive message", () => {
+      const ontology: OntologyConfig = {
+        entities: {
+          Project: { description: "test" },
+        },
+        edges: {
+          Uses: { description: "test" },
+        },
+        edgeMap: {
+          "Project": ["Uses"],
+        },
+      };
+      expect(() => validateOntologyConfig(ontology)).toThrow("Invalid edgeMap key 'Project': expected 'EntityA,EntityB'");
+    });
+  });
+
+});
+
+
+describe("sanitizeGroupId", () => {
+  it("replaces hyphens with underscores", () => {
+    expect(sanitizeGroupId("agent-42")).toBe("agent_42");
+  });
+
+  it("replaces multiple hyphens", () => {
+    expect(sanitizeGroupId("my-cool-agent")).toBe("my_cool_agent");
+  });
+
+  it("returns unchanged when no hyphens", () => {
+    expect(sanitizeGroupId("default")).toBe("default");
+    expect(sanitizeGroupId("agent42")).toBe("agent42");
+  });
+
+  it("handles empty string", () => {
+    expect(sanitizeGroupId("")).toBe("");
+  });
+});
+
+

@@ -1,0 +1,34 @@
+# Whitelist approach: ignore everything, then unignore what npm publishes
+# (mirrors the "files" field in package.json plus README/LICENSE/manifests).
+*
+
+# Required manifests
+!package.json
+!openclaw.plugin.json
+!README.md
+!LICENSE
+
+# Compiled output
+!dist/
+!dist/**
+
+# Server: only the runtime files, never .venv / tests / mutants / wheels build artifacts beyond bundled ones
+!server/
+server/*
+!server/Dockerfile
+!server/main.py
+!server/pyproject.toml
+!server/uv.lock
+!server/requirements.txt
+!server/wheels/
+!server/wheels/**
+
+# Top-level runtime config
+!docker-compose.yml
+!config.yaml
+!.env.example
+
+# Hard excludes (defence in depth — never publish secrets or local state)
+.env
+.env.*
+!.env.example

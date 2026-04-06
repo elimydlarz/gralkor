@@ -14,8 +14,6 @@ import {
   registerServerService,
   registerCli,
 } from "./register.js";
-import { interpretFacts, type MessageEntry } from "./hooks.js";
-import { createLLMClient } from "./llm-client.js";
 import type { MemoryPluginApi } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,27 +62,13 @@ function registerFullPlugin(
     groupIdBySession.set(sessionKey, sanitizeGroupId(groupId));
   };
 
-  // Session-keyed conversation messages: hooks store the latest snapshot from
-  // before_prompt_build so memory_search (slow) can interpret recall results
-  // in conversation context.
-  const messagesBySession = new Map<string, MessageEntry[]>();
-  const setSessionMessages = (sessionKey: string, messages: MessageEntry[]) => {
-    messagesBySession.set(sessionKey, messages);
-  };
-
-  const llmClient = createLLMClient(config);
-  const interpret = (sessionKey: string, factsText: string): Promise<string> => {
-    const messages = messagesBySession.get(sessionKey) ?? [];
-    return interpretFacts(messages, factsText, llmClient);
-  };
-
   const toolOpts = { getGroupId, serverReady };
-  api.registerTool(createMemorySearchTool(client, config, { ...toolOpts, interpret }));
+  api.registerTool(createMemorySearchTool(client, config, toolOpts));
   api.registerTool(createMemoryStoreTool(client, config, toolOpts));
   api.registerTool(createBuildIndicesTool(client, { serverReady }));
   api.registerTool(createBuildCommunitiesTool(client, toolOpts));
 
-  const debouncer = registerHooks(api, client, config, { setSessionData, setSessionMessages, getGroupId, serverReady, llmClient });
+  const debouncer = registerHooks(api, client, config, { setSessionData, getGroupId, serverReady });
 
   // Flush pending session buffers on SIGTERM to prevent data loss on shutdown
   if (!sigTermHandlerInstalled) {

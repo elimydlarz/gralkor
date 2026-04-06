@@ -8,7 +8,7 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 |---|---|
 | Entry point | `src/index.ts` → `dist/index.js` |
 | Plugin ID / Kind | `gralkor` / `"memory"` |
-| Tools | `memory_search` (graph: facts + entity summaries), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
+| Tools | `memory_search` (graph: facts + entity summaries, with LLM interpretation in session-message context), `memory_add` (graph), `memory_build_indices` (maintenance), `memory_build_communities` (maintenance) |
 | Hooks | `before_prompt_build` (auto-recall), `agent_end`/`session_end` (auto-capture) |
 | CLI | `openclaw gralkor` (plugin) |
 
@@ -58,7 +58,7 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 ### Data Lifecycle
 
 **Auto-recall** (`before_prompt_build`):
-Extracts user message from `event.prompt` (strips `System:` lines, session-start, metadata wrappers; falls back to `event.messages` stripping `<gralkor-memory>`). Derives `sessionKey = ctx.sessionKey ?? ctx.sessionId ?? ctx.agentId ?? "default"` and stores it in `groupIdBySession` Map via `setSessionData(sessionKey, agentId)`. Injects `Session-key: {sessionKey}` into the memory block so tools can pass it back. Skips if disabled/no message. Fail-fast if not ready. Searches `client.search()`. If facts found and `llmClient` available, calls `llmClient.generate()` with conversation messages (within 1M-char / ~250K-token budget, oldest dropped first) + raw facts to produce an interpretation; appends `\n\nInterpretation:\n{text}` after raw facts. On LLM failure or null: falls back to raw facts + `INTERPRETATION_INSTRUCTION`. Returns `<gralkor-memory trust="untrusted">` as `{ prependContext }`. Errors propagate.
+Extracts user message from `event.prompt` (strips `System:` lines, session-start, metadata wrappers; falls back to `event.messages` stripping `<gralkor-memory>`). Derives `sessionKey = ctx.sessionKey ?? ctx.sessionId ?? ctx.agentId ?? "default"` and stores it in `groupIdBySession` Map via `setSessionData(sessionKey, agentId)`. Also stores `event.messages` in `messagesBySession` Map via `setSessionMessages(sessionKey, messages)` so the `memory_search` tool can interpret slow-mode results in conversation context. Injects `Session-key: {sessionKey}` into the memory block so tools can pass it back. Skips if disabled/no message. Fail-fast if not ready. Searches `client.search()`. When facts are returned, calls `interpretFacts()` (shared helper) — `llmClient.generate()` with conversation messages (within ~250K-token budget, oldest dropped first) + raw facts — and appends `\n\nInterpretation:\n{text}` after the raw facts. **No fallback:** if `llmClient` is missing or `generate()` throws, the call propagates an error. Returns `<gralkor-memory trust="untrusted">` as `{ prependContext }`.
 
 **Auto-capture** (session buffering):
 `agent_end` fires per run with full session `messages`. Debounces via `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`. `session_end` force-flushes (race-safe). `extractMessagesFromCtx()` cleans user messages via `cleanUserMessageText()`, extracts assistant `text`/`thinking`/tool calls (as `tool_use`), converts `toolResult`/`tool` → `tool_result` (truncated 1000 chars). Media dropped. Calls `formatTranscript(messages, llmClient)` (from `src/distill.ts`) to produce `episode_body` string. POSTs to `/episodes` via `client.ingestEpisode()`.
@@ -122,30 +122,33 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 #### Recall
 
 ```
-auto-recall-interpretation
-  when auto-recall returns results and llmClient is available
+recall-interpretation
+  applies to both auto-recall (fast) and memory_search tool (slow) — both share the same interpret helper
+  when recall returns results
     then calls llmClient with conversation messages (within token budget) and raw facts
-    and prependContext includes "Interpretation:" section with LLM output after raw facts
-    and INTERPRETATION_INSTRUCTION is NOT appended
+    and output includes "Interpretation:" section with LLM output after raw facts
   when conversation history exceeds the token budget
     then oldest messages are dropped until context fits
     and most recent messages are always preserved
-  when auto-recall returns results and llmClient is null or LLM call fails
-    then prependContext falls back to raw facts + INTERPRETATION_INSTRUCTION
-  when memory_search tool execute returns results
-    then response includes raw facts + INTERPRETATION_INSTRUCTION
+  if llmClient is missing or the LLM call fails
+    then the recall call throws (no fallback)
+  for memory_search (slow)
+    then conversation messages are looked up by session_key from the session message store
+    when no messages have been recorded for the session
+      then interpretation runs with empty conversation context
 auto-recall-further-querying
   when auto-recall returns results
     then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
   when memory_search tool execute returns results
-    then response contains facts and interpretation instruction
+    then response contains facts and an interpretation section
     and response does not contain further querying instruction
 unified-search (memory_search tool)
   when session_key is not registered in the session map
     then throws error (does not route to default group)
   when searching
     when graph returns results
-      then response includes graph facts under "Facts:" header and interpretation instruction
+      then response includes graph facts under "Facts:" header
+      and response includes an "Interpretation:" section produced by the shared interpret helper
     when neither returns results
       then response is "No facts found."
     when mode is "slow"
@@ -736,6 +739,8 @@ pnpm run pack                      # deployment tarball (arm64 wheel via Docker)
 ```
 
 Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
+
+**ClawHub upload contents** are governed by `.clawhubignore` (gitignore syntax). The clawhub CLI walks the repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — it does NOT read `package.json`'s `files` field or `.gitignore`/`.npmignore`. The ignore file uses a whitelist approach (`*` then `!`-unignores) mirroring npm's `files` whitelist, and explicitly denies `.env*` (defence in depth). ClawHub enforces a 20 MB per-package upload limit; the bundled arm64 wheel is ~24 MB, so `server/wheels/` currently exceeds the limit and ClawHub publishing of arm64 builds is blocked pending a distribution decision (out-of-band wheel hosting, drop arm64 from ClawHub channel, or raised limit).
 
 ## Conventions
 
