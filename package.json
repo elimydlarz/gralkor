@@ -16,6 +16,8 @@
     "test:plugin": "vitest run",
     "test:integration": "vitest run --config test/integration/vitest.config.ts",
     "test:functional": "bash test/harness/functional-env.sh test",
+    "test:functional:both": "bash scripts/functional-test-both.sh",
+    "test:functional:results": "bash scripts/functional-test-results.sh /tmp/gralkor-functional-arm64.log /tmp/gralkor-functional-amd64.log",
     "test:functional:up": "bash test/harness/functional-env.sh up",
     "test:functional:run": "bash test/harness/functional-env.sh run",
     "test:functional:down": "bash test/harness/functional-env.sh down",
