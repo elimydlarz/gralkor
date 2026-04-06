@@ -118,8 +118,11 @@ cmd_run() {
     echo "  bash test/harness/functional-env.sh up" >&2
     exit 1
   fi
+  # Run vitest directly (not via pnpm exec) so that pnpm does not prepend
+  # node_modules/.bin to PATH — tests must resolve 'openclaw' to the version
+  # installed globally in the container, not whatever pnpm resolved as a peer dep.
   docker exec "$CONTAINER" bash -c \
-    "cd /app/gralkor-src && pnpm exec vitest run --config test/functional/vitest.config.ts"
+    "cd /app/gralkor-src && node_modules/.bin/vitest run --config test/functional/vitest.config.ts"
 }
 
 cmd_down() {
