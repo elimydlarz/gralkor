@@ -1,6 +1,6 @@
 # Gralkor
 
-**Persistent memory for OpenClaw agents, powered by knowledge graphs.**
+**The best memory plugin for OpenClaw agents**
 
 Gralkor is an OpenClaw plugin that gives your agents long-term, temporally-aware memory. It uses [Graphiti](https://github.com/getzep/graphiti) (by Zep) for knowledge graph construction and [FalkorDB](https://www.falkordb.com/) as the graph database backend. Both run automatically as a managed subprocess - no independent server for you to manage, or SaaS company to connect to.
 
@@ -20,6 +20,8 @@ Here's the honest field report on every OpenClaw memory plugin:
 | **MemOS Cloud** | Cloud (opaque) | no | last turn *(default)* | none | ✗ |
 | **Awareness** | Cloud + MD mirror | no | first message + last reply | none | ✗ |
 | **Gralkor** | Graphiti knowledge graph | **yes** | full session | `valid_at`/`invalid_at`/`expired_at` | ✓ |
+
+Let's look in detail about the decisions made for Gralkor and why they make it the best memory plugin for OpenClaw.
 
 **Graphs, not Markdown or pure vector.** The AI ecosystem's fixation on Markdown-based memory is baffling. Graphs are the right data structure for representing knowledge. Your code is a graph (syntax trees), your filesystem is a graph, the web is a graph. The world is a deeply interrelated graph, and trying to flatten it into Markdown files or pure vector embeddings is fighting reality. Yet: the most popular memory plugin — memory-core, the one that ships inside OpenClaw — writes your agent's memory to `MEMORY.md` and `memory/YYYY-MM-DD.md`. The second most popular, lancedb-pro, stores extracted facts as flat rows in LanceDB. [Graphiti](https://github.com/getzep/graphiti) combines a knowledge graph with vector embeddings — you get structured relationships *and* semantic retrieval. Facts carry temporal validity: when they became true, when they stopped being true, when they were superseded. This is not another chunking strategy or embedding experiment. Graphiti has solved this layer of the problem and Gralkor deploys and leverages it optimally for this use case. [HippoRAG](https://arxiv.org/abs/2405.14831) (NeurIPS 2024) found graph-based retrieval reaches 89.1% recall@5 on 2WikiMultiHopQA versus 68.2% for flat vector retrieval — a 20.9-point gap. [AriGraph](https://arxiv.org/abs/2407.04363) (IJCAI 2025) independently found KG-augmented agents markedly outperform RAG, summarization, and full-conversation-history baselines across interactive environments.
 
