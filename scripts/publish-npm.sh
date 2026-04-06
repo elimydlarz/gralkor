@@ -68,7 +68,14 @@ if [[ -z "${DRY_RUN:-}" ]]; then
 
   [[ "$level" != "current" ]] && trap - ERR
 
-  git tag "v$version"
+  if [[ "$level" != "current" ]]; then
+    git commit --only package.json openclaw.plugin.json -m "$version"
+  fi
+  if git rev-parse "v$version" >/dev/null 2>&1; then
+    echo "Tag v$version already exists — skipping"
+  else
+    git tag "v$version"
+  fi
 
   echo "Published v$version — tag created locally. Push manually: git push --follow-tags"
 fi
