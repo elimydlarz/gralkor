@@ -133,6 +133,7 @@ cmd_down() {
 }
 
 cmd_test() {
+  cmd_down
   cmd_up
   cmd_run
   cmd_down
