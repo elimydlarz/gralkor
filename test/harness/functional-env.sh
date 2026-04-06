@@ -33,7 +33,26 @@ is_created() {
 
 wait_healthy() {
   local timeout="${1:-300}"
-  echo "Waiting for server health (up to ${timeout}s, first boot may take 2-4 min)..."
+
+  # Phase 1: wait for gateway WebSocket (fast — typically < 30s)
+  echo "Waiting for gateway readiness (up to 60s)..."
+  local gw_ready=false
+  for i in $(seq 1 60); do
+    docker exec "$CONTAINER" openclaw health >/dev/null 2>&1 && {
+      echo "  Gateway ready after ${i}s"
+      gw_ready=true
+      break
+    }
+    sleep 1
+  done
+  if [ "$gw_ready" = false ]; then
+    echo "ERROR: gateway did not become ready within 60s" >&2
+    docker logs --tail 40 "$CONTAINER" >&2
+    return 1
+  fi
+
+  # Phase 2: wait for gralkor server health (slow — first boot may take 2-4 min)
+  echo "Waiting for gralkor server health (up to ${timeout}s, first boot may take 2-4 min)..."
   for i in $(seq 1 "$timeout"); do
     HEALTH=$(docker exec "$CONTAINER" curl -s http://127.0.0.1:8001/health 2>/dev/null) && {
       echo "  Server healthy after ${i}s"
@@ -43,7 +62,7 @@ wait_healthy() {
     sleep 1
   done
   echo ""
-  echo "ERROR: server did not become healthy within ${timeout}s" >&2
+  echo "ERROR: gralkor server did not become healthy within ${timeout}s" >&2
   docker logs --tail 40 "$CONTAINER" >&2
   return 1
 }
