@@ -540,6 +540,9 @@ publish-version-integrity
     and manifests remain at current version
     and build and publish still run
     and a git tag is created for the current version
+  when level is current and publish fails
+    then no rollback runs
+    and version files remain unchanged
 publish-clawhub-version-integrity
   when publish succeeds
     then version is bumped in package.json and openclaw.plugin.json
