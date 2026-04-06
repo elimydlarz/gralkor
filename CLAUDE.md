@@ -366,6 +366,17 @@ startup
       then falls back to config.workspaceDir
     when workspaceDir does not exist
       then indexer skips without error
+bundled-wheel-arch-selection
+  when on linux/arm64 and wheels dir has .whl files
+    then skips falkordblite in uv sync (--no-install-package falkordblite)
+    and installs the bundled wheel via uv pip install --no-deps
+  when on linux/arm64 and wheels dir has no .whl files
+    then uses normal uv sync (PyPI)
+  when on non-linux-arm64 (macOS, linux/x86-64) and wheels dir has .whl files
+    then ignores the bundled wheel entirely
+    and uses normal uv sync (PyPI handles falkordblite)
+  when bundled wheel install fails on linux/arm64
+    then throws (no silent fallback to PyPI)
 secret-resolution
   when config contains a plaintext API key string
     then env var is set to that string (trimmed)
