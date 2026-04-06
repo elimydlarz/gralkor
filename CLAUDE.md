@@ -561,6 +561,9 @@ publish-clawhub-version-integrity
     and manifests remain at current version
     and build and publish still run
     and a git tag is created for the current version
+  when level is current and publish fails
+    then no rollback runs
+    and version files remain unchanged
 install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
