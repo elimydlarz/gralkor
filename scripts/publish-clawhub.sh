@@ -73,7 +73,11 @@ if [[ -z "${DRY_RUN:-}" ]]; then
 
   trap - ERR
 
-  git commit --only package.json openclaw.plugin.json -m "$version"
+  if [[ "$level" == "current" ]]; then
+    git commit --allow-empty -m "$version"
+  else
+    git commit --only package.json openclaw.plugin.json -m "$version"
+  fi
   git tag "v$version"
 
   echo "Published v$version to ClawHub — tag created locally. Push manually: git push --follow-tags"
