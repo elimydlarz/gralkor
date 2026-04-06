@@ -105,9 +105,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
 
   trap - ERR
 
-  if [[ "$level" == "current" ]]; then
-    git commit --allow-empty -m "$version"
-  else
+  if [[ "$level" != "current" ]]; then
     git commit --only package.json openclaw.plugin.json -m "$version"
   fi
   if git rev-parse "v$version" >/dev/null 2>&1; then
