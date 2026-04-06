@@ -567,6 +567,15 @@ publish-clawhub-version-integrity
   when level is current and publish fails
     then no rollback runs
     and version files remain unchanged
+publish-all
+  when publish:all succeeds
+    then npm is published first with the version bump
+    and clawhub is published second at the bumped version (current)
+    and only one version bump occurs
+  when npm publish fails
+    then clawhub publish does not run
+  when npm publish succeeds but clawhub publish fails
+    then a recovery hint is printed directing the user to run publish:clawhub current
 install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
