@@ -208,6 +208,59 @@ describe("publish-version-integrity", () => {
     });
   });
 
+  describe("when level is current", () => {
+    it("then version is not incremented but synced across manifests", () => {
+      const before = readJson(join(tempDir, "package.json")).version as string;
+
+      execSync("bash scripts/publish.sh current", {
+        cwd: tempDir,
+        env: { ...process.env, DRY_RUN: "1" },
+        stdio: "ignore",
+      });
+
+      const pkgVersion = readJson(join(tempDir, "package.json"))
+        .version as string;
+      const pluginVersion = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+
+      expect(pkgVersion).toBe(before);
+      expect(pluginVersion).toBe(before);
+    });
+
+    it("then build and publish run and a git commit and tag are created", () => {
+      const before = readJson(join(tempDir, "package.json")).version as string;
+
+      execSync("bash scripts/publish.sh current", {
+        cwd: tempDir,
+        env: {
+          ...process.env,
+          PUBLISH_NPM_WHOAMI_CMD: "true",
+          PUBLISH_BUILD_CMD: "true",
+          PUBLISH_WHEEL_CMD: "true",
+          PUBLISH_PUBLISH_CMD: "true",
+          GIT_AUTHOR_NAME: "test",
+          GIT_AUTHOR_EMAIL: "test@test",
+          GIT_COMMITTER_NAME: "test",
+          GIT_COMMITTER_EMAIL: "test@test",
+        },
+        stdio: "ignore",
+      });
+
+      const pkgVersion = readJson(join(tempDir, "package.json"))
+        .version as string;
+      expect(pkgVersion).toBe(before);
+
+      const log = execSync("git log --oneline", {
+        cwd: tempDir,
+        encoding: "utf8",
+      });
+      expect(log).toContain(before);
+
+      const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
+      expect(tags.trim()).toContain(`v${before}`);
+    });
+  });
+
   describe("when publish succeeds", () => {
     it("then version is bumped in package.json and openclaw.plugin.json", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
