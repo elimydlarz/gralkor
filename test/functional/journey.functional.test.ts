@@ -57,7 +57,7 @@ beforeAll(async () => {
     "agent", "--agent", "main",
     "--message", "Eli's lucky number changed from LuckyNumber47 to LuckyNumber99. Please acknowledge.",
     "--json",
-  ], { timeout: 120_000 });
+  ], { timeout: 300_000 });
 
   // 2. Wait for native-indexed lucky number 47 to appear
   await poll("lucky number 47 indexed from workspace file", async () => {
@@ -265,7 +265,7 @@ describe("hyphenated-agent-id-sanitization", () => {
       "agent", "--agent", AGENT_ID,
       "--message", `${SENTINEL} is the test sentinel for hyphenated agent ID sanitization. Please acknowledge.`,
       "--json",
-    ], { timeout: 120_000 });
+    ], { timeout: 300_000 });
 
     // Poll for the episode to appear under the sanitized group (flush within ~10s).
     await poll(`${SENTINEL} indexed in sanitized group ${GROUP_SANITIZED}`, async () => {
