@@ -735,7 +735,7 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 - `register()` must be synchronous — async silently registers nothing
 - `falkordblite` installs as Python module `redislite`, not `falkordblite`
-- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: bundled wheel in `server/wheels/` (built by `build-arm64-wheel.sh`). Server-manager and Dockerfile both skip PyPI falkordblite (`--no-install-package falkordblite`) and install only the bundled wheel — hard failure if missing.
+- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: bundled wheel in `server/wheels/` (built by `build-arm64-wheel.sh`). Server-manager gates on `process.platform === "linux" && process.arch === "arm64"` — only on that platform does it skip PyPI falkordblite (`--no-install-package falkordblite`) and install the bundled wheel (hard failure if missing). All other platforms (macOS, linux/x86-64) use PyPI via normal `uv sync`. Dockerfile mirrors this with `TARGETARCH` conditional.
 - Graphiti requires LLM API key — starts without one but all operations fail
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)
