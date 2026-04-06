@@ -616,7 +616,7 @@ install-sequencing-docs
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
 | prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch). `sanitizeGroupId()` replaces hyphens with underscores in group IDs to avoid RediSearch syntax errors. |
-| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by both `pack.sh` and `publish-npm.sh`/`publish-clawhub.sh` |
+| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by both `pack.sh` and `publish-npm.sh`/`publish-clawhub.sh`. Bundled wheel is only activated on `linux/arm64` at runtime — other platforms (macOS, linux/x86-64) use PyPI via `uv sync` |
 | configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`, OpenAI key present → `OpenAIRerankerClient`, otherwise `None`). |
 | episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime) |
 
