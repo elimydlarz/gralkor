@@ -22,3 +22,8 @@ def test_find_downstream_llm_error_detects_status_code_400():
 def test_find_downstream_llm_error_ignores_429():
     exc = _Err("quota exceeded", status_code=429)
     assert main_mod._find_downstream_llm_error(exc) is None
+
+
+def test_find_downstream_llm_error_detects_via_code_attribute():
+    exc = _Err("API key expired", code=400)
+    assert main_mod._find_downstream_llm_error(exc) is exc
