@@ -610,6 +610,7 @@ install-sequencing-docs
 | observability | Two-tier `[gralkor]` logging. Config logged once (`configLogged` flag). Normal: metadata. Test: full data. `[gralkor] boot:` markers: `register()` logs `boot: plugin loaded (v...)` on first call, `boot: register() failed:` on error; server-manager logs `boot: starting/ready`; health poll logs unique errors and attempt count; self-start logs success/failure. |
 | retry-backoff | Client: 2 retries (500ms/1s) network/5xx. Flush: 3 retries (1s/2s/4s). 4xx not retried (except 429 — see rate-limit-passthrough). |
 | rate-limit-passthrough | Middleware: `RateLimitError` → 429 + `Retry-After` header. Client retries 429s indefinitely (guided by `Retry-After`), independent of 5xx retry budget. |
+| downstream-error-handling | Middleware: provider errors with HTTP status codes are mapped to structured responses. 400 (non-credential) / 404 / 422 → 500 `{"error":"provider error"}`; 400 (credential hint, e.g. Gemini expired key) / 401 / 403 → 503; 4xx (other) / 5xx → 502. Errors without a status code propagate as 500. |
 | untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s ping on child process |
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
