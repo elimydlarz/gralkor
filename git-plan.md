@@ -1,6 +1,44 @@
 # Git History Cleanup Plan
 
-## Agreed Changes
+## Overall Strategy
+
+Two independent operations, run in this order:
+
+1. **Remove `.trunk-sync/` from history** (`git filter-repo`) — scrubs PII from all commits that touched it.
+2. **Rewrite individual commit messages** (`git rebase -i`) — fix the specific commits listed below.
+
+Do not interleave them. Complete step 1 first, then step 2. Both rewrite history and require a force-push at the end.
+
+---
+
+## Step 1: Remove `.trunk-sync/` from history
+
+```bash
+# Install git-filter-repo if not already present
+pip install git-filter-repo   # or: brew install git-filter-repo
+
+# Remove .trunk-sync/ from all history
+git filter-repo --path .trunk-sync/ --invert-paths
+
+# git filter-repo removes origin — re-add it
+git remote add origin <url>
+
+# Add to .gitignore so it never comes back
+echo '.trunk-sync/' >> .gitignore
+git add .gitignore
+git commit -m "gitignore .trunk-sync/"
+
+# Force-push
+git push --force-with-lease
+```
+
+---
+
+## Step 2: Rewrite commit messages
+
+Use `git rebase -i` targeting the earliest affected commit, then `reword` each hash below.
+
+For commits that repeat the same bad message across many hashes (e.g. `c0dfb79` + ~60 others), reword them all to the same new message.
 
 | Hashes | Current message | New message |
 |---|---|---|
@@ -33,46 +71,27 @@
 | `b8c38e0` | `"I am concerned that invalid facts are crowding out valid facts. Look at..."` | `"Fix invalid facts crowding out valid ones"` |
 | `0fa81d8` | `"I'm concerned about what we're saving, see in agent logs:"` | `"Investigate capture content"` |
 | `df01528` | `"I think we published 27.1.0 but the tag is missing - what happened?"` | `"Fix missing release tag"` |
-| `47971981` | `"Errors on the agent, seems like recall isn't working? Last login: Sat Ma..."` — macOS terminal banner pasted verbatim | `"Fix recall errors"` |
-| `f05f204` | `"Graphti supports declaring custom entity..."` — "Graphti" typo | `"Graphiti supports declaring custom entity types"` |
-| `363d35f` | `"The memory add tool as gone missing"` — "as" should be "has" | `"Fix missing memory_add tool"` |
+| `47971981` | `"Errors on the agent, seems like recall isn't working? Last login: Sat Ma..."` | `"Fix recall errors"` |
+| `f05f204` | `"Graphti supports declaring custom entity..."` | `"Graphiti supports declaring custom entity types"` |
+| `363d35f` | `"The memory add tool as gone missing"` | `"Fix missing memory_add tool"` |
 | `7d73e2d` | `"The results returned to the OpenClaw agent aren't dated! Oh no, what a d..."` | `"Add timestamps to recalled facts"` |
-| `01b3936` | `"We need a publish script - like @../eli2-projects/do-together/package.js..."` — leaks private project path | `"Add publish script"` |
-| `71069f8` | `"Publish \`@susu-eng/gralkor\` to npm"` — exposes old npm org name | `"Publish to npm"` |
-| ~505 commits | Commit bodies contain `Transcript: /Users/elimydlarz/...` — local username in public history | **Ignore** — low-sensitivity; moot if full squash happens |
+| `01b3936` | `"We need a publish script - like @../eli2-projects/do-together/package.js..."` | `"Add publish script"` |
+| `71069f8` | `"Publish \`@susu-eng/gralkor\` to npm"` | `"Publish to npm"` |
 
----
+**Ignored:** ~505 commit bodies contain `Transcript: /Users/elimydlarz/...` — low-sensitivity, not worth rewriting.
 
-## File Issues (Not Commit Messages)
-
-| Priority | File | Status | Issue |
-|---|---|---|---|
-| High | `.trunk-sync/` | **TODO** | Committed directory containing full name, session UUIDs, PIDs, verbatim prompt text. Remove from history and add to `.gitignore`. See steps below. |
-| N/A | `.stryker-incremental.json` | Not tracked — already in `.gitignore`. No action needed. |
-### Removing `.trunk-sync/` from history
+After rewording, force-push:
 
 ```bash
-# 1. Install git-filter-repo if not already present
-pip install git-filter-repo   # or: brew install git-filter-repo
-
-# 2. Remove .trunk-sync/ from all history (rewrites every commit that touched it)
-git filter-repo --path .trunk-sync/ --invert-paths
-
-# 3. Add to .gitignore so it never comes back
-echo '.trunk-sync/' >> .gitignore
-git add .gitignore
-git commit -m "gitignore .trunk-sync/"
-
-# 4. Force-push (history has been rewritten — coordinate with any collaborators)
 git push --force-with-lease
 ```
 
-**Notes:**
-- `git filter-repo` removes the remote `origin` after rewriting; re-add it with `git remote add origin <url>` before pushing.
-- This must run before or after any other history rewrite (squash, commit message fixes) — not interleaved. Decide the order first.
-- If the full history squash happens first, `.trunk-sync/` may already be gone from the rewritten history — check before running.
-
 ---
 
-| Done | `README.md:24` | ~~double "into"~~ | Fixed |
-| Done | `README.md:32` | ~~"bu there's"~~ | Fixed |
+## File Issues
+
+| Status | File | Issue |
+|---|---|---|
+| **TODO** (Step 1) | `.trunk-sync/` | PII in history — removed by Step 1 above |
+| Done | `README.md:24` | ~~double "into"~~ — fixed |
+| Done | `README.md:32` | ~~"bu there's"~~ — fixed |
