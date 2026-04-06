@@ -34,3 +34,8 @@ def test_find_downstream_llm_error_walks_exception_chain():
     wrapper = RuntimeError("graphiti call failed")
     wrapper.__cause__ = cause
     assert main_mod._find_downstream_llm_error(wrapper) is cause
+
+
+def test_find_downstream_llm_error_returns_none_when_no_status_code():
+    exc = RuntimeError("connection refused")
+    assert main_mod._find_downstream_llm_error(exc) is None
