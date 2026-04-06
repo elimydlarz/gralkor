@@ -145,6 +145,9 @@ describe("createServerManager", () => {
   });
 
   it("skips falkordblite in uv sync and installs from bundled wheel", async () => {
+    Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+    Object.defineProperty(process, "arch", { value: "arm64", configurable: true });
+
     const mockProc = createMockProcess();
     (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
     mockFetch.mockResolvedValue({ ok: true });
@@ -177,6 +180,65 @@ describe("createServerManager", () => {
       "/server/wheels/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
     ]);
     expect(execFileCalls[2][2].env.VIRTUAL_ENV).toBe("/data/venv");
+  });
+
+  it("on non-linux-arm64 with wheels dir present, ignores bundled wheel and lets uv sync use PyPI", async () => {
+    // Simulate macOS arm64 (or any non-linux platform) — bundled wheel must NOT be used.
+    Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+    Object.defineProperty(process, "arch", { value: "arm64", configurable: true });
+
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
+      "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+    ]);
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    const execFileCalls = (execFile as unknown as ReturnType<typeof vi.fn>).mock.calls;
+
+    // uv sync must NOT have --no-install-package — PyPI handles falkordblite
+    expect(execFileCalls[1][1]).toEqual([
+      "sync", "--no-dev", "--frozen", "--directory", "/server",
+    ]);
+    // Only uv --version and uv sync — no pip install call
+    expect(execFileCalls).toHaveLength(2);
+  });
+
+  it("on linux/x64 with wheels dir present, ignores bundled wheel and lets uv sync use PyPI", async () => {
+    Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+    Object.defineProperty(process, "arch", { value: "x64", configurable: true });
+
+    const mockProc = createMockProcess();
+    (spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockProc);
+    mockFetch.mockResolvedValue({ ok: true });
+    (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
+      "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+    ]);
+
+    const manager = createServerManager({
+      dataDir: "/data",
+      serverDir: "/server",
+      port: 8001,
+    });
+
+    await manager.start();
+
+    const execFileCalls = (execFile as unknown as ReturnType<typeof vi.fn>).mock.calls;
+
+    expect(execFileCalls[1][1]).toEqual([
+      "sync", "--no-dev", "--frozen", "--directory", "/server",
+    ]);
+    expect(execFileCalls).toHaveLength(2);
   });
 
   it("skips wheel install when wheels dir has no .whl files", async () => {
