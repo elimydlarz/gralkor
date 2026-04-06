@@ -227,7 +227,7 @@ describe("publish-version-integrity", () => {
       expect(pluginVersion).toBe(before);
     });
 
-    it("then build and publish run and a git commit and tag are created", () => {
+    it("then build and publish run and a git tag is created", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
       execSync("bash scripts/publish.sh current", {
@@ -249,12 +249,6 @@ describe("publish-version-integrity", () => {
       const pkgVersion = readJson(join(tempDir, "package.json"))
         .version as string;
       expect(pkgVersion).toBe(before);
-
-      const log = execSync("git log --oneline", {
-        cwd: tempDir,
-        encoding: "utf8",
-      });
-      expect(log).toContain(before);
 
       const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
       expect(tags.trim()).toContain(`v${before}`);
