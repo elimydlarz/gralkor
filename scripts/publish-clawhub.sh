@@ -53,7 +53,7 @@ fi
 # Build and publish unless DRY_RUN is set (used by tests)
 if [[ -z "${DRY_RUN:-}" ]]; then
   build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
-  publish_cmd="${PUBLISH_PUBLISH_CMD:-clawhub package publish susu-eng/gralkor}"
+  publish_cmd="${PUBLISH_PUBLISH_CMD:-clawhub package publish .}"
 
   trap rollback ERR
 
