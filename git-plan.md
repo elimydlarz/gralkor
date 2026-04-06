@@ -39,7 +39,7 @@
 | `7d73e2d` | `"The results returned to the OpenClaw agent aren't dated! Oh no, what a d..."` | `"Add timestamps to recalled facts"` |
 | `01b3936` | `"We need a publish script - like @../eli2-projects/do-together/package.js..."` — leaks private project path | `"Add publish script"` |
 | `71069f8` | `"Publish \`@susu-eng/gralkor\` to npm"` — exposes old npm org name | `"Publish to npm"` |
-| ~505 commits | Commit bodies contain `Transcript: /Users/elimydlarz/...` — local username in public history | Addressed by full history squash |
+| ~505 commits | Commit bodies contain `Transcript: /Users/elimydlarz/...` — local username in public history | **Ignore** — low-sensitivity; moot if full squash happens |
 
 ---
 
