@@ -741,7 +741,8 @@ Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
 - TypeScript, ESM, ES2022, bundler resolution. `.js` extensions required.
 - All Graphiti communication via HTTP through `src/client.ts`
-- Always target the latest version of OpenClaw — do not add compatibility shims or workarounds for older versions
+- Targets OpenClaw 2026.4.2 (pinned in `peerDependencies.openclaw` in `package.json` — single source of truth; `build.sh` passes this to Docker as `OPENCLAW_VERSION`). Do not add compatibility shims or workarounds for older versions.
+  - **To update the targeted OpenClaw version:** change `peerDependencies.openclaw` (and `dependencies.openclaw`) in root `package.json` to the new exact version. That's it — `build.sh` reads it and passes `--build-arg OPENCLAW_VERSION=<version>` to docker, the `Dockerfile` ARG default is cosmetic only. Also update `README.md` (`Prerequisites` line). The `test/harness/gralkor-src/package.json` is overwritten at build time by `build.sh` (it copies root `package.json` into the build context), so it doesn't need a separate edit.
 - When understanding current OpenClaw behaviour, check the clone at `/tmp/openclaw` — always run `git pull` there first to ensure it reflects the latest version
 
 ## Gotchas

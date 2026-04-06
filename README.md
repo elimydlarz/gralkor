@@ -52,7 +52,7 @@ Gralkor replaces the native memory plugin entirely, taking the memory slot.
 
 ### 1. Prerequisites
 
-- OpenClaw >= 2026.1.26
+- OpenClaw 2026.4.2
 - Python 3.12+ on the system PATH
 - `uv` on PATH ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - An API key for a supported LLM provider (see below)
@@ -78,7 +78,7 @@ openclaw config set plugins.entries.gralkor.config.test true
 ### 3. Install the plugin
 
 ```bash
-openclaw plugins install @susu-eng/gralkor
+openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
 ```
 
 From a tarball (e.g. for air-gapped deploys):
@@ -86,6 +86,15 @@ From a tarball (e.g. for air-gapped deploys):
 ```bash
 openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-force-unsafe-install
 ```
+
+> **Why `--dangerously-force-unsafe-install`?** OpenClaw's install-time security
+> scanner flags Gralkor as critical because `dist/server-manager.js` imports
+> `node:child_process` and calls `spawn()` to launch the embedded Python server.
+> This is intrinsic to how Gralkor works (managed FalkorDB + Graphiti subprocess)
+> and cannot be removed. The flag is required on every install and update until
+> OpenClaw provides a manifest-level allowlist mechanism. Inspect the source on
+> npm/ClawHub before installing if you'd like to verify there's nothing else
+> going on.
 
 ### 4. Enable and assign the memory slot
 
@@ -119,7 +128,7 @@ Start chatting with your agent. Gralkor works in the background:
 ### Upgrading
 
 ```bash
-openclaw plugins update gralkor
+openclaw plugins update gralkor --dangerously-force-unsafe-install
 ```
 
 ### Reinstalling
@@ -128,7 +137,7 @@ The plugin dir (`~/.openclaw/extensions/gralkor`) is ephemeral — it can be del
 
 ```bash
 openclaw plugins uninstall gralkor
-openclaw plugins install @susu-eng/gralkor
+openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
 openclaw config set plugins.slots.memory gralkor
 ```
 

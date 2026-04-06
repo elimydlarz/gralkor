@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor",
-  "version": "27.2.4",
+  "version": "27.2.5",
   "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
   "type": "module",
   "main": "./dist/index.js",
@@ -72,10 +72,10 @@
     "node": ">=18"
   },
   "dependencies": {
-    "openclaw": ">= 2026.4.5"
+    "openclaw": "2026.4.2"
   },
   "peerDependencies": {
-    "openclaw": ">= 2026.4.5"
+    "openclaw": "2026.4.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",

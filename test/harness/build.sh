@@ -49,6 +49,10 @@ fi
 
 PLATFORM="${PLATFORM:-linux/arm64}"
 
+# Single source of truth for the OpenClaw version: peerDependencies.openclaw in root package.json.
+OPENCLAW_VERSION=$(node -p "require('$REPO_ROOT/package.json').peerDependencies.openclaw")
+DOCKER_ARGS+=(--build-arg "OPENCLAW_VERSION=$OPENCLAW_VERSION")
+
 # Copy source tree for functional tests into build context
 echo ""
 echo "=== Staging source for functional tests ==="
@@ -60,7 +64,7 @@ cp "$REPO_ROOT/package.json" "$REPO_ROOT/pnpm-lock.yaml" \
    "$HARNESS_DIR/gralkor-src/"
 
 echo ""
-echo "=== Building Docker image (platform: $PLATFORM) ==="
+echo "=== Building Docker image (platform: $PLATFORM, openclaw: $OPENCLAW_VERSION) ==="
 docker build --platform "$PLATFORM" ${DOCKER_ARGS[@]+"${DOCKER_ARGS[@]}"} -t gralkor-harness:latest "$HARNESS_DIR"
 
 # Clean up

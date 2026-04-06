@@ -4,6 +4,7 @@ import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type ModelConfig, type OntologyConfig, type OntologyAttributeValue } from "./config.js";
+import { buildSyncEnv, buildPipEnv, buildSpawnEnv } from "./server-env.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -93,10 +94,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       ? readdirSync(wheelsDir).filter((f) => f.endsWith(".whl")).map((f) => join(wheelsDir, f))
       : [];
 
-    const syncEnv: Record<string, string> = {
-      ...process.env as Record<string, string>,
-      UV_PROJECT_ENVIRONMENT: venvDir,
-    };
+    const syncEnv = buildSyncEnv(venvDir);
 
     const syncArgs = [
       "sync", "--no-dev", "--frozen", "--directory", opts.serverDir,
@@ -108,7 +106,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     console.log("[gralkor] boot: python env ready");
 
     // Install bundled wheels — no PyPI fallback, must succeed.
-    const pipEnv = { ...process.env as Record<string, string>, VIRTUAL_ENV: venvDir };
+    const pipEnv = buildPipEnv(venvDir);
     for (const wheelPath of bundledWheels) {
       console.log("[gralkor] Installing bundled wheel:", wheelPath);
       await execFileAsync(
@@ -137,16 +135,12 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     }
     await writeFile(configPath, configYaml, "utf-8");
 
-    const env: Record<string, string> = {
-      ...process.env as Record<string, string>,
-      ...opts.env,
-      ...opts.secretEnv,
-      FALKORDB_DATA_DIR: join(opts.dataDir, "falkordb"),
-      CONFIG_PATH: configPath,
-    };
-
-    // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
-    delete env.FALKORDB_URI;
+    const env = buildSpawnEnv({
+      extra: opts.env,
+      secretEnv: opts.secretEnv,
+      falkordbDataDir: join(opts.dataDir, "falkordb"),
+      configPath,
+    });
 
     // Pre-flight health check: if the server is already running and healthy
     // (e.g. module was re-evaluated by the host mid-boot), adopt it rather
