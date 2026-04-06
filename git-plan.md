@@ -48,6 +48,6 @@
 | Priority | File | Status | Issue |
 |---|---|---|---|
 | High | `.trunk-sync/` | **TODO** | Committed directory containing full name, session UUIDs, PIDs, verbatim prompt text. Remove from history and add to `.gitignore`. |
-| High | `.stryker-incremental.json` | **TODO** | Contains absolute local path with username. Add to `.gitignore`. |
+| N/A | `.stryker-incremental.json` | Not tracked — already in `.gitignore`. No action needed. |
 | Done | `README.md:24` | ~~double "into"~~ | Fixed |
 | Done | `README.md:32` | ~~"bu there's"~~ | Fixed |
