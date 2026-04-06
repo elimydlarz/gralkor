@@ -128,7 +128,7 @@ The plugin dir (`~/.openclaw/extensions/gralkor`) is ephemeral — it can be del
 
 ```bash
 openclaw plugins uninstall gralkor
-openclaw plugins install @susu-eng/gralkor
+openclaw plugins install npm:@susu-eng/gralkor
 openclaw config set plugins.slots.memory gralkor
 ```
 
