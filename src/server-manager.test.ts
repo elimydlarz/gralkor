@@ -263,6 +263,8 @@ describe("createServerManager", () => {
   });
 
   it("throws when bundled wheel install fails", async () => {
+    Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+    Object.defineProperty(process, "arch", { value: "arm64", configurable: true });
     (existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true);
     (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([
       "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
