@@ -289,6 +289,51 @@ def _find_rate_limit_error(exc: Exception) -> Exception | None:
 
 _DEFAULT_RETRY_AFTER = 5  # seconds
 
+_CREDENTIAL_HINTS = ("api key", "apikey", "credential", "authentication", "expired", "unauthorized")
+
+
+def _find_downstream_llm_error(exc: Exception) -> Exception | None:
+    """Walk the exception chain to find a downstream LLM provider error with an HTTP status code."""
+    current: Exception | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        http_code = getattr(current, "status_code", None) or getattr(current, "code", None)
+        if http_code is not None:
+            try:
+                http_code = int(http_code)
+            except (TypeError, ValueError):
+                http_code = None
+        if http_code is not None and http_code != 429:
+            return current
+        current = current.__cause__ or current.__context__
+    return None
+
+
+def _downstream_llm_response(exc: Exception) -> JSONResponse:
+    """Map a downstream LLM error to an appropriate HTTP response."""
+    http_code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+    http_code = int(http_code)
+    msg = str(exc).split("\n")[0][:200]
+
+    if 400 <= http_code < 500:
+        if http_code == 400:
+            if any(hint in msg.lower() for hint in _CREDENTIAL_HINTS):
+                status = 503
+            else:
+                status = 500
+        elif http_code in (401, 403):
+            status = 503
+        elif http_code in (404, 422):
+            status = 500
+        else:
+            status = 502
+    else:
+        # 5xx
+        status = 502
+
+    return JSONResponse(status_code=status, content={"error": "provider error", "detail": msg})
+
 
 @app.middleware("http")
 async def rate_limit_middleware(request, call_next):
@@ -306,6 +351,9 @@ async def rate_limit_middleware(request, call_next):
                 content={"detail": msg},
                 headers={"retry-after": str(int(retry_after))},
             )
+        llm_err = _find_downstream_llm_error(exc)
+        if llm_err is not None:
+            return _downstream_llm_response(llm_err)
         raise
 
 
