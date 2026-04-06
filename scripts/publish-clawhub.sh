@@ -61,14 +61,25 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   $build_cmd
   $wheel_cmd
 
+  clawhub_log=$(mktemp)
+  publish_failed=0
   if [[ -n "${PUBLISH_PUBLISH_CMD:-}" ]]; then
-    $PUBLISH_PUBLISH_CMD
+    $PUBLISH_PUBLISH_CMD 2>&1 | tee "$clawhub_log"; publish_failed=${PIPESTATUS[0]}
   else
     clawhub package publish . \
       --source-repo elimydlarz/gralkor \
       --source-commit "$source_commit" \
-      --source-ref "v${version}"
+      --source-ref "v${version}" 2>&1 | tee "$clawhub_log"; publish_failed=${PIPESTATUS[0]}
   fi
+  if [[ $publish_failed -ne 0 ]]; then
+    echo "" >&2
+    echo "=== clawhub publish failed (exit $publish_failed) — full output ===" >&2
+    cat "$clawhub_log" >&2
+    echo "=================================================================" >&2
+    rm -f "$clawhub_log"
+    exit $publish_failed
+  fi
+  rm -f "$clawhub_log"
   rm -rf server/wheels
 
   trap - ERR
