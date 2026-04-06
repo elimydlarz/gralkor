@@ -16,10 +16,8 @@ ENV PATH="/root/.local/bin:$PATH"
 # Install Python 3.13 via uv (Bookworm ships 3.11 but server needs 3.12+)
 RUN uv python install 3.13
 
-# Install pnpm and OpenClaw globally.
-# Pin openclaw to the last verified-working version — bump this when a newer version is confirmed
-# compatible with the functional test harness.
-RUN npm install -g pnpm openclaw@2026.4.2
+# Install pnpm and OpenClaw globally
+RUN npm install -g pnpm openclaw@${OPENCLAW_VERSION}
 
 # Verify tools
 RUN node --version && pnpm --version && openclaw --version && uv --version && uv python list --only-installed
