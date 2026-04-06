@@ -78,7 +78,7 @@ openclaw config set plugins.entries.gralkor.config.test true
 ### 3. Install the plugin
 
 ```bash
-openclaw plugins install npm:@susu-eng/gralkor
+openclaw plugins install @susu-eng/gralkor
 ```
 
 From a tarball (e.g. for air-gapped deploys):
