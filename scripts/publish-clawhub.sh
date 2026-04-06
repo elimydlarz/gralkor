@@ -56,7 +56,7 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   wheel_cmd="${PUBLISH_WHEEL_CMD:-bash scripts/build-arm64-wheel.sh}"
   source_commit="$(git rev-parse HEAD)"
 
-  trap rollback ERR
+  [[ "$level" != "current" ]] && trap rollback ERR
 
   $build_cmd
   $wheel_cmd
