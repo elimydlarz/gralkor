@@ -287,6 +287,19 @@ def _find_rate_limit_error(exc: Exception) -> Exception | None:
     return None
 
 
+def _find_downstream_llm_error(exc: Exception) -> Exception | None:
+    """Walk the exception chain to find a downstream LLM provider error with an HTTP status code."""
+    current: Exception | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        http_code = getattr(current, "status_code", None) or getattr(current, "code", None)
+        if http_code is not None and int(http_code) != 429:
+            return current
+        current = current.__cause__ or current.__context__
+    return None
+
+
 _DEFAULT_RETRY_AFTER = 5  # seconds
 
 
