@@ -59,3 +59,13 @@ def test_downstream_llm_response_400_credential_hint_returns_503():
     assert resp.status_code == 503
     body = json.loads(resp.body)
     assert body["error"] == "provider error"
+
+
+def test_downstream_llm_response_401_returns_503():
+    exc = _Err("invalid api key", status_code=401)
+    assert main_mod._downstream_llm_response(exc).status_code == 503
+
+
+def test_downstream_llm_response_403_returns_503():
+    exc = _Err("permission denied", status_code=403)
+    assert main_mod._downstream_llm_response(exc).status_code == 503
