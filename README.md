@@ -31,7 +31,7 @@ This is not another chunking strategy or embedding experiment. Graphiti has solv
 
 [HippoRAG](https://arxiv.org/abs/2405.14831) (NeurIPS 2024) found graph-based retrieval reaches 89.1% recall@5 on 2WikiMultiHopQA versus 68.2% for flat vector retrieval — a 20.9-point gap. [AriGraph](https://arxiv.org/abs/2407.04363) (IJCAI 2025) independently found KG-augmented agents markedly outperform RAG, summarization, and full-conversation-history baselines across interactive environments.
 
-**Remembering behaviour, not just dialog.** Agents make mistakes options, weight options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's thinking blocks - it's learning - into first-person behavioural summaries and weaves them into the episode transcript before ingestion. The graph doesn't just know what was said; it knows how the agent arrived there.
+**Remembering behaviour, not just dialog.** Agents make mistakes options, weigh options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's thinking blocks - it's learning - into first-person behavioural summaries and weaves them into the episode transcript before ingestion. The graph doesn't just know what was said; it knows how the agent arrived there.
 
 Yet: Every other OpenClaw memory plugin only remembers what was spoken, totally ignoring what your agent thinks and does — lancedb-pro filters for `type === "text"` only, MemOS strips `<think>` tags, Supermemory never looks at them. Even if you have a sophisticated memory system, your agent is inherently dishonest with you, frequently claiming to remember what it has done when it only really remembers what it claimed to have done, or to have thought what it is only now imagining.
 
