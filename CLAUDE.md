@@ -685,8 +685,9 @@ The functional layer requires the OpenClaw test harness (Docker image).
 ## Building & Deploying
 
 ```bash
-pnpm run publish:npm -- patch      # bump, build, publish to npm, commit+tag (also minor/major)
-pnpm run publish:clawhub -- patch  # bump, build, publish to ClawHub, commit+tag (also minor/major)
+pnpm run publish:all -- patch      # bump, build, publish to npm + ClawHub, commit+tag (also minor/major)
+pnpm run publish:npm -- patch      # npm only (also minor/major/current)
+pnpm run publish:clawhub -- patch  # ClawHub only (also minor/major/current)
 pnpm run pack                      # deployment tarball (arm64 wheel via Docker)
 ```
 
