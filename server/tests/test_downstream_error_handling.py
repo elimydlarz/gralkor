@@ -27,3 +27,10 @@ def test_find_downstream_llm_error_ignores_429():
 def test_find_downstream_llm_error_detects_via_code_attribute():
     exc = _Err("API key expired", code=400)
     assert main_mod._find_downstream_llm_error(exc) is exc
+
+
+def test_find_downstream_llm_error_walks_exception_chain():
+    cause = _Err("API key expired", status_code=400)
+    wrapper = RuntimeError("graphiti call failed")
+    wrapper.__cause__ = cause
+    assert main_mod._find_downstream_llm_error(wrapper) is cause
