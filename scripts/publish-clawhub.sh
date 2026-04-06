@@ -53,15 +53,22 @@ fi
 # Build and publish unless DRY_RUN is set (used by tests)
 if [[ -z "${DRY_RUN:-}" ]]; then
   build_cmd="${PUBLISH_BUILD_CMD:-pnpm run build}"
+  wheel_cmd="${PUBLISH_WHEEL_CMD:-bash scripts/build-arm64-wheel.sh}"
   source_commit="$(git rev-parse HEAD)"
-  publish_cmd="${PUBLISH_PUBLISH_CMD:-clawhub package publish . --source-repo susu-eng/gralkor --source-commit "${source_commit}" --source-ref "v${version}"}"
 
   trap rollback ERR
 
   $build_cmd
-  wheel_cmd="${PUBLISH_WHEEL_CMD:-bash scripts/build-arm64-wheel.sh}"
   $wheel_cmd
-  $publish_cmd
+
+  if [[ -n "${PUBLISH_PUBLISH_CMD:-}" ]]; then
+    $PUBLISH_PUBLISH_CMD
+  else
+    clawhub package publish . \
+      --source-repo susu-eng/gralkor \
+      --source-commit "$source_commit" \
+      --source-ref "v${version}"
+  fi
   rm -rf server/wheels
 
   trap - ERR
