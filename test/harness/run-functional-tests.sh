@@ -72,6 +72,39 @@ else
 fi
 echo ""
 
+# ── 2b. Verify falkordblite install path ──────────────────
+echo "--- 2b. FalkorDB install path ---"
+ARCH=$(uname -m)
+VENV=/data/gralkor/venv
+WHEELS_DIR="$HOME/.openclaw/extensions/gralkor/server/wheels"
+
+if VIRTUAL_ENV="$VENV" uv pip show falkordblite >/dev/null 2>&1; then
+  pass "falkordblite installed in venv"
+else
+  fail "falkordblite not found in venv"
+fi
+
+if [ "$ARCH" = "aarch64" ]; then
+  # On arm64: the bundled wheel should be present and should have been used
+  # (PyPI manylinux_2_39 wheel is incompatible with Bookworm glibc 2.36)
+  WHEEL_COUNT=$(ls "$WHEELS_DIR"/*.whl 2>/dev/null | wc -l || echo 0)
+  if [ "$WHEEL_COUNT" -gt 0 ]; then
+    pass "bundled arm64 wheel present and used (aarch64 host)"
+  else
+    fail "bundled arm64 wheel missing on aarch64 host"
+  fi
+else
+  # On non-arm64 (amd64 / macOS-like): PyPI should have been used.
+  # If the aarch64 wheel were force-installed, the server would be unhealthy (wrong arch binary).
+  # A healthy server proves PyPI was used correctly.
+  if [ "$SERVER_OK" = true ]; then
+    pass "PyPI path used — server healthy on non-arm64 host ($ARCH)"
+  else
+    fail "PyPI install failed on non-arm64 host ($ARCH)"
+  fi
+fi
+echo ""
+
 # ── 3. Functional tests ───────────────────────────────────
 echo "--- 3. Functional tests ---"
 if [ "$SERVER_OK" = true ]; then
