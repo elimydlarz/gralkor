@@ -119,7 +119,7 @@ cmd_run() {
     exit 1
   fi
   docker exec "$CONTAINER" bash -c \
-    "cd /app/gralkor-src && pnpm exec vitest run --config test/functional/vitest.config.ts"
+    "cd /app/gralkor-src && ./node_modules/.bin/vitest run --config test/functional/vitest.config.ts"
 }
 
 cmd_down() {
