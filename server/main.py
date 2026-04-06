@@ -287,6 +287,29 @@ def _find_rate_limit_error(exc: Exception) -> Exception | None:
     return None
 
 
+_CREDENTIAL_HINTS = ("api key", "apikey", "credential", "authentication", "expired", "unauthorized")
+
+
+def _downstream_llm_response(exc: Exception) -> JSONResponse:
+    """Map a downstream LLM provider error to an appropriate HTTP response."""
+    http_code = int(getattr(exc, "status_code", None) or getattr(exc, "code", None))
+    msg = str(exc).split("\n")[0][:200]
+
+    if 400 <= http_code < 500:
+        if http_code == 400:
+            status = 503 if any(h in msg.lower() for h in _CREDENTIAL_HINTS) else 500
+        elif http_code in (401, 403):
+            status = 503
+        elif http_code in (404, 422):
+            status = 500
+        else:
+            status = 502
+    else:
+        status = 502
+
+    return JSONResponse(status_code=status, content={"error": "provider error", "detail": msg})
+
+
 def _find_downstream_llm_error(exc: Exception) -> Exception | None:
     """Walk the exception chain to find a downstream LLM provider error with an HTTP status code."""
     current: Exception | None = exc
