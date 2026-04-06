@@ -31,7 +31,9 @@ fs.writeFileSync('openclaw.plugin.json', JSON.stringify(p, null, 2) + '\n');
   rm -rf server/wheels
 }
 
-npm version "$level" --no-git-tag-version
+if [[ "$level" != "current" ]]; then
+  npm version "$level" --no-git-tag-version
+fi
 version=$(node -p "require('./package.json').version")
 
 # Sync version into openclaw.plugin.json
@@ -42,7 +44,11 @@ p.version = '$version';
 fs.writeFileSync('openclaw.plugin.json', JSON.stringify(p, null, 2) + '\n');
 "
 
-echo "Bumped to $version"
+if [[ "$level" == "current" ]]; then
+  echo "Publishing current version $version (no bump)"
+else
+  echo "Bumped to $version"
+fi
 
 # Build and publish unless DRY_RUN is set (used by tests)
 if [[ -z "${DRY_RUN:-}" ]]; then
