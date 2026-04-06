@@ -41,11 +41,21 @@ def test_find_downstream_llm_error_returns_none_when_no_status_code():
     assert main_mod._find_downstream_llm_error(exc) is None
 
 
+import json
+
+
 def test_downstream_llm_response_400_non_credential_returns_500():
     exc = _Err("invalid model name", status_code=400)
     resp = main_mod._downstream_llm_response(exc)
     assert resp.status_code == 500
-    import json
     body = json.loads(resp.body)
     assert body["error"] == "provider error"
     assert "invalid model name" in body["detail"]
+
+
+def test_downstream_llm_response_400_credential_hint_returns_503():
+    exc = _Err("400 INVALID_ARGUMENT: API key expired. Please renew the API key.", status_code=400)
+    resp = main_mod._downstream_llm_response(exc)
+    assert resp.status_code == 503
+    body = json.loads(resp.body)
+    assert body["error"] == "provider error"
