@@ -49,5 +49,30 @@
 |---|---|---|---|
 | High | `.trunk-sync/` | **TODO** | Committed directory containing full name, session UUIDs, PIDs, verbatim prompt text. Remove from history and add to `.gitignore`. See steps below. |
 | N/A | `.stryker-incremental.json` | Not tracked — already in `.gitignore`. No action needed. |
+### Removing `.trunk-sync/` from history
+
+```bash
+# 1. Install git-filter-repo if not already present
+pip install git-filter-repo   # or: brew install git-filter-repo
+
+# 2. Remove .trunk-sync/ from all history (rewrites every commit that touched it)
+git filter-repo --path .trunk-sync/ --invert-paths
+
+# 3. Add to .gitignore so it never comes back
+echo '.trunk-sync/' >> .gitignore
+git add .gitignore
+git commit -m "gitignore .trunk-sync/"
+
+# 4. Force-push (history has been rewritten — coordinate with any collaborators)
+git push --force-with-lease
+```
+
+**Notes:**
+- `git filter-repo` removes the remote `origin` after rewriting; re-add it with `git remote add origin <url>` before pushing.
+- This must run before or after any other history rewrite (squash, commit message fixes) — not interleaved. Decide the order first.
+- If the full history squash happens first, `.trunk-sync/` may already be gone from the rewritten history — check before running.
+
+---
+
 | Done | `README.md:24` | ~~double "into"~~ | Fixed |
 | Done | `README.md:32` | ~~"bu there's"~~ | Fixed |
