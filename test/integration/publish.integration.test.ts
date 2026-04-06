@@ -253,6 +253,32 @@ describe("publish-version-integrity", () => {
       const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
       expect(tags.trim()).toContain(`v${before}`);
     });
+
+    it("when publish fails, then no rollback runs and version files are unchanged", () => {
+      const before = readJson(join(tempDir, "package.json")).version as string;
+
+      try {
+        execSync("bash scripts/publish.sh current", {
+          cwd: tempDir,
+          env: {
+            ...process.env,
+            PUBLISH_NPM_WHOAMI_CMD: "true",
+            PUBLISH_BUILD_CMD: "true",
+            PUBLISH_WHEEL_CMD: "true",
+            PUBLISH_PUBLISH_CMD: "false", // always fails
+          },
+          stdio: "ignore",
+        });
+      } catch {
+        // expected
+      }
+
+      const afterPkg = readJson(join(tempDir, "package.json")).version as string;
+      const afterPlugin = readJson(join(tempDir, "openclaw.plugin.json"))
+        .version as string;
+      expect(afterPkg).toBe(before);
+      expect(afterPlugin).toBe(before);
+    });
   });
 
   describe("when publish succeeds", () => {
