@@ -16,7 +16,7 @@
 | `c24e1b2` (+ 2) | `"Timestamps are so precise and long, it's bad for tokens!:"` | `"Shorten timestamp format to reduce token usage"` |
 | `c0dfb79` (+ ~60) | `"Seems like new version is a disaster:"` | `"Debug and fix regressions in new version"` |
 | `536bbb4` | `"Eli is still here"` | `"Sanity check"` |
-| `8a301ae` | `"WIP 2 package approach"` | `"WIP: split into two packages"` |
+| `8a301ae` | `"WIP 2 package approach"` | `"Split into two packages"` |
 | `51f845d` | `"another day, another surprising openclaw interface"` | `"Adapt to OpenClaw interface changes"` |
 | `ae9a2b0` | `"fixing interface AGAIN"` | `"Fix plugin interface"` |
 | `217d1b4` (+ ~30) | `"Don't run any tests. Just review thoroughly."` | `"Review and refactor"` |
