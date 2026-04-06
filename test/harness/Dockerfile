@@ -2,7 +2,7 @@ FROM node:22-bookworm
 
 # Pinned OpenClaw version for the functional test harness.
 # Bump this when a newer version is confirmed compatible.
-ARG OPENCLAW_VERSION=2026.4.2
+ARG OPENCLAW_VERSION=2026.4.5
 
 # Build tools for falkordblite native extensions
 RUN apt-get update -qq && \
