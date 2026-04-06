@@ -2,8 +2,8 @@
 set -euo pipefail
 
 level="${1:-}"
-if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch)$ ]]; then
-  echo "Usage: pnpm run publish:clawhub -- <major|minor|patch>" >&2
+if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch|current)$ ]]; then
+  echo "Usage: pnpm run publish:clawhub -- <major|minor|patch|current>" >&2
   exit 1
 fi
 
