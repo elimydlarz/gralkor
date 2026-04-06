@@ -17,3 +17,8 @@ class _Err(Exception):
 def test_find_downstream_llm_error_detects_status_code_400():
     exc = _Err("invalid model name", status_code=400)
     assert main_mod._find_downstream_llm_error(exc) is exc
+
+
+def test_find_downstream_llm_error_ignores_429():
+    exc = _Err("quota exceeded", status_code=429)
+    assert main_mod._find_downstream_llm_error(exc) is None
