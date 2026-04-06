@@ -540,6 +540,27 @@ publish-version-integrity
     and manifests remain at current version
     and build and publish still run
     and a git tag is created for the current version
+publish-clawhub-version-integrity
+  when publish succeeds
+    then version is bumped in package.json and openclaw.plugin.json
+    and a git tag is created for the new version (push manually)
+  when not logged in to clawhub
+    then exits before version bump
+    and no rollback is needed
+  when publish fails (build error or clawhub reject)
+    then version files are rolled back to their pre-publish values
+    and no git tag is created
+  when successive publishes fail
+    then version does not increment multiple times
+  when DRY_RUN is set
+    then version is bumped and synced across manifests
+    and build and publish are skipped
+    and no git tag is created
+  when level is current
+    then version is not incremented
+    and manifests remain at current version
+    and build and publish still run
+    and a git tag is created for the current version
 install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
