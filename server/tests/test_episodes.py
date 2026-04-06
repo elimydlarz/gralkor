@@ -179,6 +179,15 @@ async def test_add_episode_rate_limit_returns_429(client, mock_graphiti):
 
 
 
+_EPISODE_PAYLOAD = {
+    "name": "chat",
+    "episode_body": "body",
+    "source_description": "src",
+    "group_id": "g1",
+    "idempotency_key": "test-key",
+}
+
+
 @pytest.mark.asyncio
 async def test_add_episode_downstream_400_returns_500(client, mock_graphiti):
     """Non-credential 400 from downstream LLM returns 500 with provider error body."""
