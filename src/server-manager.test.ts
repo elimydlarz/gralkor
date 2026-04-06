@@ -77,6 +77,9 @@ describe("createServerManager", () => {
     return proc;
   }
 
+  const originalPlatform = process.platform;
+  const originalArch = process.arch;
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: uv --version and uv sync succeed
@@ -86,6 +89,11 @@ describe("createServerManager", () => {
     (readdirSync as ReturnType<typeof vi.fn>).mockReturnValue([]);
     // Default: no pid file
     mockReadFile.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+    Object.defineProperty(process, "arch", { value: originalArch, configurable: true });
   });
 
   it("isRunning returns false before start", () => {
