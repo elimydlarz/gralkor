@@ -279,8 +279,7 @@ To control how entities are connected, add `edges` (relationship types) and `edg
 
 ```json
 {
-  "ontology": {
-    "entities": {
+  "entities": {
       "Project": {
         "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
         "attributes": {
