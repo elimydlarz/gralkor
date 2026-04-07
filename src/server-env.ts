@@ -26,14 +26,11 @@ export function buildSpawnEnv(opts: {
   falkordbDataDir: string;
   configPath: string;
 }): StrEnv {
-  const env: StrEnv = {
+  return {
     ...baseEnv(),
     ...opts.extra,
     ...opts.secretEnv,
     FALKORDB_DATA_DIR: opts.falkordbDataDir,
     CONFIG_PATH: opts.configPath,
   };
-  // Absence of FALKORDB_URI triggers embedded FalkorDBLite mode.
-  delete env.FALKORDB_URI;
-  return env;
 }
