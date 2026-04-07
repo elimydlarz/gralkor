@@ -409,7 +409,7 @@ Most likely: missing or invalid LLM API key. Check your provider API key configu
 
 **No memories being recalled**
 - Check that `autoRecall.enabled` is `true` (it is by default)
-- Verify the graph has data: run `openclaw gralkor search <term>`
+- Verify the graph has data: run `openclaw gralkor search <group_id> <term>` (group ID = agent ID with hyphens replaced by underscores)
 - Auto-recall extracts keywords from the user's message — very short messages may not match
 
 **Agent doesn't store conversations**
