@@ -69,7 +69,8 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   [[ "$level" != "current" ]] && trap - ERR
 
   if [[ "$level" != "current" ]]; then
-    git commit --only package.json openclaw.plugin.json -m "$version"
+    git commit --only package.json openclaw.plugin.json -m "$version" || \
+      git diff --quiet HEAD -- package.json openclaw.plugin.json
   fi
   if git rev-parse "v$version" >/dev/null 2>&1; then
     echo "Tag v$version already exists — skipping"
