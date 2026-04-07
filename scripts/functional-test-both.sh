@@ -3,7 +3,7 @@
 #
 # Usage:
 #   bash scripts/functional-test-both.sh
-#   GEMINI_API_KEY=... bash scripts/functional-test-both.sh
+#   GOOGLE_API_KEY=... bash scripts/functional-test-both.sh
 #
 # Output files:
 #   /tmp/gralkor-functional-arm64.log
