@@ -11,12 +11,12 @@ echo "=== Gralkor Install Harness ==="
 echo ""
 
 # ── Configure ────────────────────────────────────────────
-API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+API_KEY="${GOOGLE_API_KEY:-}"
 if [ -n "$API_KEY" ]; then
   echo "Configuring googleApiKey from env..."
   openclaw config set plugins.entries.gralkor.config.googleApiKey "$API_KEY" >/dev/null 2>&1
 else
-  echo "WARNING: GEMINI_API_KEY not set — server will fail to start"
+  echo "WARNING: GOOGLE_API_KEY not set — server will fail to start"
 fi
 echo ""
 
