@@ -204,32 +204,20 @@ async def lifespan(_app: FastAPI):
     global graphiti, ontology_entity_types, ontology_edge_types, ontology_edge_type_map
     cfg = _load_config()
 
-    falkordb_uri = os.getenv("FALKORDB_URI")
+    # Embedded FalkorDBLite (no Docker needed)
+    logging.getLogger("redislite").setLevel(logging.DEBUG)
 
-    if falkordb_uri:
-        # Legacy Docker mode: external FalkorDB via TCP
-        stripped = falkordb_uri.split("://", 1)[-1]
-        if ":" in stripped:
-            host, port_str = stripped.rsplit(":", 1)
-            port = int(port_str)
-        else:
-            host, port = stripped, 6379
-        driver = FalkorDriver(host=host, port=port)
-    else:
-        # Default: embedded FalkorDBLite (no Docker needed)
-        logging.getLogger("redislite").setLevel(logging.DEBUG)
+    from redislite.async_falkordb_client import AsyncFalkorDB
 
-        from redislite.async_falkordb_client import AsyncFalkorDB
-
-        data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
-        os.makedirs(data_dir, exist_ok=True)
-        db_path = os.path.join(data_dir, "gralkor.db")
-        try:
-            db = AsyncFalkorDB(db_path)
-        except Exception as e:
-            _log_falkordblite_diagnostics(e)
-            raise
-        driver = FalkorDriver(falkor_db=db)
+    data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
+    os.makedirs(data_dir, exist_ok=True)
+    db_path = os.path.join(data_dir, "gralkor.db")
+    try:
+        db = AsyncFalkorDB(db_path)
+    except Exception as e:
+        _log_falkordblite_diagnostics(e)
+        raise
+    driver = FalkorDriver(falkor_db=db)
 
     graphiti = Graphiti(
         graph_driver=driver,
