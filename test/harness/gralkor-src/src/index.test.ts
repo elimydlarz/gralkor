@@ -5,6 +5,14 @@ vi.mock("./native-indexer.js", () => ({
   runNativeIndexer: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock llm-client so interpret() in memory_search and auto-recall doesn't
+// try to make real LLM HTTP calls. Returns a deterministic interpretation.
+vi.mock("./llm-client.js", () => ({
+  createLLMClient: vi.fn(() => ({
+    generate: vi.fn().mockResolvedValue("Interpretation: facts are relevant."),
+  })),
+}));
+
 // Mock createServerManager so we don't spawn real processes (and so the
 // fire-and-forget start() doesn't outlive the test worker, causing
 // EnvironmentTeardownError: "Closing rpc while onUserConsoleLog was pending")
@@ -253,9 +261,9 @@ describe("register()", () => {
 
       const result = await searchTool.execute("tool-1", { query: "React", session_key: "test-session" });
 
-      // Tool result should contain the fact and interpretation instruction
+      // Tool result should contain the fact and an Interpretation section
       expect(result).toContain("Team uses React");
-      expect(result).toContain("interpret these facts for relevance");
+      expect(result).toContain("Interpretation:");
       // But NOT the further querying instruction (that's auto-recall only)
       expect(result).not.toContain("search memory up to 3 times");
       expect(result).not.toContain("diverse queries");
@@ -492,13 +500,13 @@ describe("register()", () => {
     });
 
     describe("when searching", () => {
-      it("when graph returns results, then response includes graph facts and interpretation instruction", async () => {
+      it("when graph returns results, then response includes graph facts and an Interpretation section", async () => {
         const searchTool = await setupSearchTool({ graphFacts: [sampleFact] });
 
         const result = await searchTool.execute("tool-1", { query: "React", session_key: TEST_SESSION_KEY });
 
         expect(result).toContain("Team uses React");
-        expect(result).toContain("interpret these facts for relevance");
+        expect(result).toContain("Interpretation:");
       });
 
       it("when neither returns results, then response is 'No facts found.'", async () => {

@@ -1,10 +1,6 @@
 import type { GraphitiClient, Fact, EntityNode, SearchMode } from "./client.js";
 import type { GralkorConfig, ReadyGate } from "./config.js";
 
-export const INTERPRETATION_INSTRUCTION =
-  "Before responding, interpret these facts for relevance to the task at hand. " +
-  "Doing this step thoughtfully improves response quality significantly.";
-
 export function formatTimestamp(ts: string): string {
   let s = ts.replace(/\.\d+/, "");
   s = s.replace(/Z$/, "+0");
@@ -37,6 +33,15 @@ export function formatNode(n: EntityNode): string {
 export interface ToolOpts {
   getGroupId: (sessionKey: string) => string;
   serverReady?: ReadyGate;
+}
+
+/**
+ * Interpret callback for memory_search. Receives the session key and the
+ * formatted facts/entities text and returns the LLM's interpretation.
+ * Fail-fast: throws if interpretation cannot be produced.
+ */
+export interface SearchToolOpts extends ToolOpts {
+  interpret: (sessionKey: string, factsText: string) => Promise<string>;
 }
 
 export function createMemoryStoreTool(
@@ -99,9 +104,9 @@ export function createMemoryStoreTool(
 export function createMemorySearchTool(
   client: GraphitiClient,
   config: GralkorConfig,
-  opts: ToolOpts,
+  opts: SearchToolOpts,
 ) {
-  const { getGroupId, serverReady } = opts;
+  const { getGroupId, serverReady, interpret } = opts;
   return {
     name: "memory_search",
     description: "Search memory for relevant context. Use specific, focused queries. Pass the session_key from the gralkor-memory context block.",
@@ -139,7 +144,9 @@ export function createMemorySearchTool(
       const nodeSection = nodeCount > 0
         ? "\n\nEntities:\n" + nodes.map(formatNode).join("\n")
         : "";
-      const output = formatFacts(facts) + nodeSection + "\n\n" + INTERPRETATION_INSTRUCTION;
+      const factsText = formatFacts(facts) + nodeSection;
+      const interpretation = await interpret(args.session_key, factsText);
+      const output = `${factsText}\n\nInterpretation:\n${interpretation}`;
 
       if (config.test) {
         console.log(`[gralkor] [test] memory_search query: ${args.query}`);
