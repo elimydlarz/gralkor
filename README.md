@@ -142,7 +142,7 @@ Start chatting with your agent. Gralkor works in the background:
 ### Upgrading
 
 ```bash
-openclaw plugins update gralkor --dangerously-force-unsafe-install
+openclaw plugins update gralkor@latest --dangerously-force-unsafe-install
 ```
 
 ### LLM providers
