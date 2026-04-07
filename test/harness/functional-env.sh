@@ -102,12 +102,13 @@ cmd_up() {
       # Short idle timeout so the debounce-flush fires quickly in tests (default is 5 min).
       openclaw config set plugins.entries.gralkor.config.idleTimeoutMs 10000 >/dev/null 2>&1
 
-      # Configure default model to Gemini (harness only has GOOGLE_API_KEY, not Anthropic).
+      # Provide Google auth profile for the agent. Model selection is left to
+      # the OpenClaw default (do not pin a specific Gemini version here — it
+      # rots when Google retires models).
       if [ -n "\$GOOGLE_API_KEY" ]; then
         mkdir -p \$HOME/.openclaw/agents/main/agent
         printf '{"google:manual":{"provider":"google","type":"api-key","apiKey":"%s"}}' "\$GOOGLE_API_KEY" \
           > \$HOME/.openclaw/agents/main/agent/auth-profiles.json
-        openclaw models set google/gemini-2.0-flash >/dev/null 2>&1
       fi
 
       # Seed workspace files before gateway start.
