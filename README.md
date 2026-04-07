@@ -302,12 +302,13 @@ To control how entities are connected, add `edges` (relationship types) and `edg
         }
       }
     },
-    "edgeMap": {
-      "Project,Technology": ["Uses"]
-    }
+  "edgeMap": {
+    "Project,Technology": ["Uses"]
   }
 }
 ```
+
+Apply with `openclaw config set --json plugins.entries.gralkor.config.ontology '<above>'`.
 
 Without `edgeMap`, all edge types can connect any entity pair. With `edgeMap`, relationships are constrained to specific pairs — entity pairs not listed fall back to `RELATES_TO`.
 
