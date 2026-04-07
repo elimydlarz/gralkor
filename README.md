@@ -95,7 +95,7 @@ openclaw config set plugins.entries.gralkor.config.test true
 ### 3. Install the plugin
 
 ```bash
-openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
+openclaw plugins install @susu-eng/gralkor@latest --dangerously-force-unsafe-install
 ```
 
 > **Why `--dangerously-force-unsafe-install`?** OpenClaw's install-time security scanner flags Gralkor as critical because of the embeeded Python server. Inspect the source if you'd like to verify there's nothing weird going on.
