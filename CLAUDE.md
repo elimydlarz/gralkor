@@ -668,9 +668,7 @@ install-sequencing-docs
 
 ## Environment Variables
 
-API keys are configured as strings in plugin config (`api.pluginConfig`). The OpenClaw gateway resolves SecretRef objects before they reach the plugin — we receive plain strings. `buildSecretEnv()` in `src/register.ts` maps config fields to env vars passed to the server manager.
-
-Server manager generates `config.yaml` and forwards all keys at startup.
+API keys live in plugin config as plain strings (gateway resolves SecretRefs upstream). `buildSecretEnv()` in `src/register.ts` maps them to env vars; the server manager writes `config.yaml` and forwards them at startup. See the `secret-resolution` test tree.
 
 ## Dev Workflow
 
