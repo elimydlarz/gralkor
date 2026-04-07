@@ -145,9 +145,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       CONFIG_PATH: configPath,
     };
 
-    // Do NOT set FALKORDB_URI — its absence triggers embedded FalkorDBLite mode
-    delete env.FALKORDB_URI;
-
     // Pre-flight health check: if the server is already running and healthy
     // (e.g. module was re-evaluated by the host mid-boot), adopt it rather
     // than killing and respawning. This is the primary guard against the
