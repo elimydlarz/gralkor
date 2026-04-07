@@ -685,36 +685,11 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 ### Test Strategy
 
-Three layers, each with a distinct purpose:
-
-| Layer | Location | Mocks? | Purpose |
-|---|---|---|---|
-| **Unit** | `src/*.test.ts` | Yes — isolated | Fast feedback; drive internal design |
-| **Integration** | `test/integration/*.integration.test.ts` | Yes — mocked collaborators | Cross-module wiring; multi-load, lifecycle |
-| **Functional** | `test/functional/` | No — real OpenClaw harness | End-to-end against a running gateway |
-
-The functional layer requires the OpenClaw test harness (Docker image).
-
-### Test Commands
-
-| Command | Scope | Reporter |
-|---|---|---|
-| `pnpm test` | All (plugin + integration + server) | tree |
-| `pnpm run test:plugin` | TS unit tests | tree |
-| `pnpm run test:integration` | TS integration tests | tree |
-| `pnpm run test:server` | Python | spec |
-| `pnpm run test:server:changed` | Changed Python tests | spec |
-| `pnpm exec vitest run --changed` | Changed TS tests | tree |
-| `pnpm run test:functional` | Build image + run journey + tear down | tree |
-| `pnpm run test:functional:up` | Build image + start env container | — |
-| `pnpm run test:functional:run` | Run journey test in running container | tree |
-| `pnpm run test:functional:down` | Stop + remove env container | — |
-| `pnpm run test:functional:both` | Run journey on linux/arm64 + linux/amd64, log to `/tmp/*.log` | — |
-| `pnpm run test:functional:results` | Extract vitest results from log files | — |
-| `pnpm run test:mutate` | Mutation testing (Stryker) | clear-text |
-| `cd server && uv run pytest tests/test_distillation_live.py -v -s` | Live distillation (real LLM) | stdout |
-
-**Live distillation tests:** Run after changing `_DISTILL_SYSTEM_PROMPT` or default LLM. Uses `server/tests/fixtures/distillation_cases.json`. Writes results to `server/tests/distillation_results/` (gitignored) for review against the behaviour-distillation test tree. `-s` to eyeball.
+- **Unit** — `src/*.test.ts` (mocked). Fast feedback, drives internal design.
+- **Integration** — `test/integration/*.integration.test.ts` (mocked collaborators). Cross-module wiring, multi-load, lifecycle.
+- **Functional** — `test/functional/` (no mocks, real OpenClaw harness, Docker image).
+- All other test scripts live in `package.json`. `pnpm test` runs everything; `pnpm run test:functional:both` runs the journey on arm64 + amd64.
+- **Live distillation:** `cd server && uv run pytest tests/test_distillation_live.py -v -s`. Run after changing `_DISTILL_SYSTEM_PROMPT` or the default LLM. Fixtures: `server/tests/fixtures/distillation_cases.json`. Output: `server/tests/distillation_results/` (gitignored).
 
 ## Building & Deploying
 
