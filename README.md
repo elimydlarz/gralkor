@@ -249,7 +249,7 @@ By default, Graphiti extracts generic entities and connects them with generic `R
 
 If you want more structured extraction, you can define custom entity and relationship types. Graphiti will classify entities into your types, extract structured attributes, and create typed relationships between them.
 
-### Entities only (start here)
+### Entities
 
 The simplest useful ontology defines just entity types. Relationships will still be created, using Graphiti's default `RELATES_TO` type. Set the whole ontology in one go:
 
@@ -273,35 +273,35 @@ openclaw config set --json plugins.entries.gralkor.config.ontology '{
 }'
 ```
 
-### Adding relationships
+### Relationships
 
 To control how entities are connected, add `edges` (relationship types) and `edgeMap` (which entity pairs they apply to):
 
 ```json
 {
   "entities": {
-      "Project": {
-        "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
-        "attributes": {
-          "status": ["active", "completed", "paused"],
-          "language": "Primary programming language used in the project"
-        }
-      },
-      "Technology": {
-        "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
-        "attributes": {
-          "category": ["language", "framework", "database", "infrastructure", "tool"]
-        }
+    "Project": {
+      "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
+      "attributes": {
+        "status": ["active", "completed", "paused"],
+        "language": "Primary programming language used in the project"
       }
     },
-    "edges": {
-      "Uses": {
-        "description": "A project actively using a technology in its stack. Look for statements about tech choices, dependencies, or implementation details that indicate a project relies on a specific technology.",
-        "attributes": {
-          "version": "Version of the technology in use, if mentioned"
-        }
+    "Technology": {
+      "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
+      "attributes": {
+        "category": ["language", "framework", "database", "infrastructure", "tool"]
       }
-    },
+    }
+  },
+  "edges": {
+    "Uses": {
+      "description": "A project actively using a technology in its stack. Look for statements about tech choices, dependencies, or implementation details that indicate a project relies on a specific technology.",
+      "attributes": {
+        "version": "Version of the technology in use, if mentioned"
+      }
+    }
+  },
   "edgeMap": {
     "Project,Technology": ["Uses"]
   }
@@ -312,7 +312,7 @@ Apply with `openclaw config set --json plugins.entries.gralkor.config.ontology '
 
 Without `edgeMap`, all edge types can connect any entity pair. With `edgeMap`, relationships are constrained to specific pairs — entity pairs not listed fall back to `RELATES_TO`.
 
-### Attribute format
+### Attributes
 
 Attributes control what Graphiti extracts for each entity or relationship. They are **required fields** — if the LLM can't populate them from the text, it won't extract that entity type at all. This makes attributes the primary mechanism for gating extraction quality.
 
