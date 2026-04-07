@@ -158,20 +158,6 @@ Start chatting with your agent. Gralkor works in the background:
 openclaw plugins update gralkor --dangerously-force-unsafe-install
 ```
 
-### Reinstalling
-
-The plugin dir (`~/.openclaw/extensions/gralkor`) is ephemeral — it can be deleted and reinstalled freely. The `dataDir` is persistent — the venv and FalkorDB database survive across reinstalls.
-
-```bash
-openclaw plugins uninstall gralkor
-openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
-openclaw config set plugins.slots.memory gralkor
-```
-
-`uninstall` removes the plugin files and resets the memory slot automatically.
-
-The second boot is fast (~4s) because the venv in `dataDir` is reused.
-
 ### LLM providers
 
 Graphiti needs an LLM to extract entities and relationships from conversations.
