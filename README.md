@@ -200,7 +200,7 @@ openclaw gralkor status              # Server state, config, graph stats, data d
 openclaw gralkor search <group_id> <query>  # Search the knowledge graph
 ```
 
-**What's a `group_id`?** Each agent gets its own graph partition, keyed by the agent's ID with hyphens replaced by underscores (FalkorDB's RediSearch syntax doesn't accept hyphens). So an agent named `my-coding-agent` stores its memory under group `my_coding_agent`. If you run agents without an explicit ID, the partition is `default`.
+See [Graph partitioning](#graph-partitioning) for what `<group_id>` should be.
 
 ## Configuration
 
