@@ -55,15 +55,11 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 
 ### Data Lifecycle
 
-**Auto-recall** (`before_prompt_build`):
-Extracts user message from `event.prompt` (strips `System:` lines, session-start, metadata wrappers; falls back to `event.messages` stripping `<gralkor-memory>`). Derives `sessionKey = ctx.sessionKey ?? ctx.sessionId ?? ctx.agentId ?? "default"` and stores it in `groupIdBySession` Map via `setSessionData(sessionKey, agentId)`. Also stores `event.messages` in `messagesBySession` Map via `setSessionMessages(sessionKey, messages)` so the `memory_search` tool can interpret slow-mode results in conversation context. Injects `Session-key: {sessionKey}` into the memory block so tools can pass it back. Skips if disabled/no message. Fail-fast if not ready. Searches `client.search()`. When facts are returned, calls `interpretFacts()` (shared helper) — `llmClient.generate()` with conversation messages (within ~250K-token budget, oldest dropped first) + raw facts — and appends `\n\nInterpretation:\n{text}` after the raw facts. **No fallback:** if `llmClient` is missing or `generate()` throws, the call propagates an error. Returns `<gralkor-memory trust="untrusted">` as `{ prependContext }`.
+(Behavioural details live in the Recall, Capture, and Tools test trees below.)
 
-**Auto-capture** (session buffering):
-`agent_end` fires per run with full session `messages`. Debounces via `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`. `session_end` force-flushes (race-safe). `extractMessagesFromCtx()` cleans user messages via `cleanUserMessageText()`, extracts assistant `text`/`thinking`/tool calls (as `tool_use`), converts `toolResult`/`tool` → `tool_result` (truncated 1000 chars). Media dropped. Calls `formatTranscript(messages, llmClient)` (from `src/distill.ts`) to produce `episode_body` string. POSTs to `/episodes` via `client.ingestEpisode()`.
-
-**Distillation (plugin-side, `src/distill.ts`):** `formatTranscript()` groups thinking/`tool_use`/`tool_result` per turn, distils into first-person behaviour summary via `llmClient.generate()` in parallel, injects `(behaviour: ...)` before text. Failures dropped. When `llmClient` is null, behaviour blocks are silently omitted. Result → `client.ingestEpisode({ episode_body })` → server POSTs `episode_body` verbatim to `graphiti.add_episode()`.
-
-Flush retries 3x exponential (1s/2s/4s). 4xx not retried. SIGTERM → `flushAll()` (once via module guard; errors don't block shutdown).
+- **Auto-recall** (`before_prompt_build`): `extractUserMessageFromPrompt` → register session in `groupIdBySession` (`setSessionData`) and `messagesBySession` (`setSessionMessages`) → fast-mode `client.search()` → `interpretFacts()` (shared helper, ~250K token budget, oldest dropped first; no fallback if `llmClient` is missing) → returns `<gralkor-memory trust="untrusted">` with `Session-key:` injected.
+- **Auto-capture** (`agent_end` → `DebouncedFlush` keyed by `sessionKey || agentId || "default"` → `session_end` force-flush): `extractMessagesFromCtx` cleans messages, `formatTranscript(messages, llmClient)` (in `src/distill.ts`) groups thinking/`tool_use`/`tool_result` per turn and distils each into a first-person `(behaviour: …)` line, then `client.ingestEpisode({ episode_body })`.
+- **Flush retries**: 3× exponential (1s/2s/4s), 4xx not retried. SIGTERM → `flushAll()` once via module guard.
 
 ### Graph Partitioning
 
