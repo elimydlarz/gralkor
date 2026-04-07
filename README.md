@@ -18,7 +18,7 @@ Let's look in detail about the decisions made for Gralkor and why they make it t
 
 For almost all other memory plugins, your agent is inherently dishonest with you, frequently claiming to remember what it has done when it only really remembers what it _already claimed_ to have done, or to have thought _what it is only now imagining_.
 
-With Gralkor you agent actually remembers your agents thoughts and actions.
+With Gralkor your agent actually remembers it's thoughts and actions.
 
 [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) showed agents storing self-reflective reasoning traces outperform GPT-4 output-only baselines by 11 points on HumanEval. [ExpeL](https://arxiv.org/abs/2308.10144) (AAAI 2024) directly ablated reasoning-trace storage versus output-only: +11–19 points across benchmarks from storing the reasoning process alone.
 
