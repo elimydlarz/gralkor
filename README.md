@@ -403,13 +403,11 @@ Most likely: missing or invalid LLM API key. Check your provider API key configu
 - Empty conversations (no extractable text) are skipped
 
 **Agent doesn't have plugin tools (`memory_add`, `memory_build_indices`, etc.)**
-OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools by default. Plugin tools are filtered out when a profile is active. Add them to `tools.alsoAllow`:
+OpenClaw's tool profiles (`coding`, `minimal`, etc.) only allowlist core tools by default. Plugin tools are filtered out when a profile is active. Allow all Gralkor tools:
 
 ```bash
-openclaw config set --json tools.alsoAllow '["memory_add","memory_build_indices","memory_build_communities"]'
-```
-
-You can also allow all Gralkor tools with `'["gralkor"]'` or all plugin tools with `'["group:plugins"]'`. Note that `memory_add` is not required for Gralkor to work — auto-capture already stores everything your agent hears, says, thinks, and does. `memory_add` is only needed if you want the agent to selectively store specific insights or conclusions on its own.
+openclaw config set --json tools.alsoAllow '["gralkor"]'
+``` Note that `memory_add` is not required for Gralkor to work — auto-capture already stores everything your agent hears, says, thinks, and does. `memory_add` is only needed if you want the agent to selectively store specific insights or conclusions on its own.
 
 ## Legacy Docker mode
 
