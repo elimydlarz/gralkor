@@ -251,37 +251,26 @@ If you want more structured extraction, you can define custom entity and relatio
 
 ### Entities only (start here)
 
-The simplest useful ontology defines just entity types. Relationships will still be created, using Graphiti's default `RELATES_TO` type.
+The simplest useful ontology defines just entity types. Relationships will still be created, using Graphiti's default `RELATES_TO` type. Set the whole ontology in one go:
 
-```json
-{
-  "plugins": {
-    "entries": {
-      "gralkor": {
-        "enabled": true,
-        "config": {
-          "ontology": {
-            "entities": {
-              "Project": {
-                "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
-                "attributes": {
-                  "status": ["active", "completed", "paused"],
-                  "language": "Primary programming language used in the project"
-                }
-              },
-              "Technology": {
-                "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
-                "attributes": {
-                  "category": ["language", "framework", "database", "infrastructure", "tool"]
-                }
-              }
-            }
-          }
-        }
+```bash
+openclaw config set --json plugins.entries.gralkor.config.ontology '{
+  "entities": {
+    "Project": {
+      "description": "A software project or initiative being actively developed. Look for mentions of repositories, codebases, applications, services, or named systems that are built and maintained by a team.",
+      "attributes": {
+        "status": ["active", "completed", "paused"],
+        "language": "Primary programming language used in the project"
+      }
+    },
+    "Technology": {
+      "description": "A programming language, framework, library, database, or infrastructure tool. Identify by mentions of specific named technologies used in or considered for projects.",
+      "attributes": {
+        "category": ["language", "framework", "database", "infrastructure", "tool"]
       }
     }
   }
-}
+}'
 ```
 
 ### Adding relationships
