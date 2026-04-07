@@ -42,7 +42,7 @@ My way is to use cron and [Thinker CLI](https://github.com/elimydlarz/thinker-cl
 
 [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) demonstrated that agents storing verbal reflections in an episodic buffer gain 11 points with no weight updates. [Generative Agents](https://arxiv.org/abs/2304.03442) (UIST 2023) showed empirically that a reflection layer synthesizing raw memories into higher-order insights is essential for coherent long-term behavior.
 
-**Custom ontology: model your agent's world _your way_.** Gralkor let's you define your own entity types, attributes, and relationships so that information is parsed into entities and relationships you define. Your graph doesn't have to be a black box - you can keep track of what matters to you.
+**Custom ontology: model your agent's world _your way_.** Gralkor lets you define your own entity types, attributes, and relationships so that information is parsed into entities and relationships you define. Your graph doesn't have to be a black box - you can keep track of what matters to you.
 
 You can use a domain model codified by experts in your field, or encode _your_ model of the world so that your agent shares it.
 
