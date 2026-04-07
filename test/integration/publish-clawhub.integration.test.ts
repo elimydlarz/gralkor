@@ -228,7 +228,7 @@ describe("publish-clawhub-version-integrity", () => {
       expect(pluginVersion).toBe(before);
     });
 
-    it("then build and publish run and a git commit and tag are created", () => {
+    it("then build and publish run and a git tag is created (no commit)", () => {
       const before = readJson(join(tempDir, "package.json")).version as string;
 
       execSync("bash scripts/publish-clawhub.sh current", {
@@ -238,7 +238,6 @@ describe("publish-clawhub-version-integrity", () => {
           PUBLISH_CLAWHUB_WHOAMI_CMD: "true",
           PUBLISH_BUILD_CMD: "true",
           PUBLISH_WHEEL_CMD: "true",
-          PUBLISH_SKIP_GH_RELEASE: "1",
           PUBLISH_SKIP_GH_RELEASE: "1",
           PUBLISH_PUBLISH_CMD: "true",
           GIT_AUTHOR_NAME: "test",
@@ -253,11 +252,12 @@ describe("publish-clawhub-version-integrity", () => {
         .version as string;
       expect(pkgVersion).toBe(before);
 
+      // current level: no commit, only the init commit remains
       const log = execSync("git log --oneline", {
         cwd: tempDir,
         encoding: "utf8",
       });
-      expect(log).toContain(before);
+      expect(log.trim().split("\n")).toHaveLength(1);
 
       const tags = execSync("git tag", { cwd: tempDir, encoding: "utf8" });
       expect(tags.trim()).toContain(`v${before}`);
