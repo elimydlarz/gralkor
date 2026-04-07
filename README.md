@@ -325,7 +325,7 @@ Attributes control what Graphiti extracts for each entity or relationship. They 
 
 Supported types for the object form: `string`, `int`, `float`, `bool`, `datetime`.
 
-### Writing good descriptions
+### Descriptions
 
 Descriptions are the most important part of your ontology — they tell the LLM what to look for. Write them like extraction instructions, not dictionary definitions.
 
@@ -361,21 +361,21 @@ openclaw config set plugins.entries.gralkor.config.dataDir /data/gralkor
 
 ```
 User sends message
-       │
-       ▼
- ┌─────────────┐     search     ┌──────────┐     query     ┌──────────┐
- │  auto-recall │ ──────────▶   │ Graphiti  │ ──────────▶   │ FalkorDB │
- │    hook      │ ◀──────────   │   API     │ ◀──────────   │          │
- └─────────────┘    facts       └──────────┘   subgraph     └──────────┘
-       │
-       ▼
+        │
+        ▼
+ ┌──────────────┐    search    ┌──────────────┐    query     ┌──────────────┐
+ │ auto-recall  │ ───────────▶ │   Graphiti   │ ───────────▶ │   FalkorDB   │
+ │    hook      │ ◀─────────── │     API      │ ◀─────────── │              │
+ └──────────────┘    facts     └──────────────┘   subgraph   └──────────────┘
+        │
+        ▼
  Agent runs (with recalled facts as context)
-       │
-       ▼
- ┌──────────────┐    ingest     ┌──────────┐    extract     ┌──────────┐
- │ auto-capture  │ ──────────▶  │ Graphiti  │ ──────────▶   │ FalkorDB │
- │    hook       │              │   API     │   entities    │          │
- └──────────────┘              └──────────┘   & facts      └──────────┘
+        │
+        ▼
+ ┌──────────────┐    ingest    ┌──────────────┐   extract    ┌──────────────┐
+ │ auto-capture │ ───────────▶ │   Graphiti   │ ───────────▶ │   FalkorDB   │
+ │    hook      │              │     API      │  entities    │              │
+ └──────────────┘              └──────────────┘   & facts    └──────────────┘
 ```
 
 Graphiti handles the heavy lifting: entity extraction, relationship mapping, temporal tracking, and embedding-based search. Gralkor wires it into the OpenClaw plugin lifecycle. The Graphiti server and embedded FalkorDB run as a managed subprocess — started and stopped automatically by the plugin.
