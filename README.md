@@ -98,20 +98,7 @@ openclaw config set plugins.entries.gralkor.config.test true
 openclaw plugins install @susu-eng/gralkor --dangerously-force-unsafe-install
 ```
 
-From a tarball (e.g. for air-gapped deploys):
-
-```bash
-openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-force-unsafe-install
-```
-
-> **Why `--dangerously-force-unsafe-install`?** OpenClaw's install-time security
-> scanner flags Gralkor as critical because `dist/server-manager.js` imports
-> `node:child_process` and calls `spawn()` to launch the embedded Python server.
-> This is intrinsic to how Gralkor works (managed FalkorDB + Graphiti subprocess)
-> and cannot be removed. The flag is required on every install and update until
-> OpenClaw provides a manifest-level allowlist mechanism. Inspect the source on
-> npm/ClawHub before installing if you'd like to verify there's nothing else
-> going on.
+> **Why `--dangerously-force-unsafe-install`?** OpenClaw's install-time security scanner flags Gralkor as critical because of the embeeded Python server. This is intrinsic to how Gralkor works (managed FalkorDB + Graphiti subprocess) Inspect the source on npm/ClawHub before installing if you'd like to verify there's nothing else going on.
 
 ### 4. Enable and assign the memory slot
 
