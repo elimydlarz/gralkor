@@ -675,9 +675,10 @@ API keys live in plugin config as plain strings (gateway resolves SecretRefs ups
 ```bash
 openclaw plugins install -l .         # install locally for dev
 pnpm run typecheck                    # type-check TypeScript
-pnpm test                             # all tests (plugin + server)
-pnpm run test:plugin                  # vitest only
-pnpm run test:server                  # pytest only (no Docker needed)
+pnpm test                             # typecheck + unit + integration
+pnpm run test:unit                    # TS unit (vitest src/) + Python unit (pytest, mocked)
+pnpm run test:integration             # TS integration (test/integration/) + Python integration (real FalkorDBLite)
+pnpm run test:functional              # Docker harness end-to-end
 pnpm run setup:server                 # first time: sync server venv
 ```
 
@@ -685,11 +686,12 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 ### Test Strategy
 
-- **Unit** — `src/*.test.ts` (mocked). Fast feedback, drives internal design.
-- **Integration** — `test/integration/*.integration.test.ts` (mocked collaborators). Cross-module wiring, multi-load, lifecycle.
-- **Functional** — `test/functional/` (no mocks, real OpenClaw harness, Docker image).
-- All other test scripts live in `package.json`. `pnpm test` runs everything; `pnpm run test:functional:both` runs the journey on arm64 + amd64.
-- **Live distillation:** `cd server && uv run pytest tests/test_distillation_live.py -v -s`. Run after changing `_DISTILL_SYSTEM_PROMPT` or the default LLM. Fixtures: `server/tests/fixtures/distillation_cases.json`. Output: `server/tests/distillation_results/` (gitignored).
+Three layers, each with both a TypeScript and a Python half so the language split doesn't muddy the layer split:
+
+- **Unit** — fast, isolated, mocked collaborators. TS: `src/*.test.ts` (vitest). Python: `server/tests/*.py` excluding `test_integration.py` (pytest with mocked Graphiti). `pnpm run test:unit` runs both halves; `:ts` / `:py` run just one.
+- **Integration** — cross-module wiring, real adjacent components, no Docker. TS: `test/integration/*.integration.test.ts` (vitest, mocked external services but real plugin lifecycle). Python: `server/tests/test_integration.py` (real FalkorDBLite, real Graphiti). `pnpm run test:integration` runs both; `:ts` / `:py` for one.
+- **Functional** — `test/functional/` end-to-end against a real OpenClaw + real LLM inside the Docker harness. No mocks. `pnpm run test:functional`; `:both` for arm64 + amd64.
+- **Live distillation** (out-of-band): `cd server && uv run pytest tests/test_distillation_live.py -v -s`. Run after changing `_DISTILL_SYSTEM_PROMPT` or the default LLM. Fixtures: `server/tests/fixtures/distillation_cases.json`. Output: `server/tests/distillation_results/` (gitignored).
 
 ## Building & Deploying
 
