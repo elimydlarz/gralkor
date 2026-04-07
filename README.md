@@ -407,18 +407,3 @@ Most likely: missing or invalid LLM API key. Check your provider API key configu
 - Conversations where the first user message starts with `/` are skipped by design
 - Empty conversations (no extractable text) are skipped
 
-## Legacy Docker mode
-
-If you prefer to run FalkorDB as a separate Docker container (e.g. for production deployments with specific resource constraints), you can set `FALKORDB_URI` to bypass the embedded mode:
-
-```bash
-cd ~/.openclaw/plugins/gralkor
-docker build -t gralkor-server:latest server/
-FALKORDB_URI=redis://falkordb:6379 docker compose up -d
-```
-
-This starts FalkorDB on port 6379 and the Graphiti API on port 8001. If your OpenClaw gateway runs in Docker, connect it to the `gralkor` network:
-
-```bash
-docker network connect gralkor <your-openclaw-container-name>
-```
