@@ -693,16 +693,9 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
 ## Building & Deploying
 
-```bash
-pnpm run publish:all -- patch      # bump, build, publish to npm + ClawHub, commit+tag (also minor/major)
-pnpm run publish:npm -- patch      # npm only (also minor/major/current)
-pnpm run publish:clawhub -- patch  # ClawHub only (also minor/major/current)
-pnpm run pack                      # deployment tarball (arm64 wheel via Docker)
-```
+`pnpm run publish:all -- patch|minor|major` bumps, builds, publishes to npm + ClawHub, commits and tags. `publish:npm` / `publish:clawhub` for one-at-a-time (each accepts `current` to skip the bump). `pnpm run pack` builds a deployment tarball (arm64 wheel via Docker). See the publish test trees for behaviour. Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
 
-Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
-
-**ClawHub upload contents** are governed by `.clawhubignore` (gitignore syntax). The clawhub CLI walks the repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — it does NOT read `package.json`'s `files` field or `.gitignore`/`.npmignore`. The ignore file uses a whitelist approach (`*` then `!`-unignores) mirroring npm's `files` whitelist, and explicitly denies `.env*` (defence in depth). ClawHub enforces a 20 MB per-package upload limit, so `server/wheels/` is excluded; `publish-clawhub.sh` uploads the arm64 wheel to the matching `v${version}` GitHub Release instead, and `resolveBundledWheels()` in `server-manager.ts` downloads it on first start when the install dir has no bundled wheels.
+**ClawHub uploads** are governed by `.clawhubignore` (gitignore syntax) — the clawhub CLI ignores `package.json`'s `files` field and `.gitignore`/`.npmignore`, so the file uses a whitelist (`*` + `!`-unignores) mirroring npm's `files`, plus an explicit `.env*` deny. `server/wheels/` is excluded (20 MB limit); `publish-clawhub.sh` instead `gh release upload`s the arm64 wheel to the matching `v${version}` release.
 
 ## Conventions
 
