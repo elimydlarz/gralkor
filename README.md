@@ -56,9 +56,7 @@ An agent that remembers behaviour, decisions, your preferences, and reasoning ac
 
 Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perhaps get better extraction, but otherwise I've just made it as good as possible while being reasonable about latency.
 
-## What it does
-
-Gralkor replaces the native memory plugin entirely, taking the memory slot.
+## Tools
 
 - **`memory_search`** — searches the knowledge graph and returns relevant facts and entity summaries
 - **`memory_add`** — stores information in the knowledge graph; Graphiti extracts entities and relationships
