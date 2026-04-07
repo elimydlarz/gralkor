@@ -8,70 +8,53 @@ Gralkor automatically remembers and recalls everything your agent says, _thinks_
 
 ## Why Gralkor
 
-Here's the honest field report on every OpenClaw memory plugin:
-
-| Plugin | Storage | Captures thinking | Episode scope | Temporal facts | Local |
-|---|---|---|---|---|---|
-| **memory-core** *(built-in)* | Markdown files | no | full (LLM-written at compaction) | no | ✓ |
-| **lancedb-pro** | LanceDB (flat vector) | no | new messages per run | partial | ✓ |
-| **MemOS Local** | SQLite + vector | no | turn delta | recency decay only | ✓ |
-| **Cognee** | Cognee graph API | no | Q&A pairs | partial | optional |
-| **Supermemory** | Cloud (opaque) | no | last turn only | server-side flag | ✗ |
-| **MemOS Cloud** | Cloud (opaque) | no | last turn *(default)* | none | ✗ |
-| **Awareness** | Cloud + MD mirror | no | first message + last reply | none | ✗ |
-| **Gralkor** | Graphiti knowledge graph | **yes** | full session | `valid_at`/`invalid_at`/`expired_at` | ✓ |
-
 Let's look in detail about the decisions made for Gralkor and why they make it the best memory plugin for OpenClaw.
 
-**Graphs, not Markdown or pure vector.** The AI ecosystem's fixation on Markdown-based memory is baffling. Graphs are the right data structure for representing knowledge. Your code is a graph (syntax trees), your filesystem is a graph, the web is a graph. The world is a deeply interrelated graph, and trying to flatten it into Markdown files or pure vector embeddings is fighting reality.
-
-Yet: the most popular memory plugin — memory-core, the one that ships inside OpenClaw — writes your agent's memory to `MEMORY.md` and `memory/YYYY-MM-DD.md`. The second most popular, lancedb-pro, stores extracted facts as flat rows in LanceDB. [Graphiti](https://github.com/getzep/graphiti) combines a knowledge graph with vector embeddings — you get structured relationships *and* semantic retrieval. Facts carry temporal validity: when they became true, when they stopped being true, when they were superseded.
-
-This is not another chunking strategy or embedding experiment. Graphiti has solved this layer of the problem and Gralkor deploys and leverages it optimally for this use case.
+**Graphs, not Markdown or pure vector.** Graphs are the right data structure for representing knowledge. Your code is a graph - the _world_ is a deeply interrelated graph and trying to flatten it into Markdown files or pure vector embeddings is fighting reality. Gralkor doesn't use MD files (other than indexing yours), and this is not another chunking strategy or embedding experiment. Graphiti has already solved this layer and Gralkor leverages it optimally for this use case.
 
 [HippoRAG](https://arxiv.org/abs/2405.14831) (NeurIPS 2024) found graph-based retrieval reaches 89.1% recall@5 on 2WikiMultiHopQA versus 68.2% for flat vector retrieval — a 20.9-point gap. [AriGraph](https://arxiv.org/abs/2407.04363) (IJCAI 2025) independently found KG-augmented agents markedly outperform RAG, summarization, and full-conversation-history baselines across interactive environments.
 
-**Remembering behaviour, not just dialog.** Agents make mistakes options, weigh options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's thinking blocks - it's learning - into first-person behavioural summaries and weaves them into the episode transcript before ingestion. The graph doesn't just know what was said; it knows how the agent arrived there.
+**Remembering behaviour, not just dialog.** Agents make mistakes options, weigh options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's behaviour - not just its dialog - into first-person behavioural reports weaved into episode transcripts before ingestion.
 
-Yet: Every other OpenClaw memory plugin only remembers what was spoken, totally ignoring what your agent thinks and does — lancedb-pro filters for `type === "text"` only, MemOS strips `<think>` tags, Supermemory never looks at them. Even if you have a sophisticated memory system, your agent is inherently dishonest with you, frequently claiming to remember what it has done when it only really remembers what it claimed to have done, or to have thought what it is only now imagining.
+For almost all other memory plugins, your agent is inherently dishonest with you, frequently claiming to remember what it has done when it only really remembers what it _already claimed_ to have done, or to have thought _what it is only now imagining_.
 
-Gralkor actually remembers what your agent thought and did — it is the only OpenClaw memory plugin with this capability.
+With Gralkor you agent actually remembers your agents thoughts and actions.
 
 [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) showed agents storing self-reflective reasoning traces outperform GPT-4 output-only baselines by 11 points on HumanEval. [ExpeL](https://arxiv.org/abs/2308.10144) (AAAI 2024) directly ablated reasoning-trace storage versus output-only: +11–19 points across benchmarks from storing the reasoning process alone.
 
 **Maximum context at ingestion.** Gralkor captures all messages in each session of work, distills behaviour, and feeds results to Graphiti *as whole episodes*. Extraction works _way_ better when Graphiti has full context.
 
-Yet: Most memory plugins save isolated question-answer pairs or summarized snippets: "Awareness" stores the first user message and the last assistant reply — a 30-turn debugging session becomes two sentences. Some default to the last turn only. Others capture single turns of dialog.
+Most memory plugins save isolated question-answer pairs or summarized snippets: Some store only the first user message and the last assistant reply, others store to the last turn only.
 
-Gralkor captures _the whole episode_ — the entire series of questions, thoughts, actions, and responses that _solved the problem_. Richer semantics, better understanding, better recall.
+Gralkor captures the entire series of questions, thoughts, actions, and responses that _solved the problem_ together, with all their interrelationships. Richer semantics, better understanding, better recall.
 
 [SeCom](https://arxiv.org/abs/2502.05589) (ICLR 2025) found coherent multi-turn episode storage scores 5.99 GPT4Score points higher than isolated turn-level storage on LOCOMO. [LongMemEval](https://arxiv.org/abs/2410.10813) (ICLR 2025) confirms: fact-level QA-pair extraction drops accuracy from 0.692 to 0.615 versus full-round episode storage.
 
-**Built for the long term.** Graphiti — on which Gralkor is based — is _temporally aware_. On every ingestion, it doesn't just append; it resolves new information against the existing graph, amending, expiring, and invalidating so that your agent knows _what happened over time_.
+**Built for the long term.** Graphiti (and therefore Gralkor) is deeply temporal. On every ingestion, it doesn't just append; it resolves new information against the existing graph, amending, expiring, and invalidating so that your agent knows _what happened over time_.
 
-Graphiti does the heavy temporal lifting on ingestion and supports point-in-time queries across a traversable structure. This is expensive, bad for throughput, and useless for short-lived agents, so serving a single, long-lived user agent is _the perfect use case_. Graphiti was destined for Gralkor and OpenClaw.
+Graphiti does the heavy temporal lifting on ingestion. It's bad for throughput, and useless for short-lived agents, which means serving a single, long-lived user agent is _the perfect use case_.
 
 [LongMemEval](https://arxiv.org/abs/2410.10813) (ICLR 2025) established that temporal reasoning is the hardest memory sub-task for commercial LLMs; time-aware indexing recovers 7–11% of that loss. [MemoTime](https://arxiv.org/abs/2510.13614) (WWW 2026) found temporal knowledge graphs enable a 4B model to match GPT-4-Turbo on temporal reasoning, with up to 24% improvement over static memory baselines.
 
-**Recursion through reflection.** A knowledge graph is a living structure. Point your agent back at its own memory — let it reflect on what it knows, identify contradictions, synthesize higher-order insights, and do with them whatever you believe to be _good cognitive architecture_ :shrug:. Gralkor doesn't prescribe how you do this.
+**Recursion through reflection.** Point your agent back at its own memory — let it reflect on what it knows, identify contradictions, synthesize higher-order insights, and do with them whatever you believe to be _good cognitive architecture_. Gralkor doesn't limit you to one approach, but the research is quite clar - you should do _something_.
 
-My way is to use cron and [Thinker CLI](https://github.com/elimydlarz/thinker-cli) together, directing the agent to use the search and add memory tools. Share yours, and ask to see mine.
+My way is to use cron and [Thinker CLI](https://github.com/elimydlarz/thinker-cli) together, directing the agent to use the search and add memory tools in a sequential reflective process. Share yours, and ask to see mine.
 
 [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) demonstrated that agents storing verbal reflections in an episodic buffer gain 11 points with no weight updates. [Generative Agents](https://arxiv.org/abs/2304.03442) (UIST 2023) showed empirically that a reflection layer synthesizing raw memories into higher-order insights is essential for coherent long-term behavior.
 
-**Custom ontology: model your agent's world _your way_.** Define your own entity types, attributes, and relationships so that information is parsed into entities and relationships you define. You could use a domain model codified by experts, be the expert, or try to encode _your_ model of the world.
+**Custom ontology: model your agent's world _your way_.** Gralkor let's you define your own entity types, attributes, and relationships so that information is parsed into entities and relationships you define. Your graph doesn't have to be a black box - you can keep track of what matters to you.
 
-Agent memory doesn't have to be so fuzzy that you lose what matters.
+You can use a domain model codified by experts in your field, or encode _your_ model of the world so that your agent shares it.
 
 [Apple's ODKE+](https://arxiv.org/abs/2509.04696) (2025) showed ontology-guided extraction hits 98.8% precision vs 91% raw LLM; [GoLLIE](https://arxiv.org/abs/2310.03668) (ICLR 2024) directly ablated schema-constrained versus unconstrained generation on the same model, finding +13 F1 points average across NER, relation, and event extraction in zero-shot settings.
 
-**On cost.** Gralkor costs more to run than a Markdown file. It's better context management, not overhead. Instead of paying to pollute your context window with junk every read, you pay more on ingestion in exchange for cheap, high-relevance reads. Extract and structure what matters, then pull only the right stuff at read time.
+**Interpretation** Gralkor interprets information in memory for relevance to the task at hand. This step radically improves output with minimal impact on cost and latency.
 
-It's worth it: A single recalled fact — "we chose postgres over mysql because of the jsonb column support we need for X" — prevents re-litigating that decision in a new session. An agent that remembers your architectural decisions, your preferences, your debugging history, and your reasoning across sessions changes the character of your work.
+**On cost.** Gralkor costs more to run than a Markdown file in the short term. In the longer term, Gralkor provides more efficient context management, reducing token burn. Instead of paying to pollute your context window with junk every read, you pay more on ingestion in exchange for cheap, high-relevance reads forever.
 
-You stop spending turns re-establishing context and focus more on what you care about. Paying $20 to Google every month to make your agent _meaningfully_ more effective is a no-brainer. The agents that cost you _real_ money are the ones that forget everything and make you start over, or burn tokens overloading context with noise.
+An agent that remembers behaviour, decisions, your preferences, and reasoning across sessions changes the _character_ of your work. You stop spending turns re-establishing context and focus more on what you care about. A single recalled behavioural fact — "we rejected mysql because it lacked jsonb column support needed for X" — prevents re-litigating that decision in a new session - it might save 10 subagents repeating a parallel investigation of database options.
 
-Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perhaps get better extraction, but otherwise I've just made it as good as possible, other than being reasonable about latency.
+Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perhaps get better extraction, but otherwise I've just made it as good as possible while being reasonable about latency.
 
 ## What it does
 
@@ -134,11 +117,13 @@ openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-for
 
 ### 4. Enable and assign the memory slot
 
+OpenClaw has a single `memory` slot that determines which plugin provides memory to your agents. By default it's filled by the built-in `memory-core` plugin. Gralkor is a drop-in replacement: you must explicitly assign it to the `memory` slot, otherwise installing the plugin does nothing — your agents will keep using `memory-core` and Gralkor's auto-capture and auto-recall hooks will never fire.
+
 ```bash
-# Allowlist (if you use one)
+# If you use an allowlist, add gralkor to it
 openclaw config set --json plugins.allow '["gralkor"]'
 
-# Assign the memory slot — replaces the built-in memory-core
+# Assign Gralkor to the memory slot (replaces the built-in memory-core)
 openclaw config set plugins.slots.memory gralkor
 ```
 
