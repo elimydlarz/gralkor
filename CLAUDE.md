@@ -78,11 +78,12 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 
 ### Communication Path
 
-Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immediate) → REST API → FalkorDB. `search(mode)` → `POST /search` returning `{ facts, nodes }`. `mode: "fast"` (auto-recall): `graphiti.search()` — RRF, edges only, `nodes: []`. `mode: "slow"` (`memory_search` tool): `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` — cross-encoder + BFS, returns facts and entity node summaries. Auto-capture: plugin calls `formatTranscript()` → `client.ingestEpisode({ episode_body })` → `POST /episodes` with pre-formatted `episode_body` string; server passes verbatim to `graphiti.add_episode()`.
+Plugin → `GraphitiClient` (`src/client.ts`, HTTP) → REST → FalkorDB.
 
-**Idempotency:** UUID per call as `idempotency_key`; server deduplicates (in-memory, process lifetime).
-
-**Rate-limit passthrough:** Middleware: `RateLimitError` → 429 + `Retry-After` header (from upstream or default 5s). Client retries 429s indefinitely guided by `Retry-After`, independent of the 5xx/network retry budget. Cancellable via AbortSignal.
+- 2 retries (500ms/1s) for network/5xx; 4xx immediate (except 429).
+- `POST /search` returns `{ facts, nodes }`. Fast mode = `graphiti.search()` (RRF, edges only). Slow mode = `graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER` (cross-encoder + BFS, facts + entity summaries).
+- `POST /episodes` carries pre-formatted `episode_body`; server passes verbatim to `graphiti.add_episode()`. UUID per call as `idempotency_key` (in-memory dedup, process lifetime).
+- **Rate-limit passthrough:** middleware → 429 + `Retry-After`; client retries 429s indefinitely (guided by `Retry-After`), independent of the 5xx retry budget. Cancellable via `AbortSignal`.
 
 ## Requirements
 
