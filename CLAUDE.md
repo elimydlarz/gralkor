@@ -696,8 +696,6 @@ install-sequencing-docs
 
 API keys are configured as strings in plugin config (`api.pluginConfig`). The OpenClaw gateway resolves SecretRef objects before they reach the plugin — we receive plain strings. `buildSecretEnv()` in `src/register.ts` maps config fields to env vars passed to the server manager.
 
-- `FALKORDB_URI` — (Optional) legacy Docker mode
-
 Server manager generates `config.yaml` and forwards all keys at startup.
 
 ## Dev Workflow
