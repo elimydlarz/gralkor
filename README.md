@@ -115,7 +115,7 @@ openclaw plugins install ./susu-eng-gralkor-memory-26.0.14.tgz --dangerously-for
 
 ### 4. Enable and assign the memory slot
 
-OpenClaw has a single `memory` slot that determines which plugin provides memory to your agents. By default it's filled by the built-in `memory-core` plugin. Gralkor is a drop-in replacement: you must explicitly assign it to the `memory` slot, otherwise installing the plugin does nothing — your agents will keep using `memory-core` and Gralkor's auto-capture and auto-recall hooks will never fire.
+OpenClaw has a single `memory` slot that determines which plugin provides memory to your agents. You must explicitly assign Gralkor to the `memory` slot, otherwise installing the plugin does nothing — auto-capture and auto-recall hooks will never fire.
 
 ```bash
 # If you use an allowlist, add gralkor to it
