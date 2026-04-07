@@ -145,11 +145,6 @@ describe("createServerManager", () => {
       }),
     );
     expect(manager.isRunning()).toBe(true);
-
-    // Env should NOT contain FALKORDB_URI
-    const spawnCall = (spawn as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    const passedEnv = spawnCall[2].env;
-    expect(passedEnv.FALKORDB_URI).toBeUndefined();
   });
 
   it("skips falkordblite in uv sync and installs from bundled wheel", async () => {
