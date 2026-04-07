@@ -388,7 +388,18 @@ Graphiti handles the heavy lifting: entity extraction, relationship mapping, tem
 ## Troubleshooting
 
 **`openclaw gralkor status` says "Server process: stopped"**
-Python 3.12+ is not found on the system PATH. Install Python 3.12+ and restart OpenClaw.
+Many things can cause this. Use the available diagnostics to narrow it down:
+
+- **`openclaw gralkor status`** — shows process state, config summary, `dataDir`, venv state, and (if unreachable) the connection error
+- **Gateway logs** — grep for `[gralkor] boot:` markers. You should see `boot: plugin loaded`, `boot: starting`, then `boot: ready`. A `boot: ... failed:` line tells you which stage broke
+- **`openclaw gralkor search <group_id> <query>`** — quick end-to-end check that the server is reachable and the graph has data
+
+Common causes:
+- `uv` not on PATH (Python itself is managed by `uv` — it fetches 3.12+ on demand and produces its own errors)
+- `uv sync` failed (network/registry issue, or on first boot ~1–2 min is normal — wait it out)
+- Missing or invalid LLM API key — the server starts but every operation fails
+- Stale `server.pid` in `dataDir` holding port 8001 (the manager tries to clean this up, but a SIGKILL'd predecessor can leave the port wedged)
+- On `linux/arm64`: bundled falkordblite wheel couldn't be resolved (not in `server/wheels/`, not cached in `dataDir/wheels/`, and the GitHub Release download failed)
 
 **First startup takes a long time**
 Normal — Gralkor is creating a Python virtual environment and installing dependencies via pip. This takes ~1-2 minutes. Subsequent starts reuse the venv and skip pip.
