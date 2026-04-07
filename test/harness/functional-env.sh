@@ -83,9 +83,8 @@ cmd_up() {
     docker rm "$CONTAINER" >/dev/null
   fi
 
-  API_KEY="${GOOGLE_API_KEY:-${GOOGLE_API_KEY:-}}"
   KEY_ARGS=()
-  [ -n "$API_KEY" ] && KEY_ARGS+=(-e "GOOGLE_API_KEY=$API_KEY")
+  [ -n "${GOOGLE_API_KEY:-}" ] && KEY_ARGS+=(-e "GOOGLE_API_KEY=$GOOGLE_API_KEY")
 
   echo ""
   echo "=== Starting functional env container ==="
