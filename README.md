@@ -180,24 +180,12 @@ Graphiti needs an LLM to extract entities and relationships from conversations.
 | **Anthropic** | `anthropicApiKey` | LLM only — still needs `openaiApiKey` for embeddings |
 | **Groq** | `groqApiKey` | LLM only — still needs `openaiApiKey` for embeddings |
 
-To switch away from Gemini, set `llm` and `embedder` in the plugin config. For example, with OpenAI:
+To switch away from Gemini, set `llm` and `embedder`. For example, with OpenAI:
 
-```json
-{
-  "plugins": {
-    "entries": {
-      "gralkor": {
-        "enabled": true,
-        "config": {
-          "dataDir": "/path/to/gralkor-data",
-          "openaiApiKey": { "$ref": "env:OPENAI_API_KEY" },
-          "llm": { "provider": "openai", "model": "gpt-4.1-mini" },
-          "embedder": { "provider": "openai", "model": "text-embedding-3-small" }
-        }
-      }
-    }
-  }
-}
+```bash
+openclaw config set plugins.entries.gralkor.config.openaiApiKey "$OPENAI_API_KEY"
+openclaw config set --json plugins.entries.gralkor.config.llm '{"provider":"openai","model":"gpt-4.1-mini"}'
+openclaw config set --json plugins.entries.gralkor.config.embedder '{"provider":"openai","model":"text-embedding-3-small"}'
 ```
 
 ## CLI
