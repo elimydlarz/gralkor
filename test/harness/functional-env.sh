@@ -128,6 +128,30 @@ cmd_up() {
     "
 
   wait_healthy
+
+  # Approve any pending CLI device pairings so `openclaw agent` can talk to
+  # the gateway. Without this, the CLI's first connect attempt is rejected
+  # with "pairing required" and it falls back to embedded mode — which works
+  # for the agent run itself but leaves the CLI process hanging post-run.
+  echo "Approving CLI device pairings..."
+  docker exec "$CONTAINER" bash -c '
+    pending_ids=$(openclaw devices list 2>/dev/null \
+      | awk "/^Pending/ {flag=1; next} /^Paired/ {flag=0} flag" \
+      | grep -oE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+    for id in $pending_ids; do
+      openclaw devices approve "$id" >/dev/null 2>&1 && echo "  approved $id"
+    done
+    # Trigger a CLI handshake to enroll the local device, then approve again
+    # in case approval generated a new pending request.
+    openclaw config get gateway.mode >/dev/null 2>&1 || true
+    pending_ids=$(openclaw devices list 2>/dev/null \
+      | awk "/^Pending/ {flag=1; next} /^Paired/ {flag=0} flag" \
+      | grep -oE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+    for id in $pending_ids; do
+      openclaw devices approve "$id" >/dev/null 2>&1 && echo "  approved $id"
+    done
+  '
+
   echo ""
   echo "Functional env ready. Run: bash test/harness/functional-env.sh run"
 }
