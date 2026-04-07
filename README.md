@@ -36,7 +36,7 @@ Graphiti does the heavy temporal lifting on ingestion. It's bad for throughput, 
 
 [LongMemEval](https://arxiv.org/abs/2410.10813) (ICLR 2025) established that temporal reasoning is the hardest memory sub-task for commercial LLMs; time-aware indexing recovers 7–11% of that loss. [MemoTime](https://arxiv.org/abs/2510.13614) (WWW 2026) found temporal knowledge graphs enable a 4B model to match GPT-4-Turbo on temporal reasoning, with up to 24% improvement over static memory baselines.
 
-**Recursion through reflection.** Point your agent back at its own memory — let it reflect on what it knows, identify contradictions, synthesize higher-order insights, and do with them whatever you believe to be _good cognitive architecture_. Gralkor doesn't limit you to one approach, but the research is quite clar - you should do _something_.
+**Recursion through reflection.** Point your agent back at its own memory — let it reflect on what it knows, identify contradictions, synthesize higher-order insights, and do with them whatever you believe to be _good cognitive architecture_. Gralkor doesn't limit you to one approach, but the research is quite clear - you should do _something_.
 
 My way is to use cron and [Thinker CLI](https://github.com/elimydlarz/thinker-cli) together, directing the agent to use the search and add memory tools in a sequential reflective process. Share yours, and ask to see mine.
 
