@@ -89,7 +89,6 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
     Real config loading, real LLM/embedder client construction, real
     FalkorDBLite, real FalkorDriver, real Graphiti, real index creation.
     """
-    monkeypatch.delenv("FALKORDB_URI", raising=False)
     monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
 
     import main as main_mod
