@@ -8,7 +8,7 @@
 #   bash test/harness/functional-env.sh test   # up + run + down
 #
 # Environment:
-#   GOOGLE_API_KEY / GOOGLE_API_KEY  — passed to container at 'up' time
+#   GOOGLE_API_KEY  — passed to container at 'up' time
 #   PLATFORM                         — docker platform (default: linux/arm64)
 #   GRALKOR_FUNC_CONTAINER           — container name (default: gralkor-functional)
 set -euo pipefail
