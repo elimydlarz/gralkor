@@ -63,9 +63,9 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 
 ### Graph Partitioning
 
-Tools don't receive ctx (`execute(toolCallId, params)`). `before_prompt_build` stores `groupId` in a `Map<sessionKey, groupId>` (`groupIdBySession`) and injects the `sessionKey` into the `<gralkor-memory>` block. Tools require `session_key` — the model reads it from the memory block and passes it back, allowing tools to call `getGroupId(sessionKey)` for a race-free lookup. `getGroupId` **throws** for unregistered keys — no silent fallback to a wrong partition. `getGroupId` is required everywhere (`RecallOpts`, `ToolOpts`, `flushSessionBuffer` opts). Sanitization (`sanitizeGroupId` — hyphens → underscores) happens **once** at write time inside `setSessionData`; all readers (`before_prompt_build` search, flush, tools) get the pre-sanitized value from the map.
-
-graphiti-core maps each `group_id` to a separate FalkorDB named graph. `add_episode()` clones the driver per group, but `search()` doesn't route (uses current graph — `'default_db'` on fresh boot → empty). Fix: `_ensure_driver_graph()` in `main.py`.
+- Tools have no ctx; they require `session_key` which the model reads back from the injected memory block. `getGroupId(sessionKey)` **throws** for unregistered keys — no silent fallback to a wrong partition.
+- `sanitizeGroupId` (hyphens → underscores) runs **once** at write time inside `setSessionData`; all readers get the pre-sanitized value from the map.
+- graphiti-core: `add_episode()` clones the driver per `group_id`, but `search()` doesn't route — fixed by `_ensure_driver_graph()` in `main.py`.
 
 ### Server Manager Lifecycle
 
