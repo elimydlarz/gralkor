@@ -197,24 +197,11 @@ openclaw gralkor search <group_id> <query>  # Search the knowledge graph
 
 ## Configuration
 
-Configure in your OpenClaw plugin settings (`~/.openclaw/openclaw.json`):
+Configure with `openclaw config set`. For example:
 
-```json
-{
-  "plugins": {
-    "entries": {
-      "gralkor": {
-        "enabled": true,
-        "config": {
-          "autoCapture": { "enabled": true },
-          "autoRecall": { "enabled": true, "maxResults": 10 },
-          "idleTimeoutMs": 300000,
-          "dataDir": "/path/to/data"
-        }
-      }
-    }
-  }
-}
+```bash
+openclaw config set --json plugins.entries.gralkor.config.autoRecall.maxResults 20
+openclaw config set --json plugins.entries.gralkor.config.idleTimeoutMs 600000
 ```
 
 | Setting | Default | Description |
