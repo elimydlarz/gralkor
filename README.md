@@ -123,6 +123,9 @@ OpenClaw has a single `memory` slot that determines which plugin provides memory
 # If you use an allowlist, add gralkor to it
 openclaw config set --json plugins.allow '["gralkor"]'
 
+# Enable the plugin entry
+openclaw config set plugins.entries.gralkor.enabled true
+
 # Assign Gralkor to the memory slot (replaces the built-in memory-core)
 openclaw config set plugins.slots.memory gralkor
 ```
