@@ -16,28 +16,26 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 
 ### Domain Objects
 
-| Object | Type | Description |
-|---|---|---|
-| Episode | `Episode` | Captured conversation or manual store. `source`: `message` (auto-capture) or `text` (`memory_add`). |
-| Fact (edge) | `Fact` | Extracted relationship. 4 timestamps: `created_at`, `valid_at`/`invalid_at`, `expired_at`. Via `formatFact()`. |
-| Entity (node) | `EntityNode` | Person/concept/thing with `summary`. Returned by `memory_search` (slow mode via `search_()`). Auto-recall uses fast mode (`search()`) — nodes not returned. |
-| Community | (Graphiti-internal) | Entity cluster. Not exposed. |
-| Group | `string` | Partition key from `agentId` (fallback `"default"`). One graph per agent. |
-| SessionBuffer | `SessionBuffer` | In-memory `messages` snapshot. `DebouncedFlush<SessionBuffer>`, keyed by `sessionKey \|\| agentId \|\| "default"`. |
-| NativeMemory | (indexer) | Native MD files indexed into the agent's graph partition on each session start (fired fire-and-forget from `before_prompt_build`). Tracked by `GRALKOR_MARKER` embedded in each file — already-indexed files cost only a disk read. Scans `{ctx.workspaceDir}/MEMORY.md` and `{ctx.workspaceDir}/memory/*.md`; all files go to the current session's `groupId`. No per-agent dir scanning, no "default" partition. |
+- **Episode** (`Episode`) — `source: message` (auto-capture) or `text` (`memory_add`).
+- **Fact / edge** (`Fact`) — 4 timestamps via `formatFact()`: `created_at`, `valid_at`/`invalid_at`, `expired_at`.
+- **Entity / node** (`EntityNode`) — has `summary`. Returned by `memory_search` slow mode only.
+- **Group** — partition key derived from `agentId`; one FalkorDB named graph per group.
+- **SessionBuffer** — `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`.
+- **NativeMemory** — indexer scans `{workspaceDir}/MEMORY.md` and `{workspaceDir}/memory/*.md`, marks files with `GRALKOR_MARKER` so re-indexing is a cheap disk read. Fires fire-and-forget from `before_prompt_build` into the current session's `groupId`.
 
 ### Plugin Registration
 
-`register(api)` must be synchronous (async silently registers nothing). Config on `api.pluginConfig` (not second arg). `resolveConfig()` merges defaults; `validateOntologyConfig()` rejects reserved names. Graphiti URL: `http://127.0.0.1:8001`. `registerFullPlugin()` creates shared state (`groupIdBySession` Map, `getGroupId(sessionKey)`, `setSessionData(sessionKey, groupId)`, `serverReady` gate), registers tools/hooks/service/CLI. `ReadyGate` is module-level (survives 4+ reloads). `memory_search` combines native (SDK `getMemorySearchManager`) + graph (`client.search()`) in parallel. `memory_build_indices` triggers index rebuild via `client.buildIndices()`. `memory_build_communities` triggers community detection via `client.buildCommunities(groupId)`. `before_prompt_build` fires `runNativeIndexer(client, ctx.workspaceDir ?? config.workspaceDir, groupId)` fire-and-forget on each session start to index native MD files; already-indexed files cost only a disk read.
+- `register(api)` **must be synchronous** — async silently registers nothing.
+- Config arrives on `api.pluginConfig`. `resolveConfig()` merges defaults; `validateOntologyConfig()` runs.
+- `registerFullPlugin()` owns shared state: `groupIdBySession` Map (with `getGroupId`/`setSessionData`), `serverReady` gate, module-level `ReadyGate` (survives reloads).
+- Server lives at `http://127.0.0.1:8001`.
 
 ### Plugin API Contract
 
-- **`api.pluginConfig`** — `Record<string, unknown> | undefined` from `plugins.entries.<id>.config`
-- **`registerTool(tool)`** — `execute(toolCallId, params, signal, onUpdate)`. Plain tool object (no factory pattern needed).
-- **`api.on(event, handler)`** — Prefer over `registerHook` (crashes without `metadata: { name }`)
-- **`registerService({ id, start, stop })`** — `id` not `name`
-- **`registerCli(registrar, opts?)`** — Mounts under `openclaw` (top-level)
-- Other: `api.runtime.{media, config, system, tts, channel, logging, state}`. No LLM inference.
+- `api.pluginConfig` — plain object from `plugins.entries.<id>.config`
+- `registerTool({ execute(toolCallId, params, signal, onUpdate) })` — plain tool, no factory
+- `api.on(event, handler)` preferred; `registerHook` crashes without `metadata: { name }`
+- `registerService({ id, start, stop })` — `id` not `name`. `registerCli` mounts under `openclaw`. Plugins do no LLM inference.
 
 ### Hook Behavior
 
