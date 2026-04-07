@@ -717,6 +717,3 @@ TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 - **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught).
 - **Plugin tools blocked by tool profiles:** `coding` profile allowlists core tools only. Plugin tools (`memory_add`, `memory_build_indices`, `memory_build_communities`) are filtered out. Workaround: `"alsoAllow": ["memory_add", "memory_build_indices", "memory_build_communities"]` or `"alsoAllow": ["gralkor"]` in `tools` config.
 
-## Server Tests
-
-No Docker or API keys. Unit: `httpx.AsyncClient` + `ASGITransport` (mocked Graphiti). Integration: real FalkorDBLite. Run: `pnpm run setup:server && pnpm run test:server`.
