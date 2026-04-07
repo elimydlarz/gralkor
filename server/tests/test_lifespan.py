@@ -11,10 +11,8 @@ def _make_graphiti_mock(*, has_indices=True):
     """Create a Graphiti mock with configurable index state."""
     mock = AsyncMock()
     if has_indices:
-        # Simulate existing indices: (records, header, stats)
         mock.driver.execute_query.return_value = ([{"label": "Entity"}], [], [])
     else:
-        # No indices yet: empty records list
         mock.driver.execute_query.return_value = ([], [], [])
     return mock
 
@@ -45,8 +43,7 @@ async def test_embedded_mode(tmp_path, monkeypatch):
             pass
 
         mock_driver_cls.assert_called_once()
-        call_kwargs = mock_driver_cls.call_args
-        assert call_kwargs.kwargs["falkor_db"] is mock_async_db
+        assert mock_driver_cls.call_args.kwargs["falkor_db"] is mock_async_db
 
 
 @pytest.mark.asyncio
