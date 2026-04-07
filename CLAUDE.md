@@ -91,31 +91,7 @@ Plugin → `GraphitiClient` (HTTP, 2 retries 500ms/1s for network/5xx; 4xx immed
 
 ### Functional
 
-| Requirement | Implementation |
-|---|---|
-| self-managing-backend | Managed Python subprocess with embedded FalkorDBLite; requires `uv` |
-| lazy-index-build | `CALL db.indexes()` at boot; `build_indices_and_constraints()` only on fresh DBs |
-| persistent-memory | Episodes in FalkorDB via Graphiti; survive restarts |
-| upgrade-safe-data | `dataDir` is required config (no default) — operator owns the path and its lifecycle |
-| auto-capture | `agent_end` buffers per session; flushed on `session_end` or idle timeout |
-| behaviour-distillation | Plugin-side: `formatTranscript()` in `src/distill.ts` groups+distils behaviour blocks per turn via `llmClient`; `episode_body` string posted to `/episodes` |
-| idle-timeout-flush | `DebouncedFlush` with `idleTimeoutMs` (default 5 min); `unref()`'d timers |
-| auto-recall | `before_prompt_build` searches graph, injects facts+instructions |
-| unified-search | `memory_search` uses slow mode (cross-encoder + BFS) returning facts and entity node summaries; auto-recall uses fast mode (RRF, facts only); native MD files are indexed into the agent's graph partition on each session start via `runNativeIndexer()` fired from `before_prompt_build` |
-| manual-store | `memory_add` creates episodes with `source=text` |
-| agent-partitioning | `group_id` from `agentId` → separate FalkorDB named graph. `before_prompt_build` registers session in `groupIdBySession` Map and injects `Session-key` into memory block; tools require `session_key` and throw on unregistered keys; hooks and flush read groupId from the same map |
-| graph-routing | `_ensure_driver_graph()` routes reads to correct named graph |
-| cli-diagnostics | `status/search` under `openclaw gralkor`; group ID for search |
-| test-mode | Normal: metadata only. Test (`test: true`): full data at both layers |
-| temporal-awareness | 4 timestamps on facts via `formatFact()` |
-| error-propagation | Flush retries 3x exponential; final failure logs error (message dropped) without crashing |
-| custom-ontology | Entity/edge types in config → `_build_ontology()` Pydantic models. Validates reserved names, protected attrs, edgeMap refs. Attributes required (not Optional). Supports string, enum, typed object, enum-with-description. No excluded types. |
-| sigterm-flush | `flushAll()` on SIGTERM; once via module guard |
-| rich-status | Server state, config, data dir, graph stats, venv. `/health` returns graph stats. |
-| build-indices-tool | `memory_build_indices` agent tool triggers `POST /build-indices` via `client.buildIndices()` |
-| build-communities-tool | `memory_build_communities` agent tool triggers `POST /build-communities` via `client.buildCommunities(groupId)` |
-| secret-resolution | API key strings from plugin config mapped to env vars and passed to server manager synchronously |
-| startup | Self-starts server fire-and-forget during registration; module-level manager survives host reloads |
+The test trees below are the contract. Each top-level name is a behaviour; nested `when`/`then` clauses are the spec. Tests in `src/*.test.ts`, `test/integration/`, `test/functional/`, and `server/tests/` mirror these one-to-one.
 
 #### Recall
 
