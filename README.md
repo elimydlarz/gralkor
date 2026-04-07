@@ -128,6 +128,11 @@ openclaw config set plugins.entries.gralkor.enabled true
 
 # Assign Gralkor to the memory slot (replaces the built-in memory-core)
 openclaw config set plugins.slots.memory gralkor
+
+# Expose Gralkor's tools to the agent. Auto-capture and auto-recall work without
+# this, but the agent won't see memory_add / memory_build_indices / memory_build_communities
+# unless you add them to the active tool profile's allowlist.
+openclaw config set --json tools.alsoAllow '["gralkor"]'
 ```
 
 ### 5. Restart and go
