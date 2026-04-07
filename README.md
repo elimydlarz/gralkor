@@ -248,7 +248,9 @@ The full plugin config shape (as it appears under `plugins.entries.gralkor.confi
 
 ### Graph partitioning
 
-Each agent gets its own graph partition automatically (based on `agentId`). No configuration needed — different agents won't see each other's knowledge.
+Each agent gets its own graph partition automatically — different agents won't see each other's knowledge, and no configuration is needed.
+
+The partition key (`group_id`) is the agent's ID with hyphens replaced by underscores (FalkorDB's RediSearch syntax doesn't accept hyphens). So an agent named `my-coding-agent` stores its memory under group `my_coding_agent`. Agents running without an explicit ID use the partition `default`. You'll need this `group_id` whenever you query the graph directly — e.g. `openclaw gralkor search <group_id> <query>`.
 
 ## Custom entity and relationship types
 
