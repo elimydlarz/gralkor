@@ -392,7 +392,7 @@ Many things can cause this. Use the available diagnostics to narrow it down:
 
 - **`openclaw gralkor status`** — shows process state, config summary, `dataDir`, venv state, and (if unreachable) the connection error
 - **Gateway logs** — grep for `[gralkor] boot:` markers. You should see `boot: plugin loaded`, `boot: starting`, then `boot: ready`. A `boot: ... failed:` line tells you which stage broke
-- **`openclaw gralkor search <group_id> <query>`** — quick end-to-end check that the server is reachable and the graph has data
+- **`openclaw gralkor search <group_id> <query>`** — quick end-to-end check that the server is reachable and the graph has data (group ID is required; it's the agent ID with hyphens replaced by underscores)
 
 Common causes:
 - `uv` not on PATH (Python itself is managed by `uv` — it fetches 3.12+ on demand and produces its own errors)
