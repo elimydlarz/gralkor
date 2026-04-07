@@ -8,7 +8,7 @@
 #   bash test/harness/functional-env.sh test   # up + run + down
 #
 # Environment:
-#   GEMINI_API_KEY / GOOGLE_API_KEY  — passed to container at 'up' time
+#   GOOGLE_API_KEY / GOOGLE_API_KEY  — passed to container at 'up' time
 #   PLATFORM                         — docker platform (default: linux/arm64)
 #   GRALKOR_FUNC_CONTAINER           — container name (default: gralkor-functional)
 set -euo pipefail
@@ -83,9 +83,9 @@ cmd_up() {
     docker rm "$CONTAINER" >/dev/null
   fi
 
-  API_KEY="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+  API_KEY="${GOOGLE_API_KEY:-${GOOGLE_API_KEY:-}}"
   KEY_ARGS=()
-  [ -n "$API_KEY" ] && KEY_ARGS+=(-e "GEMINI_API_KEY=$API_KEY")
+  [ -n "$API_KEY" ] && KEY_ARGS+=(-e "GOOGLE_API_KEY=$API_KEY")
 
   echo ""
   echo "=== Starting functional env container ==="
@@ -96,17 +96,17 @@ cmd_up() {
     "${KEY_ARGS[@]}" \
     "$IMAGE" \
     bash -c "
-      if [ -n \"\$GEMINI_API_KEY\" ]; then
-        openclaw config set plugins.entries.gralkor.config.googleApiKey \"\$GEMINI_API_KEY\" >/dev/null 2>&1
+      if [ -n \"\$GOOGLE_API_KEY\" ]; then
+        openclaw config set plugins.entries.gralkor.config.googleApiKey \"\$GOOGLE_API_KEY\" >/dev/null 2>&1
       fi
 
       # Short idle timeout so the debounce-flush fires quickly in tests (default is 5 min).
       openclaw config set plugins.entries.gralkor.config.idleTimeoutMs 10000 >/dev/null 2>&1
 
-      # Configure default model to Gemini (harness only has GEMINI_API_KEY, not Anthropic).
-      if [ -n "\$GEMINI_API_KEY" ]; then
+      # Configure default model to Gemini (harness only has GOOGLE_API_KEY, not Anthropic).
+      if [ -n "\$GOOGLE_API_KEY" ]; then
         mkdir -p \$HOME/.openclaw/agents/main/agent
-        printf '{"google:manual":{"provider":"google","type":"api-key","apiKey":"%s"}}' "\$GEMINI_API_KEY" \
+        printf '{"google:manual":{"provider":"google","type":"api-key","apiKey":"%s"}}' "\$GOOGLE_API_KEY" \
           > \$HOME/.openclaw/agents/main/agent/auth-profiles.json
         openclaw models set google/gemini-2.0-flash >/dev/null 2>&1
       fi
