@@ -14,7 +14,7 @@ Let's look in detail about the decisions made for Gralkor and why they make it t
 
 [HippoRAG](https://arxiv.org/abs/2405.14831) (NeurIPS 2024) found graph-based retrieval reaches 89.1% recall@5 on 2WikiMultiHopQA versus 68.2% for flat vector retrieval — a 20.9-point gap. [AriGraph](https://arxiv.org/abs/2407.04363) (IJCAI 2025) independently found KG-augmented agents markedly outperform RAG, summarization, and full-conversation-history baselines across interactive environments.
 
-**Remembering behaviour, not just dialog.** Agents make mistakes options, weigh options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's behaviour - not just its dialog - into first-person behavioural reports weaved into episode transcripts before ingestion.
+**Remembering behaviour, not just dialog.** Agents make mistakes, weigh options, reject approaches - they _learn_ as they complete tasks. Gralkor distills the agent's behaviour - not just its dialog - into first-person behavioural reports weaved into episode transcripts before ingestion.
 
 For almost all other memory plugins, your agent is inherently dishonest with you, frequently claiming to remember what it has done when it only really remembers what it _already claimed_ to have done, or to have thought _what it is only now imagining_.
 
