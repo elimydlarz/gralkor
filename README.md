@@ -217,32 +217,25 @@ openclaw config set --json plugins.entries.gralkor.config.idleTimeoutMs 600000
 
 ### Complete config reference
 
+The full plugin config shape (as it appears under `plugins.entries.gralkor.config` in `~/.openclaw/openclaw.json`):
+
 ```json
 {
-  "plugins": {
-    "entries": {
-      "gralkor": {
-        "enabled": true,
-        "config": {
-          "dataDir": "/path/to/gralkor-data",
-          "workspaceDir": "~/.openclaw/workspace",
-          "googleApiKey": "your-gemini-key",
-          "llm": { "provider": "gemini", "model": "gemini-3.1-flash-lite-preview" },
-          "embedder": { "provider": "gemini", "model": "gemini-embedding-2-preview" },
-          "autoCapture": { "enabled": true },
-          "autoRecall": { "enabled": true, "maxResults": 10 },
-          "search": { "maxResults": 20, "maxEntityResults": 10 },
-          "idleTimeoutMs": 300000,
-          "ontology": {
-            "entities": {},
-            "edges": {},
-            "edgeMap": {}
-          },
-          "test": false
-        }
-      }
-    }
-  }
+  "dataDir": "/path/to/gralkor-data",
+  "workspaceDir": "~/.openclaw/workspace",
+  "googleApiKey": "your-gemini-key",
+  "llm": { "provider": "gemini", "model": "gemini-3.1-flash-lite-preview" },
+  "embedder": { "provider": "gemini", "model": "gemini-embedding-2-preview" },
+  "autoCapture": { "enabled": true },
+  "autoRecall": { "enabled": true, "maxResults": 10 },
+  "search": { "maxResults": 20, "maxEntityResults": 10 },
+  "idleTimeoutMs": 300000,
+  "ontology": {
+    "entities": {},
+    "edges": {},
+    "edgeMap": {}
+  },
+  "test": false
 }
 ```
 
