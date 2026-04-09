@@ -541,25 +541,25 @@ async def search(req: SearchRequest):
         async with _driver_lock:
             _ensure_driver_graph(req.group_ids)
             if req.mode == "slow":
-            # Cross-encoder + BFS: higher quality, also returns entity node summaries.
-            # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
-            # constant; mutating .limit directly would corrupt it across requests.
-            config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
-            config.limit = req.num_results
-            search_result = await graphiti.search_(
-                query=_sanitize_query(req.query),
-                group_ids=req.group_ids,
-                config=config,
-            )
-            edges = search_result.edges
-            nodes = search_result.nodes
-        else:
-            edges = await graphiti.search(
-                query=_sanitize_query(req.query),
-                group_ids=req.group_ids,
-                num_results=req.num_results,
-            )
-            nodes = []
+                # Cross-encoder + BFS: higher quality, also returns entity node summaries.
+                # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
+                # constant; mutating .limit directly would corrupt it across requests.
+                config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
+                config.limit = req.num_results
+                search_result = await graphiti.search_(
+                    query=_sanitize_query(req.query),
+                    group_ids=req.group_ids,
+                    config=config,
+                )
+                edges = search_result.edges
+                nodes = search_result.nodes
+            else:
+                edges = await graphiti.search(
+                    query=_sanitize_query(req.query),
+                    group_ids=req.group_ids,
+                    num_results=req.num_results,
+                )
+                nodes = []
     except Exception as e:
         duration_ms = (time.monotonic() - t0) * 1000
         logger.error("[gralkor] search failed — mode:%s %.0fms: %s", req.mode, duration_ms, e)
