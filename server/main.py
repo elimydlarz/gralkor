@@ -536,10 +536,11 @@ async def search(req: SearchRequest):
     # uses whatever graph the driver currently points at. Before the first
     # add_episode, the driver targets 'default_db' (an empty graph), so all
     # searches return 0 results. Fix: route to the correct graph here.
-    _ensure_driver_graph(req.group_ids)
     t0 = time.monotonic()
     try:
-        if req.mode == "slow":
+        async with _driver_lock:
+            _ensure_driver_graph(req.group_ids)
+            if req.mode == "slow":
             # Cross-encoder + BFS: higher quality, also returns entity node summaries.
             # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
             # constant; mutating .limit directly would corrupt it across requests.
