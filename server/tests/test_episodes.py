@@ -289,3 +289,46 @@ async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti
         main_mod.ontology_entity_types = None
         main_mod.ontology_edge_types = None
         main_mod.ontology_edge_type_map = None
+
+
+@pytest.mark.asyncio
+async def test_concurrent_episodes_to_different_groups_are_serialized(client, mock_graphiti):
+    """Concurrent /episodes calls to different groups must serialize to avoid
+    races on the global driver. Without serialization, two add_episode calls
+    can interleave and clobber each other's driver state, losing data.
+    """
+    import asyncio
+
+    in_flight = 0
+    max_in_flight = 0
+
+    async def slow_add_episode(*args, **kwargs):
+        nonlocal in_flight, max_in_flight
+        in_flight += 1
+        max_in_flight = max(max_in_flight, in_flight)
+        await asyncio.sleep(0.05)
+        in_flight -= 1
+        return SimpleNamespace(episode=make_episode(group_id=kwargs.get("group_id", "?")))
+
+    mock_graphiti.add_episode.side_effect = slow_add_episode
+
+    await asyncio.gather(
+        client.post("/episodes", json={
+            "name": "alpha",
+            "episode_body": "alpha body",
+            "source_description": "test",
+            "group_id": "alpha_group",
+            "idempotency_key": "alpha-key",
+        }),
+        client.post("/episodes", json={
+            "name": "beta",
+            "episode_body": "beta body",
+            "source_description": "test",
+            "group_id": "beta_group",
+            "idempotency_key": "beta-key",
+        }),
+    )
+
+    assert max_in_flight == 1, (
+        f"Expected add_episode calls to be serialized, but observed {max_in_flight} concurrent calls"
+    )
