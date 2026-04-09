@@ -118,11 +118,9 @@ cmd_up() {
       printf '# Session Notes\nEli has the lucky number LuckyNumber47.\n' \
         > \$HOME/.openclaw/workspace/memory/session-001.md
 
-      # Add a hyphenated-ID agent so the sanitization test can target it.
-      # --workspace is required when --non-interactive (no prompts to fill it in).
-      openclaw agents add my-hyphen-agent --workspace \$HOME/.openclaw/workspace --non-interactive --json >/dev/null 2>&1 || true
-
-      # Start gateway (triggers server + native indexer)
+      # Start gateway (triggers server + native indexer).
+      # NOTE: must come BEFORE 'openclaw agents add', because agents add talks
+      # to the gateway during creation and blocks indefinitely without it.
       openclaw gateway &
 
       tail -f /dev/null
