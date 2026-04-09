@@ -478,18 +478,19 @@ async def add_episode(req: AddEpisodeRequest):
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
     t0 = time.monotonic()
-    result = await graphiti.add_episode(
-        name=req.name,
-        episode_body=req.episode_body,
-        source_description=req.source_description,
-        group_id=req.group_id,
-        reference_time=ref_time,
-        source=episode_type,
-        entity_types=ontology_entity_types,
-        edge_types=ontology_edge_types,
-        edge_type_map=ontology_edge_type_map,
-        excluded_entity_types=None,
-    )
+    async with _driver_lock:
+        result = await graphiti.add_episode(
+            name=req.name,
+            episode_body=req.episode_body,
+            source_description=req.source_description,
+            group_id=req.group_id,
+            reference_time=ref_time,
+            source=episode_type,
+            entity_types=ontology_entity_types,
+            edge_types=ontology_edge_types,
+            edge_type_map=ontology_edge_type_map,
+            excluded_entity_types=None,
+        )
     duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
     logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
