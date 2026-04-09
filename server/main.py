@@ -198,6 +198,15 @@ ontology_entity_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_type_map: dict[tuple[str, str], list[str]] | None = None
 
+# Serializes any operation that depends on graphiti.driver pointing at a
+# specific FalkorDB named graph. graphiti-core's add_episode() and our
+# _ensure_driver_graph() both work by mutating the global graphiti.driver,
+# so two concurrent requests for different group_ids can interleave and
+# clobber each other's driver state — losing data on writes and returning
+# wrong results on reads. Single-user agent semantics make serialization
+# acceptable; correctness > throughput here.
+_driver_lock = asyncio.Lock()
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
