@@ -119,7 +119,8 @@ cmd_up() {
         > \$HOME/.openclaw/workspace/memory/session-001.md
 
       # Add a hyphenated-ID agent so the sanitization test can target it.
-      openclaw agents add my-hyphen-agent --non-interactive --json >/dev/null 2>&1 || true
+      # --workspace is required when --non-interactive (no prompts to fill it in).
+      openclaw agents add my-hyphen-agent --workspace \$HOME/.openclaw/workspace --non-interactive --json >/dev/null 2>&1 || true
 
       # Start gateway (triggers server + native indexer)
       openclaw gateway &
