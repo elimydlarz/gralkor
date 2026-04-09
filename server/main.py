@@ -582,8 +582,9 @@ async def build_indices():
 
 @app.post("/build-communities")
 async def build_communities(req: GroupIdRequest):
-    _ensure_driver_graph([req.group_id])
-    communities, edges = await graphiti.build_communities(
-        group_ids=[req.group_id],
-    )
+    async with _driver_lock:
+        _ensure_driver_graph([req.group_id])
+        communities, edges = await graphiti.build_communities(
+            group_ids=[req.group_id],
+        )
     return {"communities": len(communities), "edges": len(edges)}
