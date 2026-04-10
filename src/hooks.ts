@@ -278,8 +278,9 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
         } else if (isToolBlock(block)) {
           filtered.push({ type: "tool_use", text: serializeToolBlock(block) });
         } else if (isTextBlock(block)) {
-          if (!isSystemMessage(block.text!)) {
-            filtered.push({ type: "text", text: block.text! });
+          const cleaned = stripGralkorMemoryXml(block.text!);
+          if (cleaned.trim() && !isSystemMessage(cleaned)) {
+            filtered.push({ type: "text", text: cleaned });
           }
         }
       }
