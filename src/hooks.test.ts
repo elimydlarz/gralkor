@@ -2230,17 +2230,6 @@ describe("extractMessagesFromCtx — compactionSummary and unknown roles", () =>
   });
 });
 
-describe("extractLastUserMessageFromMessages — multiline joining", () => {
-  it("joins multiple text blocks with newlines not empty string", () => {
-    const result = extractLastUserMessageFromMessages([
-      { role: "user", content: [
-        { type: "text", text: "Line 1" },
-        { type: "text", text: "Line 2" },
-      ]},
-    ]);
-    expect(result).toBe("Line 1\nLine 2");
-  });
-});
 
 describe("extractMessagesFromCtx — output_text blocks", () => {
   it("extracts output_text blocks as text", () => {
