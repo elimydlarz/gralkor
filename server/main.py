@@ -522,9 +522,15 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
         return
     target = group_ids[0]
     if target != graphiti.driver._database:
-        graphiti.driver = graphiti.driver.clone(database=target)
-        graphiti.clients.driver = graphiti.driver
-        print(f"[gralkor] driver graph routed: {target}", flush=True)
+        try:
+            graphiti.driver = graphiti.driver.clone(database=target)
+            graphiti.clients.driver = graphiti.driver
+            print(f"[gralkor] driver graph routed: {target}", flush=True)
+        except Exception as e:
+            # Invalid group_id (e.g. hyphens rejected by FalkorDB).  Skip routing
+            # so the search runs against the current graph and returns empty results
+            # instead of 500ing.
+            logger.warning("[gralkor] driver graph routing failed for %s: %s", target, e)
 
 
 @app.post("/search")
