@@ -709,6 +709,15 @@ describe("buildInterpretationContext (token budget)", () => {
   });
 });
 
+/** Build a before_prompt_build event with user message in the messages array. */
+function promptEvent(userText: string, extraMessages: unknown[] = []) {
+  const messages = [
+    ...extraMessages,
+    ...(userText ? [{ role: "user", content: [{ type: "text", text: userText }] }] : []),
+  ];
+  return { prompt: userText, messages };
+}
+
 describe("before_prompt_build handler", () => {
   let client: ReturnType<typeof mockClient>;
   let defaultLlm: LLMClient;
