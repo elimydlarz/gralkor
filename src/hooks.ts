@@ -395,8 +395,8 @@ export function createBeforePromptBuildHandler(
       return;
     }
 
-    const userMessage = extractUserMessageFromPrompt(event);
-    if (!userMessage) {
+    const userMessage = extractInjectQuery(event.messages);
+    if (userMessage === null) {
       console.log(`[gralkor] auto-recall skip (no query) — agentId:${agentId} promptLen:${event.prompt.length} messages:${event.messages.length}`);
       return;
     }
