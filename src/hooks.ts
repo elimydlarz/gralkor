@@ -162,7 +162,7 @@ export const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
 /**
  * Returns true if the text is a system-injected message.
  */
-function isSystemMessage(text: string): boolean {
+export function isSystemMessage(text: string): boolean {
   const trimmed = text.trim();
   return !trimmed || SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(trimmed));
 }
