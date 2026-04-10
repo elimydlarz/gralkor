@@ -141,27 +141,22 @@ auto-recall-search-strategy
     and retrieves groupId from the map for the search (not re-derived from agentId)
     and uses fast mode (RRF, edges only via graphiti.search())
     and returns at most autoRecall.maxResults facts (default 10) and 0 entities
-extractUserMessageFromPrompt
-  when prompt has leading "System: ..." lines
-    then strips them and returns user message
-  when prompt has multiple leading System: lines
-    then strips all of them
-  when prompt has session-start instruction followed by user message
-    then strips session-start and returns user message
-  when prompt is only a session-start instruction
-    then returns empty string
-  when prompt has metadata wrapper followed by user message
-    then strips wrapper and returns user message
-  when prompt is only metadata wrapper
-    then falls back to last user message from event.messages
-  when prompt is metadata wrapper + whitespace only
-    then falls back to messages
-  when fallback messages contain only non-text blocks
-    then returns empty string
-  when System: appears mid-string (not at start)
-    then does NOT strip it
-  when session-start text appears mid-string
-    then does NOT strip it
+extractInjectQuery
+  then returns the trailing run of user messages from event.messages
+  then each message is cleaned via cleanUserMessageText before inclusion
+  then multiple consecutive user messages are joined in original order
+  when trailing user messages are separated by no non-user messages
+    then all are included (drip messages)
+  when a non-user message appears between user messages
+    then only user messages after the last non-user message are included
+  when a user message is empty after cleaning
+    then it is skipped (not included in the query)
+  when all trailing user messages are empty after cleaning
+    then returns null
+  when messages array is empty
+    then returns null
+  when messages array has no user messages
+    then returns null
 ```
 
 #### Capture
