@@ -546,8 +546,10 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
 
 @app.post("/search")
 async def search(req: SearchRequest):
+    # Sanitize group IDs: hyphens cause RediSearch syntax errors in graphiti-core.
+    sanitized = [_sanitize_group_id(g) for g in req.group_ids]
     logger.info("[gralkor] search — mode:%s query:%d chars group_ids:%s num_results:%d",
-                req.mode, len(req.query), req.group_ids, req.num_results)
+                req.mode, len(req.query), sanitized, req.num_results)
     # graphiti.add_episode() clones the driver to target the correct FalkorDB
     # named graph (database=group_id), but graphiti.search() does not — it just
     # uses whatever graph the driver currently points at. Before the first
@@ -556,7 +558,7 @@ async def search(req: SearchRequest):
     t0 = time.monotonic()
     try:
         async with _driver_lock:
-            _ensure_driver_graph(req.group_ids)
+            _ensure_driver_graph(sanitized)
             if req.mode == "slow":
                 # Cross-encoder + BFS: higher quality, also returns entity node summaries.
                 # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
@@ -565,7 +567,7 @@ async def search(req: SearchRequest):
                 config.limit = req.num_results
                 search_result = await graphiti.search_(
                     query=_sanitize_query(req.query),
-                    group_ids=req.group_ids,
+                    group_ids=sanitized,
                     config=config,
                 )
                 edges = search_result.edges
@@ -573,7 +575,7 @@ async def search(req: SearchRequest):
             else:
                 edges = await graphiti.search(
                     query=_sanitize_query(req.query),
-                    group_ids=req.group_ids,
+                    group_ids=sanitized,
                     num_results=req.num_results,
                 )
                 nodes = []
