@@ -151,7 +151,7 @@ export function extractInjectQuery(messages: MessageEntry[]): string | null {
  * When a new runtime-injected pattern appears, add it here rather than
  * writing bespoke stripping logic.
  */
-const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
+export const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
   /^A new session was started\b/,
   /^Current time:/i,
   /^✅?\s*New session started\b/,
