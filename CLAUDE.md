@@ -472,6 +472,9 @@ rate-limit-retry
     when server returns 429 then succeeds on retry
       then the successful response is returned
     then 429 retries are independent of the 5xx/network retry budget
+driver-lock-serialization
+  when concurrent requests target different group_ids
+    then add_episode, search, and build_communities are serialized (no concurrent execution)
 downstream-error-handling
   server side
     when downstream LLM raises an error
