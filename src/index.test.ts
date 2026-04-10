@@ -582,17 +582,7 @@ describe("register()", () => {
       it("conversation messages are looked up by session_key from the session message store", async () => {
         // The interpret callback in index.ts passes messagesBySession[sessionKey] to interpretFacts.
         // interpretFacts ultimately calls llmClient.generate with a user message containing the
-        // conversation context. We verify the LLM mock received the conversation messages by
-        // capturing its generate calls.
-        const generateMock = vi.fn().mockResolvedValue("Interpretation: user asked about testing.");
-
-        // Override the module-level llm-client mock for this test
-        vi.doMock("./llm-client.js", () => ({
-          createLLMClient: vi.fn(() => ({
-            generate: generateMock,
-          })),
-        }));
-
+        // conversation context. We verify via generateSpy that conversation messages were included.
         const fetchMock = vi.fn().mockResolvedValue({
           ok: true,
           headers: new Headers({ "content-type": "application/json" }),
@@ -601,12 +591,11 @@ describe("register()", () => {
         });
         vi.stubGlobal("fetch", fetchMock);
 
-        // Use dynamic import to get the fresh mocked module
-        const configMod = await import("./config.js");
-        configMod.createReadyGate().resolve();
+        const { createReadyGate } = await import("./config.js");
+        createReadyGate().resolve();
 
-        const indexMod = await import("./index.js");
-        indexMod.register(api);
+        const { register } = await import("./index.js");
+        register(api);
 
         // Fire before_prompt_build with conversation messages — these get stored in messagesBySession
         const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
@@ -624,32 +613,23 @@ describe("register()", () => {
           { agentId: "test-agent", sessionKey: TEST_SESSION_KEY },
         );
         fetchMock.mockClear();
-        generateMock.mockClear();
+        generateSpy.mockClear();
 
         const searchTool = api.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
         await searchTool.execute("tool-1", { query: "React testing", session_key: TEST_SESSION_KEY });
 
         // The LLM generate mock should have been called for the interpretation step
-        expect(generateMock).toHaveBeenCalled();
-        const generateArgs = generateMock.mock.calls[0][0] as Array<{ role: string; content: string }>;
+        expect(generateSpy).toHaveBeenCalled();
+        const generateArgs = generateSpy.mock.calls[0][0] as Array<{ role: string; content: string }>;
         const userMsg = generateArgs.find((m) => m.role === "user")!;
         // The conversation context passed to the LLM should include the user messages
         expect(userMsg.content).toContain("What testing framework do we use?");
         expect(userMsg.content).toContain("Tell me about React testing");
 
-        vi.doUnmock("./llm-client.js");
         vi.unstubAllGlobals();
       });
 
       it("when no messages have been recorded for the session, then interpretation runs with empty conversation context", async () => {
-        const generateMock = vi.fn().mockResolvedValue("Interpretation: some facts.");
-
-        vi.doMock("./llm-client.js", () => ({
-          createLLMClient: vi.fn(() => ({
-            generate: generateMock,
-          })),
-        }));
-
         const fetchMock = vi.fn().mockResolvedValue({
           ok: true,
           headers: new Headers({ "content-type": "application/json" }),
@@ -658,11 +638,11 @@ describe("register()", () => {
         });
         vi.stubGlobal("fetch", fetchMock);
 
-        const configMod = await import("./config.js");
-        configMod.createReadyGate().resolve();
+        const { createReadyGate } = await import("./config.js");
+        createReadyGate().resolve();
 
-        const indexMod = await import("./index.js");
-        indexMod.register(api);
+        const { register } = await import("./index.js");
+        register(api);
 
         // Register a session via before_prompt_build but with NO messages
         const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
@@ -673,20 +653,19 @@ describe("register()", () => {
           { agentId: "empty-agent", sessionKey: "empty-session" },
         );
         fetchMock.mockClear();
-        generateMock.mockClear();
+        generateSpy.mockClear();
 
         const searchTool = api.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
         const result = await searchTool.execute("tool-1", { query: "React", session_key: "empty-session" });
 
         // Interpretation should still succeed (with empty conversation context)
         expect(result).toContain("Interpretation:");
-        expect(generateMock).toHaveBeenCalled();
+        expect(generateSpy).toHaveBeenCalled();
         // The conversation context should be empty — no User:/Assistant: lines between "Conversation context:" and "Memory facts"
-        const generateArgs = generateMock.mock.calls[0][0] as Array<{ role: string; content: string }>;
+        const generateArgs = generateSpy.mock.calls[0][0] as Array<{ role: string; content: string }>;
         const userMsg = generateArgs.find((m) => m.role === "user")!;
         expect(userMsg.content).toContain("Conversation context:\n\nMemory facts to interpret:");
 
-        vi.doUnmock("./llm-client.js");
         vi.unstubAllGlobals();
       });
     });
