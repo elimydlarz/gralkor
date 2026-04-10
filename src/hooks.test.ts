@@ -737,7 +737,7 @@ describe("before_prompt_build handler", () => {
     // getGroupId returns the pre-sanitized groupId (sanitization happens at setSessionData write time)
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: (_k) => "agent_42", llmClient: defaultLlm });
     const result = await handler(
-      { prompt: "Tell me about the project architecture", messages: [] },
+      promptEvent("Tell me about the project architecture"),
       { agentId: "agent-42" },
     );
 
