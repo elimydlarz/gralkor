@@ -292,7 +292,8 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
         .filter(isTextBlock)
         .map((block: ContentBlock) => block.text!)
         .join("\n");
-      if (textParts) {
+      const cleaned = stripGralkorMemoryXml(textParts);
+      if (cleaned.trim()) {
         result.push({
           role: "assistant",
           content: [{ type: "tool_result", text: truncateText(textParts, TOOL_RESULT_TRUNCATE_LIMIT) }],
