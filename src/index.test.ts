@@ -575,6 +575,123 @@ describe("register()", () => {
       });
     });
 
+    describe("recall-interpretation (slow mode message store)", () => {
+      it("conversation messages are looked up by session_key from the session message store", async () => {
+        // The interpret callback passes messagesBySession[sessionKey] to interpretFacts.
+        // We verify this by seeding messages via before_prompt_build, then checking
+        // that the LLM mock receives those messages in its prompt.
+        const llmGenerateMock = vi.fn().mockResolvedValue("Interpretation: user asked about testing.");
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => ({ facts: [sampleFact], nodes: [] }),
+          text: async () => "",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const { createReadyGate } = await import("./config.js");
+        createReadyGate().resolve();
+
+        // Override the llm-client mock to capture what messages are passed
+        vi.doMock("./llm-client.js", () => ({
+          createLLMClient: vi.fn(() => ({
+            generate: llmGenerateMock,
+          })),
+        }));
+
+        const { register } = await import("./index.js");
+        register(api);
+
+        // Fire before_prompt_build with conversation messages — these get stored in messagesBySession
+        const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
+          | ((event: { prompt: string; messages: Array<{ role: string; content: Array<{ type: string; text: string }> }> }, ctx: { agentId: string; sessionKey: string }) => Promise<unknown>)
+          | undefined;
+        await beforePromptBuild?.(
+          {
+            prompt: "test query",
+            messages: [
+              { role: "user", content: [{ type: "text", text: "What testing framework do we use?" }] },
+              { role: "assistant", content: [{ type: "text", text: "We use vitest." }] },
+              { role: "user", content: [{ type: "text", text: "Tell me about React testing" }] },
+            ],
+          },
+          { agentId: "test-agent", sessionKey: TEST_SESSION_KEY },
+        );
+        fetchMock.mockClear();
+
+        const searchTool = api.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
+        await searchTool.execute("tool-1", { query: "React testing", session_key: TEST_SESSION_KEY });
+
+        // The LLM mock should have been called with messages that include the conversation context
+        expect(llmGenerateMock).toHaveBeenCalled();
+        const llmCallArgs = llmGenerateMock.mock.calls[0][0] as Array<{ role: string; content: string }>;
+        const userMessage = llmCallArgs.find((m) => m.role === "user")!;
+        // The conversation context passed to interpretFacts should include the user messages
+        expect(userMessage.content).toContain("What testing framework do we use?");
+        expect(userMessage.content).toContain("Tell me about React testing");
+
+        vi.unstubAllGlobals();
+        vi.doUnmock("./llm-client.js");
+      });
+
+      it("when no messages have been recorded for the session, then interpretation runs with empty conversation context", async () => {
+        const llmGenerateMock = vi.fn().mockResolvedValue("Interpretation: some facts.");
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => ({ facts: [sampleFact], nodes: [] }),
+          text: async () => "",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const { createReadyGate } = await import("./config.js");
+        createReadyGate().resolve();
+
+        vi.doMock("./llm-client.js", () => ({
+          createLLMClient: vi.fn(() => ({
+            generate: llmGenerateMock,
+          })),
+        }));
+
+        const { register } = await import("./index.js");
+        register(api);
+
+        // Fire before_prompt_build for a DIFFERENT session to populate session map
+        // but NOT for the session we'll search
+        const beforePromptBuild = api.on.mock.calls.find((c: unknown[]) => c[0] === "before_prompt_build")?.[1] as
+          | ((event: { prompt: string; messages: Array<{ role: string; content: unknown }> }, ctx: { agentId: string; sessionKey: string }) => Promise<unknown>)
+          | undefined;
+        // Register "other-session" but NOT "empty-session"
+        await beforePromptBuild?.(
+          { prompt: "test", messages: [{ role: "user", content: [{ type: "text", text: "hello" }] }] },
+          { agentId: "other-agent", sessionKey: "other-session" },
+        );
+
+        // Now search for "empty-session" which has no messages stored
+        // First register it in the session map (tools require registered session_key)
+        await beforePromptBuild?.(
+          { prompt: "test", messages: [] },
+          { agentId: "empty-agent", sessionKey: "empty-session" },
+        );
+        fetchMock.mockClear();
+
+        const searchTool = api.registerTool.mock.calls[0][0] as { execute: (id: string, args: unknown) => Promise<string> };
+        const result = await searchTool.execute("tool-1", { query: "React", session_key: "empty-session" });
+
+        // Interpretation should still succeed (with empty conversation context)
+        expect(result).toContain("Interpretation:");
+        expect(llmGenerateMock).toHaveBeenCalled();
+        // The conversation context should have no user/assistant messages — only the system prompt and user prompt with facts
+        const llmCallArgs = llmGenerateMock.mock.calls[0][0] as Array<{ role: string; content: string }>;
+        const userMsg = llmCallArgs.find((m) => m.role === "user")!;
+        // Should contain "Conversation context:" but no user/assistant lines (empty)
+        expect(userMsg.content).toContain("Conversation context:\n\nMemory facts to interpret:");
+
+        vi.unstubAllGlobals();
+        vi.doUnmock("./llm-client.js");
+      });
+    });
+
     describe("when server is not ready", () => {
       it("then throws error", async () => {
         const { resetReadyGate } = await import("./config.js");
