@@ -22,7 +22,7 @@ import {
   type HookAgentContext,
   type SessionBuffer,
 } from "./hooks.js";
-import { systemPatternCases, cleanTextCases } from "./test-fixtures/capture-cases.js";
+import { systemPatternCases, cleanTextCases, isSystemMessageEdgeCases } from "./test-fixtures/capture-cases.js";
 
 function mockClient(): {
   [K in keyof GraphitiClient]: ReturnType<typeof vi.fn>;
