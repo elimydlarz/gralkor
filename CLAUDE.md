@@ -188,10 +188,12 @@ capture-hygiene
       when role is "compactionSummary" or unknown
         then silently dropped
   cleanUserMessageText
+    when message matches a SYSTEM_MESSAGE_MULTILINE_PATTERNS entry (whole-message system template)
+      then returns empty string (message dropped) — early-out before per-step cleaning
     when message contains (untrusted metadata) JSON block
       then block stripped, surrounding user content preserved
     when message contains <gralkor-memory> XML
-      then XML removed (feedback loop prevention)
+      then XML removed via stripGralkorMemoryXml (feedback loop prevention)
     when message contains Untrusted context (metadata...) footer block
       then entire footer block stripped (header + JSON body)
     when message contains system lines mixed with user content
@@ -205,6 +207,10 @@ capture-hygiene
     then matches "✅ New session started..." (with or without emoji)
     then matches "System: [timestamp] ..." event lines
     then matches "[User sent media without caption]"
+  SYSTEM_MESSAGE_MULTILINE_PATTERNS (whole-message system templates)
+    then matches file-naming slug prompt from external plugins ("Based on this conversation, generate a short N-N word filename slug...Reply with ONLY the slug")
+    then checked as early-out in cleanUserMessageText before per-step cleaning
+    then exported: SYSTEM_MESSAGE_PATTERNS, isSystemMessage, isSystemLine, cleanUserMessageText, stripGralkorMemoryXml (internal)
 behaviour-distillation
   formatTranscript (plugin-side, src/distill.ts)
     when assistant message has thinking blocks
