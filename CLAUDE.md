@@ -175,14 +175,16 @@ capture-hygiene
       when role is "user"
         then text/output_text blocks extracted and cleaned via cleanUserMessageText
       when role is "assistant"
-        then text blocks checked individually via isSystemMessage, system blocks dropped
+        then text blocks have gralkor-memory XML stripped via stripGralkorMemoryXml
+        and text blocks checked individually via isSystemMessage, system blocks dropped
         and thinking blocks extracted (type "thinking")
         and tool call blocks (toolCall/toolUse/functionCall) serialized as tool_use
       when role is "toolResult"
-        then converted to assistant message with tool_result block
+        then gralkor-memory XML stripped via stripGralkorMemoryXml
+        and converted to assistant message with tool_result block
         and text truncated to 1000 chars
       when role is "tool" (Ollama adapter)
-        then treated same as "toolResult"
+        then treated same as "toolResult" (including gralkor-memory stripping)
       when role is "compactionSummary" or unknown
         then silently dropped
   cleanUserMessageText
