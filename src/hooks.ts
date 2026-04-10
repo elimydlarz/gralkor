@@ -205,7 +205,7 @@ const SYSTEM_MESSAGE_MULTILINE_PATTERNS: RegExp[] = [
  *
  * Returns the user's text, or empty string if the message is a system message.
  */
-function cleanUserMessageText(text: string): string {
+export function cleanUserMessageText(text: string): string {
   if (!text.trim()) return "";
 
   // Drop messages matching known multi-line system templates
