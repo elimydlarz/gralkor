@@ -1010,7 +1010,7 @@ describe("before_prompt_build handler", () => {
 
       const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId });
       await expect(
-        handler({ prompt: "What framework?", messages: [] }, { agentId: "agent-42" }),
+        handler(promptEvent("What framework?"), { agentId: "agent-42" }),
       ).rejects.toThrow(/llmClient is required/);
     });
 
@@ -1025,7 +1025,7 @@ describe("before_prompt_build handler", () => {
         client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
       await expect(
-        handler({ prompt: "What framework?", messages: [] }, { agentId: "agent-42" }),
+        handler(promptEvent("What framework?"), { agentId: "agent-42" }),
       ).rejects.toThrow("API down");
     });
 
@@ -1080,7 +1080,7 @@ describe("before_prompt_build handler", () => {
 
       const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
       await handler(
-        { prompt: "What framework?", messages: [] },
+        promptEvent("What framework?"),
         { agentId: "agent-42" },
       );
 
@@ -1101,7 +1101,7 @@ describe("before_prompt_build handler", () => {
 
       const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
       const result = await handler(
-        { prompt: "What framework?", messages: [] },
+        promptEvent("What framework?"),
         { agentId: "agent-42" },
       );
 
@@ -1121,7 +1121,7 @@ describe("before_prompt_build handler", () => {
 
       const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
       const result = await handler(
-        { prompt: "What framework?", messages: [] },
+        promptEvent("What framework?"),
         { agentId: "agent-42" },
       );
 
