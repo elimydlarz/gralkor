@@ -172,7 +172,7 @@ export function isSystemMessage(text: string): boolean {
  * Unlike isSystemMessage, does NOT treat empty/whitespace as system content —
  * preserves paragraph breaks when filtering line-by-line.
  */
-function isSystemLine(line: string): boolean {
+export function isSystemLine(line: string): boolean {
   const trimmed = line.trim();
   return trimmed !== "" && SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(trimmed));
 }
