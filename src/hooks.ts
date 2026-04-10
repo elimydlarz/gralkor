@@ -186,6 +186,17 @@ function stripGralkorMemoryXml(text: string): string {
 }
 
 /**
+ * Multi-line patterns that match entire messages which are NOT real user content.
+ * Checked in cleanUserMessageText as early-out — if the full text matches, the
+ * message is dropped entirely. Used for external plugin prompts that wrap
+ * conversation context in a structured template.
+ */
+const SYSTEM_MESSAGE_MULTILINE_PATTERNS: RegExp[] = [
+  // File-naming slug prompt from external plugins (e.g., ACPX session-namer)
+  /^Based on this conversation, generate a short \d+-\d+ word filename slug[\s\S]*Reply with ONLY the slug/,
+];
+
+/**
  * Detect system-injected user messages and extract real user content.
  *
  * Messages matching SYSTEM_MESSAGE_PATTERNS are dropped entirely.
@@ -196,6 +207,9 @@ function stripGralkorMemoryXml(text: string): string {
  */
 function cleanUserMessageText(text: string): string {
   if (!text.trim()) return "";
+
+  // Drop messages matching known multi-line system templates
+  if (SYSTEM_MESSAGE_MULTILINE_PATTERNS.some((p) => p.test(text.trim()))) return "";
 
   // Unwrap metadata wrappers (they surround real user content)
   let cleaned = text.replace(
