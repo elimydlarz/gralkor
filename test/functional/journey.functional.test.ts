@@ -281,9 +281,9 @@ describe("hyphenated-agent-id-sanitization", () => {
     expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(true);
   });
 
-  it("fact is NOT found under the unsanitized (hyphen) group — different FalkorDB named graph", async () => {
+  it("fact IS found under the unsanitized (hyphen) group — server sanitizes group IDs to match", async () => {
     const { facts } = await search(SENTINEL, "fast", GROUP_UNSANITIZED);
-    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(false);
+    expect(facts.some(f => f.fact.includes(SENTINEL))).toBe(true);
   });
 });
 
