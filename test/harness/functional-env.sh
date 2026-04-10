@@ -8,10 +8,16 @@
 #   bash test/harness/functional-env.sh test   # up + run + down
 #
 # Environment:
-#   GOOGLE_API_KEY  — passed to container at 'up' time
+#   GOOGLE_API_KEY  — passed to container at 'up' time (auto-loaded from .env if unset)
 #   PLATFORM                         — docker platform (default: linux/arm64)
 #   GRALKOR_FUNC_CONTAINER           — container name (default: gralkor-functional)
 set -euo pipefail
+
+# Auto-load .env (repo root) if GOOGLE_API_KEY is not already set.
+if [ -z "${GOOGLE_API_KEY:-}" ] && [ -f "$REPO_ROOT/.env" ]; then
+  GOOGLE_API_KEY="$(grep -v '^\s*#' "$REPO_ROOT/.env" | grep '^GOOGLE_API_KEY=' | head -1 | cut -d= -f2-)"
+  export GOOGLE_API_KEY
+fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PLATFORM="${PLATFORM:-linux/arm64}"
