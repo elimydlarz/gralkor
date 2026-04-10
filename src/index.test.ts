@@ -664,7 +664,11 @@ describe("register()", () => {
         // The conversation context should be empty — no User:/Assistant: lines between "Conversation context:" and "Memory facts"
         const generateArgs = generateSpy.mock.calls[0][0] as Array<{ role: string; content: string }>;
         const userMsg = generateArgs.find((m) => m.role === "user")!;
-        expect(userMsg.content).toContain("Conversation context:\n\nMemory facts to interpret:");
+        expect(userMsg.content).toContain("Conversation context:");
+        expect(userMsg.content).toContain("Memory facts to interpret:");
+        // No User: or Assistant: lines — empty conversation
+        expect(userMsg.content).not.toContain("User:");
+        expect(userMsg.content).not.toContain("Assistant:");
 
         vi.unstubAllGlobals();
       });
