@@ -793,7 +793,7 @@ describe("before_prompt_build handler", () => {
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: defaultLlm });
     const result = await handler(
-      { prompt: "What framework does the team use?", messages: [] },
+      promptEvent("What framework does the team use?"),
       { agentId: "agent-42" },
     );
 
