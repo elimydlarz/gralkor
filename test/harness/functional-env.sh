@@ -129,6 +129,18 @@ cmd_up() {
       # to the gateway during creation and blocks indefinitely without it.
       openclaw gateway &
 
+      # Wait for gateway to be ready before adding agents.
+      for i in \$(seq 1 60); do
+        openclaw health >/dev/null 2>&1 && break
+        sleep 1
+      done
+
+      # Create the hyphenated-ID agent for the sanitization test.
+      # Runs inside the container to avoid docker exec hanging on macOS (the
+      # openclaw CLI keeps FDs open that prevent the exec session from closing).
+      openclaw agents add my-hyphen-agent \
+        --workspace '/root/.openclaw/workspace' --non-interactive >/dev/null 2>&1 || true
+
       tail -f /dev/null
     "
 
