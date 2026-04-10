@@ -1394,6 +1394,7 @@ describe("agent_end handler", () => {
   });
 
   it("strips <gralkor-memory> XML embedded within external plugin prompt (production scenario)", async () => {
+    const handler = createAgentEndHandler(defaultConfig, debouncer);
     // Reproduces production log: another plugin wraps a conversation summary (including
     // gralkor-memory XML) in a file-naming prompt. The XML is mid-string, not at the start.
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Eli is the owner of the Death at Blackwood Manor simulation project. (created 2026-04-06T23:06:22+0) (valid from 2026-04-06T23:06:16+0)\n- The assistant communicates with the user through the telegram platform. (created 2026-04-06T16:24:07+0)\n</gralkor-memory>';
