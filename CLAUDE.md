@@ -717,6 +717,6 @@ Three layers, each with both a TypeScript and a Python half so the language spli
 - Graphiti requires LLM API key — starts without one but all operations fail
 - `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
 - Native `memory_search` empty without embedding provider (upstream bug)
-- **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught).
+- **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught). Both operations are serialized under `_driver_lock` to prevent concurrent driver mutations from clobbering each other.
 - **Plugin tools blocked by tool profiles:** `coding` profile allowlists core tools only. Plugin tools (`memory_add`, `memory_build_indices`, `memory_build_communities`) are filtered out. Workaround: `"alsoAllow": ["memory_add", "memory_build_indices", "memory_build_communities"]` or `"alsoAllow": ["gralkor"]` in `tools` config.
 
