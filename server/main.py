@@ -509,6 +509,17 @@ def _sanitize_query(query: str) -> str:
     return query.replace("`", " ")
 
 
+def _sanitize_group_id(group_id: str) -> str:
+    """Replace hyphens with underscores to avoid RediSearch syntax errors.
+
+    graphiti-core embeds group_id verbatim in RediSearch queries like
+    (@group_id:"my-hyphen-agent") where hyphens break the parser.
+    The plugin-side sanitizeGroupId() handles this at write time, but
+    direct API callers (e.g. functional tests) may pass raw hyphens.
+    """
+    return group_id.replace("-", "_")
+
+
 def _ensure_driver_graph(group_ids: list[str] | None) -> None:
     """Route graphiti's driver to the correct FalkorDB named graph.
 
