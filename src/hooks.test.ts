@@ -2661,7 +2661,7 @@ describe("SYSTEM_MESSAGE_PATTERNS (fixture-driven)", () => {
 });
 
 describe("isSystemMessage (fixture-driven)", () => {
-  it.each(systemPatternCases)("$description", ({ input, expected }) => {
+  it.each([...systemPatternCases, ...isSystemMessageEdgeCases])("$description", ({ input, expected }) => {
     expect(isSystemMessage(input)).toBe(expected);
   });
 });
