@@ -179,6 +179,9 @@ const SYSTEM_MESSAGE_PATTERNS: RegExp[] = [
   /^✅?\s*New session started\b/,
   /^System: /,
   /^\[User sent media without caption\]$/,
+  /^Based on this conversation, generate a short \d+-\d+ word filename slug\b/,
+  /^Reply with ONLY the slug\b/,
+  /^Conversation summary:$/,
 ];
 
 /**
