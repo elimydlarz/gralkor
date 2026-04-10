@@ -66,6 +66,7 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 - Tools have no ctx; they require `session_key` which the model reads back from the injected memory block. `getGroupId(sessionKey)` **throws** for unregistered keys — no silent fallback to a wrong partition.
 - `sanitizeGroupId` (hyphens → underscores) runs **once** at write time inside `setSessionData`; all readers get the pre-sanitized value from the map.
 - graphiti-core: `add_episode()` clones the driver per `group_id`, but `search()` doesn't route — fixed by `_ensure_driver_graph()` in `main.py`.
+- **Driver lock:** `graphiti.driver` is a global mutated by both `add_episode()` and `_ensure_driver_graph()`. Concurrent requests for different `group_id`s can interleave and clobber each other's driver state, losing data on writes and returning wrong results on reads. Fix: `_driver_lock = asyncio.Lock()` in `main.py` serializes all `add_episode`, `search`, and `build_communities` calls. Single-user agent semantics make serialization acceptable.
 
 ### Server Manager Lifecycle
 
