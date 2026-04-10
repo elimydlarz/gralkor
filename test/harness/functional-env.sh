@@ -92,7 +92,7 @@ cmd_up() {
     --name "$CONTAINER" \
     --platform "$PLATFORM" \
     -v "$REPO_ROOT/test/functional:/app/gralkor-src/test/functional:ro" \
-    "${KEY_ARGS[@]}" \
+    "${KEY_ARGS[@]+"${KEY_ARGS[@]}"}" \
     "$IMAGE" \
     bash -c "
       if [ -n \"\$GOOGLE_API_KEY\" ]; then
