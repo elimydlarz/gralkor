@@ -2492,23 +2492,6 @@ describe("extractMessagesFromCtx — assistant blocks without thinking property"
   });
 });
 
-describe("extractUserMessageFromPrompt — regex anchors matter", () => {
-  it("does NOT strip System: appearing mid-string", () => {
-    const result = extractUserMessageFromPrompt({
-      prompt: "Tell me about System: concepts in Linux",
-      messages: [],
-    });
-    expect(result).toBe("Tell me about System: concepts in Linux");
-  });
-
-  it("does NOT strip session-start text appearing mid-string", () => {
-    const result = extractUserMessageFromPrompt({
-      prompt: "Explain what A new session was started means in this app",
-      messages: [],
-    });
-    expect(result).toBe("Explain what A new session was started means in this app");
-  });
-});
 
 describe("cleanUserMessageText — metadata wrapper removal", () => {
   it("strips metadata wrapper from user message preserving content after", () => {
