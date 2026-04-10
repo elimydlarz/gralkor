@@ -296,7 +296,7 @@ export function extractMessagesFromCtx(event: AgentEndEvent): EpisodeMessage[] {
       if (cleaned.trim()) {
         result.push({
           role: "assistant",
-          content: [{ type: "tool_result", text: truncateText(textParts, TOOL_RESULT_TRUNCATE_LIMIT) }],
+          content: [{ type: "tool_result", text: truncateText(cleaned, TOOL_RESULT_TRUNCATE_LIMIT) }],
         });
       }
     }
