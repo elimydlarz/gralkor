@@ -200,6 +200,14 @@ function isSystemLine(line: string): boolean {
 }
 
 /**
+ * Remove gralkor-memory XML from text (feedback loop prevention).
+ * Applied to all message roles, not just user.
+ */
+function stripGralkorMemoryXml(text: string): string {
+  return text.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
+}
+
+/**
  * Detect system-injected user messages and extract real user content.
  *
  * Messages matching SYSTEM_MESSAGE_PATTERNS are dropped entirely.
@@ -218,7 +226,7 @@ function cleanUserMessageText(text: string): string {
   );
 
   // Remove gralkor-memory XML (feedback loop prevention)
-  cleaned = cleaned.replace(/<gralkor-memory[\s\S]*?<\/gralkor-memory>\n*/g, "");
+  cleaned = stripGralkorMemoryXml(cleaned);
 
   // Remove Untrusted context footer (appended by OpenClaw's appendUntrustedContext)
   cleaned = cleaned.replace(/\n*Untrusted context \(metadata[^)]*\):\n[\s\S]*$/, "");
