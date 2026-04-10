@@ -265,7 +265,7 @@ describe("register()", () => {
       expect(result).toContain("Team uses React");
       expect(result).toContain("Interpretation:");
       // But NOT the further querying instruction (that's auto-recall only)
-      expect(result).not.toContain("search memory up to 3 times");
+      expect(result).not.toContain("Search memory up to 3 times");
       expect(result).not.toContain("diverse queries");
 
       vi.unstubAllGlobals();
