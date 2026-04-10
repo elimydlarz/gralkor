@@ -483,7 +483,7 @@ async def add_episode(req: AddEpisodeRequest):
             name=req.name,
             episode_body=req.episode_body,
             source_description=req.source_description,
-            group_id=req.group_id,
+            group_id=_sanitize_group_id(req.group_id),
             reference_time=ref_time,
             source=episode_type,
             entity_types=ontology_entity_types,
