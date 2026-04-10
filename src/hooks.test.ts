@@ -2251,6 +2251,31 @@ describe("extractMessagesFromCtx — [User sent media without caption]", () => {
   });
 });
 
+describe("extractMessagesFromCtx — external plugin prompts", () => {
+  it("drops file-naming slug prompt from another plugin", () => {
+    const prompt = 'Based on this conversation, generate a short 1-2 word filename slug (lowercase, hyphen-separated, no file extension).\nConversation summary:\nassistant: <final>Response</final>\nuser: Hello\n\nReply with ONLY the slug, nothing else. Examples: "vendor-pitch", "api-design", "bug-fix"';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: prompt }] },
+        { role: "assistant", content: [{ type: "text", text: "Here's my answer" }] },
+      ],
+    });
+    expect(result).toEqual([
+      { role: "assistant", content: [{ type: "text", text: "Here's my answer" }] },
+    ]);
+  });
+
+  it("drops file-naming slug prompt even with real content after it", () => {
+    const prompt = 'Based on this conversation, generate a short 1-2 word filename slug (lowercase, hyphen-separated, no file extension).\nConversation summary:\nassistant: Response\n\nReply with ONLY the slug, nothing else. Examples: "vendor-pitch"';
+    const result = extractMessagesFromCtx({
+      messages: [
+        { role: "user", content: [{ type: "text", text: prompt }] },
+      ],
+    });
+    expect(result).toEqual([]);
+  });
+});
+
 describe("extractMessagesFromCtx — compactionSummary and unknown roles", () => {
   it("drops compactionSummary messages", () => {
     const result = extractMessagesFromCtx({
