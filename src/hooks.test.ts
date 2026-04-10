@@ -1139,7 +1139,7 @@ describe("before_prompt_build handler", () => {
 
       await expect(
         handler(
-          { prompt: "Tell me about the project", messages: [] },
+          promptEvent("Tell me about the project"),
           { agentId: "agent-42" },
         ),
       ).rejects.toThrow("server is not ready (service start() may not have been called by host)");
@@ -1160,7 +1160,7 @@ describe("before_prompt_build handler", () => {
         client as unknown as GraphitiClient, defaultConfig, { serverReady: gate, getGroupId: defaultGetGroupId, llmClient: defaultLlm },
       );
       const result = await handler(
-        { prompt: "Tell me about the project", messages: [] },
+        promptEvent("Tell me about the project"),
         { agentId: "agent-42" },
       );
 
