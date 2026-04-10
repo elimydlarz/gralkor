@@ -57,7 +57,7 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 
 (Behavioural details live in the Recall, Capture, and Tools test trees below.)
 
-- **Auto-recall** (`before_prompt_build`): `extractUserMessageFromPrompt` → register session in `groupIdBySession` (`setSessionData`) and `messagesBySession` (`setSessionMessages`) → fast-mode `client.search()` → `interpretFacts()` (shared helper, ~250K token budget, oldest dropped first; no fallback if `llmClient` is missing) → returns `<gralkor-memory trust="untrusted">` with `Session-key:` injected.
+- **Auto-recall** (`before_prompt_build`): `extractInjectQuery` → register session in `groupIdBySession` (`setSessionData`) and `messagesBySession` (`setSessionMessages`) → fast-mode `client.search()` → `interpretFacts()` (shared helper, ~250K token budget, oldest dropped first; no fallback if `llmClient` is missing) → returns `<gralkor-memory trust="untrusted">` with `Session-key:` injected.
 - **Auto-capture** (`agent_end` → `DebouncedFlush` keyed by `sessionKey || agentId || "default"` → `session_end` force-flush): `extractMessagesFromCtx` cleans messages, `formatTranscript(messages, llmClient)` (in `src/distill.ts`) groups thinking/`tool_use`/`tool_result` per turn and distils each into a first-person `(behaviour: …)` line, then `client.ingestEpisode({ episode_body })`.
 - **Flush retries**: 3× exponential (1s/2s/4s), 4xx not retried. SIGTERM → `flushAll()` once via module guard.
 
