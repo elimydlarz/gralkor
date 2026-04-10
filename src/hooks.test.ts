@@ -1189,7 +1189,7 @@ describe("before_prompt_build handler", () => {
       );
 
       const ctx_result = (result as { prependContext: string }).prependContext;
-      expect(ctx_result).toContain("search memory up to 3 times in parallel with diverse queries");
+      expect(ctx_result).toContain("Search memory up to 3 times in parallel with diverse queries");
     });
   });
 
