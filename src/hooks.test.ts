@@ -15,9 +15,14 @@ import {
   extractMessagesFromCtx,
   extractInjectQuery,
   buildInterpretationContext,
+  SYSTEM_MESSAGE_PATTERNS,
+  isSystemMessage,
+  isSystemLine,
+  cleanUserMessageText,
   type HookAgentContext,
   type SessionBuffer,
 } from "./hooks.js";
+import { systemPatternCases, cleanTextCases } from "./test-fixtures/capture-cases.js";
 
 function mockClient(): {
   [K in keyof GraphitiClient]: ReturnType<typeof vi.fn>;
