@@ -2652,3 +2652,23 @@ describe("DebouncedFlush.flushAll", () => {
   });
 });
 
+// --- Data-driven tests from fixtures ---
+
+describe("SYSTEM_MESSAGE_PATTERNS (fixture-driven)", () => {
+  it.each(systemPatternCases)("$description", ({ input, expected }) => {
+    expect(SYSTEM_MESSAGE_PATTERNS.some((p) => p.test(input.trim()))).toBe(expected);
+  });
+});
+
+describe("isSystemMessage (fixture-driven)", () => {
+  it.each(systemPatternCases)("$description", ({ input, expected }) => {
+    expect(isSystemMessage(input)).toBe(expected);
+  });
+});
+
+describe("cleanUserMessageText (fixture-driven)", () => {
+  it.each(cleanTextCases)("$description", ({ input, expected }) => {
+    expect(cleanUserMessageText(input)).toBe(expected);
+  });
+});
+
