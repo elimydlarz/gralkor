@@ -72,8 +72,12 @@ if [[ -z "${DRY_RUN:-}" ]]; then
     fi
     tag="v${version}"
     if ! gh release view "$tag" >/dev/null 2>&1; then
-      # --target lets gh create the tag on the remote from a commit SHA, even
-      # if the tag only exists locally (e.g. publish:npm just created it).
+      # Ensure the commit is reachable on the remote so GitHub can create
+      # the tag — otherwise gh release create fails with 422.
+      git push
+      if git rev-parse "$tag" >/dev/null 2>&1; then
+        git push origin "$tag"
+      fi
       gh release create "$tag" --title "$tag" --notes "Release $tag" --target "$source_commit"
     fi
     gh release upload "$tag" "$wheel_file" --clobber
