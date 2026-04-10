@@ -1948,7 +1948,7 @@ describe("test mode logging", () => {
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
-    await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
+    await handler(promptEvent("What color is the sky?"), { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test] auto-recall context:"),
@@ -1965,7 +1965,7 @@ describe("test mode logging", () => {
 
     const config: GralkorConfig = { ...defaultConfig, test: true };
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, config, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
-    await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
+    await handler(promptEvent("What color is the sky?"), { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test] auto-recall query:"),
@@ -1981,7 +1981,7 @@ describe("test mode logging", () => {
     });
 
     const handler = createBeforePromptBuildHandler(client as unknown as GraphitiClient, defaultConfig, { getGroupId: defaultGetGroupId, llmClient: mockLLMClient("ok") });
-    await handler({ prompt: "What color is the sky?", messages: [] }, { agentId: "agent-42" });
+    await handler(promptEvent("What color is the sky?"), { agentId: "agent-42" });
 
     const testLogs = consoleSpy.mock.calls.filter(
       (args) => typeof args[0] === "string" && args[0].includes("[test]"),
