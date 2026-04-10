@@ -122,46 +122,24 @@ export interface HookSessionContext {
 }
 
 /**
- * Extract the user's actual message from event.prompt.
- *
- * The prompt may be wrapped in metadata:
- *   "Sender (untrusted metadata):\n```json\n{...}\n```\n\nActual message"
- *
- * System prompts (e.g. "A new session was started via /new") are not user messages.
+ * Extract the search query for auto-recall from the trailing run of user
+ * messages. Walks backwards from the end, collecting consecutive user
+ * messages (drip messages), stops at the first non-user role, cleans each
+ * via cleanUserMessageText, and joins in original order.
  */
-export function extractUserMessageFromPrompt(event: PromptBuildEvent): string {
-  // Strip leading "System: ..." lines (queued events prepended by gateway)
-  const stripped = event.prompt.replace(/^(?:System: [^\n]*\n\n)+/, "");
-
-  // Strip session-start system instruction (may have user message after it)
-  const afterSession = stripped.replace(/^A new session was started[^\n]*(?:\n\n)?/, "");
-  if (!afterSession) return "";
-
-  // Strip metadata wrapper if present
-  const metadataPattern = /^.+?\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/;
-  const fromPrompt = afterSession.replace(metadataPattern, "").trim();
-  if (fromPrompt) return fromPrompt;
-
-  // Prompt was only metadata wrapper — extract from messages instead.
-  return extractLastUserMessageFromMessages(event.messages);
-}
-
-/**
- * Extract the last user message text from the messages array.
- * Used as fallback when the prompt contains only metadata wrapper.
- */
-export function extractLastUserMessageFromMessages(messages: MessageEntry[]): string {
+export function extractInjectQuery(messages: MessageEntry[]): string | null {
+  const parts: string[] = [];
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") {
-      const text = normalizeContent(messages[i].content)
-        .filter(isTextBlock)
-        .map((block: ContentBlock) => block.text!)
-        .join("\n");
-      const cleaned = cleanUserMessageText(text);
-      if (cleaned) return cleaned;
-    }
+    if (messages[i].role !== "user") break;
+    const text = normalizeContent(messages[i].content)
+      .filter(isTextBlock)
+      .map((block: ContentBlock) => block.text!)
+      .join("\n");
+    const cleaned = cleanUserMessageText(text);
+    if (cleaned) parts.push(cleaned);
   }
-  return "";
+  if (parts.length === 0) return null;
+  return parts.reverse().join("\n\n");
 }
 
 /**
