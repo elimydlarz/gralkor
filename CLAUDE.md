@@ -345,6 +345,14 @@ startup
       then falls back to config.workspaceDir
     when workspaceDir does not exist
       then indexer skips without error
+multi-load resilience
+  when plugin is loaded multiple times (as OpenClaw does)
+    and the first instance's service resolves the ReadyGate
+      then a second instance's auto-recall handler still searches the graph
+      then a second instance's memory_add tool does not throw
+    and no instance has resolved the ReadyGate
+      then auto-recall handler throws (fail-fast)
+      then memory_add tool throws (fail-fast)
 bundled-wheel-arch-selection
   when on linux/arm64 and the install dir (serverDir/wheels) has .whl files
     then resolveBundledWheels returns those paths (no network)
