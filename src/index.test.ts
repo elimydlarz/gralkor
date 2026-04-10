@@ -7,9 +7,12 @@ vi.mock("./native-indexer.js", () => ({
 
 // Mock llm-client so interpret() in memory_search and auto-recall doesn't
 // try to make real LLM HTTP calls. Returns a deterministic interpretation.
+// The shared generateSpy allows tests to verify what messages were passed
+// to the LLM during interpretation.
+const generateSpy = vi.fn().mockResolvedValue("Interpretation: facts are relevant.");
 vi.mock("./llm-client.js", () => ({
   createLLMClient: vi.fn(() => ({
-    generate: vi.fn().mockResolvedValue("Interpretation: facts are relevant."),
+    generate: generateSpy,
   })),
 }));
 
