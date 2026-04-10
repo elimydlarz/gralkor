@@ -1036,7 +1036,7 @@ describe("before_prompt_build handler", () => {
       const handler = createBeforePromptBuildHandler(
         client as unknown as GraphitiClient, defaultConfig, { llmClient, getGroupId: defaultGetGroupId },
       );
-      const result = await handler({ prompt: "Anything?", messages: [] }, { agentId: "agent-42" });
+      const result = await handler(promptEvent("Anything?"), { agentId: "agent-42" });
 
       const ctx_result = (result as { prependContext: string }).prependContext;
       expect(ctx_result).toContain("No facts found.");
