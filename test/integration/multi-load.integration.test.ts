@@ -118,7 +118,7 @@ describe("multi-load resilience", () => {
 
         await expect(
           handler(
-            { prompt: "Tell me about the project", messages: [] },
+            { prompt: "Tell me about the project", messages: [{ role: "user", content: [{ type: "text", text: "What is the project about?" }] }] },
             { agentId: "agent-42" },
           ),
         ).rejects.toThrow("server is not ready");
