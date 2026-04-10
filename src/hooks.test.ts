@@ -591,153 +591,82 @@ describe("extractMessagesFromCtx", () => {
   });
 });
 
-describe("extractUserMessageFromPrompt", () => {
-  it("returns empty string for empty prompt", () => {
-    expect(extractUserMessageFromPrompt({ prompt: "", messages: [] })).toBe("");
+describe("extractInjectQuery", () => {
+  it("returns null when messages array is empty", () => {
+    expect(extractInjectQuery([])).toBeNull();
   });
 
-  it("returns empty string for plain session startup", () => {
-    expect(extractUserMessageFromPrompt({
-      prompt: "A new session was started via /new", messages: [],
-    })).toBe("");
+  it("returns null when messages array has no user messages", () => {
+    expect(extractInjectQuery([
+      { role: "assistant", content: [{ type: "text", text: "Hello" }] },
+    ])).toBeNull();
   });
 
-  it("extracts user message after session startup line", () => {
-    expect(extractUserMessageFromPrompt({
-      prompt: "A new session was started via /new\n\nHello", messages: [],
-    })).toBe("Hello");
-  });
-
-  it("extracts user message with metadata after session startup line", () => {
-    const prompt = 'A new session was started via /new\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nHello';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Hello");
-  });
-
-  it("returns user message from plain prompt", () => {
-    expect(extractUserMessageFromPrompt({
-      prompt: "Tell me about the project", messages: [],
-    })).toBe("Tell me about the project");
-  });
-
-  it("strips metadata wrapper and returns user message", () => {
-    const prompt = 'Conversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
-  });
-
-  it("strips single System: event prefix before session startup", () => {
-    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nA new session was started via /new";
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
-  });
-
-  it("strips System: event prefix and returns real user message", () => {
-    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nWhat is the weather today?";
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather today?");
-  });
-
-  it("strips multiple System: event lines", () => {
-    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event happened\n\nA new session was started via /new";
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
-  });
-
-  it("strips multiple System: lines before a real user message", () => {
-    const prompt = "System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSystem: [2026-02-28T12:01:00Z] Another event\n\nWhat is the weather?";
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather?");
-  });
-
-  it("strips System: lines + metadata wrapper before user message", () => {
-    const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nConversation info (untrusted metadata):\n```json\n{"key": "value"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
-  });
-
-  it("strips 'Sender' metadata wrapper", () => {
-    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123", "senderName": "Eli"}\n```\n\nTell me about the project';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Tell me about the project");
-  });
-
-  it("strips arbitrary label before (untrusted metadata) wrapper", () => {
-    const prompt = 'Some Future Label (untrusted metadata):\n```json\n{"foo": "bar"}\n```\n\nHello world';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("Hello world");
-  });
-
-  it("strips System: lines + Sender metadata wrapper", () => {
-    const prompt = 'System: [2026-02-28T12:00:00Z] Telegram reaction added: 👍\n\nSender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\nWhat is the weather?';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("What is the weather?");
-  });
-
-  it("falls back to messages when prompt is only metadata wrapper", () => {
-    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
-    expect(extractUserMessageFromPrompt({
-      prompt,
-      messages: [
-        { role: "user", content: [{ type: "text", text: "Any context about Cyril Rioli?" }] },
-      ],
-    })).toBe("Any context about Cyril Rioli?");
-  });
-
-  it("falls back to last user message from messages, skipping gralkor-memory", () => {
-    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
-    expect(extractUserMessageFromPrompt({
-      prompt,
-      messages: [
-        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nSome fact\n</gralkor-memory>\n\nFirst question' }] },
-        { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-        { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nAnother fact\n</gralkor-memory>\n\nSecond question' }] },
-      ],
-    })).toBe("Second question");
-  });
-
-  it("returns empty when prompt is only metadata and messages are empty", () => {
-    const prompt = 'Sender (untrusted metadata):\n```json\n{"senderId": "123"}\n```\n\n';
-    expect(extractUserMessageFromPrompt({ prompt, messages: [] })).toBe("");
-  });
-});
-
-describe("extractLastUserMessageFromMessages", () => {
-  it("returns empty when no messages", () => {
-    expect(extractLastUserMessageFromMessages([])).toBe("");
-  });
-
-  it("returns last user message text", () => {
-    expect(extractLastUserMessageFromMessages([
+  it("returns the trailing user message", () => {
+    expect(extractInjectQuery([
       { role: "user", content: [{ type: "text", text: "First" }] },
       { role: "assistant", content: [{ type: "text", text: "Reply" }] },
       { role: "user", content: [{ type: "text", text: "Second" }] },
     ])).toBe("Second");
   });
 
-  it("strips gralkor-memory blocks", () => {
-    expect(extractLastUserMessageFromMessages([
+  it("joins consecutive trailing user messages in original order (drip messages)", () => {
+    expect(extractInjectQuery([
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: [{ type: "text", text: "Part one" }] },
+      { role: "user", content: [{ type: "text", text: "Part two" }] },
+      { role: "user", content: [{ type: "text", text: "Part three" }] },
+    ])).toBe("Part one\n\nPart two\n\nPart three");
+  });
+
+  it("stops at non-user message — only messages after the last non-user are included", () => {
+    expect(extractInjectQuery([
+      { role: "user", content: [{ type: "text", text: "Old question" }] },
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: [{ type: "text", text: "New question" }] },
+    ])).toBe("New question");
+  });
+
+  it("cleans each message via cleanUserMessageText", () => {
+    expect(extractInjectQuery([
       { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n\nActual question' }] },
     ])).toBe("Actual question");
   });
 
-  it("skips user messages that are only gralkor-memory", () => {
-    expect(extractLastUserMessageFromMessages([
-      { role: "user", content: [{ type: "text", text: "Real message" }] },
+  it("skips user messages that are empty after cleaning", () => {
+    expect(extractInjectQuery([
       { role: "assistant", content: [{ type: "text", text: "Reply" }] },
       { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
-    ])).toBe("Real message");
+      { role: "user", content: [{ type: "text", text: "Real question" }] },
+    ])).toBe("Real question");
+  });
+
+  it("returns null when all trailing user messages are empty after cleaning", () => {
+    expect(extractInjectQuery([
+      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
+      { role: "user", content: [{ type: "text", text: '<gralkor-memory source="auto-recall" trust="untrusted">\nOnly memory\n</gralkor-memory>' }] },
+    ])).toBeNull();
   });
 
   it("handles string content in user messages", () => {
-    expect(extractLastUserMessageFromMessages([
-      { role: "user", content: "First as string" },
-      { role: "assistant", content: [{ type: "text", text: "Reply" }] },
-      { role: "user", content: "Second as string" },
-    ])).toBe("Second as string");
-  });
-
-  it("strips gralkor-memory from string content", () => {
-    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFact\n</gralkor-memory>\n';
-    expect(extractLastUserMessageFromMessages([
-      { role: "user", content: `${xml}Actual question` },
-    ])).toBe("Actual question");
+    expect(extractInjectQuery([
+      { role: "user", content: "Question as string" },
+    ])).toBe("Question as string");
   });
 
   it("extracts output_text blocks from user messages", () => {
-    expect(extractLastUserMessageFromMessages([
+    expect(extractInjectQuery([
       { role: "user", content: [{ type: "output_text", text: "Question via output_text" }] },
     ])).toBe("Question via output_text");
+  });
+
+  it("joins multiple text blocks within a single message with newlines", () => {
+    expect(extractInjectQuery([
+      { role: "user", content: [
+        { type: "text", text: "Line 1" },
+        { type: "text", text: "Line 2" },
+      ]},
+    ])).toBe("Line 1\nLine 2");
   });
 });
 
