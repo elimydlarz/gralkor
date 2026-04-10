@@ -169,17 +169,6 @@ cmd_up() {
     done
   '
 
-  # Create the hyphenated-ID agent for the sanitization test. Must run after
-  # the gateway is healthy and the CLI is paired, because 'agents add' talks
-  # to the gateway during creation.  Note: --json causes docker exec to hang
-  # (the CLI keeps a gateway connection open for structured output), so we
-  # omit it.
-  echo "Adding test agents..."
-  docker exec "$CONTAINER" openclaw agents add my-hyphen-agent \
-    --workspace "/root/.openclaw/workspace" --non-interactive >/dev/null 2>&1 \
-    && echo "  added my-hyphen-agent" \
-    || echo "  WARN: failed to add my-hyphen-agent"
-
   echo ""
   echo "Functional env ready. Run: bash test/harness/functional-env.sh run"
 }
