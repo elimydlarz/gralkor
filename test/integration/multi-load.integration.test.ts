@@ -70,7 +70,7 @@ describe("multi-load resilience", () => {
         );
 
         const result = await handler(
-          { prompt: "Tell me about the project", messages: [] },
+          { prompt: "Tell me about the project", messages: [{ role: "user", content: [{ type: "text", text: "What is the project about?" }] }] },
           { agentId: "agent-42" },
         );
 
