@@ -427,7 +427,7 @@ export function createBeforePromptBuildHandler(
       console.log(`[gralkor] auto-recall result — graph: ${factCount} facts — groupId:${groupId}`);
 
       const furtherQuerying =
-        "Then, search memory up to 3 times in parallel with diverse queries to understand more deeply.";
+        "Search memory up to 3 times in parallel with diverse queries to understand more deeply.";
 
       let contextBody: string;
       if (factCount > 0) {
