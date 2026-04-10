@@ -618,7 +618,7 @@ install-sequencing-docs
 | untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML |
 | health-monitoring | 60s ping on child process |
 | capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` in `src/hooks.ts`. User: unwrap metadata → strip XML/footer → filter system lines. Assistant: per-block `isSystemMessage()`. `"tool"` = `"toolResult"`. |
-| prompt-robustness | Sequential strip system/session/metadata; fallback to `event.messages` |
+| prompt-robustness | `extractInjectQuery` reads trailing user messages from `event.messages` (ignores `event.prompt`); each cleaned via `cleanUserMessageText` |
 | query-sanitization | `_sanitize_query()` strips backticks (RediSearch). `sanitizeGroupId()` replaces hyphens with underscores in group IDs to avoid RediSearch syntax errors. |
 | bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by `pack.sh`, `publish-npm.sh`, and `publish-clawhub.sh`. Wheel is shipped two ways: (a) bundled inside the npm tarball under `server/wheels/`; (b) uploaded as a GitHub Release asset by `publish-clawhub.sh` (`gh release upload v${version}`) and downloaded on first start by `resolveBundledWheels()` because it exceeds ClawHub's 20 MB package upload limit. Only activated on `linux/arm64` at runtime — other platforms use PyPI via `uv sync` |
 | configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`, OpenAI key present → `OpenAIRerankerClient`, otherwise `None`). |
