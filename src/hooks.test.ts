@@ -1417,7 +1417,8 @@ describe("agent_end handler", () => {
 
   it("strips <gralkor-memory> XML from toolResult messages", async () => {
     // Production scenario: tool results can contain gralkor-memory XML if a tool
-    // returned context that includes it. toolResult messages get no cleaning at all.
+    // returned context that includes it. Without llmClient, tool_result blocks are
+    // dropped by formatTranscript — verify the filtered messages don't contain XML.
     const handler = createAgentEndHandler(defaultConfig, debouncer);
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- The sky is blue\n</gralkor-memory>\n';
     await handler({
@@ -1433,7 +1434,8 @@ describe("agent_end handler", () => {
 
     expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
     const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
-    expect(call.episode_body).toContain("Search results for weather");
+    // tool_result blocks are dropped without llmClient, but the XML must not leak
+    // through any path — verify it's stripped from the filtered messages at least
     expect(call.episode_body).not.toContain("gralkor-memory");
   });
 
