@@ -13,13 +13,13 @@
 #   GRALKOR_FUNC_CONTAINER           — container name (default: gralkor-functional)
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
 # Auto-load .env (repo root) if GOOGLE_API_KEY is not already set.
 if [ -z "${GOOGLE_API_KEY:-}" ] && [ -f "$REPO_ROOT/.env" ]; then
   GOOGLE_API_KEY="$(grep -v '^\s*#' "$REPO_ROOT/.env" | grep '^GOOGLE_API_KEY=' | head -1 | cut -d= -f2-)"
   export GOOGLE_API_KEY
 fi
-
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PLATFORM="${PLATFORM:-linux/arm64}"
 CONTAINER="${GRALKOR_FUNC_CONTAINER:-gralkor-functional}"
 IMAGE="gralkor-harness:latest"
