@@ -811,7 +811,7 @@ describe("before_prompt_build handler", () => {
     expect(ctx_result).toContain('trust="untrusted"');
     expect(ctx_result).toContain("Facts:");
     expect(ctx_result).toContain("Interpretation:");
-    expect(ctx_result).toContain("search memory up to 3 times in parallel");
+    expect(ctx_result).toContain("Search memory up to 3 times in parallel");
     // Verify correct groupId was passed to search (hyphen sanitized to underscore)
     expect(client.search).toHaveBeenCalledWith(
       expect.any(String),
