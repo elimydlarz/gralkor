@@ -521,7 +521,7 @@ memory-journey
     given a real agent run through openclaw agent --agent my-hyphen-agent
       then the episode is stored under the sanitized group "my_hyphen_agent"
       and the fact IS searchable under "my_hyphen_agent"
-      and the fact is NOT searchable under "my-hyphen-agent" (a different FalkorDB named graph)
+      and the fact IS also searchable under "my-hyphen-agent" (server sanitizes group IDs to match)
   session-flush-write-read-symmetry
     given two concurrent session flushes to different groups (source: message)
       then session A data is readable from session A group
