@@ -1393,6 +1393,26 @@ describe("agent_end handler", () => {
     expect(call.name).toMatch(/^conversation-\d+$/);
   });
 
+  it("strips <gralkor-memory> XML embedded within external plugin prompt (production scenario)", async () => {
+    // Reproduces production log: another plugin wraps a conversation summary (including
+    // gralkor-memory XML) in a file-naming prompt. The XML is mid-string, not at the start.
+    const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- Eli is the owner of the Death at Blackwood Manor simulation project. (created 2026-04-06T23:06:22+0) (valid from 2026-04-06T23:06:16+0)\n- The assistant communicates with the user through the telegram platform. (created 2026-04-06T16:24:07+0)\n</gralkor-memory>';
+    const prompt = `Based on this conversation, generate a short 1-2 word filename slug (lowercase, hyphen-separated, no file extension).\nConversation summary:\nassistant: <final>I've enabled the ACPX plugin in your configuration.</final>\nuser: ${xml}\n\nReply with ONLY the slug, nothing else. Examples: "vendor-pitch", "api-design", "bug-fix"`;
+    await handler({
+      messages: [
+        { role: "user", content: [{ type: "text", text: prompt }] },
+        { role: "assistant", content: [{ type: "text", text: "plugin-config" }] },
+      ],
+    });
+
+    await debouncer.flush("default");
+
+    expect(client.ingestEpisode).toHaveBeenCalledTimes(1);
+    const call = client.ingestEpisode.mock.calls[0][0] as { episode_body: string };
+    expect(call.episode_body).not.toContain("gralkor-memory");
+    expect(call.episode_body).not.toContain("Facts:\n- Eli");
+  });
+
   it("strips <gralkor-memory> XML from user messages before storing", async () => {
     const handler = createAgentEndHandler(defaultConfig, debouncer);
     const xml = '<gralkor-memory source="auto-recall" trust="untrusted">\nFacts:\n- The sky is blue\n</gralkor-memory>\n';
