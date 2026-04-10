@@ -76,15 +76,23 @@ export const systemPatternCases: SystemPatternCase[] = [
     input: "Here is the answer to your question",
     expected: false,
   },
+];
+
+/**
+ * Edge cases for isSystemMessage that go beyond pattern matching.
+ * isSystemMessage has a !trimmed short-circuit that treats empty/whitespace
+ * as system content even though no SYSTEM_MESSAGE_PATTERNS matches them.
+ */
+export const isSystemMessageEdgeCases: SystemPatternCase[] = [
   {
-    description: "empty string",
+    description: "empty string is system",
     input: "",
-    expected: true, // isSystemMessage treats empty as system (dropped)
+    expected: true,
   },
   {
-    description: "whitespace only",
+    description: "whitespace only is system",
     input: "   ",
-    expected: true, // isSystemMessage trims and treats empty as system
+    expected: true,
   },
 ];
 
