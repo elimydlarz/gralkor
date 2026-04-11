@@ -711,7 +711,6 @@ Three layers, each with both a TypeScript and a Python half so the language spli
 - **Unit** — fast, isolated, mocked collaborators. TS: `src/*.test.ts` (vitest). Python: `server/tests/*.py` excluding `test_integration.py` (pytest with mocked Graphiti). `pnpm run test:unit` runs both halves; `:ts` / `:py` run just one.
 - **Integration** — cross-module wiring, real adjacent components, no Docker. TS: `test/integration/*.integration.test.ts` (vitest, mocked external services but real plugin lifecycle). Python: `server/tests/test_integration.py` (real FalkorDBLite, real Graphiti). `pnpm run test:integration` runs both; `:ts` / `:py` for one.
 - **Functional** — `test/functional/` end-to-end against a real OpenClaw + real LLM inside the Docker harness. No mocks. `pnpm run test:functional`; `:both` for arm64 + amd64.
-- **Live distillation** (out-of-band): `cd server && uv run pytest tests/test_distillation_live.py -v -s`. Run after changing `_DISTILL_SYSTEM_PROMPT` or the default LLM. Fixtures: `server/tests/fixtures/distillation_cases.json`. Output: `server/tests/distillation_results/` (gitignored).
 
 ## Building & Deploying
 
