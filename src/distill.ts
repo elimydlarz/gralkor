@@ -91,9 +91,11 @@ export async function formatTranscript(
     }
   }
 
-  // Distill behaviour blocks — only for turns that have them
+  // Distill behaviour blocks — only for turns that have them. The distill input
+  // includes the user message and the agent's response so the LLM has grounding
+  // context and won't invent topics absent from the actual conversation.
   const toDistill = turns
-    .map((t, i) => ({ i, text: t.behaviour.join("\n---\n") }))
+    .map((t, i) => ({ i, text: buildDistillInput(t) }))
     .filter(({ text }) => text.length > 0);
 
   const summaries = new Map<number, string>();
