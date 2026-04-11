@@ -342,13 +342,25 @@ describe("DISTILL_SYSTEM_PROMPT", () => {
     expect(DISTILL_SYSTEM_PROMPT).toContain("memory was consulted");
   });
 
-  it("instructs the LLM to stay grounded in the response", () => {
-    expect(DISTILL_SYSTEM_PROMPT).toContain("grounded");
-    expect(DISTILL_SYSTEM_PROMPT).toContain("do not invent");
+  it("treats actions as the source of truth for what to distill", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("source of truth");
+  });
+
+  it("instructs the LLM to capture dead ends and rejected approaches", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("dead ends");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("rejected");
+  });
+
+  it("instructs the LLM to use the response as disambiguating context, not a filter", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("disambiguating context");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("never as a filter");
+  });
+
+  it("instructs the LLM not to invent content absent from the inputs", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("Do not invent");
   });
 
   it("instructs the LLM not to speculate from filenames", () => {
-    expect(DISTILL_SYSTEM_PROMPT).toContain("file");
-    expect(DISTILL_SYSTEM_PROMPT).toContain("name");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("Do not speculate about a file");
   });
 });
