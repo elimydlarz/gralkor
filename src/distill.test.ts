@@ -341,4 +341,14 @@ describe("DISTILL_SYSTEM_PROMPT", () => {
     expect(DISTILL_SYSTEM_PROMPT).toContain("do not restate");
     expect(DISTILL_SYSTEM_PROMPT).toContain("memory was consulted");
   });
+
+  it("instructs the LLM to stay grounded in the response", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("grounded");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("do not invent");
+  });
+
+  it("instructs the LLM not to speculate from filenames", () => {
+    expect(DISTILL_SYSTEM_PROMPT).toContain("file");
+    expect(DISTILL_SYSTEM_PROMPT).toContain("name");
+  });
 });
