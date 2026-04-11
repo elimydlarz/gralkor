@@ -192,6 +192,8 @@ capture-hygiene
       then returns empty string (message dropped) — early-out before per-step cleaning
     when message contains (untrusted metadata) JSON block
       then block stripped, surrounding user content preserved
+    when message contains (untrusted, for context) reply-context JSON block
+      then block stripped, surrounding user content preserved
     when message contains <gralkor-memory> XML
       then XML removed via stripGralkorMemoryXml (feedback loop prevention)
     when message contains Untrusted context (metadata...) footer block
