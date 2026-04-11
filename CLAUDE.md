@@ -223,6 +223,9 @@ behaviour-distillation
       then grouped into behaviour for that turn
     when turn has behaviour blocks and llmClient available
       then blocks joined with --- separator
+      and the distill input includes the user message and the agent's response alongside the behaviour blocks for grounding
+      and the system prompt instructs the LLM to stay grounded in the response and not invent topics absent from it
+      and the system prompt instructs the LLM not to speculate about a file's contents from its name alone
       and distilled via LLM into first-person past-tense summary
       and injected as "Assistant: (behaviour: {summary})" before assistant text
     when behaviour blocks contain memory_search results (recalled facts)
