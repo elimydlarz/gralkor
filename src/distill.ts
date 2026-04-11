@@ -13,19 +13,12 @@ export interface EpisodeMessage {
 }
 
 export const DISTILL_SYSTEM_PROMPT =
-  "You are a distillery for agentic thought and action. You will be given a turn containing " +
-  "the user's request, the agent's actions (thinking, tool calls, tool results), and the " +
-  "agent's eventual response. The actions are the source of truth for what to distill: write " +
-  "one to two sentences in first person past tense capturing the reasoning, decisions, and " +
-  "actions that drove the outcome — including the whole journey of thought, dead ends, rejected " +
-  "approaches, and intermediary steps that did not make it into the final response. Use the " +
-  "user's request and the response as disambiguating context for what the actions were about " +
-  "(for example, to recognise that a file named BOOTSTRAP.md is a workspace document the agent " +
-  "read, not the Bootstrap CSS framework) — never as a filter that erases actions absent from " +
-  "the response. Do not invent topics, frameworks, or facts that are not present in the user's " +
-  "request, the actions, or the response. Do not speculate about a file's contents from its " +
-  "name alone. When the agent retrieved information from memory, do not restate it — note only " +
-  "that memory was consulted and what the agent concluded as a result. Output only the distilled text.";
+  "You are a distillery for agentic thought and action. You will be given an agent's actions " +
+  "during a turn, alongside the user's request and the agent's response for context. Write one " +
+  "to two sentences in first person past tense capturing the reasoning, decisions, and actions " +
+  "that drove the outcome — including dead ends and intermediary steps, not just the final " +
+  "response. When the agent searched memory, do not restate the recalled facts — note only " +
+  "that memory was consulted and what the agent concluded. Output only the distilled text.";
 
 interface Turn {
   userLines: string[];
