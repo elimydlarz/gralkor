@@ -211,9 +211,14 @@ export function cleanUserMessageText(text: string): string {
   // Drop messages matching known multi-line system templates
   if (SYSTEM_MESSAGE_MULTILINE_PATTERNS.some((p) => p.test(text.trim()))) return "";
 
-  // Unwrap metadata wrappers (they surround real user content)
+  // Unwrap metadata wrappers and reply-context envelopes (they surround real
+  // user content). Two parenthetical shapes are used in the wild:
+  //   "Sender (untrusted metadata):" — original metadata wrapper
+  //   "Replied message (untrusted, for context):" — OpenClaw reply-context envelope
+  // The trailing newline count varies (\n\n for the metadata shape, single \n
+  // for the reply-context shape), so we accept any number of trailing newlines.
   let cleaned = text.replace(
-    /[^\n]+\(untrusted metadata\):\n```json\n[\s\S]*?\n```\n\n/g,
+    /[^\n]+\(untrusted(?: metadata|, for context)\):\n```json\n[\s\S]*?\n```\n*/g,
     "",
   );
 
