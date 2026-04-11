@@ -266,6 +266,54 @@ describe("formatTranscript", () => {
     expect(result).toContain("Assistant: Done");
   });
 
+  it("includes user message and assistant response in distillation input for grounding", async () => {
+    const llm: LLMClient = { generate: vi.fn().mockResolvedValue("Read workspace bootstrap files") };
+    const msgs = [
+      msg("user", [["text", "(session bootstrap)"]]),
+      msg("assistant", [
+        ["tool_use", 'Tool: read\nInput: {"path":"BOOTSTRAP.md"}'],
+        ["tool_result", "# BOOTSTRAP.md\nWelcome to your workspace, agent."],
+        ["text", "Hey. I just came online — fresh slate, no memories yet."],
+      ]),
+    ];
+    await formatTranscript(msgs, llm);
+    const callArg = (llm.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
+    const distillInput = callArg.find((m) => m.role === "user")?.content ?? "";
+    expect(distillInput).toContain("User: (session bootstrap)");
+    expect(distillInput).toContain("Actions:");
+    expect(distillInput).toContain("BOOTSTRAP.md");
+    expect(distillInput).toContain("Response: Hey. I just came online");
+  });
+
+  it("omits User: section when there is no user message yet (assistant before first user)", async () => {
+    const llm: LLMClient = { generate: vi.fn().mockResolvedValue("Started up") };
+    const msgs = [
+      msg("assistant", [["thinking", "Time to greet"], ["text", "Hello!"]]),
+    ];
+    await formatTranscript(msgs, llm);
+    const callArg = (llm.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
+    const distillInput = callArg.find((m) => m.role === "user")?.content ?? "";
+    expect(distillInput).not.toContain("User:");
+    expect(distillInput).toContain("Actions:");
+    expect(distillInput).toContain("Time to greet");
+    expect(distillInput).toContain("Response: Hello!");
+  });
+
+  it("omits Response: section when the turn has no assistant text", async () => {
+    const llm: LLMClient = { generate: vi.fn().mockResolvedValue("Investigated") };
+    const msgs = [
+      msg("user", [["text", "Look into it"]]),
+      msg("assistant", [["thinking", "Let me check"]]),
+    ];
+    await formatTranscript(msgs, llm);
+    const callArg = (llm.generate as ReturnType<typeof vi.fn>).mock.calls[0][0] as Array<{ role: string; content: string }>;
+    const distillInput = callArg.find((m) => m.role === "user")?.content ?? "";
+    expect(distillInput).toContain("User: Look into it");
+    expect(distillInput).toContain("Actions:");
+    expect(distillInput).toContain("Let me check");
+    expect(distillInput).not.toContain("Response:");
+  });
+
   it("tool blocks do not appear as raw transcript lines", async () => {
     const llm = mockLLM("Did stuff");
     const msgs = [
