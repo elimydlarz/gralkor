@@ -29,6 +29,19 @@ interface Turn {
   assistantLines: string[];
 }
 
+function buildDistillInput(turn: Turn): string {
+  const behaviourText = turn.behaviour.join("\n---\n").trim();
+  if (!behaviourText) return "";
+
+  const sections: string[] = [];
+  const userText = turn.userLines.join("\n").trim();
+  if (userText) sections.push(`User: ${userText}`);
+  sections.push(`Actions:\n${behaviourText}`);
+  const responseText = turn.assistantLines.join("\n").trim();
+  if (responseText) sections.push(`Response: ${responseText}`);
+  return sections.join("\n\n");
+}
+
 async function distillOne(llmClient: LLMClient, thinking: string): Promise<string> {
   const messages: LLMMessage[] = [
     { role: "system", content: DISTILL_SYSTEM_PROMPT },
