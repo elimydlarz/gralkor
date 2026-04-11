@@ -133,6 +133,24 @@ export const cleanTextCases: CleanTextCase[] = [
     expected: "What is the meaning of life?",
   },
 
+  // Reply-context envelopes ("Replied message (untrusted, for context):")
+  {
+    description: "strips Replied message reply-context envelope and keeps trailing user text",
+    input: 'Replied message (untrusted, for context):\n```json\n{"sender_label": "Eli2", "body": "ACP is available but no default agent is configured"}\n```\nYou\'ve got to do it I guess',
+    expected: "You've got to do it I guess",
+    discovered: "Production log 2026-04-11: OpenClaw reply-context envelope appearing in user messages",
+  },
+  {
+    description: "drops message when only Replied message reply-context envelope remains",
+    input: 'Replied message (untrusted, for context):\n```json\n{"sender_label": "Eli2", "body": "..."}\n```\n',
+    expected: "",
+  },
+  {
+    description: "strips Replied message reply-context envelope with multi-line trailing user text",
+    input: 'Replied message (untrusted, for context):\n```json\n{"sender_label": "Eli", "body": "previous question"}\n```\nFirst line of reply.\nSecond line of reply.',
+    expected: "First line of reply.\nSecond line of reply.",
+  },
+
   // Gralkor-memory XML
   {
     description: "strips gralkor-memory XML at start",
