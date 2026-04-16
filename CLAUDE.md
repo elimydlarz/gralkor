@@ -84,9 +84,9 @@ Plugin → `GraphitiClient` (`src/client.ts`, HTTP) → REST → FalkorDB.
 
 ### Functional
 
-Test trees live in [TEST_TREES.md](./TEST_TREES.md) — one section per `####` below. They are the contract; tests in `src/*.test.ts`, `test/integration/`, `test/functional/`, and `server/tests/` mirror them one-to-one. Sections: Recall, Capture, Tools, Startup, Configuration, Operations, Functional Journey, Distribution.
+Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md). Tests in `src/*.test.ts`, `test/integration/`, `test/functional/`, and `server/tests/` mirror them one-to-one. Sections: Recall, Capture, Tools, Startup, Configuration, Operations, Functional Journey, Distribution.
 
-<!-- TEST_TREES_START -->
+<!-- REMOVED_START -->
 #### Recall
 
 ```
