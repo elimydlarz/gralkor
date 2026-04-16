@@ -23,18 +23,14 @@ Memory plugin (`kind: "memory"`) providing persistent, temporally-aware knowledg
 - **SessionBuffer** — `DebouncedFlush<SessionBuffer>` keyed by `sessionKey || agentId || "default"`.
 - **NativeMemory** — indexer scans `{workspaceDir}/MEMORY.md` and `{workspaceDir}/memory/*.md`, marks files with `GRALKOR_MARKER` so re-indexing is a cheap disk read. Fires fire-and-forget from `before_prompt_build` into the current session's `groupId`.
 
-### Plugin Registration
+### Plugin Registration & API Contract
 
 - `register(api)` **must be synchronous** — async silently registers nothing.
-- Config arrives on `api.pluginConfig`. `resolveConfig()` merges defaults; `validateOntologyConfig()` runs.
-- `registerFullPlugin()` owns shared state: `groupIdBySession` Map (with `getGroupId`/`setSessionData`), `serverReady` gate, module-level `ReadyGate` (survives reloads).
-- Server lives at `http://127.0.0.1:8001`.
-
-### Plugin API Contract
-
-- `api.pluginConfig` — plain object from `plugins.entries.<id>.config`
-- `registerTool({ execute(toolCallId, params, signal, onUpdate) })` — plain tool, no factory
-- `api.on(event, handler)` preferred; `registerHook` crashes without `metadata: { name }`
+- Config arrives on `api.pluginConfig` (plain object from `plugins.entries.<id>.config`). `resolveConfig()` merges defaults; `validateOntologyConfig()` runs.
+- `registerFullPlugin()` owns shared state: `groupIdBySession` Map (`getGroupId`/`setSessionData`), `serverReady` gate, module-level `ReadyGate` (survives reloads).
+- Server at `http://127.0.0.1:8001`.
+- `registerTool({ execute(toolCallId, params, signal, onUpdate) })` — plain tool, no factory.
+- `api.on(event, handler)` preferred; `registerHook` crashes without `metadata: { name }`.
 - `registerService({ id, start, stop })` — `id` not `name`. `registerCli` mounts under `openclaw`. Plugins do no LLM inference.
 
 ### Hook Behavior
