@@ -673,31 +673,15 @@ API keys live in plugin config as plain strings (gateway resolves SecretRefs ups
 
 ## Dev Workflow
 
-```bash
-openclaw plugins install -l .         # install locally for dev
-pnpm run typecheck                    # type-check TypeScript
-pnpm test                             # typecheck + unit + integration
-pnpm run test:unit                    # TS unit (vitest src/) + Python unit (pytest, mocked)
-pnpm run test:integration             # TS integration (test/integration/) + Python integration (real FalkorDBLite)
-pnpm run test:functional              # Docker harness end-to-end
-pnpm run setup:server                 # first time: sync server venv
-```
+`openclaw plugins install -l .` to install locally. `pnpm run typecheck`, `pnpm test` (typecheck + unit + integration), `pnpm run test:unit|test:integration|test:functional` (each has `:ts`/`:py` halves; functional has `:both` for arm64+amd64). `pnpm run setup:server` syncs the venv once. TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
 
-TDD: failing tests first. Tree reporters (vitest `tree`, pytest `--spec`).
-
-### Test Strategy
-
-Three layers, each with both a TypeScript and a Python half so the language split doesn't muddy the layer split:
-
-- **Unit** — fast, isolated, mocked collaborators. TS: `src/*.test.ts` (vitest). Python: `server/tests/*.py` excluding `test_integration.py` (pytest with mocked Graphiti). `pnpm run test:unit` runs both halves; `:ts` / `:py` run just one.
-- **Integration** — cross-module wiring, real adjacent components, no Docker. TS: `test/integration/*.integration.test.ts` (vitest, mocked external services but real plugin lifecycle). Python: `server/tests/test_integration.py` (real FalkorDBLite, real Graphiti). `pnpm run test:integration` runs both; `:ts` / `:py` for one.
-- **Functional** — `test/functional/` end-to-end against a real OpenClaw + real LLM inside the Docker harness. No mocks. `pnpm run test:functional`; `:both` for arm64 + amd64.
+**Test layers** (TS + Python halves per layer): **unit** — `src/*.test.ts`, `server/tests/*.py` (excl. `test_integration.py`), mocked Graphiti; **integration** — `test/integration/*.integration.test.ts` (real plugin lifecycle, mocked externals), `server/tests/test_integration.py` (real FalkorDBLite + Graphiti); **functional** — `test/functional/` Docker harness, real OpenClaw + real LLM, no mocks.
 
 ## Building & Deploying
 
-`pnpm run publish:all -- patch|minor|major` bumps, builds, publishes to npm + ClawHub, commits and tags. `publish:npm` / `publish:clawhub` for one-at-a-time (each accepts `current` to skip the bump). `pnpm run pack` builds a deployment tarball (arm64 wheel via Docker). See the publish test trees for behaviour. Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`.
+`pnpm run publish:all -- patch|minor|major` bumps, builds, publishes npm + ClawHub, commits and tags. `publish:npm` / `publish:clawhub` for one-at-a-time (each accepts `current` to skip the bump). `pnpm run pack` builds a deployment tarball (arm64 wheel via Docker). Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`. Behaviour in the publish test trees.
 
-**ClawHub uploads** are governed by `.clawhubignore` (gitignore syntax) — the clawhub CLI ignores `package.json`'s `files` field and `.gitignore`/`.npmignore`, so the file uses a whitelist (`*` + `!`-unignores) mirroring npm's `files`, plus an explicit `.env*` deny. `server/wheels/` is excluded (20 MB limit); `publish-clawhub.sh` instead `gh release upload`s the arm64 wheel to the matching `v${version}` release.
+**ClawHub uploads** — `.clawhubignore` (gitignore syntax) is the only exclusion file the clawhub CLI honours (not `.gitignore`/`.npmignore`/`package.json#files`), so it whitelists (`*` + `!`-unignores) mirroring npm's `files`, with explicit `.env*` deny. `server/wheels/` is excluded (20 MB limit); `publish-clawhub.sh` `gh release upload`s the arm64 wheel to the matching `v${version}` release instead.
 
 ## Conventions
 
