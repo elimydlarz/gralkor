@@ -721,13 +721,10 @@ Three layers, each with both a TypeScript and a Python half so the language spli
 
 ## Gotchas
 
-- `register()` must be synchronous — async silently registers nothing
-- `falkordblite` installs as Python module `redislite`, not `falkordblite`
-- `falkordblite` 0.9.0: PyPI arm64 wheel requires `manylinux_2_39` (glibc 2.39+) but Bookworm ships glibc 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError` on arm64. Fix: prebuilt wheel from `build-arm64-wheel.sh`. Server-manager gates on `process.platform === "linux" && process.arch === "arm64"` and resolves the wheel via `resolveBundledWheels()`: install dir first (`server/wheels/*.whl`, npm publish path), else download from `github.com/elimydlarz/gralkor/releases/v${version}` into `${dataDir}/wheels/` (ClawHub publish path — wheel exceeds ClawHub's 20 MB upload limit so it's hosted as a GH release asset by `publish-clawhub.sh` instead). Hard failure if neither resolution succeeds. All other platforms (macOS, linux/x86-64) use PyPI via normal `uv sync`. Dockerfile mirrors the install-dir path with `TARGETARCH` conditional.
-- ClawHub publish walks the entire repo respecting only `.git/`, `node_modules/`, and `.clawhubignore` — NOT `.gitignore`, `.npmignore`, or `package.json`'s `files` field. Without `.clawhubignore` it would try to upload everything (including `.env`!). The whitelist there mirrors npm's `files`.
-- Graphiti requires LLM API key — starts without one but all operations fail
-- `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway
-- Native `memory_search` empty without embedding provider (upstream bug)
-- **graphiti-core search doesn't route:** `add_episode()` clones driver per `group_id`, `search()` doesn't. Fix: `_ensure_driver_graph()`. `FalkorDriver.__init__()` fires index build on every clone (noisy but caught). Both operations are serialized under `_driver_lock` to prevent concurrent driver mutations from clobbering each other.
-- **Plugin tools blocked by tool profiles:** `coding` profile allowlists core tools only. Plugin tools (`memory_add`, `memory_build_indices`, `memory_build_communities`) are filtered out. Workaround: `"alsoAllow": ["memory_add", "memory_build_indices", "memory_build_communities"]` or `"alsoAllow": ["gralkor"]` in `tools` config.
+- `falkordblite` installs as Python module `redislite`, not `falkordblite`.
+- `falkordblite` 0.9.0 arm64: PyPI wheel requires `manylinux_2_39` (glibc 2.39+); Bookworm ships 2.36, so `uv sync` falls back to the sdist which embeds x86-64 binaries → `RedisLiteServerStartError`. Fix: prebuilt wheel via `build-arm64-wheel.sh`, resolved by `resolveBundledWheels()` (see Server Manager Lifecycle). `FalkorDriver.__init__()` fires index build on every clone (noisy but caught).
+- Graphiti requires an LLM API key — server starts without one but all operations fail.
+- `AbortError` in auto-capture — from Node HTTP layer (connection reset/SIGTERM), not gateway.
+- Native `memory_search` empty without embedding provider (upstream bug).
+- **Plugin tools blocked by tool profiles:** `coding` profile allowlists core tools only. Workaround: `"alsoAllow": ["gralkor"]` (or list tools individually) in `tools` config.
 
