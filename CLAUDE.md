@@ -64,12 +64,12 @@ Behavioural spec lives in the Recall/Capture/Tools test trees; pipeline order su
 
 ### Server Manager Lifecycle
 
-(See the Startup and `bundled-wheel-arch-selection` test trees.)
+Service `gralkor-server` in `src/server-manager.ts`. See Startup and `bundled-wheel-arch-selection` test trees for behaviour.
 
-- Service `gralkor-server` lives in `src/server-manager.ts`. On `linux/arm64`: `resolveBundledWheels(serverDir, dataDir, version)` returns `${serverDir}/wheels/*.whl` (npm install path) else downloads from `github.com/elimydlarz/gralkor/releases/v${version}/` into `${dataDir}/wheels/` (ClawHub install path — wheel exceeds ClawHub's 20 MB upload limit). Then `uv sync --no-dev --frozen --no-install-package falkordblite` and `uv pip install --no-deps` the resolved wheel with `VIRTUAL_ENV` set. All other platforms: plain `uv sync --no-dev --frozen` (PyPI handles falkordblite correctly).
-- API keys come from `config.*ApiKey` strings via `buildSecretEnv()` in `register.ts` — synchronous, no `process.env` reads.
-- Pre-spawn: read `server.pid` from `dataDir`, SIGTERM the prior pid, poll until port is free (≤10s). Spawn uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`. Poll `/health` 500ms (120s timeout), then 60s monitor. Healthy → `serverReady.resolve()`. SIGTERM → 5s → SIGKILL. `stop()` deletes `server.pid`. First start ~1–2 min.
-- **Service self-start** (`registerServerService` in `src/register.ts`): self-starts `manager.start()` fire-and-forget at registration time — bypasses a host bug where memory-kind plugins are excluded from the gateway startup scope. Manager cached at module level (`serverManager` in `src/index.ts`); after a host module re-evaluation, the pre-flight health check in `manager.start()` detects an already-running server and skips the spawn.
+- **Install**: on `linux/arm64` → `resolveBundledWheels(serverDir, dataDir, version)` tries `${serverDir}/wheels/*.whl` (npm path) else downloads from `github.com/elimydlarz/gralkor/releases/v${version}/` into `${dataDir}/wheels/` (ClawHub path; wheel exceeds ClawHub's 20 MB upload limit). Then `uv sync --no-dev --frozen --no-install-package falkordblite` + `uv pip install --no-deps` the resolved wheel. Other platforms: plain `uv sync --no-dev --frozen`.
+- **Secrets**: `buildSecretEnv()` in `register.ts` maps `config.*ApiKey` strings to env vars — synchronous, no `process.env` reads.
+- **Spawn**: read `server.pid` → SIGTERM prior pid → poll port free (≤10s) → uvicorn on `127.0.0.1:8001` with `CONFIG_PATH`/`FALKORDB_DATA_DIR`. Health poll 500ms (120s timeout), then 60s monitor. Healthy → `serverReady.resolve()`. SIGTERM → 5s → SIGKILL. `stop()` deletes `server.pid`. First start ~1–2 min.
+- **Self-start** (`registerServerService`): fire-and-forget `manager.start()` at registration — bypasses a host bug excluding memory-kind plugins from gateway startup scope. Manager cached at module level; pre-flight health check skips spawn if server already running after module re-eval.
 
 ### Communication Path
 
