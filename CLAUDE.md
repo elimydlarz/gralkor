@@ -640,19 +640,7 @@ install-sequencing-docs
 
 ## Repo Map
 
-```
-├── CLAUDE.md / package.json / tsconfig.json / vitest.config.ts
-├── openclaw.plugin.json              # active manifest
-├── src/                              # index.ts (entry), register.ts, tools.ts, hooks.ts,
-│                                     # client.ts, server-manager.ts, native-indexer.ts,
-│                                     # types.ts, config.ts, llm-client.ts, distill.ts,
-│                                     # *.test.ts
-├── scripts/pack.sh                   # deployment tarball
-├── test/integration/                 # mocked integration tests (multi-load, publish)
-├── test/functional/                  # real OpenClaw harness tests (Docker, no mocks)
-├── server/                           # Python/FastAPI: main.py, tests/, wheels/
-└── dist/                             # compiled JS (git-ignored)
-```
+`src/` — `index.ts` (entry), `register.ts`, `tools.ts`, `hooks.ts`, `client.ts`, `server-manager.ts`, `native-indexer.ts`, `distill.ts`, `config.ts`, `llm-client.ts`, `types.ts`, `*.test.ts`. `server/` Python/FastAPI (`main.py`, `tests/`, `wheels/`). `test/integration/` mocked, `test/functional/` Docker harness. `openclaw.plugin.json` is the active manifest.
 
 ## Configuration
 
