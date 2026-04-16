@@ -45,9 +45,7 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 | `agent_end` | `{ messages, success, error, durationMs }` | Fire-and-forget | Fires per agent run (not per session). Gateway doesn't await. |
 | `session_end` | `{ sessionId, sessionKey?, messageCount, durationMs? }` | Fire-and-forget | **No messages payload** — metadata only. Fires when previous session replaced. |
 
-**Other hooks:** `before_model_resolve`, `before_agent_start` (legacy, fires twice), `llm_input`/`llm_output`, `before_compaction`/`after_compaction`, `before_reset` (has `messages`), `message_received`/`message_sending`/`message_sent`, `before_tool_call`/`after_tool_call`, `tool_result_persist`/`before_message_write` (synchronous — no Promise), `session_start`, `subagent_*`, `gateway_*`.
-
-**Message format:** `event.messages[].content` is `{ type, text?, ... }[]`. Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`. Roles: `"user"`, `"assistant"`, `"toolResult"`, `"tool"` (Ollama), `"compactionSummary"`.
+**Message format:** `event.messages[].content` is `{ type, text?, ... }[]`. Types: `"text"`, `"output_text"`, `"thinking"`, `"toolCall"`, `"toolUse"`, `"functionCall"`. Roles: `"user"`, `"assistant"`, `"toolResult"`, `"tool"` (Ollama), `"compactionSummary"`. Other available hooks (not used): `before_model_resolve`, `before_agent_start` (fires twice), `llm_input`/`llm_output`, `before_compaction`/`after_compaction`, `before_reset`, `message_*`, `before_tool_call`/`after_tool_call`, `tool_result_persist`/`before_message_write` (synchronous), `session_start`, `subagent_*`, `gateway_*`.
 
 ### Data Lifecycle
 
