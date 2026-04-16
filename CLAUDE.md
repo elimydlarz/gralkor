@@ -49,10 +49,10 @@ Handlers receive `(event, ctx)`. Agent ctx: `{ agentId?, sessionKey?, sessionId?
 
 ### Data Lifecycle
 
-(Behavioural details live in the Recall, Capture, and Tools test trees below.)
+Behavioural spec lives in the Recall/Capture/Tools test trees; pipeline order summarised here.
 
-- **Auto-recall** (`before_prompt_build`): `extractInjectQuery` → register session in `groupIdBySession` (`setSessionData`) and `messagesBySession` (`setSessionMessages`) → fast-mode `client.search()` → `interpretFacts()` (shared helper, ~250K token budget, oldest dropped first; no fallback if `llmClient` is missing) → returns `<gralkor-memory trust="untrusted">` with `Session-key:` injected.
-- **Auto-capture** (`agent_end` → `DebouncedFlush` keyed by `sessionKey || agentId || "default"` → `session_end` force-flush): `extractMessagesFromCtx` cleans messages, `formatTranscript(messages, llmClient)` (in `src/distill.ts`) groups thinking/`tool_use`/`tool_result` per turn and, for each turn that has any, builds a distill input containing the user message, the behaviour blocks, and the agent's eventual response (the surrounding context anchors the LLM so it doesn't free-associate from filenames or invent topics), then distils into a first-person `(behaviour: …)` line, then `client.ingestEpisode({ episode_body })`.
+- **Auto-recall** (`before_prompt_build`): `extractInjectQuery` → `setSessionData` + `setSessionMessages` → fast `client.search()` → `interpretFacts()` (shared; ~250K token budget, oldest dropped first; throws if `llmClient` missing) → `<gralkor-memory trust="untrusted">` with `Session-key:`.
+- **Auto-capture** (`agent_end` → `DebouncedFlush` keyed by `sessionKey || agentId || "default"`; force-flushed by `session_end`): `extractMessagesFromCtx` → `formatTranscript` (`src/distill.ts`) groups thinking/`tool_use`/`tool_result` per turn, distil input includes user message + behaviour blocks + agent response (anchors the small LLM against free-associating from filenames) → first-person `(behaviour: …)` line → `client.ingestEpisode`.
 - **Flush retries**: 3× exponential (1s/2s/4s), 4xx not retried. SIGTERM → `flushAll()` once via module guard.
 
 ### Graph Partitioning
