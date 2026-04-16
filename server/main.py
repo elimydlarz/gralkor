@@ -470,7 +470,6 @@ async def add_episode(req: AddEpisodeRequest):
 
     logger.info("[gralkor] add-episode — group:%s name:%s bodyChars:%d source:%s",
                 req.group_id, req.name, len(req.episode_body), req.source or "message")
-    logger.debug("[gralkor] add-episode body:\n%s", req.episode_body)
     ref_time = (
         datetime.fromisoformat(req.reference_time)
         if req.reference_time
