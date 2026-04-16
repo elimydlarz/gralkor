@@ -624,19 +624,19 @@ install-sequencing-docs
 
 | Requirement | Implementation |
 |---|---|
-| fail-fast | `ReadyGate` (module-level `src/config.ts`): before ready → throw. Graph failures propagate. |
-| observability | Two-tier `[gralkor]` logging. Config logged once (`configLogged` flag). Normal: metadata. Test: full data. `[gralkor] boot:` markers: `register()` logs `boot: plugin loaded (v...)` on first call, `boot: register() failed:` on error; server-manager logs `boot: starting/ready`; health poll logs unique errors and attempt count; self-start logs success/failure. |
-| retry-backoff | Client: 2 retries (500ms/1s) network/5xx. Flush: 3 retries (1s/2s/4s). 4xx not retried (except 429 — see rate-limit-passthrough). |
-| rate-limit-passthrough | Middleware: `RateLimitError` → 429 + `Retry-After` header. Client retries 429s indefinitely (guided by `Retry-After`), independent of 5xx retry budget. |
-| downstream-error-handling | Middleware: provider errors with HTTP status codes are mapped to structured responses. 400 (non-credential) / 404 / 422 → 500 `{"error":"provider error"}`; 400 (credential hint, e.g. Gemini expired key) / 401 / 403 → 503; 4xx (other) / 5xx → 502. Errors without a status code propagate as 500. |
-| untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML |
-| health-monitoring | 60s ping on child process |
-| capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` + `SYSTEM_MESSAGE_MULTILINE_PATTERNS` in `src/hooks.ts`. `stripGralkorMemoryXml()` shared across all roles. User: unwrap metadata → early-out multi-line templates → strip XML/footer → filter system lines. Assistant: strip XML → per-block `isSystemMessage()`. ToolResult/tool: strip XML → truncate. `"tool"` = `"toolResult"`. |
-| prompt-robustness | `extractInjectQuery` reads trailing user messages from `event.messages` (ignores `event.prompt`); each cleaned via `cleanUserMessageText` |
-| query-sanitization | `_sanitize_query()` strips backticks (RediSearch). `sanitizeGroupId()` replaces hyphens with underscores in group IDs to avoid RediSearch syntax errors. |
-| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for linux/arm64 via Docker; called by `pack.sh`, `publish-npm.sh`, and `publish-clawhub.sh`. Wheel is shipped two ways: (a) bundled inside the npm tarball under `server/wheels/`; (b) uploaded as a GitHub Release asset by `publish-clawhub.sh` (`gh release upload v${version}`) and downloaded on first start by `resolveBundledWheels()` because it exceeds ClawHub's 20 MB package upload limit. Only activated on `linux/arm64` at runtime — other platforms use PyPI via `uv sync` |
-| configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`, OpenAI key present → `OpenAIRerankerClient`, otherwise `None`). |
-| episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime) |
+| fail-fast | `ReadyGate` (module-level, `src/config.ts`): before ready → throw. Graph failures propagate. |
+| observability | Two-tier `[gralkor]` logging. Config logged once. Normal: metadata. Test: full data. `[gralkor] boot:` markers: `register()` logs `boot: plugin loaded (v...)` / `boot: register() failed:`; server-manager logs `boot: starting/ready`; health poll logs unique errors + attempt count; self-start logs outcome. |
+| retry-backoff | Client: 2 retries (500ms/1s) network/5xx. Flush: 3 retries (1s/2s/4s). 4xx not retried (except 429). |
+| rate-limit-passthrough | Middleware: `RateLimitError` → 429 + `Retry-After`. Client retries 429s indefinitely (guided by `Retry-After`), independent of 5xx budget. |
+| downstream-error-handling | Middleware maps provider HTTP status: 400 (non-credential) / 404 / 422 → 500; 400 (credential hint, e.g. Gemini expired key) / 401 / 403 → 503; other 4xx / 5xx → 502; no status → 500. |
+| untrusted-context | Facts in `<gralkor-memory trust="untrusted">` XML. |
+| health-monitoring | 60s ping on child process. |
+| capture-hygiene | `SYSTEM_MESSAGE_PATTERNS` + `SYSTEM_MESSAGE_MULTILINE_PATTERNS` in `src/hooks.ts`. `stripGralkorMemoryXml()` shared across all roles. User: unwrap metadata → multi-line early-out → strip XML/footer → filter system lines. Assistant: strip XML → per-block `isSystemMessage`. ToolResult/tool: strip XML → truncate. `"tool"` = `"toolResult"`. |
+| prompt-robustness | `extractInjectQuery` reads trailing user messages from `event.messages` (ignores `event.prompt`); each cleaned via `cleanUserMessageText`. |
+| query-sanitization | `_sanitize_query()` strips backticks (RediSearch). `sanitizeGroupId()` replaces hyphens with underscores to avoid RediSearch syntax errors. |
+| bundled-arm64-wheel | `scripts/build-arm64-wheel.sh` builds falkordblite for `linux/arm64` via Docker (called by `pack.sh`, `publish-npm.sh`, `publish-clawhub.sh`). Shipped two ways: (a) bundled in npm tarball under `server/wheels/`; (b) uploaded as a GH Release asset by `publish-clawhub.sh` and fetched on first start by `resolveBundledWheels()` (exceeds ClawHub's 20 MB limit). Only active on `linux/arm64`. |
+| configurable-providers | `llm`/`embedder`/`cross_encoder` in config; dynamic `config.yaml` at startup. `_build_cross_encoder()` matches reranker to LLM provider (Gemini → `GeminiRerankerClient`; else OpenAI key → `OpenAIRerankerClient`; else `None`). |
+| episode-idempotency | UUID per call; server deduplicates (in-memory, process lifetime). |
 
 ## Repo Map
 
