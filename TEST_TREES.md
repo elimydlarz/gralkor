@@ -469,8 +469,12 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then Gralkor.Config.write_yaml writes config.yaml at $GRALKOR_DATA_DIR/config.yaml
       then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
       then env vars are forwarded: AUTH_TOKEN, GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
-      then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or 120s timeout
-      then raises when the 120s deadline passes
+      then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or the configured boot_timeout_ms (default 120_000)
+    when the deadline passes with no healthy response
+      then stops with {:boot_failed, :boot_timeout} (supervisor restart)
+    when the spawned port exits during boot
+      then the boot loop peeks the mailbox each iteration and fails fast
+      then stops with {:boot_failed, :port_exited} (no full-timeout wait)
     when boot succeeds
       then health monitor is scheduled at 60s
   health monitor
