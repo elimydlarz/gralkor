@@ -120,12 +120,26 @@ defmodule Gralkor.Server do
   # ── Internals ───────────────────────────────────────────
 
   defp spawn_python(%Config{} = config, opts) do
-    uv_path =
-      Keyword.get_lazy(opts, :uv_path, fn ->
+    executable =
+      Keyword.get_lazy(opts, :executable, fn ->
         System.find_executable("uv") || raise "uv not on PATH"
       end)
 
-    args = [
+    args = Keyword.get_lazy(opts, :executable_args, fn -> default_uvicorn_args() end)
+
+    port_opts = [
+      :binary,
+      :exit_status,
+      {:args, args},
+      {:cd, config.server_dir},
+      {:env, build_env(config)}
+    ]
+
+    Port.open({:spawn_executable, executable}, port_opts)
+  end
+
+  defp default_uvicorn_args do
+    [
       "run",
       "uvicorn",
       "main:app",
@@ -136,16 +150,6 @@ defmodule Gralkor.Server do
       "--timeout-graceful-shutdown",
       "30"
     ]
-
-    port_opts = [
-      :binary,
-      :exit_status,
-      {:args, args},
-      {:cd, config.server_dir},
-      {:env, build_env(config)}
-    ]
-
-    Port.open({:spawn_executable, uv_path}, port_opts)
   end
 
   defp build_env(%Config{} = config) do
