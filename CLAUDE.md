@@ -125,6 +125,8 @@ Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md). Tests in `sr
 
 New server-side trees landed in Phase A (Gralkor ↔ Jido interface, see `GRALKOR_JIDO_INTERFACE.md` in Susu2): `POST /recall endpoint`, `POST /distill endpoint`, `POST /capture endpoint`, `capture-buffer (Python)`, `format-transcript (Python)`, `interpret-facts (Python)`, `message-clean (Python)`, `POST /tools/memory_search endpoint`, `POST /tools/memory_add endpoint`, `auth`.
 
+Elixir supervisor trees (Phase B) in the Startup section: `ex-server-lifecycle`, `ex-config-writing`. Test files: `ex/test/gralkor/{server_test.exs, config_test.exs}`. Run via `mix test.unit` and `mix test.integration` from `ex/`.
+
 ### Cross-functional
 
 | Requirement | Implementation |
