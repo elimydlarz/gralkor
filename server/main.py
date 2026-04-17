@@ -358,6 +358,46 @@ async def rate_limit_middleware(request, call_next):
         raise
 
 
+# ── Auth ─────────────────────────────────────────────────────
+
+
+def require_auth(authorization: str | None = Header(default=None)) -> None:
+    expected = os.environ.get("AUTH_TOKEN")
+    if expected is None:
+        return
+    if authorization is None or not authorization.startswith("Bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "missing bearer token")
+    if authorization[len("Bearer "):] != expected:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token")
+
+
+# ── Capture buffer ───────────────────────────────────────────
+
+CAPTURE_IDLE_SECONDS_DEFAULT = 300.0
+capture_buffer: CaptureBuffer | None = None
+
+
+async def _capture_flush(group_id: str, turns: list[Turn]) -> None:
+    if graphiti is None:
+        return
+    messages = turns_to_episode_messages(turns)
+    episode_body = await format_transcript(messages, graphiti.llm_client)
+    if not episode_body.strip():
+        return
+    async with _driver_lock:
+        await graphiti.add_episode(
+            name=f"conversation-{int(time.time() * 1000)}",
+            episode_body=episode_body,
+            source_description="auto-capture",
+            group_id=_sanitize_group_id(group_id),
+            reference_time=datetime.now(timezone.utc),
+            source=EpisodeType.message,
+            entity_types=ontology_entity_types,
+            edge_types=ontology_edge_types,
+            edge_type_map=ontology_edge_type_map,
+        )
+
+
 # ── Idempotency store ────────────────────────────────────────
 
 # In-memory store: idempotency_key -> serialized_episode
