@@ -1,0 +1,26 @@
+services:
+  gralkor:
+    build:
+      context: .
+      dockerfile: ex/Dockerfile
+    environment:
+      GRALKOR_DATA_DIR: /data
+      GRALKOR_AUTH_TOKEN: ${GRALKOR_AUTH_TOKEN:-dev-token}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    volumes:
+      - gralkor-data:/data
+    ports:
+      - "4000:4000"
+    stop_grace_period: 35s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:4000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 60s
+
+volumes:
+  gralkor-data:
