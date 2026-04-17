@@ -60,7 +60,7 @@ extractInjectQuery
   when trailing user messages are separated by no non-user messages
     then all are included (drip messages)
   when a non-user message appears between user messages
-    then only user messages after the last non-user message are included
+    then only user messages after the last non-user member is included
   when a user message is empty after cleaning
     then it is skipped (not included in the query)
   when all trailing user messages are empty after cleaning
@@ -69,6 +69,80 @@ extractInjectQuery
     then returns null
   when messages array has no user messages
     then returns null
+POST /recall endpoint
+  request shape
+    then body is {group_id, query, conversation_messages: [{role, text}], max_results}
+    then requires bearer auth
+    then group_id is sanitized (hyphens → underscores) before use
+    then driver is routed to target graph (_ensure_driver_graph) before search
+  when graph returns no facts
+    then response is {"memory_block": ""} (empty string, not null)
+    and interpret is not called
+  when graph returns facts
+    then fast mode search is used (graphiti.search, edges only, RRF)
+    and facts are formatted via format_fact
+    and interpret_facts is called with cleaned conversation_messages and formatted facts
+    and response wraps output in <gralkor-memory trust="untrusted">...</gralkor-memory>
+    and response includes "Facts:" section with formatted facts
+    and response includes "Interpretation:" section with LLM output
+    and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
+  when conversation_messages contain <gralkor-memory> XML
+    then XML is stripped via strip_gralkor_memory_xml before interpret_facts runs
+  when search is called concurrently for different group_ids
+    then _driver_lock serializes the calls
+  when autoRecall.maxResults config is set
+    then at most that many facts are returned (default 10)
+interpret-facts (Python)
+  when llm_client is None
+    then raises (fail-fast; no fallback)
+  when llm_client returns empty or whitespace response
+    then raises
+  when conversation history fits within token budget
+    then all messages passed to LLM with formatted facts
+  when conversation history exceeds token budget (250_000 chars)
+    then oldest messages are dropped until context fits
+    and most recent messages are always preserved
+  then uses INTERPRET_SYSTEM_PROMPT
+  then passes response_model with a single "text" field to generate_response
+  then returns the trimmed .text field from the response dict
+message-clean (Python)
+  strip_gralkor_memory_xml
+    when text contains <gralkor-memory>...</gralkor-memory>
+      then block is removed (including nested content)
+    when text has no gralkor-memory block
+      then text is returned unchanged
+    when text has multiple gralkor-memory blocks
+      then all are removed
+  SYSTEM_MESSAGE_PATTERNS (is_system_line)
+    then matches "A new session was started..."
+    then matches "Current time:..." (case insensitive)
+    then matches "✅ New session started..." (with or without emoji)
+    then matches "System: [timestamp] ..." event lines
+    then matches "[User sent media without caption]"
+  SYSTEM_MESSAGE_MULTILINE_PATTERNS
+    then matches file-naming slug prompt ("Based on this conversation, generate a short N-N word filename slug...Reply with ONLY the slug")
+  clean_user_message_text
+    when message matches a SYSTEM_MESSAGE_MULTILINE_PATTERNS entry
+      then returns empty string (message dropped) — early-out
+    when message contains "(untrusted metadata)" block
+      then block stripped, surrounding user content preserved
+    when message contains "(untrusted, for context)" reply-context block
+      then block stripped, surrounding user content preserved
+    when message contains <gralkor-memory> XML
+      then XML removed via strip_gralkor_memory_xml
+    when message contains "Untrusted context (metadata...)" footer block
+      then entire footer block stripped
+    when message contains system lines mixed with user content
+      then system lines stripped per-line via is_system_line
+      and real user content preserved
+    when message is entirely system content
+      then returns empty string
+  build_interpretation_context
+    then cleans each message via clean_user_message_text
+    then drops messages with empty cleaned text
+    then assembles context as "Conversation context:\n{messages}\n\nMemory facts:\n{facts}"
+    when total char length exceeds budget
+      then oldest messages are dropped until context fits
 ```
 
 ## Capture
