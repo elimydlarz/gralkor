@@ -552,7 +552,30 @@ def _serialize_episode(ep: EpisodicNode) -> dict[str, Any]:
 logger = logging.getLogger(__name__)
 
 
-@app.get("/health")
+public_router = APIRouter()
+protected_router = APIRouter(dependencies=[Depends(require_auth)])
+
+
+def _turn_body_to_turn(body: TurnBody) -> Turn:
+    return Turn(
+        user_query=body.user_query,
+        events=[TurnEvent(kind=e.kind, text=e.text) for e in body.events],
+        assistant_answer=body.assistant_answer,
+    )
+
+
+def _to_conversation_messages(
+    msgs: list[ConversationMessageBody],
+) -> list[ConversationMessage]:
+    return [ConversationMessage(role=m.role, text=m.text) for m in msgs]
+
+
+FURTHER_QUERYING_INSTRUCTION = (
+    "Search memory (up to 3 times, diverse queries) if you need more detail."
+)
+
+
+@public_router.get("/health")
 async def health():
     result: dict = {"status": "ok"}
 
