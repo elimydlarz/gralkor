@@ -156,12 +156,13 @@ class TestBuildInterpretationContext:
 
     def test_drops_oldest_when_over_budget(self):
         msgs = [
-            ConversationMessage(role="user", text="OLD" * 50),
+            ConversationMessage(role="user", text="OLDEST"),
+            ConversationMessage(role="user", text="MIDDLE"),
             ConversationMessage(role="user", text="RECENT"),
         ]
-        ctx = build_interpretation_context(msgs, "", char_budget=20)
+        ctx = build_interpretation_context(msgs, "", char_budget=8)
         assert "RECENT" in ctx
-        assert "OLD" not in ctx
+        assert "OLDEST" not in ctx
 
     def test_assembles_in_original_order(self):
         msgs = [
