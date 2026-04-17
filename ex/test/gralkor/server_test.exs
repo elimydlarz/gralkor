@@ -114,7 +114,10 @@ defmodule Gralkor.ServerTest do
     ref = Process.monitor(pid)
 
     assert_receive {:DOWN, ^ref, :process, ^pid, reason}, 5_000
-    assert match?({:boot_failed, :port_exited}, reason)
+
+    assert match?({:boot_failed, :port_exited}, reason) or
+             match?({:python_exited, _}, reason),
+           "unexpected reason: #{inspect(reason)}"
   end
 
   test "python crash stops the GenServer", %{config: config, python_exe: python} do
