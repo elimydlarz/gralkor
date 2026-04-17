@@ -10,6 +10,10 @@ defmodule Gralkor.MixProject do
       deps: deps(),
       releases: releases(),
       aliases: aliases(),
+      preferred_cli_env: [
+        "test.unit": :test,
+        "test.integration": :test
+      ],
       test_coverage: [summary: [threshold: 0]]
     ]
   end
