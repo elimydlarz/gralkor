@@ -112,6 +112,8 @@ Endpoints added in `main.py`:
 
 Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md). Tests in `src/*.test.ts`, `test/integration/`, `test/functional/`, and `server/tests/` mirror them one-to-one. Sections: Recall, Capture, Tools, Startup, Configuration, Operations, Functional Journey, Distribution.
 
+New server-side trees landed in Phase A (Gralkor ↔ Jido interface, see `GRALKOR_JIDO_INTERFACE.md` in Susu2): `POST /recall endpoint`, `POST /distill endpoint`, `POST /capture endpoint`, `capture-buffer (Python)`, `format-transcript (Python)`, `interpret-facts (Python)`, `message-clean (Python)`, `POST /tools/memory_search endpoint`, `POST /tools/memory_add endpoint`, `auth`.
+
 ### Cross-functional
 
 | Requirement | Implementation |
