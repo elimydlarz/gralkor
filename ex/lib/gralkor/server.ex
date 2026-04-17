@@ -170,23 +170,39 @@ defmodule Gralkor.Server do
     base ++ forwarded
   end
 
-  defp wait_for_health(url, timeout_ms) do
+  defp wait_for_health(url, port, timeout_ms) do
     deadline = System.monotonic_time(:millisecond) + timeout_ms
-    do_wait_for_health(url, deadline)
+    do_wait_for_health(url, port, deadline)
   end
 
-  defp do_wait_for_health(url, deadline) do
-    case Health.check(url) do
-      :ok ->
+  defp do_wait_for_health(url, port, deadline) do
+    cond do
+      port_exited?(port) ->
+        {:error, :port_exited}
+
+      match?(:ok, Health.check(url)) ->
         :ok
 
-      {:error, reason} ->
-        if System.monotonic_time(:millisecond) >= deadline do
-          {:error, {:boot_timeout, reason}}
-        else
-          Process.sleep(@health_poll_interval_ms)
-          do_wait_for_health(url, deadline)
-        end
+      System.monotonic_time(:millisecond) >= deadline ->
+        {:error, :boot_timeout}
+
+      true ->
+        Process.sleep(@health_poll_interval_ms)
+        do_wait_for_health(url, port, deadline)
+    end
+  end
+
+  defp port_exited?(port) do
+    receive do
+      {^port, {:exit_status, _}} = msg ->
+        send(self(), msg)
+        true
+
+      {:EXIT, ^port, _} = msg ->
+        send(self(), msg)
+        true
+    after
+      0 -> false
     end
   end
 
