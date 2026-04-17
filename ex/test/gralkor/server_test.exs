@@ -97,7 +97,7 @@ defmodule Gralkor.ServerTest do
     refute os_process_alive?(os_pid)
   end
 
-  test "boot fails when server does not respond", %{config: config, python_exe: _python} do
+  test "boot fails fast when the spawned process exits immediately", %{config: config} do
     name = unique_name()
 
     Process.flag(:trap_exit, true)
@@ -107,16 +107,16 @@ defmodule Gralkor.ServerTest do
         name: name,
         config: config,
         executable: "/bin/true",
-        executable_args: []
+        executable_args: [],
+        boot_timeout_ms: 5_000
       )
 
     ref = Process.monitor(pid)
 
-    assert_receive {:DOWN, ^ref, :process, ^pid, reason}, 200_000
-    assert match?({:boot_failed, _}, reason) or match?({:python_exited, _}, reason)
+    assert_receive {:DOWN, ^ref, :process, ^pid, reason}, 5_000
+    assert match?({:boot_failed, :port_exited}, reason)
   end
 
-  @tag timeout: 200_000
   test "python crash stops the GenServer", %{config: config, python_exe: python} do
     name = unique_name()
 
