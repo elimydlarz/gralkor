@@ -736,13 +736,13 @@ async def search(req: SearchRequest):
 
 
 
-@app.post("/build-indices")
+@protected_router.post("/build-indices")
 async def build_indices():
     await graphiti.build_indices_and_constraints()
     return {"status": "ok"}
 
 
-@app.post("/build-communities")
+@protected_router.post("/build-communities")
 async def build_communities(req: GroupIdRequest):
     gid = _sanitize_group_id(req.group_id)
     async with _driver_lock:
@@ -751,3 +751,103 @@ async def build_communities(req: GroupIdRequest):
             group_ids=[gid],
         )
     return {"communities": len(communities), "edges": len(edges)}
+
+
+# ── New endpoints ────────────────────────────────────────────
+
+
+@protected_router.post("/recall", response_model=RecallResponse)
+async def recall(req: RecallRequest) -> RecallResponse:
+    sanitized = _sanitize_group_id(req.group_id)
+    conversation = _to_conversation_messages(req.conversation_messages)
+
+    async with _driver_lock:
+        _ensure_driver_graph([sanitized])
+        edges = await graphiti.search(
+            query=_sanitize_query(req.query),
+            group_ids=[sanitized],
+            num_results=req.max_results,
+        )
+
+    facts = [_serialize_fact(e) for e in edges]
+    if not facts:
+        return RecallResponse(memory_block="")
+
+    facts_text = "\n".join(format_fact(f) for f in facts)
+    interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
+
+    block = (
+        '<gralkor-memory trust="untrusted">\n'
+        f"Facts:\n{facts_text}\n\n"
+        f"Interpretation:\n{interpretation}\n\n"
+        f"{FURTHER_QUERYING_INSTRUCTION}\n"
+        "</gralkor-memory>"
+    )
+    return RecallResponse(memory_block=block)
+
+
+@protected_router.post("/distill", response_model=DistillResponse)
+async def distill(req: DistillRequest) -> DistillResponse:
+    turns = [_turn_body_to_turn(t) for t in req.turns]
+    messages = turns_to_episode_messages(turns)
+    episode_body = await format_transcript(messages, graphiti.llm_client if graphiti else None)
+    return DistillResponse(episode_body=episode_body)
+
+
+@protected_router.post("/capture", status_code=status.HTTP_204_NO_CONTENT)
+async def capture(req: CaptureRequest) -> Response:
+    if capture_buffer is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
+    capture_buffer.append(_sanitize_group_id(req.group_id), _turn_body_to_turn(req.turn))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@protected_router.post("/tools/memory_search", response_model=MemorySearchResponse)
+async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
+    sanitized = _sanitize_group_id(req.group_id)
+    conversation = _to_conversation_messages(req.conversation_messages)
+
+    async with _driver_lock:
+        _ensure_driver_graph([sanitized])
+        config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
+        config.limit = req.max_results
+        search_result = await graphiti.search_(
+            query=_sanitize_query(req.query),
+            group_ids=[sanitized],
+            config=config,
+        )
+
+    facts = [_serialize_fact(e) for e in search_result.edges]
+    nodes = [_serialize_node(n) for n in search_result.nodes[: req.max_entity_results]]
+
+    if not facts and not nodes:
+        return MemorySearchResponse(text="Facts: (none)\nEntities: (none)")
+
+    facts_section = "Facts:\n" + ("\n".join(format_fact(f) for f in facts) if facts else "(none)")
+    entities_section = "Entities:\n" + (
+        "\n".join(format_node(n) for n in nodes) if nodes else "(none)"
+    )
+    facts_text = facts_section + "\n\n" + entities_section
+    interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
+    return MemorySearchResponse(text=f"{facts_text}\n\nInterpretation:\n{interpretation}")
+
+
+@protected_router.post("/tools/memory_add", response_model=MemoryAddResponse)
+async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
+    async with _driver_lock:
+        await graphiti.add_episode(
+            name=f"manual-add-{int(time.time() * 1000)}",
+            episode_body=req.content,
+            source_description=req.source_description,
+            group_id=_sanitize_group_id(req.group_id),
+            reference_time=datetime.now(timezone.utc),
+            source=EpisodeType.text,
+            entity_types=ontology_entity_types,
+            edge_types=ontology_edge_types,
+            edge_type_map=ontology_edge_type_map,
+        )
+    return MemoryAddResponse(status="stored")
+
+
+app.include_router(public_router)
+app.include_router(protected_router)
