@@ -687,7 +687,7 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
             logger.warning("[gralkor] driver graph routing failed for %s: %s", target, e)
 
 
-@app.post("/search")
+@protected_router.post("/search")
 async def search(req: SearchRequest):
     # Sanitize group IDs: hyphens cause RediSearch syntax errors in graphiti-core.
     sanitized = [_sanitize_group_id(g) for g in req.group_ids]
