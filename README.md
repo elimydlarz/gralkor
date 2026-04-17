@@ -65,6 +65,27 @@ Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perh
 - Hooks: auto-capture (stores full multi-turn conversations after each agent run), auto-recall (injects relevant facts before the agent responds)
 - Set up: `plugins.slots.memory = "gralkor"` in `openclaw.json`
 
+## Using Gralkor from a Jido (Elixir) agent
+
+Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness-agnostic HTTP API so Elixir/Jido agents can use it too. The Elixir supervisor in `ex/` runs Gralkor as a managed subprocess either embedded in your Jido app's supervision tree (dev) or as a standalone container (production).
+
+**HTTP endpoints** (all require `Authorization: Bearer <AUTH_TOKEN>` unless `AUTH_TOKEN` is unset):
+
+- `POST /recall` — before-prompt auto-recall
+- `POST /capture` — fire-and-forget turn capture (server buffers, distils, ingests on idle)
+- `POST /tools/memory_search`, `POST /tools/memory_add` — consumer-facing tools
+- `POST /distill` — standalone distillation (for clients that want raw distill access)
+- Existing: `POST /episodes`, `POST /search`, `GET /health`
+
+**Quick Docker run:**
+
+```bash
+GRALKOR_AUTH_TOKEN=... GOOGLE_API_KEY=... docker compose -f docker-compose.dev.yml up
+curl http://localhost:4000/health
+```
+
+**Embedded in a Jido app** — add Gralkor as a dependency and supervise `Gralkor.Server`; the GenServer spawns uvicorn, polls `/health`, and handles graceful shutdown. See `ex/` for the implementation.
+
 ## Quick Start
 
 ### 1. Prerequisites
