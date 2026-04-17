@@ -272,7 +272,13 @@ async def lifespan(_app: FastAPI):
         edge_names = list(ontology_edge_types or {})
         print(f"[gralkor] ontology: entities={entity_names} edges={edge_names}", flush=True)
 
+    global capture_buffer
+    idle_seconds = float(cfg.get("capture", {}).get("idle_seconds", CAPTURE_IDLE_SECONDS_DEFAULT))
+    capture_buffer = CaptureBuffer(idle_seconds=idle_seconds, flush_callback=_capture_flush)
+
     yield
+
+    await capture_buffer.flush_all()
     await graphiti.close()
 
 
