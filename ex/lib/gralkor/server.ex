@@ -59,8 +59,9 @@ defmodule Gralkor.Server do
 
     port = spawn_python(state.config, state.opts)
     {:os_pid, os_pid} = Port.info(port, :os_pid)
+    boot_timeout_ms = Keyword.get(state.opts, :boot_timeout_ms, @default_boot_timeout_ms)
 
-    case wait_for_health(state.config.server_url, @boot_timeout_ms) do
+    case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
       :ok ->
         Process.send_after(self(), :health_check, @monitor_interval_ms)
         {:noreply, %{state | port: port, os_pid: os_pid}}
