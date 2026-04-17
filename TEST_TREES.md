@@ -386,6 +386,41 @@ memory_build_communities tool
     then throws error (does not route to default group)
   when server is not ready
     then throws error
+POST /tools/memory_search endpoint
+  request shape
+    then body is {group_id, query, conversation_messages, max_results, max_entity_results}
+    then requires bearer auth
+  then group_id is sanitized before use
+  then driver is routed to target graph before search
+  then uses slow mode (graphiti.search_) with COMBINED_HYBRID_SEARCH_CROSS_ENCODER
+  then returns {"text": string}
+  when graph returns facts and entities
+    then response contains "Facts:" section (formatted via format_fact)
+    and response contains "Entities:" section (formatted via format_node)
+    and response contains "Interpretation:" section
+    and response does NOT contain further-querying instruction
+    and interpret_facts is called with cleaned conversation_messages
+  when graph returns no facts and no entities
+    then response is "Facts: (none)\nEntities: (none)"
+    and interpret is NOT called
+  when at most search.maxResults facts are returned (default 20)
+    and at most search.maxEntityResults entities are returned (default 10)
+  when conversation_messages contain <gralkor-memory> XML
+    then XML is stripped before interpret_facts runs
+  when search is called concurrently for different group_ids
+    then _driver_lock serializes the calls
+POST /tools/memory_add endpoint
+  request shape
+    then body is {group_id, content, source_description?}
+    then requires bearer auth
+  then auto-generates name ("manual-add-" + timestamp_ms)
+  then auto-generates idempotency_key (uuid4)
+  then calls graphiti.add_episode with source=EpisodeType.text under _driver_lock
+  then group_id is sanitized before ingestion
+  then passes current ontology (entity_types, edge_types, edge_type_map)
+  then response is {"status": "stored"}
+  when source_description is omitted
+    then defaults to "manual"
 ```
 
 ## Startup
