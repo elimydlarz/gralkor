@@ -106,8 +106,8 @@ defmodule Gralkor.ServerTest do
       Server.start_link(
         name: name,
         config: config,
-        executable: "/bin/true",
-        executable_args: [],
+        executable: "/bin/sh",
+        executable_args: ["-c", "exit 0"],
         boot_timeout_ms: 5_000
       )
 
