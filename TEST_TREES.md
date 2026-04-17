@@ -285,6 +285,88 @@ sigterm-flush
       then flushAll is not called
     when register() is called multiple times
       then only one SIGTERM handler is installed
+POST /distill endpoint
+  request shape
+    then body is {turns: [{user_query, events: [...], assistant_answer}]}
+    then requires bearer auth
+  then events are grouped back into EpisodeMessage[] via turns_to_episode_messages
+  then uses format_transcript pipeline
+  then response is {"episode_body": string}
+  when multiple turns have behaviour blocks
+    then distillation runs in parallel (asyncio.gather)
+  when a single turn's distillation raises
+    then that turn's behaviour is silently dropped (empty string)
+    and surrounding turns still produce output
+  when a turn's user_query contains <gralkor-memory> XML
+    then distilled behaviour does not echo the recalled data
+POST /capture endpoint
+  request shape
+    then body is {group_id, turn: {user_query, events, assistant_answer}}
+    then requires bearer auth
+  then appends turn to capture_buffer keyed by sanitized group_id
+  then returns 204 No Content (no body)
+  then returns immediately (does not call distill synchronously)
+  when idle_seconds elapses after the last append
+    then flush is triggered via the registered callback
+capture-buffer (Python)
+  append
+    when called for a new group_id
+      then entry created with turn
+      and idle timer scheduled
+    when called again for same group_id before idle elapses
+      then idle timer is cancelled and rescheduled
+      and both turns remain buffered
+    when called for multiple group_ids
+      then each group_id has an independent entry and timer
+  flush on idle
+    when idle_seconds elapses
+      then flush_callback is invoked with (group_id, list_of_turns)
+      and the entry is removed from the buffer
+  retry schedule
+    when flush_callback raises a retryable error
+      then retries at 1s, 2s, 4s (exponential)
+    when flush_callback raises after 3 retries
+      then logs "capture exhausted" and drops
+    when flush_callback raises a 4xx-equivalent error
+      then does not retry and logs "capture dropped (4xx)"
+  flush_all
+    when called with pending entries
+      then cancels all idle timers
+      and awaits all pending flushes
+    when called with no entries
+      then returns immediately
+    when one flush fails and another succeeds
+      then the successful flush still completes
+  lifespan shutdown
+    when FastAPI lifespan enters shutdown
+      then capture_buffer.flush_all is awaited
+format-transcript (Python)
+  turns_to_episode_messages
+    then each turn becomes a user message + an assistant message
+    when events contain thinking, tool_use, tool_result blocks
+      then they are attached to the assistant message as behaviour blocks
+    when turn has no events (text-only)
+      then assistant message has only text blocks
+  format_transcript
+    when turn has behaviour blocks and llm_client available
+      then behaviour blocks joined with --- separator
+      and distill input includes user message and assistant response for context
+      and system prompt instructs capturing dead ends and intermediary steps
+      and distilled via llm_client into first-person past-tense summary
+      and rendered as "Assistant: (behaviour: {summary})" before assistant text
+    when behaviour blocks reference recalled memory
+      then distillation describes intent ("consulted memory")
+      and does NOT echo recalled fact content
+    when distillation fails for a turn (safe_distill)
+      then behaviour line silently dropped, assistant text preserved
+    when llm_client is None
+      then behaviour blocks silently omitted, text blocks preserved
+    when turn has only text blocks
+      then rendered as "Assistant: {text}" with no behaviour line
+    user messages
+      then rendered as "User: {text}"
+    then passes response_model with a single "behaviour" field to generate_response
+    then parallel distillation across turns via asyncio.gather
 ```
 
 ## Tools
