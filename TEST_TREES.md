@@ -614,6 +614,20 @@ downstream-error-handling
         then returns 502 with {"error": "provider error", "detail": "<message>"}
       when no recognizable status code
         then propagates as 500
+auth
+  when AUTH_TOKEN env var is unset
+    then all endpoints accept requests without an Authorization header (local-dev bypass)
+  when AUTH_TOKEN env var is set
+    when Authorization header is missing
+      then protected endpoints return 401
+    when Authorization header has a non-Bearer scheme
+      then protected endpoints return 401
+    when Authorization is "Bearer <wrong-token>"
+      then protected endpoints return 401
+    when Authorization is "Bearer <correct-token>"
+      then protected endpoints proceed normally
+    when GET /health is called
+      then /health is exempt (accepts requests with or without auth)
 ```
 
 ## Functional Journey
