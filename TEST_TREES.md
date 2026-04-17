@@ -460,6 +460,53 @@ multi-load resilience
     and no instance has resolved the ReadyGate
       then auto-recall handler throws (fail-fast)
       then memory_add tool throws (fail-fast)
+ex-server-lifecycle (Elixir supervisor in ex/)
+  init
+    when init returns
+      then it never blocks (handle_continue(:boot) runs the slow work)
+  boot sequence
+    when handle_continue(:boot) runs
+      then Gralkor.Config.write_yaml writes config.yaml at $GRALKOR_DATA_DIR/config.yaml
+      then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
+      then env vars are forwarded: AUTH_TOKEN, GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
+      then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or 120s timeout
+      then raises when the 120s deadline passes
+    when boot succeeds
+      then health monitor is scheduled at 60s
+  health monitor
+    when /health check returns 200
+      then reschedules itself at 60s
+    when /health check fails
+      then GenServer stops with {:health_degraded, reason}
+      then supervisor restarts the GenServer (which respawns Python)
+  python crash
+    when Port emits {:exit_status, N}
+      then GenServer stops with {:python_exited, N}
+      then supervisor restarts
+  graceful shutdown
+    when terminate/2 runs with a live port
+      then extracts OS pid via Port.info(port, :os_pid)
+      then sends SIGTERM via System.cmd("kill", ["-TERM", pid])
+      then waits up to 30s for {port, {:exit_status, _}}
+      then sends SIGKILL via System.cmd("kill", ["-KILL", pid]) if still running
+ex-config-writing (Gralkor.Config)
+  from_env
+    when GRALKOR_DATA_DIR is set
+      then data_dir is that value
+    when GRALKOR_DATA_DIR is missing
+      then raises (fail-fast)
+    when GRALKOR_AUTH_TOKEN is missing
+      then raises
+    when llm provider env vars are unset
+      then defaults llm_provider to "gemini"
+  write_yaml
+    then creates data_dir if missing
+    then writes config.yaml with valid YAML that Python's yaml.safe_load parses
+    then top-level keys are "llm" and "embedder"
+    when llm_model is nil
+      then omits the model key under llm
+    when llm_model is set
+      then includes "model: <value>" under llm
 bundled-wheel-arch-selection
   when on linux/arm64 and the install dir (serverDir/wheels) has .whl files
     then resolveBundledWheels returns those paths (no network)
