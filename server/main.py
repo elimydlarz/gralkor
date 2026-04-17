@@ -604,7 +604,7 @@ async def health():
     return result
 
 
-@app.post("/episodes")
+@protected_router.post("/episodes")
 async def add_episode(req: AddEpisodeRequest):
     cached = _idempotency_check(req.idempotency_key)
     if cached is not None:
