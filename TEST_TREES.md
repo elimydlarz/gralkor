@@ -60,7 +60,7 @@ extractInjectQuery
   when trailing user messages are separated by no non-user messages
     then all are included (drip messages)
   when a non-user message appears between user messages
-    then only user messages after the last non-user member is included
+    then only user messages after the last non-user message are included
   when a user message is empty after cleaning
     then it is skipped (not included in the query)
   when all trailing user messages are empty after cleaning
