@@ -80,6 +80,32 @@ Plugin → `GraphitiClient` (`src/client.ts`, HTTP) → REST → FalkorDB.
 - `POST /episodes` carries pre-formatted `episode_body`; server passes verbatim to `graphiti.add_episode()`. UUID per call as `idempotency_key` (in-memory dedup, process lifetime).
 - **Rate-limit passthrough:** middleware → 429 + `Retry-After`; client retries 429s indefinitely (guided by `Retry-After`), independent of the 5xx retry budget. Cancellable via `AbortSignal`.
 
+### Server-side pipelines & endpoints (for thin Jido/Elixir clients)
+
+The Python server hosts shared helpers so any client (TS/OpenClaw, Elixir/Jido, …) is a thin HTTP adapter. Helpers live in `server/pipelines/`:
+
+- `pipelines/formatting.py` — `format_fact`, `format_node`, `format_timestamp`.
+- `pipelines/message_clean.py` — `clean_user_message_text`, `strip_gralkor_memory_xml`, `SYSTEM_MESSAGE_PATTERNS`, `SYSTEM_MESSAGE_MULTILINE_PATTERNS`, `build_interpretation_context` (token-budgeted; oldest dropped first).
+- `pipelines/interpret.py` — `interpret_facts(messages, facts_text, llm_client)`; passes a one-field Pydantic `InterpretResult` as `response_model` so all providers (Gemini/OpenAI/Anthropic/Groq) return `{"text": …}` consistently. Fail-fast on `None` or empty.
+- `pipelines/distill.py` — `format_transcript`, `safe_distill` (returns empty on LLM failure), `turns_to_episode_messages`. Uses `DistillResult` response_model.
+- `pipelines/capture_buffer.py` — asyncio `CaptureBuffer` keyed by `group_id`; `loop.call_later` idle timer, retry schedule 1s/2s/4s (4xx not retried via `CaptureClientError`), `flush_all` drains on lifespan shutdown.
+
+Endpoints added in `main.py`:
+
+| Endpoint | Shape | Notes |
+|---|---|---|
+| `POST /recall` | `{group_id, query, conversation_messages, max_results}` → `{memory_block}` | Fast search → interpret → `<gralkor-memory trust="untrusted">` with further-querying instruction. Empty graph → `{"memory_block": ""}` (not null). |
+| `POST /distill` | `{turns: [{user_query, events, assistant_answer}]}` → `{episode_body}` | Parallel distillation via `asyncio.gather`; silent drop per turn on LLM failure. |
+| `POST /capture` | `{group_id, turn}` → `204` | Appends to `capture_buffer`. Idle flush calls `_capture_flush` → `format_transcript` → `graphiti.add_episode`. |
+| `POST /tools/memory_search` | `{group_id, query, conversation_messages, max_results, max_entity_results}` → `{text}` | Slow search with cross-encoder; `Facts:` + `Entities:` + `Interpretation:`; **no** further-querying instruction. Empty → `"Facts: (none)\nEntities: (none)"` without calling interpret. |
+| `POST /tools/memory_add` | `{group_id, content, source_description?}` → `{"status":"stored"}` | Wraps `/episodes` with `source=EpisodeType.text`; auto-generates `name` + `idempotency_key`. |
+
+**Auth:** bearer token via `AUTH_TOKEN` env. `require_auth` dependency applied via `protected_router`; `public_router` carries only `GET /health`. Unset `AUTH_TOKEN` bypasses all checks (local-dev and TS-plugin-spawn compatibility).
+
+**Graceful shutdown:** lifespan awaits `capture_buffer.flush_all()` before `graphiti.close()`. Uvicorn must be launched with `--timeout-graceful-shutdown 30` so pending flushes complete before SIGKILL.
+
+**LLM provider note:** only Gemini's `generate_response(..., response_model=None)` returns `{"content": raw}`; OpenAI/Anthropic/Groq all coerce output to JSON/tool-use. Pass a Pydantic `response_model` to stay portable — see `pipelines/interpret.py` and `pipelines/distill.py`.
+
 ## Requirements
 
 ### Functional
