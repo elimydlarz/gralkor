@@ -126,11 +126,19 @@ def mock_graphiti():
 async def client(mock_graphiti):
     """Async HTTP client wired to the real FastAPI app with mocked Graphiti."""
     import main as main_mod
+    from pipelines.capture_buffer import CaptureBuffer
 
-    original = main_mod.graphiti
+    original_graphiti = main_mod.graphiti
+    original_buffer = main_mod.capture_buffer
     main_mod.graphiti = mock_graphiti
     main_mod._idempotency_store.clear()
+    main_mod.capture_buffer = CaptureBuffer(
+        idle_seconds=3600.0,
+        flush_callback=main_mod._capture_flush,
+    )
     transport = ASGITransport(app=main_mod.app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-    main_mod.graphiti = original
+    await main_mod.capture_buffer.flush_all()
+    main_mod.capture_buffer = original_buffer
+    main_mod.graphiti = original_graphiti
