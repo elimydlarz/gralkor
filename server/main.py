@@ -55,7 +55,7 @@ DEFAULT_LLM_MODEL_BY_PROVIDER = {
 }
 
 DEFAULT_EMBEDDER_MODEL_BY_PROVIDER = {
-    "gemini": "gemini-embedding-001",
+    "gemini": "gemini-embedding-2-preview",
 }
 
 
