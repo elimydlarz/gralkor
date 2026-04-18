@@ -116,7 +116,7 @@ Endpoints added in `main.py`:
 
 **Session keying rationale.** The server holds the in-flight conversation in `CaptureBuffer`, keyed by `session_id` (not `group_id`). One principal / group can run many concurrent sessions, so coarser keying would cross-contaminate the interpretation window. Callers generate `session_id` (UUID-shaped), pass it on `/capture` to write and on `/recall` / `/tools/memory_search` to read. They still pass `group_id` on those reads because it selects the graph — `session_id` alone is only a buffer key.
 
-**Auth:** bearer token via `AUTH_TOKEN` env. `require_auth` dependency applied via `protected_router`; `public_router` carries only `GET /health`. Unset `AUTH_TOKEN` bypasses all checks (local-dev and TS-plugin-spawn compatibility).
+**Auth:** none. The server binds to loopback only and is spawned by the consumer's own supervision tree (`Gralkor.Server` in ex/), so the only reachable caller is the consumer itself. The `require_auth` dependency and `protected_router`/`public_router` split still exist in the Python code but are inert when `AUTH_TOKEN` is unset — which it is by default now, since the Elixir supervisor no longer forwards a token. If a multi-host deployment ever changes the threat model, re-enable by setting `AUTH_TOKEN` on the server and attaching `Authorization: Bearer …` on the client.
 
 **Graceful shutdown:** lifespan awaits `capture_buffer.flush_all()` before `graphiti.close()`. Uvicorn must be launched with `--timeout-graceful-shutdown 30` so pending flushes complete before SIGKILL.
 
@@ -128,7 +128,7 @@ Endpoints added in `main.py`:
 
 Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md). Tests in `src/*.test.ts`, `test/integration/`, `test/functional/`, and `server/tests/` mirror them one-to-one. Sections: Recall, Capture, Tools, Startup, Configuration, Operations, Functional Journey, Distribution.
 
-New server-side trees landed in Phase A (Gralkor ↔ Jido interface, see `GRALKOR_JIDO_INTERFACE.md` in Susu2): `POST /recall endpoint`, `POST /distill endpoint`, `POST /capture endpoint`, `capture-buffer (Python)`, `format-transcript (Python)`, `interpret-facts (Python)`, `message-clean (Python)`, `POST /tools/memory_search endpoint`, `POST /tools/memory_add endpoint`, `auth`.
+New server-side trees landed in Phase A (Gralkor ↔ Jido interface, see `GRALKOR_JIDO_INTERFACE.md` in Susu2): `POST /recall endpoint`, `POST /distill endpoint`, `POST /capture endpoint`, `capture-buffer (Python)`, `format-transcript (Python)`, `interpret-facts (Python)`, `message-clean (Python)`, `POST /tools/memory_search endpoint`, `POST /tools/memory_add endpoint`.
 
 Elixir supervisor trees (Phase B) in the Startup section: `ex-server-lifecycle`, `ex-config-writing`. Test files: `ex/test/gralkor/{server_test.exs, config_test.exs}`. Run via `mix test.unit` and `mix test.integration` from `ex/`.
 

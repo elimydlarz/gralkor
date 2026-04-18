@@ -10,7 +10,6 @@ defmodule Gralkor.ConfigTest do
           "GRALKOR_DATA_DIR",
           "GRALKOR_SERVER_DIR",
           "GRALKOR_SERVER_URL",
-          "GRALKOR_AUTH_TOKEN",
           "GRALKOR_LLM_PROVIDER",
           "GRALKOR_LLM_MODEL",
           "GRALKOR_EMBEDDER_PROVIDER",
@@ -32,29 +31,20 @@ defmodule Gralkor.ConfigTest do
   end
 
   describe "from_env/0" do
-    test "reads data_dir and auth_token from env" do
+    test "reads data_dir from env" do
       System.put_env("GRALKOR_DATA_DIR", "/tmp/gralkor-test")
-      System.put_env("GRALKOR_AUTH_TOKEN", "tok")
 
       cfg = Config.from_env()
 
       assert cfg.data_dir == "/tmp/gralkor-test"
-      assert cfg.auth_token == "tok"
     end
 
     test "raises when GRALKOR_DATA_DIR is missing" do
-      System.put_env("GRALKOR_AUTH_TOKEN", "tok")
-      assert_raise System.EnvError, fn -> Config.from_env() end
-    end
-
-    test "raises when GRALKOR_AUTH_TOKEN is missing" do
-      System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
       assert_raise System.EnvError, fn -> Config.from_env() end
     end
 
     test "leaves llm/embedder provider nil when unset (server applies defaults)" do
       System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
-      System.put_env("GRALKOR_AUTH_TOKEN", "tok")
 
       cfg = Config.from_env()
 
@@ -64,7 +54,6 @@ defmodule Gralkor.ConfigTest do
 
     test "defaults server_dir to the packaged priv/server and server_url to 127.0.0.1:4000" do
       System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
-      System.put_env("GRALKOR_AUTH_TOKEN", "tok")
 
       cfg = Config.from_env()
 
@@ -80,7 +69,6 @@ defmodule Gralkor.ConfigTest do
         data_dir: "/d",
         server_dir: "/s",
         server_url: "u",
-        auth_token: "t",
         llm_provider: "gemini",
         embedder_provider: "gemini"
       }
@@ -96,7 +84,6 @@ defmodule Gralkor.ConfigTest do
         data_dir: "/d",
         server_dir: "/s",
         server_url: "u",
-        auth_token: "t",
         llm_provider: "gemini",
         embedder_provider: "gemini"
       }
@@ -110,8 +97,7 @@ defmodule Gralkor.ConfigTest do
       cfg = %Config{
         data_dir: "/d",
         server_dir: "/s",
-        server_url: "u",
-        auth_token: "t"
+        server_url: "u"
       }
 
       yaml = Config.build_yaml(cfg)
@@ -125,7 +111,6 @@ defmodule Gralkor.ConfigTest do
         data_dir: "/d",
         server_dir: "/s",
         server_url: "u",
-        auth_token: "t",
         llm_provider: "gemini",
         llm_model: "gemini-3.1-flash-lite-preview",
         embedder_provider: "gemini"
@@ -146,7 +131,6 @@ defmodule Gralkor.ConfigTest do
         data_dir: tmp,
         server_dir: "/s",
         server_url: "u",
-        auth_token: "t",
         llm_provider: "gemini",
         embedder_provider: "gemini"
       }

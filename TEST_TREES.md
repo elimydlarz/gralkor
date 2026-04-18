@@ -72,7 +72,6 @@ extractInjectQuery
 POST /recall endpoint
   request shape
     then body is {session_id, group_id, query, max_results}
-    then requires bearer auth
     then group_id is sanitized (hyphens → underscores) before use
     then driver is routed to target graph (_ensure_driver_graph) before search
   conversation context
@@ -297,7 +296,6 @@ POST /distill endpoint
   request shape
     then body is {turns: [{user_query, events: [...], assistant_answer}]}
     then events is a list of arbitrary shapes — no schema enforcement; the distill pipeline JSON-serialises them into the LLM prompt (inference tolerates loose input)
-    then requires bearer auth
   then calls format_transcript(turns, graphiti.llm_client)
   then response is {"episode_body": string}
   when multiple turns have events
@@ -311,7 +309,6 @@ POST /capture endpoint
   request shape
     then body is {session_id, group_id, turn: {user_query, events, assistant_answer}}
     then events is a list of arbitrary shapes (same as /distill)
-    then requires bearer auth
   then appends turn to capture_buffer keyed by session_id (group_id is sanitized and bound to the entry on first append)
   then returns 204 No Content (no body)
   then returns immediately (does not call distill synchronously)
@@ -415,7 +412,6 @@ memory_build_communities tool
 POST /tools/memory_search endpoint
   request shape
     then body is {session_id, group_id, query, max_results, max_entity_results}
-    then requires bearer auth
   then group_id is sanitized before use
   then driver is routed to target graph before search
   then uses slow mode (graphiti.search_) with COMBINED_HYBRID_SEARCH_CROSS_ENCODER
@@ -442,7 +438,6 @@ POST /tools/memory_search endpoint
 POST /tools/memory_add endpoint
   request shape
     then body is {group_id, content, source_description?}
-    then requires bearer auth
   then auto-generates name ("manual-add-" + timestamp_ms)
   then auto-generates idempotency_key (uuid4)
   then calls graphiti.add_episode with source=EpisodeType.text under _driver_lock
@@ -498,7 +493,7 @@ ex-server-lifecycle (Elixir supervisor in ex/)
     when handle_continue(:boot) runs
       then Gralkor.Config.write_yaml writes config.yaml at $GRALKOR_DATA_DIR/config.yaml
       then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
-      then env vars are forwarded: AUTH_TOKEN, GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
+      then env vars are forwarded: GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
       then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or the configured boot_timeout_ms (default 120_000)
     when the deadline passes with no healthy response
       then stops with {:boot_failed, :boot_timeout} (supervisor restart)
@@ -530,8 +525,6 @@ ex-config-writing (Gralkor.Config)
       then data_dir is that value
     when GRALKOR_DATA_DIR is missing
       then raises (fail-fast)
-    when GRALKOR_AUTH_TOKEN is missing
-      then raises
     when provider/model env vars are unset
       then the corresponding fields are left nil (the server applies defaults)
   write_yaml
@@ -714,20 +707,6 @@ downstream-error-handling
         then returns 502 with {"error": "provider error", "detail": "<message>"}
       when no recognizable status code
         then propagates as 500
-auth
-  when AUTH_TOKEN env var is unset
-    then all endpoints accept requests without an Authorization header (local-dev bypass)
-  when AUTH_TOKEN env var is set
-    when Authorization header is missing
-      then protected endpoints return 401
-    when Authorization header has a non-Bearer scheme
-      then protected endpoints return 401
-    when Authorization is "Bearer <wrong-token>"
-      then protected endpoints return 401
-    when Authorization is "Bearer <correct-token>"
-      then protected endpoints proceed normally
-    when GET /health is called
-      then /health is exempt (accepts requests with or without auth)
 ```
 
 ## Functional Journey

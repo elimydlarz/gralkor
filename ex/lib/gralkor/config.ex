@@ -3,12 +3,11 @@ defmodule Gralkor.Config do
   Reads env vars, builds the config map, writes config.yaml for the Python server.
   """
 
-  @enforce_keys [:data_dir, :server_dir, :server_url, :auth_token]
+  @enforce_keys [:data_dir, :server_dir, :server_url]
   defstruct [
     :data_dir,
     :server_dir,
     :server_url,
-    :auth_token,
     :llm_provider,
     :llm_model,
     :embedder_provider,
@@ -20,7 +19,6 @@ defmodule Gralkor.Config do
           data_dir: String.t(),
           server_dir: String.t(),
           server_url: String.t(),
-          auth_token: String.t(),
           llm_provider: String.t(),
           llm_model: String.t() | nil,
           embedder_provider: String.t(),
@@ -34,7 +32,6 @@ defmodule Gralkor.Config do
       data_dir: System.fetch_env!("GRALKOR_DATA_DIR"),
       server_dir: System.get_env("GRALKOR_SERVER_DIR", default_server_dir()),
       server_url: System.get_env("GRALKOR_SERVER_URL", "http://127.0.0.1:4000"),
-      auth_token: System.fetch_env!("GRALKOR_AUTH_TOKEN"),
       llm_provider: System.get_env("GRALKOR_LLM_PROVIDER"),
       llm_model: System.get_env("GRALKOR_LLM_MODEL"),
       embedder_provider: System.get_env("GRALKOR_EMBEDDER_PROVIDER"),

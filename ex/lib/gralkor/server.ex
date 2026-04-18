@@ -156,8 +156,7 @@ defmodule Gralkor.Server do
   defp build_env(%Config{} = config) do
     base = [
       {~c"CONFIG_PATH", String.to_charlist(Path.join(config.data_dir, "config.yaml"))},
-      {~c"FALKORDB_DATA_DIR", String.to_charlist(Path.join(config.data_dir, "falkordb"))},
-      {~c"AUTH_TOKEN", String.to_charlist(config.auth_token)}
+      {~c"FALKORDB_DATA_DIR", String.to_charlist(Path.join(config.data_dir, "falkordb"))}
     ]
 
     forwarded =

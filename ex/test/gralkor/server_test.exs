@@ -26,7 +26,6 @@ defmodule Gralkor.ServerTest do
       data_dir: tmp,
       server_dir: System.tmp_dir!(),
       server_url: "http://127.0.0.1:#{port}",
-      auth_token: "test-tok",
       llm_provider: "gemini",
       embedder_provider: "gemini"
     }

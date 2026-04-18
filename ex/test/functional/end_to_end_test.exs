@@ -23,7 +23,6 @@ defmodule Gralkor.Functional.EndToEndTest do
   alias Gralkor.Server
 
   @base_port 4400
-  @token "functional-token"
   @capture_idle 3.0
 
   setup_all do
@@ -90,7 +89,6 @@ defmodule Gralkor.Functional.EndToEndTest do
       data_dir: tmp,
       server_dir: Path.expand("../../../server", __DIR__),
       server_url: url,
-      auth_token: @token,
       capture_idle_seconds: @capture_idle
     }
 
@@ -155,7 +153,6 @@ defmodule Gralkor.Functional.EndToEndTest do
     Req.post(
       Path.join(url, path),
       json: body,
-      headers: [{"authorization", "Bearer #{@token}"}],
       receive_timeout: 60_000
     )
   end

@@ -12,6 +12,8 @@ Embed `Gralkor.Server` in your Jido (or any Elixir) supervision tree. The GenSer
 
 The Python source ships inside the package (`priv/server/`); no separate clone or Docker image needed.
 
+**Auth:** the server binds to loopback and expects its consumer to supervise it — so by default no auth is configured. The `require_auth` middleware is still in the Python code but inert when `AUTH_TOKEN` is unset, which is the default. Set `AUTH_TOKEN` server-side and `Authorization: Bearer …` client-side if a deployment change (multi-host, shared service) changes the threat model.
+
 ## Install
 
 ```elixir
@@ -58,13 +60,12 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
 
    ```bash
    export GRALKOR_DATA_DIR=/var/lib/susu2/gralkor
-   export GRALKOR_AUTH_TOKEN=<any-secret>
    export GOOGLE_API_KEY=<your-key>          # or ANTHROPIC/OPENAI/GROQ
    # optional:
    # export GRALKOR_URL=http://127.0.0.1:4000  # default
    ```
 
-   The consumer reads `GRALKOR_URL` and `GRALKOR_AUTH_TOKEN` and writes them into its own app env (e.g. `Application.put_env(:susu2, :gralkor, url: ..., token: ...)`) for the HTTP client. Both sides read the same `GRALKOR_AUTH_TOKEN` — Gralkor enforces it on incoming requests; the client attaches it as `Authorization: Bearer <token>`.
+   The consumer reads `GRALKOR_URL` and writes it into its own app env (e.g. `Application.put_env(:susu2, :gralkor, url: ...)`) for the HTTP client.
 
 4. **Wire the plugin + actions on your agent:**
 
@@ -83,7 +84,7 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
 
    **Session identity.** Gralkor's capture buffer is keyed by `session_id`, which the plugin takes from `agent.state.__strategy__.thread.id` (the current `Jido.AI.Thread`). One Jido conversation thread per Gralkor session — concurrent agents for the same principal never collide on the buffer, and the session rotates naturally when the thread rotates. `group_id` is the sanitized `agent.id` (per-principal graph partition).
 
-5. **Verify boot.** `iex -S mix` → `curl -H 'Authorization: Bearer <token>' http://127.0.0.1:4000/health` → `{"status":"ok",…}`. Send a message through the bot; watch for `POST /recall` then (after the capture idle window) `[gralkor] episode added …` in the logs.
+5. **Verify boot.** `iex -S mix` → `curl http://127.0.0.1:4000/health` → `{"status":"ok",…}`. Send a message through the bot; watch for `POST /recall` then (after the capture idle window) `[gralkor] episode added …` in the logs.
 
 No Docker, no separate Gralkor service. `mix deps.get` + `iex -S mix` brings the whole memory stack up.
 
@@ -102,7 +103,6 @@ children = [
 Required env vars:
 
 - `GRALKOR_DATA_DIR` — writable directory for the FalkorDB database + generated `config.yaml`.
-- `GRALKOR_AUTH_TOKEN` — bearer token protecting the HTTP endpoints.
 
 Optional:
 
@@ -111,6 +111,7 @@ Optional:
 - `GRALKOR_LLM_PROVIDER` / `GRALKOR_LLM_MODEL` — defaults chosen server-side.
 - `GRALKOR_EMBEDDER_PROVIDER` / `GRALKOR_EMBEDDER_MODEL` — defaults chosen server-side.
 - Provider API keys: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` (whichever your provider needs).
+- `AUTH_TOKEN` — bearer token protecting HTTP endpoints. Unset by default (no auth, loopback-only). Set if exposing Gralkor beyond loopback.
 
 ## HTTP endpoints
 
@@ -120,9 +121,9 @@ Your application talks to Gralkor over HTTP:
 - `POST /capture` — fire-and-forget turn capture; server buffers + distils + ingests on idle.
 - `POST /tools/memory_search` / `POST /tools/memory_add` — agent-facing tools.
 - `POST /episodes`, `POST /search`, `POST /distill`, `POST /build-indices`, `POST /build-communities` — lower-level operations.
-- `GET /health` — public, no auth.
+- `GET /health` — liveness probe.
 
-All non-`/health` endpoints require `Authorization: Bearer <GRALKOR_AUTH_TOKEN>`.
+By default all endpoints are unauthenticated (see Prerequisites → Auth). Set `AUTH_TOKEN` on the server to require `Authorization: Bearer <token>` on every non-`/health` request.
 
 ## Lifecycle
 
@@ -138,12 +139,11 @@ From `ex/`:
 
 ```bash
 export GRALKOR_DATA_DIR=/tmp/gralkor-dev
-export GRALKOR_AUTH_TOKEN=dev-token
 export GOOGLE_API_KEY=...           # or ANTHROPIC_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 iex -S mix
 ```
 
-`curl -H 'Authorization: Bearer dev-token' http://127.0.0.1:4000/health` should return `200`.
+`curl http://127.0.0.1:4000/health` should return `200`.
 
 ## License
 
