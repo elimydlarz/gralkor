@@ -14,9 +14,10 @@ defmodule Gralkor.ServerTest do
   alias Gralkor.Server
 
   @fixture_path Path.expand("../fixtures/fake_gralkor.py", __DIR__)
-  @port 4199
+  @base_port 4199
 
   setup context do
+    port = @base_port + System.unique_integer([:positive])
     tmp = Path.join(System.tmp_dir!(), "gralkor-server-#{System.unique_integer([:positive])}")
     File.mkdir_p!(tmp)
     on_exit(fn -> File.rm_rf!(tmp) end)
@@ -24,7 +25,7 @@ defmodule Gralkor.ServerTest do
     config = %Config{
       data_dir: tmp,
       server_dir: System.tmp_dir!(),
-      server_url: "http://127.0.0.1:#{@port}",
+      server_url: "http://127.0.0.1:#{port}",
       auth_token: "test-tok",
       llm_provider: "gemini",
       embedder_provider: "gemini"
@@ -32,6 +33,7 @@ defmodule Gralkor.ServerTest do
 
     context
     |> Map.put(:config, config)
+    |> Map.put(:port, port)
     |> Map.put(:python_exe, System.find_executable("python3") || flunk("python3 required"))
   end
 
