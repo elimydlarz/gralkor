@@ -77,7 +77,9 @@ Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness
 - `POST /distill` — standalone distillation (for clients that want raw distill access)
 - Existing: `POST /episodes`, `POST /search`, `GET /health`
 
-Add Gralkor as a mix dependency (path or Hex) and supervise `Gralkor.Server` in your Jido app's supervision tree. The GenServer spawns uvicorn via a Port, polls `/health`, and handles graceful shutdown (SIGTERM → buffer flush → SIGKILL). `mix deps.get` + `iex -S mix` brings the whole memory stack up; OTP supervision owns the lifecycle. See `ex/` for the module surface.
+Add Gralkor as a mix dependency (path or Hex) and supervise `Gralkor.Server` in your Jido app's supervision tree. The GenServer spawns uvicorn via a Port, polls `/health`, and handles graceful shutdown (SIGTERM → buffer flush → SIGKILL). `mix deps.get` + `iex -S mix` brings the whole memory stack up; OTP supervision owns the lifecycle.
+
+Full installation and wiring recipe for a Jido consumer (e.g. Susu2) is in [`ex/README.md`](./ex/README.md).
 
 ## Quick Start
 
