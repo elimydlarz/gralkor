@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pipelines.capture_buffer import CaptureBuffer, CaptureClientError
-from pipelines.distill import Turn, TurnEvent
+from pipelines.distill import Turn
 
 
 def make_turn(user: str = "q", answer: str = "a") -> Turn:
