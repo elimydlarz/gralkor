@@ -50,7 +50,9 @@ def _schedule_fail_switch() -> None:
     def flip():
         _state["fail"] = True
 
-    threading.Timer(delay, flip).start()
+    timer = threading.Timer(delay, flip)
+    timer.daemon = True
+    timer.start()
 
 
 def main() -> None:
