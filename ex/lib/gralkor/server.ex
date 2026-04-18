@@ -63,7 +63,7 @@ defmodule Gralkor.Server do
 
     case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
       :ok ->
-        Process.send_after(self(), :health_check, @monitor_interval_ms)
+        schedule_monitor(state.opts)
         {:noreply, %{state | port: port, os_pid: os_pid}}
 
       {:error, reason} ->
@@ -76,7 +76,7 @@ defmodule Gralkor.Server do
   def handle_info(:health_check, state) do
     case Health.check(state.config.server_url) do
       :ok ->
-        Process.send_after(self(), :health_check, @monitor_interval_ms)
+        schedule_monitor(state.opts)
         {:noreply, state}
 
       {:error, reason} ->
