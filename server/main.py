@@ -448,15 +448,10 @@ class GroupIdRequest(BaseModel):
     group_id: str
 
 
-class ConversationMessageBody(BaseModel):
-    role: Literal["user", "assistant"]
-    text: str
-
-
 class RecallRequest(BaseModel):
+    session_id: str
     group_id: str
     query: str
-    conversation_messages: list[ConversationMessageBody] = Field(default_factory=list)
     max_results: int = 10
 
 
@@ -479,14 +474,15 @@ class DistillResponse(BaseModel):
 
 
 class CaptureRequest(BaseModel):
+    session_id: str
     group_id: str
     turn: TurnBody
 
 
 class MemorySearchRequest(BaseModel):
+    session_id: str
     group_id: str
     query: str
-    conversation_messages: list[ConversationMessageBody] = Field(default_factory=list)
     max_results: int = 20
     max_entity_results: int = 10
 
