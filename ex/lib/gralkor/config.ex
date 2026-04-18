@@ -3,17 +3,22 @@ defmodule Gralkor.Config do
   Reads env vars, builds the config map, writes config.yaml for the Python server.
   """
 
-  @enforce_keys [:data_dir, :server_dir, :server_url, :auth_token, :llm_provider, :embedder_provider]
+  @default_llm_provider "gemini"
+  @default_llm_model "gemini-3.1-flash-lite-preview"
+  @default_embedder_provider "gemini"
+  @default_embedder_model "gemini-embedding-2-preview"
+
+  @enforce_keys [:data_dir, :server_dir, :server_url, :auth_token]
   defstruct [
     :data_dir,
     :server_dir,
     :server_url,
     :auth_token,
-    :llm_provider,
-    :llm_model,
-    :embedder_provider,
-    :embedder_model,
-    :capture_idle_seconds
+    :capture_idle_seconds,
+    llm_provider: @default_llm_provider,
+    llm_model: @default_llm_model,
+    embedder_provider: @default_embedder_provider,
+    embedder_model: @default_embedder_model
   ]
 
   @type t :: %__MODULE__{
