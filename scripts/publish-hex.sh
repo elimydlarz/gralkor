@@ -53,6 +53,7 @@ process.stdout.write(v.join("."));
 old_version=$(read_version)
 
 rollback() {
+  cd "$project_root"
   echo "Rolling back $mix_file to $old_version..." >&2
   write_version "$old_version"
 }
