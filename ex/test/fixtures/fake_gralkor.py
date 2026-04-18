@@ -56,6 +56,7 @@ def _schedule_fail_switch() -> None:
 def main() -> None:
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 4000
     server = HTTPServer(("127.0.0.1", port), Handler)
+    _schedule_fail_switch()
 
     def shutdown(signum, frame):  # noqa: ARG001
         delay = float(os.environ.get("SHUTDOWN_DELAY", "0"))
