@@ -754,7 +754,7 @@ async def build_communities(req: GroupIdRequest):
 @protected_router.post("/recall", response_model=RecallResponse)
 async def recall(req: RecallRequest) -> RecallResponse:
     sanitized = _sanitize_group_id(req.group_id)
-    conversation = _to_conversation_messages(req.conversation_messages)
+    conversation = _conversation_for_session(req.session_id)
 
     async with _driver_lock:
         _ensure_driver_graph([sanitized])
