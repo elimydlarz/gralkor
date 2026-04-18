@@ -7,7 +7,8 @@ if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch|current)$ ]]; then
   exit 1
 fi
 
-mix_file="ex/mix.exs"
+project_root="$(pwd)"
+mix_file="$project_root/ex/mix.exs"
 
 # Guard: must be logged in to Hex before doing any work
 if [[ -z "${DRY_RUN:-}" ]]; then
