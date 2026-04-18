@@ -11,7 +11,7 @@ defmodule Gralkor.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      compilers: [:gralkor_priv] ++ Mix.compilers(),
+      compilers: Mix.compilers() ++ [:gralkor_priv],
       releases: releases(),
       aliases: aliases(),
       preferred_cli_env: [
