@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import pytest
+import main as main_mod
 
 from graphiti_core.nodes import EpisodeType
-from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_CROSS_ENCODER
+
+from pipelines.distill import Turn
 
 from .conftest import make_edge, make_entity
 
@@ -30,9 +30,9 @@ class TestMemorySearch:
         resp = await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "sess",
                 "group_id": "grp",
                 "query": "alice",
-                "conversation_messages": [],
                 "max_results": 20,
                 "max_entity_results": 10,
             },
@@ -62,9 +62,9 @@ class TestMemorySearch:
         resp = await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "sess",
                 "group_id": "grp",
                 "query": "q",
-                "conversation_messages": [],
                 "max_results": 20,
                 "max_entity_results": 10,
             },
@@ -86,9 +86,9 @@ class TestMemorySearch:
         resp = await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "sess",
                 "group_id": "grp",
                 "query": "q",
-                "conversation_messages": [],
                 "max_results": 20,
                 "max_entity_results": 10,
             },
@@ -113,9 +113,9 @@ class TestMemorySearch:
         resp = await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "sess",
                 "group_id": "grp",
                 "query": "q",
-                "conversation_messages": [],
                 "max_results": 20,
                 "max_entity_results": 2,
             },
@@ -134,9 +134,9 @@ class TestMemorySearch:
         await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "sess",
                 "group_id": "my-agent",
                 "query": "q",
-                "conversation_messages": [],
                 "max_results": 20,
                 "max_entity_results": 10,
             },
@@ -144,14 +144,50 @@ class TestMemorySearch:
         call = mock_graphiti.search_.await_args
         assert call.kwargs["group_ids"] == ["my_agent"]
 
+    async def test_conversation_context_comes_from_capture_buffer(self, client, mock_graphiti):
+        main_mod.capture_buffer.append(
+            "sess-tool",
+            "grp",
+            Turn(
+                user_query="earlier tool question",
+                events=[],
+                assistant_answer="earlier tool answer",
+            ),
+        )
+        mock_graphiti.search_.return_value = SimpleNamespace(
+            edges=[make_edge(fact="A")],
+            nodes=[],
+            episodes=[],
+            communities=[],
+            edge_reranker_scores=[],
+            node_reranker_scores=[],
+            episode_reranker_scores=[],
+            community_reranker_scores=[],
+        )
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+
+        await client.post(
+            "/tools/memory_search",
+            json={
+                "session_id": "sess-tool",
+                "group_id": "grp",
+                "query": "q",
+                "max_results": 20,
+                "max_entity_results": 10,
+            },
+        )
+        context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
+        assert "earlier tool question" in context
+        assert "earlier tool answer" in context
+
     async def test_bearer_auth_required(self, client, monkeypatch):
         monkeypatch.setenv("AUTH_TOKEN", "t")
         resp = await client.post(
             "/tools/memory_search",
             json={
+                "session_id": "s",
                 "group_id": "g",
                 "query": "q",
-                "conversation_messages": [],
                 "max_results": 1,
                 "max_entity_results": 1,
             },
