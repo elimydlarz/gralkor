@@ -164,7 +164,7 @@ Elixir-driven functional tree: `jido-memory-journey` (Functional Journey section
 | `llm.provider` | string | `"gemini"` | LLM provider (gemini, openai, anthropic, groq) |
 | `llm.model` | string | `"gemini-3.1-flash-lite-preview"` | LLM model |
 | `embedder.provider` | string | `"gemini"` | Embedding provider (gemini, openai) |
-| `embedder.model` | string | `"gemini-embedding-001"` | Embedding model |
+| `embedder.model` | string | `"gemini-embedding-2-preview"` | Embedding model |
 | `dataDir` | string | **(required)** | Persistent data directory (venv, FalkorDB). No default — operator must set. |
 | `workspaceDir` | string | `~/.openclaw/workspace` | Native memory workspace root. Scanned at startup for MD files to index. |
 | `ontology.entities` | `Record<string, OntologyTypeDef>` | — | Custom entity types |
