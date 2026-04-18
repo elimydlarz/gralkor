@@ -84,7 +84,7 @@ Plugin → `GraphitiClient` (`src/client.ts`, HTTP) → REST → FalkorDB.
 
 The Python server runs under an OTP supervisor in `ex/`. Consumers either embed `Gralkor.Server` in their own Jido supervision tree (dev) or deploy the standalone Docker image built from `ex/Dockerfile`.
 
-- `Gralkor.Config` — `from_env/0` reads `GRALKOR_*` env vars (fail-fast on missing `GRALKOR_DATA_DIR` / `GRALKOR_AUTH_TOKEN`); `write_yaml/1` emits `$GRALKOR_DATA_DIR/config.yaml` the Python server consumes.
+- `Gralkor.Config` — `from_env/0` reads `GRALKOR_*` env vars (fail-fast on missing `GRALKOR_DATA_DIR` / `GRALKOR_AUTH_TOKEN`); `write_yaml/1` emits `$GRALKOR_DATA_DIR/config.yaml` the Python server consumes. Optional `capture_idle_seconds` field emits a `capture: idle_seconds: N` section when set — used by the functional suite to shorten the default 300s flush window.
 - `Gralkor.Server` — GenServer. `init/1` is non-blocking; `handle_continue(:boot)` writes config, spawns `uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30` via `Port.open`, health-polls at 500ms up to a configurable `boot_timeout_ms` (default 120s), then schedules a 60s monitor. Boot loop peeks the mailbox each iteration so a dying port fails fast instead of hitting the full timeout.
 - `Gralkor.Health` — thin `Req.get/2` wrapper over `/health`.
 - `terminate/2` — extracts OS pid via `Port.info(port, :os_pid)`, sends `SIGTERM` via `System.cmd("kill", …)`, waits up to 30s for the exit message, then `SIGKILL`.
