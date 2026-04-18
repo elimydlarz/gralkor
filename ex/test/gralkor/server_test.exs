@@ -138,9 +138,6 @@ defmodule Gralkor.ServerTest do
         extra_env: [{"FAIL_AFTER_SECONDS", "1"}]
       )
 
-    :erase
-      )
-
     wait_for_healthy(pid, 10_000)
 
     ref = Process.monitor(pid)
