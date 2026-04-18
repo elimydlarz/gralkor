@@ -106,11 +106,13 @@ Endpoints added in `main.py`:
 
 | Endpoint | Shape | Notes |
 |---|---|---|
-| `POST /recall` | `{group_id, query, conversation_messages, max_results}` → `{memory_block}` | Fast search → interpret → `<gralkor-memory trust="untrusted">` with further-querying instruction. Empty graph → `{"memory_block": ""}` (not null). |
+| `POST /recall` | `{session_id, group_id, query, max_results}` → `{memory_block}` | Fast search → interpret (conversation context pulled from `capture_buffer.turns_for(session_id)`) → `<gralkor-memory trust="untrusted">` with further-querying instruction. Empty graph → `{"memory_block": ""}` (not null). |
 | `POST /distill` | `{turns: [{user_query, events, assistant_answer}]}` → `{episode_body}` | Parallel distillation via `asyncio.gather`; silent drop per turn on LLM failure. |
-| `POST /capture` | `{group_id, turn}` → `204` | Appends to `capture_buffer`. Idle flush calls `_capture_flush` → `format_transcript` → `graphiti.add_episode`. |
-| `POST /tools/memory_search` | `{group_id, query, conversation_messages, max_results, max_entity_results}` → `{text}` | Slow search with cross-encoder; `Facts:` + `Entities:` + `Interpretation:`; **no** further-querying instruction. Empty → `"Facts: (none)\nEntities: (none)"` without calling interpret. |
+| `POST /capture` | `{session_id, group_id, turn}` → `204` | Appends to `capture_buffer` keyed by `session_id` (binds `group_id` on first append). Idle flush calls `_capture_flush` → `format_transcript` → `graphiti.add_episode` under the bound `group_id`. |
+| `POST /tools/memory_search` | `{session_id, group_id, query, max_results, max_entity_results}` → `{text}` | Slow search with cross-encoder; conversation context pulled from `capture_buffer.turns_for(session_id)` (same rules as `/recall`). `Facts:` + `Entities:` + `Interpretation:`; **no** further-querying instruction. Empty → `"Facts: (none)\nEntities: (none)"` without calling interpret. |
 | `POST /tools/memory_add` | `{group_id, content, source_description?}` → `{"status":"stored"}` | Wraps `/episodes` with `source=EpisodeType.text`; auto-generates `name` + `idempotency_key`. |
+
+**Session keying rationale.** The server holds the in-flight conversation in `CaptureBuffer`, keyed by `session_id` (not `group_id`). One principal / group can run many concurrent sessions, so coarser keying would cross-contaminate the interpretation window. Callers generate `session_id` (UUID-shaped), pass it on `/capture` to write and on `/recall` / `/tools/memory_search` to read. They still pass `group_id` on those reads because it selects the graph — `session_id` alone is only a buffer key.
 
 **Auth:** bearer token via `AUTH_TOKEN` env. `require_auth` dependency applied via `protected_router`; `public_router` carries only `GET /health`. Unset `AUTH_TOKEN` bypasses all checks (local-dev and TS-plugin-spawn compatibility).
 
