@@ -48,7 +48,7 @@ defmodule Gralkor.ServerTest do
           name: name,
           config: config,
           executable: python,
-          executable_args: [@fixture_path, Integer.to_string(@port)]
+          executable_args: [@fixture_path, Integer.to_string(port)]
         )
 
       send(parent, {:start_result, result})
@@ -68,7 +68,7 @@ defmodule Gralkor.ServerTest do
         name: name,
         config: config,
         executable: python,
-        executable_args: [@fixture_path, Integer.to_string(@port)]
+        executable_args: [@fixture_path, Integer.to_string(port)]
       )
 
     wait_for_healthy(pid, 10_000)
@@ -87,7 +87,7 @@ defmodule Gralkor.ServerTest do
         name: name,
         config: config,
         executable: python,
-        executable_args: [@fixture_path, Integer.to_string(@port)]
+        executable_args: [@fixture_path, Integer.to_string(port)]
       )
 
     wait_for_healthy(pid, 10_000)
@@ -133,7 +133,7 @@ defmodule Gralkor.ServerTest do
         name: name,
         config: config,
         executable: python,
-        executable_args: [@fixture_path, Integer.to_string(@port)],
+        executable_args: [@fixture_path, Integer.to_string(port)],
         monitor_interval_ms: 150,
         extra_env: [{"FAIL_AFTER_SECONDS", "1"}]
       )
@@ -155,7 +155,7 @@ defmodule Gralkor.ServerTest do
         name: name,
         config: config,
         executable: python,
-        executable_args: [@fixture_path, Integer.to_string(@port)]
+        executable_args: [@fixture_path, Integer.to_string(port)]
       )
 
     wait_for_healthy(pid, 10_000)
