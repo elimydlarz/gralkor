@@ -50,9 +50,17 @@ def _load_config() -> dict:
     return {}
 
 
+DEFAULT_LLM_PROVIDER = "gemini"
+DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite-preview"
+DEFAULT_EMBEDDER_PROVIDER = "gemini"
+DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview"
+
+
 def _build_llm_client(cfg: dict):
-    provider = cfg.get("llm", {}).get("provider", "gemini")
-    model = cfg.get("llm", {}).get("model")
+    provider = cfg.get("llm", {}).get("provider") or DEFAULT_LLM_PROVIDER
+    model = cfg.get("llm", {}).get("model") or (
+        DEFAULT_LLM_MODEL if provider == DEFAULT_LLM_PROVIDER else None
+    )
     llm_cfg = LLMConfig(model=model) if model else None
 
     if provider == "anthropic":
@@ -75,8 +83,10 @@ def _build_llm_client(cfg: dict):
 
 
 def _build_embedder(cfg: dict):
-    provider = cfg.get("embedder", {}).get("provider", "gemini")
-    model = cfg.get("embedder", {}).get("model")
+    provider = cfg.get("embedder", {}).get("provider") or DEFAULT_EMBEDDER_PROVIDER
+    model = cfg.get("embedder", {}).get("model") or (
+        DEFAULT_EMBEDDER_MODEL if provider == DEFAULT_EMBEDDER_PROVIDER else None
+    )
 
     if provider == "gemini":
         from graphiti_core.embedder.gemini import GeminiEmbedder, GeminiEmbedderConfig
