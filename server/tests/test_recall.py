@@ -11,23 +11,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import main as main_mod
-from pipelines.capture_buffer import CaptureBuffer
 from pipelines.distill import Turn
 
 from .conftest import make_edge
 
 
-def _install_buffer() -> CaptureBuffer:
-    async def _noop(_group_id, _turns):
-        return None
-
-    buffer = CaptureBuffer(idle_seconds=3600.0, flush_callback=_noop)
-    main_mod.capture_buffer = buffer
-    return buffer
-
-
 async def test_returns_empty_block_when_no_facts(client, mock_graphiti):
-    _install_buffer()
     mock_graphiti.search.return_value = []
     resp = await client.post(
         "/recall",
@@ -39,7 +28,6 @@ async def test_returns_empty_block_when_no_facts(client, mock_graphiti):
 
 
 async def test_interprets_and_wraps_when_facts_exist(client, mock_graphiti):
-    _install_buffer()
     mock_graphiti.search.return_value = [
         make_edge(fact="Alice knows Bob", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
     ]
@@ -66,7 +54,6 @@ async def test_interprets_and_wraps_when_facts_exist(client, mock_graphiti):
 
 
 async def test_uses_fast_mode(client, mock_graphiti):
-    _install_buffer()
     mock_graphiti.search.return_value = []
     await client.post(
         "/recall",
@@ -78,7 +65,6 @@ async def test_uses_fast_mode(client, mock_graphiti):
 
 
 async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
-    _install_buffer()
     mock_graphiti.search.return_value = []
     await client.post(
         "/recall",
@@ -94,8 +80,7 @@ async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
 
 
 async def test_conversation_context_comes_from_capture_buffer(client, mock_graphiti):
-    buffer = _install_buffer()
-    buffer.append(
+    main_mod.capture_buffer.append(
         "sess-with-history",
         "grp",
         Turn(user_query="earlier question", events=[], assistant_answer="earlier answer"),
@@ -118,7 +103,6 @@ async def test_conversation_context_comes_from_capture_buffer(client, mock_graph
 
 
 async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_graphiti):
-    _install_buffer()
     mock_graphiti.search.return_value = [make_edge(fact="F")]
     mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
 
@@ -136,13 +120,12 @@ async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_
 
 
 async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti):
-    buffer = _install_buffer()
-    buffer.append(
+    main_mod.capture_buffer.append(
         "sess-alpha",
         "grp",
         Turn(user_query="alpha secret", events=[], assistant_answer="alpha reply"),
     )
-    buffer.append(
+    main_mod.capture_buffer.append(
         "sess-beta",
         "grp",
         Turn(user_query="beta secret", events=[], assistant_answer="beta reply"),
@@ -165,8 +148,7 @@ async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti
 
 
 async def test_strips_gralkor_memory_from_buffered_turns(client, mock_graphiti):
-    buffer = _install_buffer()
-    buffer.append(
+    main_mod.capture_buffer.append(
         "sess-leak",
         "grp",
         Turn(
