@@ -465,14 +465,9 @@ class RecallResponse(BaseModel):
     memory_block: str
 
 
-class TurnEventBody(BaseModel):
-    kind: Literal["thinking", "tool_use", "tool_result"]
-    text: str
-
-
 class TurnBody(BaseModel):
     user_query: str
-    events: list[TurnEventBody] = Field(default_factory=list)
+    events: list[Any] = Field(default_factory=list)
     assistant_answer: str
 
 
