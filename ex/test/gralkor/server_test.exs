@@ -120,6 +120,29 @@ defmodule Gralkor.ServerTest do
            "unexpected reason: #{inspect(reason)}"
   end
 
+  test "stops with {:health_degraded, _} when the monitor tick sees /health fail",
+       %{config: config, python_exe: python} do
+    name = unique_name()
+
+    Process.flag(:trap_exit, true)
+
+    {:ok, pid} =
+      Server.start_link(
+        name: name,
+        config: config,
+        executable: python,
+        executable_args: [@fixture_path, Integer.to_string(@port)],
+        monitor_interval_ms: 150,
+        extra_env: [{"FAIL_AFTER_SECONDS", "1"}]
+      )
+
+    wait_for_healthy(pid, 10_000)
+
+    ref = Process.monitor(pid)
+    assert_receive {:DOWN, ^ref, :process, ^pid, reason}, 10_000
+    assert match?({:health_degraded, _}, reason), "unexpected reason: #{inspect(reason)}"
+  end
+
   test "python crash stops the GenServer", %{config: config, python_exe: python} do
     name = unique_name()
 
