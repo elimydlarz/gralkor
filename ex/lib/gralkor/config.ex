@@ -28,6 +28,11 @@ defmodule Gralkor.Config do
           capture_idle_seconds: number() | nil
         }
 
+  @default_llm_provider "gemini"
+  @default_llm_model "gemini-3.1-flash-lite-preview"
+  @default_embedder_provider "gemini"
+  @default_embedder_model "gemini-embedding-2-preview"
+
   @spec from_env() :: t()
   def from_env do
     %__MODULE__{
@@ -35,10 +40,10 @@ defmodule Gralkor.Config do
       server_dir: System.get_env("GRALKOR_SERVER_DIR", "/app/server"),
       server_url: System.get_env("GRALKOR_SERVER_URL", "http://127.0.0.1:4000"),
       auth_token: System.fetch_env!("GRALKOR_AUTH_TOKEN"),
-      llm_provider: System.get_env("GRALKOR_LLM_PROVIDER", "gemini"),
-      llm_model: System.get_env("GRALKOR_LLM_MODEL"),
-      embedder_provider: System.get_env("GRALKOR_EMBEDDER_PROVIDER", "gemini"),
-      embedder_model: System.get_env("GRALKOR_EMBEDDER_MODEL")
+      llm_provider: System.get_env("GRALKOR_LLM_PROVIDER", @default_llm_provider),
+      llm_model: System.get_env("GRALKOR_LLM_MODEL", @default_llm_model),
+      embedder_provider: System.get_env("GRALKOR_EMBEDDER_PROVIDER", @default_embedder_provider),
+      embedder_model: System.get_env("GRALKOR_EMBEDDER_MODEL", @default_embedder_model)
     }
   end
 
