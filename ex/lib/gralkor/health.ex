@@ -7,7 +7,7 @@ defmodule Gralkor.Health do
   def check(url, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 2_000)
 
-    case Req.get(Path.join(url, "/health"), receive_timeout: timeout) do
+    case Req.get(Path.join(url, "/health"), receive_timeout: timeout, retry: false) do
       {:ok, %{status: 200}} -> :ok
       {:ok, %{status: status}} -> {:error, {:bad_status, status}}
       {:error, reason} -> {:error, reason}
