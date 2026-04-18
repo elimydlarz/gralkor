@@ -89,7 +89,7 @@ defmodule Gralkor.Functional.EndToEndTest do
       server_url: url,
       auth_token: @token,
       llm_provider: "gemini",
-      llm_model: "gemini-2.5-flash",
+      llm_model: "gemini-3.1-flash-lite-preview",
       embedder_provider: "gemini",
       embedder_model: "gemini-embedding-001",
       capture_idle_seconds: @capture_idle
