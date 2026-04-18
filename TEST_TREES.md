@@ -716,6 +716,35 @@ memory-journey
       and session B data is readable from session B group
       and session A data does NOT appear when reading session B group
       and session B data does NOT appear when reading session A group
+jido-memory-journey (Elixir-driven functional suite in ex/test/functional/)
+  prerequisites
+    given a real Python server booted by Gralkor.Server with real Graphiti + falkordblite + Gemini
+    when GOOGLE_API_KEY is unset
+      then the suite is skipped
+  round-trip
+    given POST /tools/memory_add stores "Eli prefers concise explanations" under group "jido-test"
+      when POST /recall is called with a related query
+        then memory_block is a non-empty <gralkor-memory> block
+        and the block references the stored content semantically (contains "concise" or similar)
+  capture idle flush
+    given capture_idle_seconds is short (e.g. 3s)
+      when POST /capture is called with a conversation turn
+        and idle_seconds elapses
+          then the episode is ingested
+          and POST /search finds an edge mentioning the turn content
+  graceful-shutdown flush
+    given a pending turn in the capture buffer (no idle elapsed)
+      when GenServer.stop(Gralkor.Server) runs
+        then terminate/2 sends SIGTERM to the Python process
+        and uvicorn runs lifespan shutdown which awaits flush_all
+        and the episode lands before SIGKILL fires
+      when the supervisor is started again
+        then POST /search finds the previously-flushed episode
+  crash recovery
+    when the Python OS pid is killed externally (SIGKILL)
+      then the GenServer stops with {:python_exited, _}
+      and the supervisor restarts it
+      and GET /health returns 200 within the next boot window
 ```
 
 ## Distribution
