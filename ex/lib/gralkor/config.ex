@@ -32,7 +32,7 @@ defmodule Gralkor.Config do
   def from_env do
     %__MODULE__{
       data_dir: System.fetch_env!("GRALKOR_DATA_DIR"),
-      server_dir: System.get_env("GRALKOR_SERVER_DIR", "/app/server"),
+      server_dir: System.get_env("GRALKOR_SERVER_DIR", default_server_dir()),
       server_url: System.get_env("GRALKOR_SERVER_URL", "http://127.0.0.1:4000"),
       auth_token: System.fetch_env!("GRALKOR_AUTH_TOKEN"),
       llm_provider: System.get_env("GRALKOR_LLM_PROVIDER"),
@@ -40,6 +40,14 @@ defmodule Gralkor.Config do
       embedder_provider: System.get_env("GRALKOR_EMBEDDER_PROVIDER"),
       embedder_model: System.get_env("GRALKOR_EMBEDDER_MODEL")
     }
+  end
+
+  @spec default_server_dir() :: String.t()
+  def default_server_dir do
+    case :code.priv_dir(:gralkor) do
+      {:error, :bad_name} -> "/app/server"
+      priv -> Path.join(to_string(priv), "server")
+    end
   end
 
   @spec write_yaml(t()) :: :ok
