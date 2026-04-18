@@ -19,7 +19,7 @@ defmodule Gralkor.Server do
 
   @health_poll_interval_ms 500
   @default_boot_timeout_ms 120_000
-  @monitor_interval_ms 60_000
+  @default_monitor_interval_ms 60_000
   @shutdown_grace_ms 30_000
 
   @type state :: %{
