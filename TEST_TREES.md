@@ -771,14 +771,14 @@ jido-memory-journey (Elixir-driven functional suite in ex/test/functional/)
       then the suite is skipped
   round-trip
     given POST /tools/memory_add stores "Eli prefers concise explanations" under group "jido-test"
-      when POST /recall is called with a related query
+      when POST /recall is called with a fresh session_id and a related query
         then memory_block is a non-empty <gralkor-memory> block
         and the block references the stored content semantically (contains "concise" or similar)
   capture idle flush
     given capture_idle_seconds is short (e.g. 3s)
-      when POST /capture is called with a conversation turn
+      when POST /capture is called with {session_id, group_id, turn}
         and idle_seconds elapses
-          then the episode is ingested
+          then the episode is ingested into the bound group_id
           and POST /search finds an edge mentioning the turn content
   graceful-shutdown flush
     given a pending turn in the capture buffer (no idle elapsed)
