@@ -31,6 +31,7 @@ async def test_capture_idle_flush_calls_add_episode(mock_graphiti):
             resp = await client.post(
                 "/capture",
                 json={
+                    "session_id": "smoke-sess",
                     "group_id": "smoke-grp",
                     "turn": {
                         "user_query": "remember this",
@@ -75,12 +76,13 @@ async def test_lifespan_flush_all_drains_buffer(mock_graphiti):
             await client.post(
                 "/capture",
                 json={
+                    "session_id": "sess-drain",
                     "group_id": "grp",
                     "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
                 },
             )
 
-        assert buffer.has("grp")
+        assert buffer.has("sess-drain")
         await buffer.flush_all()
         mock_graphiti.add_episode.assert_awaited()
     finally:
