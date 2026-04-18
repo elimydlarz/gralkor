@@ -53,18 +53,20 @@ defmodule Gralkor.Config do
   @spec build_yaml(t()) :: String.t()
   def build_yaml(%__MODULE__{} = cfg) do
     [
-      "llm:",
-      "  provider: #{cfg.llm_provider}",
-      optional("  model", cfg.llm_model),
-      "embedder:",
-      "  provider: #{cfg.embedder_provider}",
-      optional("  model", cfg.embedder_model),
+      provider_section("llm", cfg.llm_provider, cfg.llm_model),
+      provider_section("embedder", cfg.embedder_provider, cfg.embedder_model),
       capture_section(cfg.capture_idle_seconds)
     ]
     |> List.flatten()
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")
     |> Kernel.<>("\n")
+  end
+
+  defp provider_section(_key, nil, _model), do: []
+
+  defp provider_section(key, provider, model) do
+    ["#{key}:", "  provider: #{provider}", optional("  model", model)]
   end
 
   defp capture_section(nil), do: []
