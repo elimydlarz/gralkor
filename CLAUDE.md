@@ -92,7 +92,7 @@ The Python server runs under an OTP supervisor in `ex/`. Integration mode: **emb
 - `terminate/2` — extracts OS pid via `Port.info(port, :os_pid)`, sends `SIGTERM` via `System.cmd("kill", …)`, waits up to 30s for the exit message, then `SIGKILL`.
 - Deps: `req` (HTTP for `/health`), `jason`. No Jido dep — this is a bare OTP release consumed *by* Jido.
 - **Package layout**: the Python source ships under `ex/priv/server/` via `Mix.Tasks.Compile.GralkorPriv`, a custom compiler that runs after `:elixir` and copies `../server/` (excluding `.venv`/`__pycache__`/`wheels`/`tests`/`mutants`/`.pyc`) into `priv/server/` at `mix compile` time. `Gralkor.Config.default_server_dir/0` resolves to `:code.priv_dir(:gralkor) |> Path.join("server")`, so both path-deps and hex-installed consumers find the server without needing to set `GRALKOR_SERVER_DIR`. `priv/server/` is `.gitignore`d — it's regenerated from `../server/` on every compile.
-- **Hex**: published as `:gralkor`. `mix hex.build` produces an ~87 KB tarball (just Python source + Elixir lib + config + README — no venv, no wheels). Bump `@version` in `ex/mix.exs` then `mix hex.publish` to release.
+- **Hex**: published as `:gralkor`. `mix hex.build` produces an ~87 KB tarball (just Python source + Elixir lib + config + README — no venv, no wheels). Release via `pnpm run publish:hex -- patch|minor|major|current` (bumps `@version` in `ex/mix.exs`, runs `mix hex.publish --yes`, commits, tags `ex-v${version}`). Version stream is independent of the npm/ClawHub one (`v${version}`) — no shared `publish:all`.
 
 ### Server-side pipelines & endpoints (for thin Jido/Elixir clients)
 
