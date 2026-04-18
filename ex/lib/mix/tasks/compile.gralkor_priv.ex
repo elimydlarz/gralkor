@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Compile.GralkorPriv do
   use Mix.Task.Compiler
 
   @priv_dest "priv/server"
-  @skip_dirs ~w(.venv __pycache__ wheels tests mutants)
+  @skip_dirs ~w(.venv .pytest_cache __pycache__ wheels tests mutants tmp)
   @skip_ext ~w(.pyc)
 
   @impl true
