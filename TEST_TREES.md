@@ -506,13 +506,14 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then the boot loop peeks the mailbox each iteration and fails fast
       then stops with {:boot_failed, :port_exited} (no full-timeout wait)
     when boot succeeds
-      then health monitor is scheduled at 60s
+      then health monitor is scheduled at the configured monitor_interval_ms (default 60_000)
   health monitor
     when /health check returns 200
-      then reschedules itself at 60s
-    when /health check fails
+      then reschedules itself at the configured monitor_interval_ms
+    when /health check fails (5xx or transport error)
       then GenServer stops with {:health_degraded, reason}
       then supervisor restarts the GenServer (which respawns Python)
+    then Gralkor.Health.check disables Req's implicit retry (retry: false) — a single failed poll must surface immediately, not incur Req's 1s/2s/4s retry schedule
   python crash
     when Port emits {:exit_status, N}
       then GenServer stops with {:python_exited, N}
