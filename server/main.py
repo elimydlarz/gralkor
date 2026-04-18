@@ -788,8 +788,7 @@ async def recall(req: RecallRequest) -> RecallResponse:
 @protected_router.post("/distill", response_model=DistillResponse)
 async def distill(req: DistillRequest) -> DistillResponse:
     turns = [_turn_body_to_turn(t) for t in req.turns]
-    messages = turns_to_episode_messages(turns)
-    episode_body = await format_transcript(messages, graphiti.llm_client if graphiti else None)
+    episode_body = await format_transcript(turns, graphiti.llm_client if graphiti else None)
     return DistillResponse(episode_body=episode_body)
 
 
