@@ -17,9 +17,9 @@ recall-interpretation
     and most recent messages are always preserved
   if llmClient is missing or the LLM call fails
     then the recall call throws (no fallback)
-  for memory_search (slow)
-    then conversation messages are looked up by session_key from the session message store
-    when no messages have been recorded for the session
+  for server-side endpoints (POST /recall and POST /tools/memory_search)
+    then conversation messages are looked up by session_id from the server's CaptureBuffer
+    when no turns have been captured for the session
       then interpretation runs with empty conversation context
 auto-recall-further-querying
   when auto-recall returns results
