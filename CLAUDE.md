@@ -100,7 +100,7 @@ The Python server hosts shared helpers so any client (TS/OpenClaw, Elixir/Jido, 
 - `pipelines/formatting.py` — `format_fact`, `format_node`, `format_timestamp`.
 - `pipelines/message_clean.py` — `clean_user_message_text`, `strip_gralkor_memory_xml`, `SYSTEM_MESSAGE_PATTERNS`, `SYSTEM_MESSAGE_MULTILINE_PATTERNS`, `build_interpretation_context` (token-budgeted; oldest dropped first).
 - `pipelines/interpret.py` — `interpret_facts(messages, facts_text, llm_client)`; passes a one-field Pydantic `InterpretResult` as `response_model` so all providers (Gemini/OpenAI/Anthropic/Groq) return `{"text": …}` consistently. Fail-fast on `None` or empty.
-- `pipelines/distill.py` — `format_transcript`, `safe_distill` (returns empty on LLM failure), `turns_to_episode_messages`. Uses `DistillResult` response_model.
+- `pipelines/distill.py` — `format_transcript(turns, llm_client)`, `safe_distill` (returns empty on LLM failure). Uses `DistillResult` response_model. **`Turn.events` is `list[Any]` — the consumer sends whatever event shape it has (ReAct atoms, LangChain messages, free strings); the renderer JSON-serialises each event into the distill prompt. Inference tolerates loose input, so no schema enforcement.**
 - `pipelines/capture_buffer.py` — asyncio `CaptureBuffer` keyed by `group_id`; `loop.call_later` idle timer, retry schedule 1s/2s/4s (4xx not retried via `CaptureClientError`), `flush_all` drains on lifespan shutdown.
 
 Endpoints added in `main.py`:
