@@ -32,6 +32,7 @@ defmodule Gralkor.Functional.EndToEndTest do
 
   test "memory_add then recall retrieves the stored content", %{url: url} do
     group = "jido_func_add_#{System.unique_integer([:positive])}"
+    session = "sess_#{System.unique_integer([:positive])}"
 
     assert {:ok, %{status: 200}} =
              post(url, "/tools/memory_add", %{
@@ -44,9 +45,9 @@ defmodule Gralkor.Functional.EndToEndTest do
 
     {:ok, resp} =
       post(url, "/recall", %{
+        session_id: session,
         group_id: group,
         query: "what company did Eli found",
-        conversation_messages: [%{role: "user", text: "what company did Eli found"}],
         max_results: 5
       })
 
@@ -60,9 +61,11 @@ defmodule Gralkor.Functional.EndToEndTest do
 
   test "capture → idle flush → search finds the turn content", %{url: url} do
     group = "jido_func_cap_#{System.unique_integer([:positive])}"
+    session = "sess_#{System.unique_integer([:positive])}"
 
     assert {:ok, %{status: 204}} =
              post(url, "/capture", %{
+               session_id: session,
                group_id: group,
                turn: %{
                  user_query: "Remember that my favourite colour is teal.",
