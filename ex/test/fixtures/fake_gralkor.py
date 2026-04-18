@@ -64,8 +64,7 @@ def main() -> None:
         delay = float(os.environ.get("SHUTDOWN_DELAY", "0"))
         if delay > 0:
             time.sleep(delay)
-        server.shutdown()
-        sys.exit(0)
+        os._exit(0)
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
