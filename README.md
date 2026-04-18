@@ -69,7 +69,7 @@ Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perh
 
 Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness-agnostic HTTP API so Elixir/Jido agents can use it too. The Elixir supervisor in `ex/` runs Gralkor as a managed subprocess either embedded in your Jido app's supervision tree (dev) or as a standalone container (production).
 
-**HTTP endpoints** (all require `Authorization: Bearer <AUTH_TOKEN>` unless `AUTH_TOKEN` is unset):
+**HTTP endpoints** (unauthenticated — loopback-only; consumer supervises the server):
 
 - `POST /recall` — before-prompt auto-recall
 - `POST /capture` — fire-and-forget turn capture (server buffers, distils, ingests on idle)
