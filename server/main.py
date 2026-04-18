@@ -559,10 +559,10 @@ def _turn_body_to_turn(body: TurnBody) -> Turn:
     )
 
 
-def _to_conversation_messages(
-    msgs: list[ConversationMessageBody],
-) -> list[ConversationMessage]:
-    return [ConversationMessage(role=m.role, text=m.text) for m in msgs]
+def _conversation_for_session(session_id: str) -> list[ConversationMessage]:
+    if capture_buffer is None:
+        return []
+    return turns_to_conversation(capture_buffer.turns_for(session_id))
 
 
 FURTHER_QUERYING_INSTRUCTION = (
