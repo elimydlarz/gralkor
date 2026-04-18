@@ -91,6 +91,8 @@ The Python server runs under an OTP supervisor in `ex/`. Integration mode: **emb
 - `Gralkor.Health` — thin `Req.get/2` wrapper over `/health`. **Disables Req's default retry** (`retry: false`) so boot polls and monitor ticks see failures immediately instead of waiting out Req's 1s/2s/4s schedule — critical for the 30s shutdown window not being consumed by an in-flight retry.
 - `terminate/2` — extracts OS pid via `Port.info(port, :os_pid)`, sends `SIGTERM` via `System.cmd("kill", …)`, waits up to 30s for the exit message, then `SIGKILL`.
 - Deps: `req` (HTTP for `/health`), `jason`. No Jido dep — this is a bare OTP release consumed *by* Jido.
+- **Package layout**: the Python source ships under `ex/priv/server/` via `Mix.Tasks.Compile.GralkorPriv`, a custom compiler that runs after `:elixir` and copies `../server/` (excluding `.venv`/`__pycache__`/`wheels`/`tests`/`mutants`/`.pyc`) into `priv/server/` at `mix compile` time. `Gralkor.Config.default_server_dir/0` resolves to `:code.priv_dir(:gralkor) |> Path.join("server")`, so both path-deps and hex-installed consumers find the server without needing to set `GRALKOR_SERVER_DIR`. `priv/server/` is `.gitignore`d — it's regenerated from `../server/` on every compile.
+- **Hex**: published as `:gralkor`. `mix hex.build` produces an ~87 KB tarball (just Python source + Elixir lib + config + README — no venv, no wheels). Bump `@version` in `ex/mix.exs` then `mix hex.publish` to release.
 
 ### Server-side pipelines & endpoints (for thin Jido/Elixir clients)
 
