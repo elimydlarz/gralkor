@@ -600,6 +600,20 @@ test-mode-query-logging
     then the query argument is logged
   when test mode is disabled
     then queries are not logged
+server-config-defaults (server/main.py)
+  when config omits llm.provider
+    then _build_llm_client uses DEFAULT_LLM_PROVIDER ("gemini")
+  when config omits llm.model and provider is gemini
+    then _build_llm_client uses DEFAULT_LLM_MODEL ("gemini-3.1-flash-lite-preview")
+  when config omits llm.model and provider is not gemini
+    then no model is forced (delegates to graphiti-core provider defaults)
+  when config omits embedder.provider
+    then _build_embedder uses DEFAULT_EMBEDDER_PROVIDER ("gemini")
+  when config omits embedder.model and provider is gemini
+    then _build_embedder uses DEFAULT_EMBEDDER_MODEL ("gemini-embedding-2-preview")
+  when config sets llm.provider / llm.model explicitly
+    then those values take precedence over the defaults
+  (the server is the single source of truth for model defaults — clients may write config.yaml with provider/model omitted and rely on these fallbacks)
 cross-encoder-selection
   when llm provider is gemini
     then uses GeminiRerankerClient
