@@ -52,14 +52,14 @@ defmodule Gralkor.ConfigTest do
       assert_raise System.EnvError, fn -> Config.from_env() end
     end
 
-    test "defaults llm_provider to gemini when unset" do
+    test "leaves llm/embedder provider nil when unset (server applies defaults)" do
       System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
       System.put_env("GRALKOR_AUTH_TOKEN", "tok")
 
       cfg = Config.from_env()
 
-      assert cfg.llm_provider == "gemini"
-      assert cfg.embedder_provider == "gemini"
+      assert cfg.llm_provider == nil
+      assert cfg.embedder_provider == nil
     end
 
     test "defaults server_dir to /app/server and server_url to 127.0.0.1:4000" do
