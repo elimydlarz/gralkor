@@ -342,30 +342,31 @@ capture-buffer (Python)
     when FastAPI lifespan enters shutdown
       then capture_buffer.flush_all is awaited
 format-transcript (Python)
-  turns_to_episode_messages
-    then each turn becomes a user message + an assistant message
-    when events contain thinking, tool_use, tool_result blocks
-      then they are attached to the assistant message as behaviour blocks
-    when turn has no events (text-only)
-      then assistant message has only text blocks
-  format_transcript
-    when turn has behaviour blocks and llm_client available
-      then behaviour blocks joined with --- separator
+  inputs
+    then takes a list[Turn] directly (no EpisodeMessage/EpisodeBlock intermediate)
+    then Turn.events is list[Any] — loose shapes: dicts, strings, nested content
+  event rendering
+    when event is a string
+      then it's used verbatim (trimmed)
+    when event is a dict or nested structure
+      then it's JSON-serialised for the distill prompt (default=str, ensure_ascii=False)
+    when events contain unfamiliar fields (e.g. ReAct's :llm_completed, :tool_started)
+      then they're still passed through — the distill LLM reasons over the raw shape
+  transcript
+    when turn has events and llm_client available
+      then events are joined with "\n---\n" as the "Actions:" section
       and distill input includes user message and assistant response for context
       and system prompt instructs capturing dead ends and intermediary steps
       and distilled via llm_client into first-person past-tense summary
       and rendered as "Assistant: (behaviour: {summary})" before assistant text
-    when behaviour blocks reference recalled memory
-      then distillation describes intent ("consulted memory")
-      and does NOT echo recalled fact content
+    when events reference recalled memory
+      then distillation describes intent ("consulted memory") and does NOT echo recalled fact content
     when distillation fails for a turn (safe_distill)
       then behaviour line silently dropped, assistant text preserved
     when llm_client is None
-      then behaviour blocks silently omitted, text blocks preserved
-    when turn has only text blocks
-      then rendered as "Assistant: {text}" with no behaviour line
-    user messages
-      then rendered as "User: {text}"
+      then events silently omitted, user/assistant text preserved
+    when turn has no events
+      then rendered as "User: ...\nAssistant: ..." with no behaviour line, no LLM call
     then passes response_model with a single "behaviour" field to generate_response
     then parallel distillation across turns via asyncio.gather
 ```
