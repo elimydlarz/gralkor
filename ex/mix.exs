@@ -44,8 +44,9 @@ defmodule Gralkor.MixProject do
 
   defp aliases do
     [
-      "test.unit": ["test --exclude integration"],
-      "test.integration": ["test --only integration"]
+      "test.unit": ["test --exclude integration --exclude functional"],
+      "test.integration": ["test --only integration"],
+      "test.functional": ["test --only functional"]
     ]
   end
 end
