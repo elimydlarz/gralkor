@@ -170,6 +170,12 @@ defmodule Gralkor.Server do
     base ++ forwarded
   end
 
+  defp extra_env(opts) do
+    for {name, value} <- Keyword.get(opts, :extra_env, []) do
+      {String.to_charlist(name), String.to_charlist(value)}
+    end
+  end
+
   defp wait_for_health(url, port, timeout_ms) do
     deadline = System.monotonic_time(:millisecond) + timeout_ms
     do_wait_for_health(url, port, deadline)
