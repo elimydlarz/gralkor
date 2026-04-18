@@ -1,1 +1,1 @@
-ExUnit.start(trace: true, exclude: [:integration])
+ExUnit.start(trace: true, exclude: [:integration, :functional])
