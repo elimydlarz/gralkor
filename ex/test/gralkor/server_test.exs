@@ -37,7 +37,7 @@ defmodule Gralkor.ServerTest do
     |> Map.put(:python_exe, System.find_executable("python3") || flunk("python3 required"))
   end
 
-  test "init does not block", %{config: config, python_exe: python} do
+  test "init does not block", %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
     parent = self()
