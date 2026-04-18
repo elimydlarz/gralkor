@@ -288,11 +288,11 @@ sigterm-flush
 POST /distill endpoint
   request shape
     then body is {turns: [{user_query, events: [...], assistant_answer}]}
+    then events is a list of arbitrary shapes — no schema enforcement; the distill pipeline JSON-serialises them into the LLM prompt (inference tolerates loose input)
     then requires bearer auth
-  then events are grouped back into EpisodeMessage[] via turns_to_episode_messages
-  then uses format_transcript pipeline
+  then calls format_transcript(turns, graphiti.llm_client)
   then response is {"episode_body": string}
-  when multiple turns have behaviour blocks
+  when multiple turns have events
     then distillation runs in parallel (asyncio.gather)
   when a single turn's distillation raises
     then that turn's behaviour is silently dropped (empty string)
@@ -302,6 +302,7 @@ POST /distill endpoint
 POST /capture endpoint
   request shape
     then body is {group_id, turn: {user_query, events, assistant_answer}}
+    then events is a list of arbitrary shapes (same as /distill)
     then requires bearer auth
   then appends turn to capture_buffer keyed by sanitized group_id
   then returns 204 No Content (no body)
