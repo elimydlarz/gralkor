@@ -60,7 +60,7 @@ defmodule Gralkor.ServerTest do
     :ok = stop_and_wait(pid)
   end
 
-  test "boot succeeds when health endpoint returns 200", %{config: config, python_exe: python} do
+  test "boot succeeds when health endpoint returns 200", %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
     {:ok, pid} =
