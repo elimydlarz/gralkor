@@ -2,8 +2,10 @@
 """Minimal HTTP server for Gralkor.Server test harness.
 
 Serves GET /health → 200 by default. Environment overrides:
-  HEALTH_STATUS    — response status code (default 200).
-  SHUTDOWN_DELAY   — seconds to sleep on SIGTERM before exiting (default 0).
+  HEALTH_STATUS         — response status code (default 200).
+  FAIL_AFTER_SECONDS    — after this many seconds of uptime, /health returns 500
+                           (default unset = never switch).
+  SHUTDOWN_DELAY        — seconds to sleep on SIGTERM before exiting (default 0).
 
 Run: python3 fake_gralkor.py [port=4000]
 """
@@ -13,15 +15,19 @@ from __future__ import annotations
 import os
 import signal
 import sys
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
+_state = {"fail": False}
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
-            status = int(os.environ.get("HEALTH_STATUS", "200"))
-            body = b'{"status":"ok"}'
+            status = 500 if _state["fail"] else int(os.environ.get("HEALTH_STATUS", "200"))
+            body = b'{"status":"ok"}' if status == 200 else b'{"status":"degraded"}'
             self.send_response(status)
             self.send_header("content-type", "application/json")
             self.send_header("content-length", str(len(body)))
@@ -33,6 +39,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args, **kwargs):  # noqa: ARG002
         pass
+
+
+def _schedule_fail_switch() -> None:
+    raw = os.environ.get("FAIL_AFTER_SECONDS")
+    if not raw:
+        return
+    delay = float(raw)
+
+    def flip():
+        _state["fail"] = True
+
+    threading.Timer(delay, flip).start()
 
 
 def main() -> None:
