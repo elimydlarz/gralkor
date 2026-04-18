@@ -391,8 +391,7 @@ capture_buffer: CaptureBuffer | None = None
 async def _capture_flush(group_id: str, turns: list[Turn]) -> None:
     if graphiti is None:
         return
-    messages = turns_to_episode_messages(turns)
-    episode_body = await format_transcript(messages, graphiti.llm_client)
+    episode_body = await format_transcript(turns, graphiti.llm_client)
     if not episode_body.strip():
         return
     async with _driver_lock:
