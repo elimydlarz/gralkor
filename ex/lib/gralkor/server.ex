@@ -192,6 +192,11 @@ defmodule Gralkor.Server do
     end
   end
 
+  defp schedule_monitor(opts) do
+    interval = Keyword.get(opts, :monitor_interval_ms, @default_monitor_interval_ms)
+    Process.send_after(self(), :health_check, interval)
+  end
+
   defp port_exited?(port) do
     receive do
       {^port, {:exit_status, _}} = msg ->
