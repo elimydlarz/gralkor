@@ -133,7 +133,7 @@ defmodule Gralkor.Server do
       :exit_status,
       {:args, args},
       {:cd, config.server_dir},
-      {:env, build_env(config)}
+      {:env, build_env(config) ++ extra_env(opts)}
     ]
 
     Port.open({:spawn_executable, executable}, port_opts)
