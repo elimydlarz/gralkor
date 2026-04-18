@@ -847,6 +847,29 @@ publish-all
     then clawhub publish does not run
   when npm publish succeeds but clawhub publish fails
     then a recovery hint is printed directing the user to run publish:clawhub current
+publish-hex-version-integrity
+  when publish succeeds
+    then @version is bumped in ex/mix.exs
+    and a git tag ex-v${version} is created for the new version (push manually)
+  when not logged in to Hex
+    then exits before version bump
+    and no rollback is needed
+  when publish fails (mix hex.publish reject)
+    then @version in ex/mix.exs is rolled back to its pre-publish value
+    and no git tag is created
+  when successive publishes fail
+    then @version does not increment multiple times
+  when DRY_RUN is set
+    then @version is bumped in ex/mix.exs
+    and publish is skipped
+    and no git tag is created
+  when level is current
+    then @version is not incremented
+    and publish still runs
+    and a git tag ex-v${version} is created for the current version
+  when level is current and publish fails
+    then no rollback runs
+    and ex/mix.exs remains unchanged
 install-sequencing-docs
   then README documents recommended install sequencing for operators
 ```
