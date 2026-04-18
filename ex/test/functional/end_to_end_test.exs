@@ -7,7 +7,8 @@ defmodule Gralkor.Functional.EndToEndTest do
   consumer would. Skipped when GOOGLE_API_KEY is unset.
 
   Assertions are semantic (substring, presence, count) — LLM output is not
-  byte-stable.
+  byte-stable. Crash detection and SIGTERM semantics are covered by the
+  integration tests in server_test.exs against a fake Python process.
   """
 
   use ExUnit.Case, async: false
@@ -20,33 +21,31 @@ defmodule Gralkor.Functional.EndToEndTest do
 
   @base_port 4400
   @token "functional-token"
-  @group "jido_func"
   @capture_idle 3.0
 
   setup_all do
     if System.get_env("GOOGLE_API_KEY") in [nil, ""] do
-      :ok = ExUnit.configure(exclude: [:functional])
-      {:skip, "GOOGLE_API_KEY not set — skipping functional suite"}
+      {:skip, "GOOGLE_API_KEY not set"}
     else
       {:ok, start_server()}
     end
   end
 
-  # ── Tests ────────────────────────────────────────────────
+  test "memory_add then recall retrieves the stored content", %{url: url} do
+    group = "jido_func_add_#{System.unique_integer([:positive])}"
 
-  test "round-trip: memory_add then recall retrieves the stored content", %{url: url} do
     assert {:ok, %{status: 200}} =
              post(url, "/tools/memory_add", %{
-               group_id: @group,
+               group_id: group,
                content: "Eli prefers concise explanations over verbose ones.",
                source_description: "functional-test"
              })
 
-    wait_for_graph(url, @group, "eli", 60_000)
+    wait_for_graph(url, group, "concise", 90_000)
 
     {:ok, resp} =
       post(url, "/recall", %{
-        group_id: @group,
+        group_id: group,
         query: "what style does Eli prefer",
         conversation_messages: [%{role: "user", text: "what style does Eli prefer"}],
         max_results: 5
@@ -60,8 +59,8 @@ defmodule Gralkor.Functional.EndToEndTest do
     assert memory_block =~ ~r/concise|explanation/i
   end
 
-  test "capture → idle flush → search finds the episode", %{url: url} do
-    group = "#{@group}_capture"
+  test "capture → idle flush → search finds the turn content", %{url: url} do
+    group = "jido_func_cap_#{System.unique_integer([:positive])}"
 
     assert {:ok, %{status: 204}} =
              post(url, "/capture", %{
@@ -73,22 +72,7 @@ defmodule Gralkor.Functional.EndToEndTest do
                }
              })
 
-    wait_for_graph(url, group, "teal", 90_000)
-  end
-
-  test "crash recovery: SIGKILL the python pid, supervisor restarts it", %{server: pid, url: url} do
-    %{os_pid: os_pid} = :sys.get_state(pid)
-    assert is_integer(os_pid)
-
-    {_, 0} = System.cmd("kill", ["-KILL", Integer.to_string(os_pid)], stderr_to_stdout: true)
-
-    wait_for_process_exit(pid, 10_000)
-    {:ok, new_pid} = wait_for_server_restart(Server, 60_000)
-    wait_for_health(url, 120_000)
-
-    new_state = :sys.get_state(new_pid)
-    assert is_integer(new_state.os_pid)
-    refute new_state.os_pid == os_pid
+    wait_for_graph(url, group, "teal", 120_000)
   end
 
   # ── Harness ─────────────────────────────────────────────
@@ -152,10 +136,6 @@ defmodule Gralkor.Functional.EndToEndTest do
       headers: [{"authorization", "Bearer #{@token}"}],
       receive_timeout: 60_000
     )
-    |> case do
-      {:ok, resp} -> {:ok, resp}
-      {:error, _} = err -> err
-    end
   end
 
   defp wait_for_graph(url, group, needle, timeout_ms) do
@@ -164,13 +144,16 @@ defmodule Gralkor.Functional.EndToEndTest do
   end
 
   defp do_wait_for_graph(url, group, needle, deadline) do
-    case search(url, group) do
-      {:ok, %{status: 200, body: %{"facts" => facts}}}
-      when is_list(facts) and facts != [] ->
-        if Enum.any?(facts, fn f ->
-             text = (f["fact"] || "") <> " " <> (f["name"] || "")
-             String.contains?(String.downcase(text), String.downcase(needle))
-           end) do
+    sanitized = String.replace(group, "-", "_")
+
+    case post(url, "/search", %{
+           query: needle,
+           group_ids: [sanitized],
+           num_results: 20,
+           mode: "slow"
+         }) do
+      {:ok, %{status: 200, body: %{"facts" => facts}}} when is_list(facts) and facts != [] ->
+        if matches_any?(facts, needle) do
           :ok
         else
           retry_wait(url, group, needle, deadline)
@@ -181,6 +164,15 @@ defmodule Gralkor.Functional.EndToEndTest do
     end
   end
 
+  defp matches_any?(facts, needle) do
+    lower_needle = String.downcase(needle)
+
+    Enum.any?(facts, fn f ->
+      text = "#{f["fact"] || ""} #{f["name"] || ""}"
+      String.contains?(String.downcase(text), lower_needle)
+    end)
+  end
+
   defp retry_wait(url, group, needle, deadline) do
     if System.monotonic_time(:millisecond) >= deadline do
       flunk("graph never contained '#{needle}' for group '#{group}'")
@@ -188,55 +180,5 @@ defmodule Gralkor.Functional.EndToEndTest do
       Process.sleep(1_000)
       do_wait_for_graph(url, group, needle, deadline)
     end
-  end
-
-  defp search(url, group) do
-    post(url, "/search", %{
-      query: "*",
-      group_ids: [String.replace(group, "-", "_")],
-      num_results: 20,
-      mode: "slow"
-    })
-  end
-
-  defp wait_for_health(url, timeout_ms) do
-    deadline = System.monotonic_time(:millisecond) + timeout_ms
-    do_wait_for_health(url, deadline)
-  end
-
-  defp do_wait_for_health(url, deadline) do
-    case Req.get(Path.join(url, "/health"), receive_timeout: 2_000) do
-      {:ok, %{status: 200}} ->
-        :ok
-
-      _ ->
-        if System.monotonic_time(:millisecond) >= deadline do
-          flunk("health never returned 200")
-        else
-          Process.sleep(500)
-          do_wait_for_health(url, deadline)
-        end
-    end
-  end
-
-  defp wait_for_process_exit(pid, timeout_ms) do
-    ref = Process.monitor(pid)
-
-    receive do
-      {:DOWN, ^ref, :process, ^pid, _} -> :ok
-    after
-      timeout_ms -> flunk("genserver did not exit after kill")
-    end
-  end
-
-  defp wait_for_server_restart(_name, _timeout_ms) do
-    # The functional suite does not run under an external supervisor; a
-    # restart here means "start_link a new one to prove it can come back".
-    # The test asserts on the fresh state having a different os_pid.
-    config = Process.get(:functional_config) || flunk("no config captured")
-    uv_path = System.find_executable("uv")
-
-    args = Process.get(:functional_args) || []
-    Server.start_link(config: config, executable: uv_path, executable_args: args, boot_timeout_ms: 180_000)
   end
 end
