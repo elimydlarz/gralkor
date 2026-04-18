@@ -1,25 +1,23 @@
 """Tree: format-transcript (Python).
 
 Shared helper used by POST /distill and the capture-buffer flush. Ports
-src/distill.ts formatTranscript + safeDistill.
+src/distill.ts formatTranscript + safeDistill. Events are loose dicts
+(anything the consumer has); the renderer JSON-serialises them into the
+distill prompt.
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock
 
 import pytest
 
 from pipelines.distill import (
     DISTILL_SYSTEM_PROMPT,
     DistillResult,
-    EpisodeBlock,
-    EpisodeMessage,
     Turn,
-    TurnEvent,
     format_transcript,
     safe_distill,
-    turns_to_episode_messages,
 )
 
 
@@ -30,181 +28,112 @@ def mock_llm_client():
     return client
 
 
-class TestTurnsToEpisodeMessages:
-    def test_converts_user_query_to_user_message(self):
-        turns = [Turn(user_query="hi", events=[], assistant_answer="hello")]
-        messages = turns_to_episode_messages(turns)
-        assert messages[0].role == "user"
-        assert messages[0].content[0].text == "hi"
-
-    def test_attaches_events_as_behaviour_blocks(self):
-        turns = [
-            Turn(
-                user_query="search memory",
-                events=[
-                    TurnEvent(kind="thinking", text="let me think"),
-                    TurnEvent(kind="tool_use", text="memory_search(q)"),
-                    TurnEvent(kind="tool_result", text="Facts: - fact"),
-                ],
-                assistant_answer="here is the answer",
-            )
-        ]
-        messages = turns_to_episode_messages(turns)
-        assistant = messages[1]
-        assert assistant.role == "assistant"
-        assert [b.type for b in assistant.content] == ["thinking", "tool_use", "tool_result", "text"]
-        assert assistant.content[-1].text == "here is the answer"
-
-    def test_text_only_turn_produces_text_block_only(self):
-        turns = [Turn(user_query="hi", events=[], assistant_answer="hello")]
-        messages = turns_to_episode_messages(turns)
-        assistant = messages[1]
-        assert len(assistant.content) == 1
-        assert assistant.content[0].type == "text"
-
-    def test_empty_user_query_skips_user_message(self):
-        turns = [
-            Turn(
-                user_query="",
-                events=[TurnEvent(kind="thinking", text="t")],
-                assistant_answer="a",
-            )
-        ]
-        messages = turns_to_episode_messages(turns)
-        assert [m.role for m in messages] == ["assistant"]
-
-
 class TestFormatTranscript:
-    async def test_distills_behaviour_blocks_into_summary(self, mock_llm_client):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="hi")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="thinking", text="let me think"),
-                    EpisodeBlock(type="text", text="hello"),
-                ],
-            ),
+    async def test_distills_events_into_summary(self, mock_llm_client):
+        turns = [
+            Turn(
+                user_query="hi",
+                events=[{"kind": "llm_completed", "content": "let me think"}],
+                assistant_answer="hello",
+            )
         ]
-        result = await format_transcript(messages, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client)
         assert "User: hi" in result
         assert "Assistant: (behaviour: distilled summary)" in result
         assert "Assistant: hello" in result
 
-    async def test_orders_behaviour_before_assistant_text(self, mock_llm_client):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="q")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="tool_use", text="tool call"),
-                    EpisodeBlock(type="text", text="a"),
+    async def test_accepts_arbitrary_event_shapes(self, mock_llm_client):
+        turns = [
+            Turn(
+                user_query="q",
+                events=[
+                    {"kind": "llm_completed", "content": [{"type": "text", "text": "thinking"}]},
+                    {"kind": "tool_started", "tool": "search", "args": {"q": "x"}},
+                    {"kind": "tool_completed", "tool": "search", "result": "found"},
+                    "a loose string event",
                 ],
-            ),
+                assistant_answer="a",
+            )
         ]
-        result = await format_transcript(messages, mock_llm_client)
-        behaviour_pos = result.index("(behaviour:")
-        text_pos = result.index("Assistant: a")
-        assert behaviour_pos < text_pos
+        await format_transcript(turns, mock_llm_client)
+        call = mock_llm_client.generate_response.await_args
+        user_content = call.args[0][1].content
+        assert "llm_completed" in user_content
+        assert "tool_started" in user_content
+        assert "tool_completed" in user_content
+        assert "a loose string event" in user_content
+
+    async def test_orders_behaviour_before_assistant_text(self, mock_llm_client):
+        turns = [
+            Turn(
+                user_query="q",
+                events=[{"kind": "tool_started", "tool": "x"}],
+                assistant_answer="a",
+            )
+        ]
+        result = await format_transcript(turns, mock_llm_client)
+        assert result.index("(behaviour:") < result.index("Assistant: a")
 
     async def test_omits_behaviour_when_llm_client_is_none(self):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="hi")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="thinking", text="secret thought"),
-                    EpisodeBlock(type="text", text="hello"),
-                ],
-            ),
+        turns = [
+            Turn(
+                user_query="hi",
+                events=[{"kind": "llm_completed", "content": "secret"}],
+                assistant_answer="hello",
+            )
         ]
-        result = await format_transcript(messages, None)
+        result = await format_transcript(turns, None)
         assert "(behaviour:" not in result
-        assert "secret thought" not in result
-        assert "Assistant: hello" in result
+        assert "secret" not in result
         assert "User: hi" in result
+        assert "Assistant: hello" in result
 
     async def test_silently_drops_on_distill_failure(self, mock_llm_client):
         mock_llm_client.generate_response.side_effect = RuntimeError("boom")
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="hi")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="thinking", text="thought"),
-                    EpisodeBlock(type="text", text="hello"),
-                ],
-            ),
-        ]
-        result = await format_transcript(messages, mock_llm_client)
+        turns = [Turn(user_query="hi", events=[{"e": 1}], assistant_answer="hello")]
+        result = await format_transcript(turns, mock_llm_client)
         assert "(behaviour:" not in result
         assert "User: hi" in result
         assert "Assistant: hello" in result
 
-    async def test_skips_turns_with_only_text(self, mock_llm_client):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="q")]),
-            EpisodeMessage(role="assistant", content=[EpisodeBlock(type="text", text="a")]),
-        ]
-        result = await format_transcript(messages, mock_llm_client)
+    async def test_skips_turns_with_no_events(self, mock_llm_client):
+        turns = [Turn(user_query="q", events=[], assistant_answer="a")]
+        result = await format_transcript(turns, mock_llm_client)
         assert result == "User: q\nAssistant: a"
         mock_llm_client.generate_response.assert_not_awaited()
 
     async def test_distills_turns_in_parallel(self, mock_llm_client):
         mock_llm_client.generate_response = AsyncMock(
-            side_effect=[
-                {"behaviour": "first"},
-                {"behaviour": "second"},
-            ]
+            side_effect=[{"behaviour": "first"}, {"behaviour": "second"}]
         )
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="q1")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="thinking", text="t1"),
-                    EpisodeBlock(type="text", text="a1"),
-                ],
-            ),
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="q2")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="tool_use", text="u2"),
-                    EpisodeBlock(type="text", text="a2"),
-                ],
-            ),
+        turns = [
+            Turn(user_query="q1", events=[{"x": 1}], assistant_answer="a1"),
+            Turn(user_query="q2", events=[{"x": 2}], assistant_answer="a2"),
         ]
-        result = await format_transcript(messages, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client)
         assert "(behaviour: first)" in result
         assert "(behaviour: second)" in result
         assert mock_llm_client.generate_response.await_count == 2
 
-    async def test_includes_response_grounding_in_distill_input(self, mock_llm_client):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="what to eat")]),
-            EpisodeMessage(
-                role="assistant",
-                content=[
-                    EpisodeBlock(type="thinking", text="hungry"),
-                    EpisodeBlock(type="text", text="try pizza"),
-                ],
-            ),
+    async def test_includes_user_and_response_grounding(self, mock_llm_client):
+        turns = [
+            Turn(
+                user_query="what to eat",
+                events=[{"kind": "llm_completed", "content": "hungry"}],
+                assistant_answer="try pizza",
+            )
         ]
-        await format_transcript(messages, mock_llm_client)
-        call_args = mock_llm_client.generate_response.await_args
-        prompt_messages = call_args.args[0]
-        user_content = prompt_messages[1].content
+        await format_transcript(turns, mock_llm_client)
+        call = mock_llm_client.generate_response.await_args
+        user_content = call.args[0][1].content
         assert "User: what to eat" in user_content
         assert "Actions:" in user_content
         assert "hungry" in user_content
         assert "Response: try pizza" in user_content
 
-    async def test_renders_user_only_when_no_behaviour(self, mock_llm_client):
-        messages = [
-            EpisodeMessage(role="user", content=[EpisodeBlock(type="text", text="hello")]),
-        ]
-        result = await format_transcript(messages, mock_llm_client)
+    async def test_renders_user_only_when_no_events(self, mock_llm_client):
+        turns = [Turn(user_query="hello", events=[], assistant_answer="")]
+        result = await format_transcript(turns, mock_llm_client)
         assert result == "User: hello"
 
 
@@ -214,19 +143,17 @@ class TestSafeDistill:
         mock_llm_client.generate_response.assert_not_awaited()
 
     async def test_returns_distilled_text_on_success(self, mock_llm_client):
-        result = await safe_distill(mock_llm_client, "did stuff")
-        assert result == "distilled summary"
+        assert await safe_distill(mock_llm_client, "did stuff") == "distilled summary"
 
     async def test_returns_empty_string_on_exception(self, mock_llm_client):
         mock_llm_client.generate_response.side_effect = RuntimeError("boom")
-        result = await safe_distill(mock_llm_client, "did stuff")
-        assert result == ""
+        assert await safe_distill(mock_llm_client, "did stuff") == ""
 
-    async def test_uses_distill_response_model(self, mock_llm_client):
+    async def test_uses_distill_response_model_and_system_prompt(self, mock_llm_client):
         await safe_distill(mock_llm_client, "did stuff")
-        call_args = mock_llm_client.generate_response.await_args
-        assert call_args.kwargs.get("response_model") is DistillResult
-        assert call_args.kwargs.get("max_tokens") == 150
-        prompt_messages = call_args.args[0]
-        assert prompt_messages[0].role == "system"
-        assert prompt_messages[0].content == DISTILL_SYSTEM_PROMPT
+        call = mock_llm_client.generate_response.await_args
+        assert call.kwargs.get("response_model") is DistillResult
+        assert call.kwargs.get("max_tokens") == 150
+        prompt = call.args[0]
+        assert prompt[0].role == "system"
+        assert prompt[0].content == DISTILL_SYSTEM_PROMPT
