@@ -309,28 +309,36 @@ POST /distill endpoint
     then distilled behaviour does not echo the recalled data
 POST /capture endpoint
   request shape
-    then body is {group_id, turn: {user_query, events, assistant_answer}}
+    then body is {session_id, group_id, turn: {user_query, events, assistant_answer}}
     then events is a list of arbitrary shapes (same as /distill)
     then requires bearer auth
-  then appends turn to capture_buffer keyed by sanitized group_id
+  then appends turn to capture_buffer keyed by session_id (group_id is sanitized and bound to the entry on first append)
   then returns 204 No Content (no body)
   then returns immediately (does not call distill synchronously)
   when idle_seconds elapses after the last append
-    then flush is triggered via the registered callback
+    then flush is triggered via the registered callback, routed to the bound group_id
 capture-buffer (Python)
   append
-    when called for a new group_id
-      then entry created with turn
+    when called for a new session_id
+      then entry created bound to the supplied group_id and the turn
       and idle timer scheduled
-    when called again for same group_id before idle elapses
+    when called again for same session_id before idle elapses
       then idle timer is cancelled and rescheduled
       and both turns remain buffered
-    when called for multiple group_ids
-      then each group_id has an independent entry and timer
+    when called for multiple session_ids (same or different group_id)
+      then each session_id has an independent entry and timer
+    when called for an existing session_id with a different group_id
+      then raises (sessions are not re-bindable across groups)
+  turns_for(session_id)
+    when the session has buffered turns
+      then returns them in append order
+    when the session has never been appended to (or was just flushed)
+      then returns an empty list
   flush on idle
     when idle_seconds elapses
-      then flush_callback is invoked with (group_id, list_of_turns)
+      then flush_callback is invoked with (group_id, list_of_turns) derived from the entry
       and the entry is removed from the buffer
+      and subsequent turns_for(session_id) calls return []
   retry schedule
     when flush_callback raises a retryable error
       then retries at 1s, 2s, 4s (exponential)
@@ -349,6 +357,14 @@ capture-buffer (Python)
   lifespan shutdown
     when FastAPI lifespan enters shutdown
       then capture_buffer.flush_all is awaited
+turns_to_conversation (Python)
+  when a turn has a user_query
+    then emits a ConversationMessage(role="user", text=user_query)
+  when a turn has an assistant_answer
+    then emits a ConversationMessage(role="assistant", text=assistant_answer)
+  when a turn has empty strings for either field
+    then that field contributes no message
+  then events on the turn never become ConversationMessages (they are distilled, not raw conversation)
 format-transcript (Python)
   inputs
     then takes a list[Turn] directly (no EpisodeMessage/EpisodeBlock intermediate)
