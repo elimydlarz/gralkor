@@ -193,7 +193,7 @@ API keys live in plugin config as plain strings (gateway resolves SecretRefs ups
 
 ## Building & Deploying
 
-`pnpm run publish:all -- patch|minor|major` bumps, builds, publishes npm + ClawHub, commits and tags. `publish:npm` / `publish:clawhub` for one-at-a-time (each accepts `current` to skip the bump). `pnpm run pack` builds a deployment tarball (arm64 wheel via Docker). Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`. Behaviour in the publish test trees.
+`pnpm run publish:all -- patch|minor|major` bumps, builds, publishes npm + ClawHub, commits and tags. `publish:npm` / `publish:clawhub` for one-at-a-time (each accepts `current` to skip the bump). `publish:hex` releases the Elixir supervisor (`ex/mix.exs`) on its own version stream, tagged `ex-v${version}` — not included in `publish:all` because the Hex cadence is independent. `pnpm run pack` builds a deployment tarball (arm64 wheel via Docker). Requires `uv`. Docker HOME split: `ln -sfn /data/.openclaw /root/.openclaw`. Behaviour in the publish test trees.
 
 **ClawHub uploads** — `.clawhubignore` (gitignore syntax) is the only exclusion file the clawhub CLI honours (not `.gitignore`/`.npmignore`/`package.json#files`), so it whitelists (`*` + `!`-unignores) mirroring npm's `files`, with explicit `.env*` deny. `server/wheels/` is excluded (20 MB limit); `publish-clawhub.sh` `gh release upload`s the arm64 wheel to the matching `v${version}` release instead.
 
