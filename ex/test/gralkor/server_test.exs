@@ -79,7 +79,7 @@ defmodule Gralkor.ServerTest do
     :ok = stop_and_wait(pid)
   end
 
-  test "terminate sends SIGTERM and the child exits", %{config: config, python_exe: python} do
+  test "terminate sends SIGTERM and the child exits", %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
     {:ok, pid} =
