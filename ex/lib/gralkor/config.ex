@@ -58,12 +58,17 @@ defmodule Gralkor.Config do
       optional("  model", cfg.llm_model),
       "embedder:",
       "  provider: #{cfg.embedder_provider}",
-      optional("  model", cfg.embedder_model)
+      optional("  model", cfg.embedder_model),
+      capture_section(cfg.capture_idle_seconds)
     ]
+    |> List.flatten()
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")
     |> Kernel.<>("\n")
   end
+
+  defp capture_section(nil), do: []
+  defp capture_section(idle), do: ["capture:", "  idle_seconds: #{idle}"]
 
   defp optional(_key, nil), do: nil
   defp optional(key, value), do: "#{key}: #{value}"
