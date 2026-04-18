@@ -33,11 +33,6 @@ defmodule Gralkor.Config do
           capture_idle_seconds: number() | nil
         }
 
-  @default_llm_provider "gemini"
-  @default_llm_model "gemini-3.1-flash-lite-preview"
-  @default_embedder_provider "gemini"
-  @default_embedder_model "gemini-embedding-2-preview"
-
   @spec from_env() :: t()
   def from_env do
     %__MODULE__{
