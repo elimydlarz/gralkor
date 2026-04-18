@@ -12,7 +12,8 @@ defmodule Gralkor.MixProject do
       aliases: aliases(),
       preferred_cli_env: [
         "test.unit": :test,
-        "test.integration": :test
+        "test.integration": :test,
+        "test.functional": :test
       ],
       test_coverage: [summary: [threshold: 0]]
     ]
