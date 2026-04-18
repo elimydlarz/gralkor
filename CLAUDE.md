@@ -116,7 +116,7 @@ Endpoints added in `main.py`:
 
 **Session keying rationale.** The server holds the in-flight conversation in `CaptureBuffer`, keyed by `session_id` (not `group_id`). One principal / group can run many concurrent sessions, so coarser keying would cross-contaminate the interpretation window. Callers generate `session_id` (UUID-shaped), pass it on `/capture` to write and on `/recall` / `/tools/memory_search` to read. They still pass `group_id` on those reads because it selects the graph — `session_id` alone is only a buffer key.
 
-**Auth:** none. The server binds to loopback only and is spawned by the consumer's own supervision tree (`Gralkor.Server` in ex/), so the only reachable caller is the consumer itself. The `require_auth` dependency and `protected_router`/`public_router` split still exist in the Python code but are inert when `AUTH_TOKEN` is unset — which it is by default now, since the Elixir supervisor no longer forwards a token. If a multi-host deployment ever changes the threat model, re-enable by setting `AUTH_TOKEN` on the server and attaching `Authorization: Bearer …` on the client.
+**Auth:** none. The server binds to loopback only and is spawned by the consumer's own supervision tree (`Gralkor.Server` in ex/), so the only reachable caller is the consumer itself. No middleware, no bearer-token check — all endpoints are mounted on a single router. If a multi-host deployment ever changes the threat model, re-add a bearer-token dependency and split the routers.
 
 **Graceful shutdown:** lifespan awaits `capture_buffer.flush_all()` before `graphiti.close()`. Uvicorn must be launched with `--timeout-graceful-shutdown 30` so pending flushes complete before SIGKILL.
 

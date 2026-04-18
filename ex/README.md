@@ -12,7 +12,7 @@ Embed `Gralkor.Server` in your Jido (or any Elixir) supervision tree. The GenSer
 
 The Python source ships inside the package (`priv/server/`); no separate clone or Docker image needed.
 
-**Auth:** the server binds to loopback and expects its consumer to supervise it — so by default no auth is configured. The `require_auth` middleware is still in the Python code but inert when `AUTH_TOKEN` is unset, which is the default. Set `AUTH_TOKEN` server-side and `Authorization: Bearer …` client-side if a deployment change (multi-host, shared service) changes the threat model.
+**Auth:** the server binds to loopback and expects its consumer to supervise it — so there is no authentication. All endpoints are mounted on a single router with no middleware. If a multi-host or shared-service deployment ever changes the threat model, add a bearer-token dependency on the Python side and attach `Authorization: Bearer …` on the client.
 
 ## Install
 
@@ -111,7 +111,6 @@ Optional:
 - `GRALKOR_LLM_PROVIDER` / `GRALKOR_LLM_MODEL` — defaults chosen server-side.
 - `GRALKOR_EMBEDDER_PROVIDER` / `GRALKOR_EMBEDDER_MODEL` — defaults chosen server-side.
 - Provider API keys: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` (whichever your provider needs).
-- `AUTH_TOKEN` — bearer token protecting HTTP endpoints. Unset by default (no auth, loopback-only). Set if exposing Gralkor beyond loopback.
 
 ## HTTP endpoints
 
@@ -123,7 +122,7 @@ Your application talks to Gralkor over HTTP:
 - `POST /episodes`, `POST /search`, `POST /distill`, `POST /build-indices`, `POST /build-communities` — lower-level operations.
 - `GET /health` — liveness probe.
 
-By default all endpoints are unauthenticated (see Prerequisites → Auth). Set `AUTH_TOKEN` on the server to require `Authorization: Bearer <token>` on every non-`/health` request.
+All endpoints are unauthenticated — see the Auth note above.
 
 ## Lifecycle
 
