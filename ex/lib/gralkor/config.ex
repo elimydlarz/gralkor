@@ -12,7 +12,8 @@ defmodule Gralkor.Config do
     :llm_provider,
     :llm_model,
     :embedder_provider,
-    :embedder_model
+    :embedder_model,
+    :capture_idle_seconds
   ]
 
   @type t :: %__MODULE__{
@@ -23,7 +24,8 @@ defmodule Gralkor.Config do
           llm_provider: String.t(),
           llm_model: String.t() | nil,
           embedder_provider: String.t(),
-          embedder_model: String.t() | nil
+          embedder_model: String.t() | nil,
+          capture_idle_seconds: number() | nil
         }
 
   @spec from_env() :: t()
