@@ -173,8 +173,11 @@ defmodule Gralkor.Functional.EndToEndTest do
            num_results: 20,
            mode: "slow"
          }) do
-      {:ok, %{status: 200, body: %{"facts" => facts}}} when is_list(facts) and facts != [] ->
-        if matches_any?(facts, needle) do
+      {:ok, %{status: 200, body: body}} ->
+        facts = Map.get(body, "facts", [])
+        nodes = Map.get(body, "nodes", [])
+
+        if matches_any?(facts ++ nodes, needle) do
           :ok
         else
           retry_wait(url, group, needle, deadline)
@@ -185,11 +188,13 @@ defmodule Gralkor.Functional.EndToEndTest do
     end
   end
 
-  defp matches_any?(facts, needle) do
+  defp matches_any?(entries, needle) do
     lower_needle = String.downcase(needle)
 
-    Enum.any?(facts, fn f ->
-      text = "#{f["fact"] || ""} #{f["name"] || ""}"
+    Enum.any?(entries, fn e ->
+      text =
+        "#{e["fact"] || ""} #{e["name"] || ""} #{e["summary"] || ""}"
+
       String.contains?(String.downcase(text), lower_needle)
     end)
   end
