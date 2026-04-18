@@ -145,7 +145,7 @@ defmodule Gralkor.ServerTest do
     assert match?({:health_degraded, _}, reason), "unexpected reason: #{inspect(reason)}"
   end
 
-  test "python crash stops the GenServer", %{config: config, python_exe: python} do
+  test "python crash stops the GenServer", %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
     Process.flag(:trap_exit, true)
