@@ -1,6 +1,7 @@
 """Tree: POST /distill endpoint.
 
-Thin wrapper: turns → episode_messages → format_transcript → episode_body.
+Thin wrapper: turns → format_transcript → episode_body. Events are loose
+shapes passed through to the distill prompt.
 """
 
 from __future__ import annotations
@@ -16,8 +17,8 @@ async def test_returns_episode_body(client, mock_graphiti):
                 {
                     "user_query": "what is the weather?",
                     "events": [
-                        {"kind": "thinking", "text": "let me check"},
-                        {"kind": "tool_use", "text": "weather_lookup"},
+                        {"kind": "llm_completed", "content": "let me check"},
+                        {"kind": "tool_started", "tool": "weather_lookup"},
                     ],
                     "assistant_answer": "sunny",
                 }
@@ -53,7 +54,7 @@ async def test_silently_drops_distill_failures(client, mock_graphiti):
             "turns": [
                 {
                     "user_query": "q",
-                    "events": [{"kind": "thinking", "text": "t"}],
+                    "events": [{"kind": "llm_completed", "content": "t"}],
                     "assistant_answer": "a",
                 }
             ]
@@ -64,6 +65,26 @@ async def test_silently_drops_distill_failures(client, mock_graphiti):
     assert "(behaviour:" not in body
     assert "User: q" in body
     assert "Assistant: a" in body
+
+
+async def test_accepts_arbitrary_event_shapes(client, mock_graphiti):
+    mock_graphiti.llm_client.generate_response.return_value = {"behaviour": "did stuff"}
+    resp = await client.post(
+        "/distill",
+        json={
+            "turns": [
+                {
+                    "user_query": "q",
+                    "events": [
+                        {"kind": "llm_completed", "content": [{"type": "text", "text": "t"}]},
+                        {"kind": "tool_completed", "tool": "x", "result": {"ok": True}},
+                    ],
+                    "assistant_answer": "a",
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200
 
 
 async def test_bearer_auth_required(client, monkeypatch):
