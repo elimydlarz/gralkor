@@ -115,6 +115,8 @@ defmodule Gralkor.Functional.EndToEndTest do
         boot_timeout_ms: 180_000
       )
 
+    wait_for_health(url, 180_000)
+
     on_exit(fn ->
       try do
         GenServer.stop(pid, :normal, 45_000)
@@ -126,6 +128,26 @@ defmodule Gralkor.Functional.EndToEndTest do
     end)
 
     %{server: pid, url: url, tmp: tmp, port: port}
+  end
+
+  defp wait_for_health(url, timeout_ms) do
+    deadline = System.monotonic_time(:millisecond) + timeout_ms
+    do_wait_for_health(url, deadline)
+  end
+
+  defp do_wait_for_health(url, deadline) do
+    case Req.get(Path.join(url, "/health"), receive_timeout: 2_000) do
+      {:ok, %{status: 200}} ->
+        :ok
+
+      _ ->
+        if System.monotonic_time(:millisecond) >= deadline do
+          flunk("/health never returned 200 during boot")
+        else
+          Process.sleep(500)
+          do_wait_for_health(url, deadline)
+        end
+    end
   end
 
   defp post(url, path, body) do
