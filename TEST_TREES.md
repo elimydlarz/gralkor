@@ -501,16 +501,20 @@ ex-config-writing (Gralkor.Config)
       then raises (fail-fast)
     when GRALKOR_AUTH_TOKEN is missing
       then raises
-    when llm provider env vars are unset
-      then defaults llm_provider to "gemini"
+    when provider/model env vars are unset
+      then the corresponding fields are left nil (the server applies defaults)
   write_yaml
     then creates data_dir if missing
     then writes config.yaml with valid YAML that Python's yaml.safe_load parses
-    then top-level keys are "llm" and "embedder"
-    when llm_model is nil
-      then omits the model key under llm
-    when llm_model is set
-      then includes "model: <value>" under llm
+    when llm_provider is set
+      then emits "llm:" with the provider
+      when llm_model is also set
+        then emits "  model: <value>" under llm
+      when llm_model is nil
+        then omits the model line
+    when llm_provider is nil
+      then omits the llm section entirely (server applies default)
+    (embedder section follows the same rules)
 bundled-wheel-arch-selection
   when on linux/arm64 and the install dir (serverDir/wheels) has .whl files
     then resolveBundledWheels returns those paths (no network)
