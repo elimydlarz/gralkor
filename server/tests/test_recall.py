@@ -8,6 +8,7 @@ session_id — callers do not pass conversation messages on the wire.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 import main as main_mod
@@ -145,6 +146,76 @@ async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti
     context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
     assert "alpha secret" in context
     assert "beta secret" not in context
+
+
+class TestObservability:
+    async def test_logs_entry_and_empty_result_at_info(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.INFO, logger="main")
+        mock_graphiti.search.return_value = []
+        await client.post(
+            "/recall",
+            json={"session_id": "sess", "group_id": "grp", "query": "who", "max_results": 10},
+        )
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+        assert any(
+            "[gralkor] recall —" in m and "session:sess" in m and "group:grp" in m
+            and "queryChars:3" in m and "max:10" in m
+            for m in info_msgs
+        ), info_msgs
+        assert any("[gralkor] recall result — 0 facts" in m for m in info_msgs), info_msgs
+
+    async def test_logs_non_empty_result_at_info(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.INFO, logger="main")
+        mock_graphiti.search.return_value = [make_edge(fact="Alice knows Bob")]
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "interp"}
+        await client.post(
+            "/recall",
+            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+        )
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+        assert any(
+            "[gralkor] recall result — 1 facts" in m and "blockChars:" in m
+            for m in info_msgs
+        ), info_msgs
+
+    async def test_does_not_log_content_at_info(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.INFO, logger="main")
+        mock_graphiti.search.return_value = [make_edge(fact="secret fact")]
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "secret interp"}
+        await client.post(
+            "/recall",
+            json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
+        )
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+        joined = "\n".join(info_msgs)
+        assert "sensitive question" not in joined
+        assert "secret fact" not in joined
+        assert "secret interp" not in joined
+
+    async def test_logs_query_and_block_at_debug(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.DEBUG, logger="main")
+        mock_graphiti.search.return_value = [make_edge(fact="Alice knows Bob")]
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "interp"}
+        await client.post(
+            "/recall",
+            json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
+        )
+        debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+        assert any("[gralkor] recall query: sensitive question" in m for m in debug_msgs), debug_msgs
+        assert any(
+            "[gralkor] recall block:" in m and "Alice knows Bob" in m and "interp" in m
+            for m in debug_msgs
+        ), debug_msgs
+
+    async def test_no_block_debug_when_empty(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.DEBUG, logger="main")
+        mock_graphiti.search.return_value = []
+        await client.post(
+            "/recall",
+            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+        )
+        debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+        assert not any("[gralkor] recall block:" in m for m in debug_msgs)
 
 
 async def test_strips_gralkor_memory_from_buffered_turns(client, mock_graphiti):
