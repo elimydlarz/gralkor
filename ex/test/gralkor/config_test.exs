@@ -13,7 +13,8 @@ defmodule Gralkor.ConfigTest do
           "GRALKOR_LLM_PROVIDER",
           "GRALKOR_LLM_MODEL",
           "GRALKOR_EMBEDDER_PROVIDER",
-          "GRALKOR_EMBEDDER_MODEL"
+          "GRALKOR_EMBEDDER_MODEL",
+          "GRALKOR_TEST"
         ],
         %{},
         fn name -> {name, System.get_env(name)} end
@@ -37,6 +38,29 @@ defmodule Gralkor.ConfigTest do
       cfg = Config.from_env()
 
       assert cfg.data_dir == "/tmp/gralkor-test"
+    end
+
+    test "expands a relative data_dir to absolute (so the Python child doesn't resolve it against its own cwd)" do
+      System.put_env("GRALKOR_DATA_DIR", "tmp/gralkor-test-relative")
+
+      cfg = Config.from_env()
+
+      assert Path.type(cfg.data_dir) == :absolute
+      assert String.ends_with?(cfg.data_dir, "tmp/gralkor-test-relative")
+    end
+
+    test "GRALKOR_TEST=true flips the test flag so the Python server emits debug logs" do
+      System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
+      System.put_env("GRALKOR_TEST", "true")
+      on_exit(fn -> System.delete_env("GRALKOR_TEST") end)
+
+      assert Config.from_env().test == true
+    end
+
+    test "GRALKOR_TEST unset leaves the test flag false" do
+      System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
+
+      refute Config.from_env().test
     end
 
     test "raises when GRALKOR_DATA_DIR is missing" do
@@ -104,6 +128,18 @@ defmodule Gralkor.ConfigTest do
 
       refute yaml =~ "llm:"
       refute yaml =~ "embedder:"
+    end
+
+    test "emits `test: true` when the test flag is set (enables Python-side debug logging)" do
+      cfg = %Config{data_dir: "/d", server_dir: "/s", server_url: "u", test: true}
+      yaml = Config.build_yaml(cfg)
+      assert yaml =~ ~r/^test: true$/m
+    end
+
+    test "omits `test:` when the test flag is unset" do
+      cfg = %Config{data_dir: "/d", server_dir: "/s", server_url: "u"}
+      yaml = Config.build_yaml(cfg)
+      refute yaml =~ "test:"
     end
 
     test "includes model key when llm_model is set" do

@@ -36,14 +36,13 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
 
 1. **Add the dep** (see above).
 
-2. **Supervise `Gralkor.Server`** in the consumer app, **before** any health-poller / plugin that depends on it:
+2. **Let gralkor supervise its own server.** The `:gralkor` application auto-starts `Gralkor.Server` under `Gralkor.Supervisor` whenever `GRALKOR_DATA_DIR` is set in the environment. Consumers do **not** list `Gralkor.Server` as a child — double-supervising raises `already started`. Add any consumer-side health gate (e.g. `Susu2.Gralkor.Connection`) as normal children after that:
 
    ```elixir
    # lib/susu2/application.ex
    def start(_type, _args) do
      children = [
        Susu2.Users,
-       Gralkor.Server,                # owns the Python child via Port
        Susu2.Gralkor.Connection,      # boot-readiness gate + health monitor
        Susu2.Jido,
        ExGram,
@@ -54,7 +53,7 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
    end
    ```
 
-   `Gralkor.Server.init/1` is non-blocking (`{:continue, :boot}`), so OTP ordering is safe: `Susu2.Gralkor.Connection` starts immediately after and health-polls until the Python child is ready. `Gralkor.Server` reads its config from env vars (`Gralkor.Config.from_env/0`).
+   OTP guarantees the `:gralkor` app boots before the consumer app (dep order), so `Gralkor.Server` is already up by the time the consumer's children start. `Gralkor.Server.init/1` is non-blocking (`{:continue, :boot}`) — the Python child comes up in parallel, so a consumer-side health poller is still the right place to wait for readiness. `Gralkor.Server` reads its config from env vars (`Gralkor.Config.from_env/0`).
 
 3. **Set env vars** (e.g. in a `.env` file sourced at boot, or via systemd/container config):
 
@@ -111,6 +110,7 @@ Optional:
 - `GRALKOR_LLM_PROVIDER` / `GRALKOR_LLM_MODEL` — defaults chosen server-side.
 - `GRALKOR_EMBEDDER_PROVIDER` / `GRALKOR_EMBEDDER_MODEL` — defaults chosen server-side.
 - Provider API keys: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` (whichever your provider needs).
+- `GRALKOR_TEST` — set to `true` / `1` / `yes` to emit `test: true` in the generated `config.yaml`. The Python server flips its logger to DEBUG and prints full recall / interpret / capture payloads (off by default — normal mode is metadata-only).
 
 ## HTTP endpoints
 

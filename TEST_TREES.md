@@ -99,6 +99,12 @@ POST /recall endpoint
     then _driver_lock serializes the calls
   when autoRecall.maxResults config is set
     then at most that many facts are returned (default 10)
+  observability
+    then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
+    then logs "[gralkor] recall result — <N> facts blockChars:… <ms>" at INFO on every call (0 facts included)
+    when test mode is enabled (logger level DEBUG)
+      then also logs "[gralkor] recall query: <raw query>" at DEBUG
+      and when facts are returned also logs "[gralkor] recall block: <memory block>" at DEBUG
 interpret-facts (Python)
   when llm_client is None
     then raises (fail-fast; no fallback)
@@ -314,6 +320,18 @@ POST /capture endpoint
   then returns immediately (does not call distill synchronously)
   when idle_seconds elapses after the last append
     then flush is triggered via the registered callback, routed to the bound group_id
+  observability
+    then logs "[gralkor] capture — session:… group:… events:… buffered:…" at INFO on every call
+    when test mode is enabled (logger level DEBUG)
+      then also logs "[gralkor] capture turn: …" at DEBUG (user_query, events, assistant_answer)
+  idle flush (_capture_flush in main.py)
+    then logs "[gralkor] capture flush — group:… turns:…" at INFO when the flush begins
+    when the distilled episode body is empty
+      then logs "[gralkor] capture flush skipped — group:… empty body <ms>" at INFO and does not call add_episode
+    when the episode is added
+      then logs "[gralkor] capture flushed — group:… uuid:… bodyChars:… <ms>" at INFO
+    when test mode is enabled
+      then also logs "[gralkor] capture flush body: <episode_body>" at DEBUG
 capture-buffer (Python)
   append
     when called for a new session_id
@@ -435,6 +453,12 @@ POST /tools/memory_search endpoint
     then XML is stripped before interpret_facts runs
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
+  observability
+    then logs "[gralkor] tools.memory_search — session:… group:… queryChars:… max:<res>/<ent>" at INFO on every call
+    then logs "[gralkor] tools.memory_search result — <N> facts <M> entities textChars:… <ms>" at INFO on every call (0/0 included)
+    when test mode is enabled (logger level DEBUG)
+      then also logs "[gralkor] tools.memory_search query: <raw query>" at DEBUG
+      and when facts or entities are returned also logs "[gralkor] tools.memory_search text: <text>" at DEBUG
 POST /tools/memory_add endpoint
   request shape
     then body is {group_id, content, source_description?}
@@ -446,6 +470,11 @@ POST /tools/memory_add endpoint
   then response is {"status": "stored"}
   when source_description is omitted
     then defaults to "manual"
+  observability
+    then logs "[gralkor] tools.memory_add — group:… bodyChars:…" at INFO on entry
+    then logs "[gralkor] tools.memory_add stored — group:… uuid:… <ms>" at INFO on success
+    when test mode is enabled (logger level DEBUG)
+      then also logs "[gralkor] tools.memory_add body: <content>" at DEBUG
 ```
 
 ## Startup
@@ -492,7 +521,9 @@ ex-server-lifecycle (Elixir supervisor in ex/)
   boot sequence
     when handle_continue(:boot) runs
       then Gralkor.Config.write_yaml writes config.yaml at $GRALKOR_DATA_DIR/config.yaml
+      then any stale python from a prior BEAM SIGKILL is reaped via $GRALKOR_DATA_DIR/server.pid (SIGTERM → wait → SIGKILL)
       then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
+      then the new OS pid is written to $GRALKOR_DATA_DIR/server.pid
       then env vars are forwarded: GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
       then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or the configured boot_timeout_ms (default 120_000)
     when the deadline passes with no healthy response
@@ -519,10 +550,13 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then sends SIGTERM via System.cmd("kill", ["-TERM", pid])
       then waits up to 30s for {port, {:exit_status, _}}
       then sends SIGKILL via System.cmd("kill", ["-KILL", pid]) if still running
+      then removes $GRALKOR_DATA_DIR/server.pid
 ex-config-writing (Gralkor.Config)
   from_env
     when GRALKOR_DATA_DIR is set
       then data_dir is that value
+    when GRALKOR_DATA_DIR is a relative path
+      then data_dir is expanded to absolute (the Python child runs with a different cwd)
     when GRALKOR_DATA_DIR is missing
       then raises (fail-fast)
     when provider/model env vars are unset
