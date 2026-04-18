@@ -15,6 +15,9 @@ defmodule Gralkor.Functional.EndToEndTest do
 
   @moduletag :functional
   @moduletag timeout: 300_000
+  @moduletag skip:
+               (System.get_env("GOOGLE_API_KEY") in [nil, ""]) &&
+                 "GOOGLE_API_KEY not set"
 
   alias Gralkor.Config
   alias Gralkor.Server
@@ -24,11 +27,7 @@ defmodule Gralkor.Functional.EndToEndTest do
   @capture_idle 3.0
 
   setup_all do
-    if System.get_env("GOOGLE_API_KEY") in [nil, ""] do
-      {:skip, "GOOGLE_API_KEY not set"}
-    else
-      {:ok, start_server()}
-    end
+    {:ok, start_server()}
   end
 
   test "memory_add then recall retrieves the stored content", %{url: url} do
