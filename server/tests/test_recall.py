@@ -1,7 +1,7 @@
 """Tree: POST /recall endpoint.
 
 Composes fast search + format + interpret + XML wrap.
-Empty search → {"memory_block": ""}. Bearer auth required.
+Empty search → {"memory_block": ""}.
 Conversation context for interpretation is read from capture_buffer by
 session_id — callers do not pass conversation messages on the wire.
 """
@@ -174,10 +174,3 @@ async def test_strips_gralkor_memory_from_buffered_turns(client, mock_graphiti):
     assert "actual question" in interpret_context
 
 
-async def test_bearer_auth_required(client, monkeypatch):
-    monkeypatch.setenv("AUTH_TOKEN", "t")
-    resp = await client.post(
-        "/recall",
-        json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 1},
-    )
-    assert resp.status_code == 401

@@ -180,20 +180,6 @@ class TestMemorySearch:
         assert "earlier tool question" in context
         assert "earlier tool answer" in context
 
-    async def test_bearer_auth_required(self, client, monkeypatch):
-        monkeypatch.setenv("AUTH_TOKEN", "t")
-        resp = await client.post(
-            "/tools/memory_search",
-            json={
-                "session_id": "s",
-                "group_id": "g",
-                "query": "q",
-                "max_results": 1,
-                "max_entity_results": 1,
-            },
-        )
-        assert resp.status_code == 401
-
 
 class TestMemoryAdd:
     async def test_wraps_episodes_with_source_text(self, client, mock_graphiti):
@@ -237,10 +223,3 @@ class TestMemoryAdd:
         kwargs = mock_graphiti.add_episode.await_args.kwargs
         assert kwargs["name"].startswith("manual-add-")
 
-    async def test_bearer_auth_required(self, client, monkeypatch):
-        monkeypatch.setenv("AUTH_TOKEN", "t")
-        resp = await client.post(
-            "/tools/memory_add",
-            json={"group_id": "g", "content": "x"},
-        )
-        assert resp.status_code == 401

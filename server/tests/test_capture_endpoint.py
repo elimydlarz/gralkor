@@ -61,14 +61,3 @@ async def test_does_not_call_distill_synchronously(client, mock_graphiti):
     mock_graphiti.add_episode.assert_not_awaited()
 
 
-async def test_bearer_auth_required(client, monkeypatch):
-    monkeypatch.setenv("AUTH_TOKEN", "t")
-    resp = await client.post(
-        "/capture",
-        json={
-            "session_id": "sess",
-            "group_id": "g",
-            "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
-        },
-    )
-    assert resp.status_code == 401

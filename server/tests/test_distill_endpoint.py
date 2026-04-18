@@ -87,7 +87,3 @@ async def test_accepts_arbitrary_event_shapes(client, mock_graphiti):
     assert resp.status_code == 200
 
 
-async def test_bearer_auth_required(client, monkeypatch):
-    monkeypatch.setenv("AUTH_TOKEN", "t")
-    resp = await client.post("/distill", json={"turns": []})
-    assert resp.status_code == 401

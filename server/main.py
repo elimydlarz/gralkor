@@ -14,7 +14,7 @@ from typing import Any, Literal
 import uuid
 
 import yaml
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import APIRouter, FastAPI, HTTPException, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, create_model
 
@@ -372,16 +372,6 @@ async def rate_limit_middleware(request, call_next):
 # ── Auth ─────────────────────────────────────────────────────
 
 
-def require_auth(authorization: str | None = Header(default=None)) -> None:
-    expected = os.environ.get("AUTH_TOKEN")
-    if expected is None:
-        return
-    if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "missing bearer token")
-    if authorization[len("Bearer "):] != expected:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token")
-
-
 # ── Capture buffer ───────────────────────────────────────────
 
 CAPTURE_IDLE_SECONDS_DEFAULT = 300.0
@@ -547,8 +537,7 @@ def _serialize_episode(ep: EpisodicNode) -> dict[str, Any]:
 logger = logging.getLogger(__name__)
 
 
-public_router = APIRouter()
-protected_router = APIRouter(dependencies=[Depends(require_auth)])
+router = APIRouter()
 
 
 def _turn_body_to_turn(body: TurnBody) -> Turn:
@@ -570,7 +559,7 @@ FURTHER_QUERYING_INSTRUCTION = (
 )
 
 
-@public_router.get("/health")
+@router.get("/health")
 async def health():
     result: dict = {"status": "ok"}
 
@@ -599,7 +588,7 @@ async def health():
     return result
 
 
-@protected_router.post("/episodes")
+@router.post("/episodes")
 async def add_episode(req: AddEpisodeRequest):
     cached = _idempotency_check(req.idempotency_key)
     if cached is not None:
@@ -682,7 +671,7 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
             logger.warning("[gralkor] driver graph routing failed for %s: %s", target, e)
 
 
-@protected_router.post("/search")
+@router.post("/search")
 async def search(req: SearchRequest):
     # Sanitize group IDs: hyphens cause RediSearch syntax errors in graphiti-core.
     sanitized = [_sanitize_group_id(g) for g in req.group_ids]
@@ -731,13 +720,13 @@ async def search(req: SearchRequest):
 
 
 
-@protected_router.post("/build-indices")
+@router.post("/build-indices")
 async def build_indices():
     await graphiti.build_indices_and_constraints()
     return {"status": "ok"}
 
 
-@protected_router.post("/build-communities")
+@router.post("/build-communities")
 async def build_communities(req: GroupIdRequest):
     gid = _sanitize_group_id(req.group_id)
     async with _driver_lock:
@@ -751,7 +740,7 @@ async def build_communities(req: GroupIdRequest):
 # ── New endpoints ────────────────────────────────────────────
 
 
-@protected_router.post("/recall", response_model=RecallResponse)
+@router.post("/recall", response_model=RecallResponse)
 async def recall(req: RecallRequest) -> RecallResponse:
     sanitized = _sanitize_group_id(req.group_id)
     conversation = _conversation_for_session(req.session_id)
@@ -781,14 +770,14 @@ async def recall(req: RecallRequest) -> RecallResponse:
     return RecallResponse(memory_block=block)
 
 
-@protected_router.post("/distill", response_model=DistillResponse)
+@router.post("/distill", response_model=DistillResponse)
 async def distill(req: DistillRequest) -> DistillResponse:
     turns = [_turn_body_to_turn(t) for t in req.turns]
     episode_body = await format_transcript(turns, graphiti.llm_client if graphiti else None)
     return DistillResponse(episode_body=episode_body)
 
 
-@protected_router.post("/capture", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/capture", status_code=status.HTTP_204_NO_CONTENT)
 async def capture(req: CaptureRequest) -> Response:
     if capture_buffer is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
@@ -800,7 +789,7 @@ async def capture(req: CaptureRequest) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@protected_router.post("/tools/memory_search", response_model=MemorySearchResponse)
+@router.post("/tools/memory_search", response_model=MemorySearchResponse)
 async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     sanitized = _sanitize_group_id(req.group_id)
     conversation = _conversation_for_session(req.session_id)
@@ -830,7 +819,7 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     return MemorySearchResponse(text=f"{facts_text}\n\nInterpretation:\n{interpretation}")
 
 
-@protected_router.post("/tools/memory_add", response_model=MemoryAddResponse)
+@router.post("/tools/memory_add", response_model=MemoryAddResponse)
 async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
     async with _driver_lock:
         await graphiti.add_episode(
@@ -847,5 +836,4 @@ async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
     return MemoryAddResponse(status="stored")
 
 
-app.include_router(public_router)
-app.include_router(protected_router)
+app.include_router(router)
