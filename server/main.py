@@ -559,7 +559,7 @@ protected_router = APIRouter(dependencies=[Depends(require_auth)])
 def _turn_body_to_turn(body: TurnBody) -> Turn:
     return Turn(
         user_query=body.user_query,
-        events=[TurnEvent(kind=e.kind, text=e.text) for e in body.events],
+        events=list(body.events),
         assistant_answer=body.assistant_answer,
     )
 
