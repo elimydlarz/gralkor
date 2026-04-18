@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 level="${1:-}"
 if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch|current)$ ]]; then
