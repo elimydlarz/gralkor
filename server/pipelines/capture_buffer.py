@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
 from .distill import Turn
+from .message_clean import ConversationMessage
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ FlushCallback = Callable[[str, list[Turn]], Awaitable[None]]
 
 @dataclass
 class _Entry:
+    group_id: str
     turns: list[Turn] = field(default_factory=list)
     idle_handle: asyncio.TimerHandle | None = None
 
@@ -40,28 +42,41 @@ class CaptureBuffer:
         self._retry_delays = retry_delays
         self._pending_flushes: set[asyncio.Task[None]] = set()
 
-    def append(self, group_id: str, turn: Turn) -> None:
-        entry = self._entries.get(group_id)
+    def append(self, session_id: str, group_id: str, turn: Turn) -> None:
+        entry = self._entries.get(session_id)
         if entry is None:
-            entry = _Entry()
-            self._entries[group_id] = entry
+            entry = _Entry(group_id=group_id)
+            self._entries[session_id] = entry
+        elif entry.group_id != group_id:
+            raise ValueError(
+                f"session_id {session_id!r} already bound to group_id "
+                f"{entry.group_id!r}; refusing to rebind to {group_id!r}"
+            )
         entry.turns.append(turn)
         if entry.idle_handle is not None:
             entry.idle_handle.cancel()
         loop = asyncio.get_running_loop()
         entry.idle_handle = loop.call_later(
-            self._idle_seconds, self._schedule_flush, group_id
+            self._idle_seconds, self._schedule_flush, session_id
         )
 
-    def _schedule_flush(self, group_id: str) -> None:
-        entry = self._entries.pop(group_id, None)
+    def turns_for(self, session_id: str) -> list[Turn]:
+        entry = self._entries.get(session_id)
+        return list(entry.turns) if entry is not None else []
+
+    def _schedule_flush(self, session_id: str) -> None:
+        entry = self._entries.pop(session_id, None)
         if entry is None or not entry.turns:
             return
-        task = asyncio.create_task(self._flush_with_retry(group_id, entry.turns))
+        task = asyncio.create_task(
+            self._flush_with_retry(session_id, entry.group_id, entry.turns)
+        )
         self._pending_flushes.add(task)
         task.add_done_callback(self._pending_flushes.discard)
 
-    async def _flush_with_retry(self, group_id: str, turns: list[Turn]) -> None:
+    async def _flush_with_retry(
+        self, session_id: str, group_id: str, turns: list[Turn]
+    ) -> None:
         attempt = 0
         while True:
             try:
@@ -69,7 +84,8 @@ class CaptureBuffer:
                 return
             except CaptureClientError as err:
                 logger.error(
-                    "capture dropped (4xx) group=%s turns=%d err=%s",
+                    "capture dropped (4xx) session=%s group=%s turns=%d err=%s",
+                    session_id,
                     group_id,
                     len(turns),
                     err,
@@ -78,14 +94,16 @@ class CaptureBuffer:
             except Exception as err:
                 if attempt >= len(self._retry_delays):
                     logger.error(
-                        "capture exhausted group=%s turns=%d err=%s",
+                        "capture exhausted session=%s group=%s turns=%d err=%s",
+                        session_id,
                         group_id,
                         len(turns),
                         err,
                     )
                     return
                 logger.warning(
-                    "capture retry group=%s attempt=%d err=%s",
+                    "capture retry session=%s group=%s attempt=%d err=%s",
+                    session_id,
                     group_id,
                     attempt + 1,
                     err,
@@ -94,15 +112,15 @@ class CaptureBuffer:
                 attempt += 1
 
     async def flush_all(self) -> None:
-        for group_id in list(self._entries.keys()):
-            entry = self._entries.pop(group_id, None)
+        for session_id in list(self._entries.keys()):
+            entry = self._entries.pop(session_id, None)
             if entry is None:
                 continue
             if entry.idle_handle is not None:
                 entry.idle_handle.cancel()
             if entry.turns:
                 task = asyncio.create_task(
-                    self._flush_with_retry(group_id, entry.turns)
+                    self._flush_with_retry(session_id, entry.group_id, entry.turns)
                 )
                 self._pending_flushes.add(task)
                 task.add_done_callback(self._pending_flushes.discard)
@@ -113,5 +131,17 @@ class CaptureBuffer:
     def pending_count(self) -> int:
         return sum(len(entry.turns) for entry in self._entries.values())
 
-    def has(self, group_id: str) -> bool:
-        return group_id in self._entries
+    def has(self, session_id: str) -> bool:
+        return session_id in self._entries
+
+
+def turns_to_conversation(turns: list[Turn]) -> list[ConversationMessage]:
+    messages: list[ConversationMessage] = []
+    for turn in turns:
+        if turn.user_query:
+            messages.append(ConversationMessage(role="user", text=turn.user_query))
+        if turn.assistant_answer:
+            messages.append(
+                ConversationMessage(role="assistant", text=turn.assistant_answer)
+            )
+    return messages
