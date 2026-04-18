@@ -127,6 +127,8 @@ New server-side trees landed in Phase A (Gralkor ↔ Jido interface, see `GRALKO
 
 Elixir supervisor trees (Phase B) in the Startup section: `ex-server-lifecycle`, `ex-config-writing`. Test files: `ex/test/gralkor/{server_test.exs, config_test.exs}`. Run via `mix test.unit` and `mix test.integration` from `ex/`.
 
+Elixir-driven functional tree: `jido-memory-journey` (Functional Journey section). File: `ex/test/functional/end_to_end_test.exs`. Run via `mix test.functional`. Requires `GOOGLE_API_KEY`; skips cleanly when unset. Boots the real Python server (Graphiti + falkordblite + Gemini) under `Gralkor.Server` and validates the Jido-consumer HTTP contract end-to-end.
+
 ### Cross-functional
 
 | Requirement | Implementation |
