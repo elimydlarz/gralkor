@@ -1,13 +1,17 @@
 defmodule Gralkor.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/elimydlarz/gralkor"
+
   def project do
     [
       app: :gralkor,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      compilers: [:gralkor_priv] ++ Mix.compilers(),
       releases: releases(),
       aliases: aliases(),
       preferred_cli_env: [
@@ -15,7 +19,11 @@ defmodule Gralkor.MixProject do
         "test.integration": :test,
         "test.functional": :test
       ],
-      test_coverage: [summary: [threshold: 0]]
+      test_coverage: [summary: [threshold: 0]],
+      description: description(),
+      package: package(),
+      source_url: @source_url,
+      docs: docs()
     ]
   end
 
@@ -29,7 +37,8 @@ defmodule Gralkor.MixProject do
   defp deps do
     [
       {:req, "~> 0.5"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
 
@@ -47,6 +56,30 @@ defmodule Gralkor.MixProject do
       "test.unit": ["test --exclude integration --exclude functional"],
       "test.integration": ["test --only integration"],
       "test.functional": ["test --only functional"]
+    ]
+  end
+
+  defp description do
+    "OTP supervisor for Gralkor — spawns and owns the Python memory server (Graphiti + FalkorDB) as a Port. Embed in a Jido (or any Elixir) supervision tree to give your agent long-term, temporally-aware knowledge-graph memory."
+  end
+
+  defp package do
+    [
+      maintainers: ["susu-eng"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url,
+        "Issues" => "#{@source_url}/issues"
+      },
+      files: ~w(lib priv config mix.exs README.md .formatter.exs)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      source_url: @source_url,
+      extras: ["README.md"]
     ]
   end
 end
