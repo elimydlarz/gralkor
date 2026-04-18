@@ -82,7 +82,9 @@ Plugin → `GraphitiClient` (`src/client.ts`, HTTP) → REST → FalkorDB.
 
 ### Elixir supervisor (`ex/`) — for Jido consumers
 
-The Python server runs under an OTP supervisor in `ex/`. Consumers either embed `Gralkor.Server` in their own Jido supervision tree (dev) or deploy the standalone Docker image built from `ex/Dockerfile`.
+The Python server runs under an OTP supervisor in `ex/`. **Primary integration mode: embed `Gralkor.Server` in the consumer's Jido supervision tree** — `mix.exs` path/Hex dep, one child in the tree, same BEAM node owns the Python child via Port. Graceful shutdown flows through OTP termination → SIGTERM → Python lifespan flush. This is what the Elixir wrapper exists for; a Jido consumer should default to embedding, not Docker.
+
+Standalone Docker (`ex/Dockerfile` + `docker-compose.dev.yml`) is a **secondary** mode for (a) decoupled scaling — one memory backend serving multiple agent processes, (b) non-BEAM consumers sharing a box (the TS/OpenClaw plugin runs its own Python spawn via `src/server-manager.ts`), and (c) multi-tenant deployments. HTTP contract is identical either way.
 
 - `Gralkor.Config` — `from_env/0` reads `GRALKOR_*` env vars (fail-fast on missing `GRALKOR_DATA_DIR` / `GRALKOR_AUTH_TOKEN`); `write_yaml/1` emits `$GRALKOR_DATA_DIR/config.yaml` the Python server consumes. Provider/model fields default to nil — when nil, the YAML emission omits the section entirely and the **server** applies defaults (`DEFAULT_LLM_PROVIDER` / `DEFAULT_LLM_MODEL` / `DEFAULT_EMBEDDER_PROVIDER` / `DEFAULT_EMBEDDER_MODEL` in `server/main.py`). The Elixir side is pure passthrough: no default-picking. Optional `capture_idle_seconds` field emits a `capture: idle_seconds: N` section when set.
 
