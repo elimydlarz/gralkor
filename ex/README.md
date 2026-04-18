@@ -4,6 +4,14 @@ OTP supervisor for [Gralkor](https://github.com/elimydlarz/gralkor) — a tempor
 
 Embed `Gralkor.Server` in your Jido (or any Elixir) supervision tree. The GenServer spawns the Python server as a Port, polls `/health` during boot, monitors it, and handles graceful shutdown. Your application talks to it over HTTP on a loopback port.
 
+## Prerequisites
+
+- `uv` on `PATH` (the Elixir supervisor spawns the Python server via `uv run uvicorn …`).
+- An LLM provider API key — `GOOGLE_API_KEY` (default provider) or one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GROQ_API_KEY`.
+- A writable directory for FalkorDB + generated `config.yaml` (`GRALKOR_DATA_DIR`).
+
+The Python source ships inside the package (`priv/server/`); no separate clone or Docker image needed.
+
 ## Install
 
 ```elixir
@@ -14,24 +22,17 @@ def deps do
 end
 ```
 
-The Python source ships inside the package (`priv/server/`). `uv` must be on the `PATH` of the runtime environment.
+During pre-release iteration, path-dep instead:
 
-### Installing into a Jido agent (e.g. Susu2)
+```elixir
+{:gralkor, path: "../gralkor/ex"}
+```
 
-Jido consumers embed Gralkor in their own supervision tree and talk to it over loopback HTTP. The consumer side — `Susu2.Gralkor.{Client, Plugin, Connection}` + memory actions — is already the canonical pattern; this package is what they supervise.
+## Installing into a Jido agent (e.g. Susu2)
 
-1. **Add the dep** to the Jido app's `mix.exs`:
+Jido consumers embed Gralkor in their own supervision tree and talk to it over loopback HTTP. The consumer side — `Susu2.Gralkor.{Client, Plugin, Connection}` + memory actions — is the canonical pattern; this package is what they supervise.
 
-   ```elixir
-   defp deps do
-     [
-       # ... your other deps (jido, jido_ai, etc.)
-       {:gralkor, "~> 0.1"}
-     ]
-   end
-   ```
-
-   During pre-release iteration you can path-dep instead: `{:gralkor, path: "../gralkor/ex"}`.
+1. **Add the dep** (see above).
 
 2. **Supervise `Gralkor.Server`** in the consumer app, **before** any health-poller / plugin that depends on it:
 
@@ -39,9 +40,9 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
    # lib/susu2/application.ex
    def start(_type, _args) do
      children = [
+       Susu2.Users,
        Gralkor.Server,                # owns the Python child via Port
        Susu2.Gralkor.Connection,      # boot-readiness gate + health monitor
-       Susu2.Users,
        Susu2.Jido,
        ExGram,
        {Susu2.Bot, [method: :polling, token: bot_token()]}
@@ -51,24 +52,19 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
    end
    ```
 
-   `Gralkor.Server.init/1` is non-blocking (`{:continue, :boot}`), so OTP ordering is safe: `Susu2.Gralkor.Connection` starts after `Gralkor.Server` returns `:ok`, then polls `/health` during its own boot window until the Python child is up.
+   `Gralkor.Server.init/1` is non-blocking (`{:continue, :boot}`), so OTP ordering is safe: `Susu2.Gralkor.Connection` starts immediately after and health-polls until the Python child is ready. `Gralkor.Server` reads its config from env vars (`Gralkor.Config.from_env/0`).
 
-3. **Configure via env vars** (e.g. in `config/runtime.exs` or the runtime environment):
-
-   ```elixir
-   # config/runtime.exs
-   config :susu2, :gralkor,
-     url: System.get_env("GRALKOR_URL", "http://127.0.0.1:4000"),
-     token: System.fetch_env!("GRALKOR_AUTH_TOKEN")
-   ```
+3. **Set env vars** (e.g. in a `.env` file sourced at boot, or via systemd/container config):
 
    ```bash
    export GRALKOR_DATA_DIR=/var/lib/susu2/gralkor
    export GRALKOR_AUTH_TOKEN=<any-secret>
    export GOOGLE_API_KEY=<your-key>          # or ANTHROPIC/OPENAI/GROQ
+   # optional:
+   # export GRALKOR_URL=http://127.0.0.1:4000  # default
    ```
 
-   Both sides read the same `GRALKOR_AUTH_TOKEN` — Gralkor enforces it on incoming requests, Susu2 attaches it as `Authorization: Bearer <token>`.
+   The consumer reads `GRALKOR_URL` and `GRALKOR_AUTH_TOKEN` and writes them into its own app env (e.g. `Application.put_env(:susu2, :gralkor, url: ..., token: ...)`) for the HTTP client. Both sides read the same `GRALKOR_AUTH_TOKEN` — Gralkor enforces it on incoming requests; the client attaches it as `Authorization: Bearer <token>`.
 
 4. **Wire the plugin + actions on your agent:**
 
@@ -76,13 +72,16 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
    # lib/susu2/chat_agent.ex
    use Jido.Agent,
      name: "susu2_chat",
-     plugins: Jido.AI.PluginStack.default_plugins() ++ [Susu2.Gralkor.Plugin],
      strategy:
        {Jido.AI.Reasoning.ReAct.Strategy,
-        tools: [Susu2.Gralkor.Actions.MemorySearch, Susu2.Gralkor.Actions.MemoryAdd]}
+        tools: [Susu2.Gralkor.Actions.MemorySearch, Susu2.Gralkor.Actions.MemoryAdd]},
+     default_plugins: %{__memory__: false},
+     plugins: [{Susu2.Gralkor.Plugin, %{}}]
    ```
 
-   Susu2.Gralkor.Plugin hooks `ai.react.query` (auto-recall) and `ai.request.completed` / `ai.request.failed` (auto-capture). The plugin and actions both use `Susu2.Gralkor.Client` — swap the impl to `Susu2.Gralkor.Client.InMemory` in test config, keep `Susu2.Gralkor.Client.HTTP` for dev/prod.
+   `default_plugins: %{__memory__: false}` disables Jido's built-in memory plugin so `Susu2.Gralkor.Plugin` owns the `:__memory__` state slot. The plugin hooks `ai.react.query` (auto-recall) and `ai.request.completed` / `ai.request.failed` (auto-capture). The plugin and actions both call through `Susu2.Gralkor.Client` — swap the impl to `Susu2.Gralkor.Client.InMemory` in test config, keep `Susu2.Gralkor.Client.HTTP` for dev/prod.
+
+   **Session identity.** Gralkor's capture buffer is keyed by `session_id`, which the plugin takes from `agent.state.__strategy__.thread.id` (the current `Jido.AI.Thread`). One Jido conversation thread per Gralkor session — concurrent agents for the same principal never collide on the buffer, and the session rotates naturally when the thread rotates. `group_id` is the sanitized `agent.id` (per-principal graph partition).
 
 5. **Verify boot.** `iex -S mix` → `curl -H 'Authorization: Bearer <token>' http://127.0.0.1:4000/health` → `{"status":"ok",…}`. Send a message through the bot; watch for `POST /recall` then (after the capture idle window) `[gralkor] episode added …` in the logs.
 
