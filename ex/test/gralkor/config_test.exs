@@ -74,7 +74,7 @@ defmodule Gralkor.ConfigTest do
   end
 
   describe "build_yaml/1" do
-    test "top-level keys are llm and embedder" do
+    test "top-level keys are llm and embedder when providers are set" do
       cfg = %Config{
         data_dir: "/d",
         server_dir: "/s",
@@ -103,6 +103,20 @@ defmodule Gralkor.ConfigTest do
       yaml = Config.build_yaml(cfg)
 
       refute yaml =~ "model:"
+    end
+
+    test "emits nothing when llm and embedder providers are nil (server applies defaults)" do
+      cfg = %Config{
+        data_dir: "/d",
+        server_dir: "/s",
+        server_url: "u",
+        auth_token: "t"
+      }
+
+      yaml = Config.build_yaml(cfg)
+
+      refute yaml =~ "llm:"
+      refute yaml =~ "embedder:"
     end
 
     test "includes model key when llm_model is set" do
