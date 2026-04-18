@@ -123,7 +123,7 @@ defmodule Gralkor.ServerTest do
   end
 
   test "stops with {:health_degraded, _} when the monitor tick sees /health fail",
-       %{config: config, python_exe: python} do
+       %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
     Process.flag(:trap_exit, true)
