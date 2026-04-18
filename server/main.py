@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, create_model
 
-from pipelines.capture_buffer import CaptureBuffer, CaptureClientError
+from pipelines.capture_buffer import CaptureBuffer, CaptureClientError, turns_to_conversation
 from pipelines.distill import Turn, format_transcript
 from pipelines.formatting import format_fact, format_node
 from pipelines.interpret import interpret_facts
