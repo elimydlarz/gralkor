@@ -71,22 +71,30 @@ extractInjectQuery
     then returns null
 POST /recall endpoint
   request shape
-    then body is {group_id, query, conversation_messages: [{role, text}], max_results}
+    then body is {session_id, group_id, query, max_results}
     then requires bearer auth
     then group_id is sanitized (hyphens → underscores) before use
     then driver is routed to target graph (_ensure_driver_graph) before search
+  conversation context
+    then messages are sourced from capture_buffer.turns_for(session_id)
+    then each buffered Turn contributes a "user" message (user_query) and an "assistant" message (assistant_answer)
+    then events on the Turn are not included (they are distilled at flush time, not raw conversation)
+    when the session has no entry in capture_buffer
+      then interpretation runs with an empty conversation context (no error)
+    when two sessions share a group_id
+      then each session's recall sees only its own buffered turns
   when graph returns no facts
     then response is {"memory_block": ""} (empty string, not null)
     and interpret is not called
   when graph returns facts
     then fast mode search is used (graphiti.search, edges only, RRF)
     and facts are formatted via format_fact
-    and interpret_facts is called with cleaned conversation_messages and formatted facts
+    and interpret_facts is called with the session's buffered conversation and formatted facts
     and response wraps output in <gralkor-memory trust="untrusted">...</gralkor-memory>
     and response includes "Facts:" section with formatted facts
     and response includes "Interpretation:" section with LLM output
     and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
-  when conversation_messages contain <gralkor-memory> XML
+  when buffered turns contain <gralkor-memory> XML
     then XML is stripped via strip_gralkor_memory_xml before interpret_facts runs
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
