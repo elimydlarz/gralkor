@@ -13,7 +13,7 @@ mix_file="$project_root/ex/mix.exs"
 # Guard: must be logged in to Hex before doing any work
 if [[ -z "${DRY_RUN:-}" ]]; then
   whoami_cmd="${PUBLISH_HEX_WHOAMI_CMD:-mix hex.user whoami}"
-  if ! (cd ex && $whoami_cmd) >/dev/null 2>&1; then
+  if ! (cd ex && $whoami_cmd) </dev/null >/dev/null 2>&1; then
     echo "Error: not logged in to Hex. Run 'cd ex && mix hex.user auth' first." >&2
     exit 1
   fi
