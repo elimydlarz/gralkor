@@ -62,13 +62,14 @@ defmodule Gralkor.ConfigTest do
       assert cfg.embedder_provider == nil
     end
 
-    test "defaults server_dir to /app/server and server_url to 127.0.0.1:4000" do
+    test "defaults server_dir to the packaged priv/server and server_url to 127.0.0.1:4000" do
       System.put_env("GRALKOR_DATA_DIR", "/tmp/x")
       System.put_env("GRALKOR_AUTH_TOKEN", "tok")
 
       cfg = Config.from_env()
 
-      assert cfg.server_dir == "/app/server"
+      assert cfg.server_dir == Config.default_server_dir()
+      assert String.ends_with?(cfg.server_dir, "priv/server")
       assert cfg.server_url == "http://127.0.0.1:4000"
     end
   end
