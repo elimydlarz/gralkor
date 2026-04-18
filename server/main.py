@@ -792,7 +792,11 @@ async def distill(req: DistillRequest) -> DistillResponse:
 async def capture(req: CaptureRequest) -> Response:
     if capture_buffer is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
-    capture_buffer.append(_sanitize_group_id(req.group_id), _turn_body_to_turn(req.turn))
+    capture_buffer.append(
+        req.session_id,
+        _sanitize_group_id(req.group_id),
+        _turn_body_to_turn(req.turn),
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
