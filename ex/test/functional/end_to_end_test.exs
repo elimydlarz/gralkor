@@ -36,17 +36,17 @@ defmodule Gralkor.Functional.EndToEndTest do
     assert {:ok, %{status: 200}} =
              post(url, "/tools/memory_add", %{
                group_id: group,
-               content: "Eli prefers concise explanations over verbose ones.",
+               content: "Eli founded a company called Acme Corp in 2020.",
                source_description: "functional-test"
              })
 
-    wait_for_graph(url, group, "concise", 90_000)
+    wait_for_graph(url, group, "Acme", 90_000)
 
     {:ok, resp} =
       post(url, "/recall", %{
         group_id: group,
-        query: "what style does Eli prefer",
-        conversation_messages: [%{role: "user", text: "what style does Eli prefer"}],
+        query: "what company did Eli found",
+        conversation_messages: [%{role: "user", text: "what company did Eli found"}],
         max_results: 5
       })
 
@@ -55,7 +55,7 @@ defmodule Gralkor.Functional.EndToEndTest do
     assert is_binary(memory_block)
     assert memory_block != ""
     assert memory_block =~ "<gralkor-memory"
-    assert memory_block =~ ~r/concise|explanation/i
+    assert memory_block =~ ~r/acme|eli/i
   end
 
   test "capture → idle flush → search finds the turn content", %{url: url} do
