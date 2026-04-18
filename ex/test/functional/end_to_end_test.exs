@@ -88,8 +88,6 @@ defmodule Gralkor.Functional.EndToEndTest do
       server_dir: Path.expand("../../../server", __DIR__),
       server_url: url,
       auth_token: @token,
-      llm_provider: "gemini",
-      embedder_provider: "gemini",
       capture_idle_seconds: @capture_idle
     }
 
