@@ -103,8 +103,8 @@ POST /recall endpoint
     then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
     then logs "[gralkor] recall result — <N> facts blockChars:… <ms>" at INFO on every call (0 facts included)
     when test mode is enabled (logger level DEBUG)
-      then also logs "[gralkor] recall query: <raw query>" at DEBUG
-      and when facts are returned also logs "[gralkor] recall block: <memory block>" at DEBUG
+      then also logs "[gralkor] [test] recall query: <raw query>" at DEBUG
+      and when facts are returned also logs "[gralkor] [test] recall block: <memory block>" at DEBUG
 interpret-facts (Python)
   when llm_client is None
     then raises (fail-fast; no fallback)
@@ -321,17 +321,15 @@ POST /capture endpoint
   when idle_seconds elapses after the last append
     then flush is triggered via the registered callback, routed to the bound group_id
   observability
-    then logs "[gralkor] capture — session:… group:… events:… buffered:…" at INFO on every call
     when test mode is enabled (logger level DEBUG)
-      then also logs "[gralkor] capture turn: …" at DEBUG (user_query, events, assistant_answer)
+      then logs "[gralkor] [test] capture turn: …" at DEBUG (user_query, events, assistant_answer)
   idle flush (_capture_flush in main.py)
-    then logs "[gralkor] capture flush — group:… turns:…" at INFO when the flush begins
     when the distilled episode body is empty
-      then logs "[gralkor] capture flush skipped — group:… empty body <ms>" at INFO and does not call add_episode
+      then does not call add_episode (no log)
     when the episode is added
       then logs "[gralkor] capture flushed — group:… uuid:… bodyChars:… <ms>" at INFO
     when test mode is enabled
-      then also logs "[gralkor] capture flush body: <episode_body>" at DEBUG
+      then also logs "[gralkor] [test] capture flush body: <episode_body>" at DEBUG
 capture-buffer (Python)
   append
     when called for a new session_id
@@ -457,8 +455,8 @@ POST /tools/memory_search endpoint
     then logs "[gralkor] tools.memory_search — session:… group:… queryChars:… max:<res>/<ent>" at INFO on every call
     then logs "[gralkor] tools.memory_search result — <N> facts <M> entities textChars:… <ms>" at INFO on every call (0/0 included)
     when test mode is enabled (logger level DEBUG)
-      then also logs "[gralkor] tools.memory_search query: <raw query>" at DEBUG
-      and when facts or entities are returned also logs "[gralkor] tools.memory_search text: <text>" at DEBUG
+      then also logs "[gralkor] [test] tools.memory_search query: <raw query>" at DEBUG
+      and when facts or entities are returned also logs "[gralkor] [test] tools.memory_search text: <text>" at DEBUG
 POST /tools/memory_add endpoint
   request shape
     then body is {group_id, content, source_description?}
@@ -470,11 +468,6 @@ POST /tools/memory_add endpoint
   then response is {"status": "stored"}
   when source_description is omitted
     then defaults to "manual"
-  observability
-    then logs "[gralkor] tools.memory_add — group:… bodyChars:…" at INFO on entry
-    then logs "[gralkor] tools.memory_add stored — group:… uuid:… <ms>" at INFO on success
-    when test mode is enabled (logger level DEBUG)
-      then also logs "[gralkor] tools.memory_add body: <content>" at DEBUG
 ```
 
 ## Startup
@@ -531,6 +524,8 @@ ex-server-lifecycle (Elixir supervisor in ex/)
     when the spawned port exits during boot
       then the boot loop peeks the mailbox each iteration and fails fast
       then stops with {:boot_failed, :port_exited} (no full-timeout wait)
+    when the configured port is already bound by a foreign process (orphan not recorded in server.pid, or any other listener)
+      then stops with {:boot_failed, :port_in_use} before spawning (no crash-loop of doomed uvicorn attempts)
     when boot succeeds
       then health monitor is scheduled at the configured monitor_interval_ms (default 60_000)
   health monitor

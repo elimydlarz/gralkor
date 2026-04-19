@@ -58,20 +58,30 @@ defmodule Gralkor.Server do
     :ok = Config.write_yaml(state.config)
     :ok = reap_stale_python(state.config.data_dir)
 
-    port = spawn_python(state.config, state.opts)
-    {:os_pid, os_pid} = Port.info(port, :os_pid)
-    :ok = write_pid_file(state.config.data_dir, os_pid)
-    boot_timeout_ms = Keyword.get(state.opts, :boot_timeout_ms, @default_boot_timeout_ms)
+    bind_port = port_from_url(state.config.server_url)
 
-    case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
-      :ok ->
-        schedule_monitor(state.opts)
-        {:noreply, %{state | port: port, os_pid: os_pid}}
+    if port_free?(bind_port) do
+      port = spawn_python(state.config, state.opts)
+      {:os_pid, os_pid} = Port.info(port, :os_pid)
+      :ok = write_pid_file(state.config.data_dir, os_pid)
+      boot_timeout_ms = Keyword.get(state.opts, :boot_timeout_ms, @default_boot_timeout_ms)
 
-      {:error, reason} ->
-        kill_os_pid(os_pid, "KILL")
-        remove_pid_file(state.config.data_dir)
-        {:stop, {:boot_failed, reason}, state}
+      case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
+        :ok ->
+          schedule_monitor(state.opts)
+          {:noreply, %{state | port: port, os_pid: os_pid}}
+
+        {:error, reason} ->
+          kill_os_pid(os_pid, "KILL")
+          remove_pid_file(state.config.data_dir)
+          {:stop, {:boot_failed, reason}, state}
+      end
+    else
+      Logger.error(
+        "[gralkor] port #{bind_port} already bound by a foreign process; cannot spawn uvicorn"
+      )
+
+      {:stop, {:boot_failed, :port_in_use}, state}
     end
   end
 
@@ -156,6 +166,7 @@ defmodule Gralkor.Server do
       "127.0.0.1",
       "--port",
       "4000",
+      "--no-access-log",
       "--timeout-graceful-shutdown",
       "30"
     ]
@@ -241,6 +252,29 @@ defmodule Gralkor.Server do
   end
 
   defp kill_os_pid(_os_pid, _signal), do: :ok
+
+  # ── Pre-spawn port check ─────────────────────────────────
+  # Reap only covers pids we previously wrote to server.pid. Orphans from older
+  # runs (or any unrelated listener) can't be reaped — fail fast here so the
+  # supervisor doesn't crash-loop doomed uvicorn attempts that all EADDRINUSE.
+
+  defp port_from_url(url) do
+    case URI.parse(url) do
+      %URI{port: port} when is_integer(port) -> port
+      _ -> raise ArgumentError, "invalid server_url (missing port): #{url}"
+    end
+  end
+
+  defp port_free?(port) do
+    case :gen_tcp.listen(port, ip: {127, 0, 0, 1}, reuseaddr: true) do
+      {:ok, socket} ->
+        :gen_tcp.close(socket)
+        true
+
+      {:error, _reason} ->
+        false
+    end
+  end
 
   # ── Stale pid reaping ───────────────────────────────────
   # BEAM SIGKILL / Ctrl-C abort skips terminate/2, orphaning the Python child

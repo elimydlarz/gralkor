@@ -279,10 +279,10 @@ class TestMemorySearchObservability:
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert any(
-            "[gralkor] tools.memory_search query: sensitive q" in m for m in debug_msgs
+            "[gralkor] [test] tools.memory_search query: sensitive q" in m for m in debug_msgs
         ), debug_msgs
         assert any(
-            "[gralkor] tools.memory_search text:" in m
+            "[gralkor] [test] tools.memory_search text:" in m
             and "Alice knows Bob" in m and "interp" in m
             for m in debug_msgs
         ), debug_msgs
@@ -330,43 +330,4 @@ class TestMemoryAdd:
         kwargs = mock_graphiti.add_episode.await_args.kwargs
         assert kwargs["name"].startswith("manual-add-")
 
-
-class TestMemoryAddObservability:
-    async def test_logs_entry_and_success_at_info(self, client, mock_graphiti, caplog):
-        caplog.set_level(logging.INFO, logger="main")
-        await client.post(
-            "/tools/memory_add",
-            json={"group_id": "my-agent", "content": "User prefers Postgres."},
-        )
-        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
-        assert any(
-            "[gralkor] tools.memory_add —" in m
-            and "group:my_agent" in m and "bodyChars:22" in m
-            for m in info_msgs
-        ), info_msgs
-        assert any(
-            "[gralkor] tools.memory_add stored —" in m
-            and "group:my_agent" in m and "uuid:ep-001" in m
-            for m in info_msgs
-        ), info_msgs
-
-    async def test_does_not_log_body_at_info(self, client, mock_graphiti, caplog):
-        caplog.set_level(logging.INFO, logger="main")
-        await client.post(
-            "/tools/memory_add",
-            json={"group_id": "g", "content": "sensitive body"},
-        )
-        info_joined = "\n".join(r.getMessage() for r in caplog.records if r.levelno == logging.INFO)
-        assert "sensitive body" not in info_joined
-
-    async def test_logs_body_at_debug(self, client, mock_graphiti, caplog):
-        caplog.set_level(logging.DEBUG, logger="main")
-        await client.post(
-            "/tools/memory_add",
-            json={"group_id": "g", "content": "sensitive body"},
-        )
-        debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
-        assert any(
-            "[gralkor] tools.memory_add body: sensitive body" in m for m in debug_msgs
-        ), debug_msgs
 

@@ -381,14 +381,11 @@ capture_buffer: CaptureBuffer | None = None
 async def _capture_flush(group_id: str, turns: list[Turn]) -> None:
     if graphiti is None:
         return
-    logger.info("[gralkor] capture flush — group:%s turns:%d", group_id, len(turns))
     t0 = time.monotonic()
     episode_body = await format_transcript(turns, graphiti.llm_client)
     if not episode_body.strip():
-        logger.info("[gralkor] capture flush skipped — group:%s empty body %.0fms",
-                    group_id, (time.monotonic() - t0) * 1000)
         return
-    logger.debug("[gralkor] capture flush body: %s", episode_body)
+    logger.debug("[gralkor] [test] capture flush body: %s", episode_body)
     async with _driver_lock:
         result = await graphiti.add_episode(
             name=f"conversation-{int(time.time() * 1000)}",
@@ -600,19 +597,14 @@ async def health():
 async def add_episode(req: AddEpisodeRequest):
     cached = _idempotency_check(req.idempotency_key)
     if cached is not None:
-        logger.info("[gralkor] add-episode idempotent hit — key:%s uuid:%s",
-                    req.idempotency_key, cached.get("uuid"))
         return cached
 
-    logger.info("[gralkor] add-episode — group:%s name:%s bodyChars:%d source:%s",
-                req.group_id, req.name, len(req.episode_body), req.source or "message")
     ref_time = (
         datetime.fromisoformat(req.reference_time)
         if req.reference_time
         else datetime.now(timezone.utc)
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
-    t0 = time.monotonic()
     async with _driver_lock:
         result = await graphiti.add_episode(
             name=req.name,
@@ -626,10 +618,7 @@ async def add_episode(req: AddEpisodeRequest):
             edge_type_map=ontology_edge_type_map,
             excluded_entity_types=None,
         )
-    duration_ms = (time.monotonic() - t0) * 1000
     episode = result.episode
-    logger.info("[gralkor] episode added — uuid:%s duration:%.0fms", episode.uuid, duration_ms)
-    logger.debug("[gralkor] episode result: %s", _serialize_episode(episode))
     serialized = _serialize_episode(episode)
     _idempotency_store_result(req.idempotency_key, serialized)
     return serialized
@@ -671,7 +660,6 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
         try:
             graphiti.driver = graphiti.driver.clone(database=target)
             graphiti.clients.driver = graphiti.driver
-            print(f"[gralkor] driver graph routed: {target}", flush=True)
         except Exception as e:
             # Invalid group_id (e.g. hyphens rejected by FalkorDB).  Skip routing
             # so the search runs against the current graph and returns empty results
@@ -683,8 +671,6 @@ def _ensure_driver_graph(group_ids: list[str] | None) -> None:
 async def search(req: SearchRequest):
     # Sanitize group IDs: hyphens cause RediSearch syntax errors in graphiti-core.
     sanitized = [_sanitize_group_id(g) for g in req.group_ids]
-    logger.info("[gralkor] search — mode:%s query:%d chars group_ids:%s num_results:%d",
-                req.mode, len(req.query), sanitized, req.num_results)
     # graphiti.add_episode() clones the driver to target the correct FalkorDB
     # named graph (database=group_id), but graphiti.search() does not — it just
     # uses whatever graph the driver currently points at. Before the first
@@ -718,12 +704,8 @@ async def search(req: SearchRequest):
         duration_ms = (time.monotonic() - t0) * 1000
         logger.error("[gralkor] search failed — mode:%s %.0fms: %s", req.mode, duration_ms, e)
         raise
-    duration_ms = (time.monotonic() - t0) * 1000
     result = [_serialize_fact(e) for e in edges]
     serialized_nodes = [_serialize_node(n) for n in nodes]
-    logger.info("[gralkor] search result — mode:%s %d facts %d nodes %.0fms",
-                req.mode, len(result), len(serialized_nodes), duration_ms)
-    logger.debug("[gralkor] search facts: %s", result)
     return {"facts": result, "nodes": serialized_nodes}
 
 
@@ -754,7 +736,7 @@ async def recall(req: RecallRequest) -> RecallResponse:
     conversation = _conversation_for_session(req.session_id)
     logger.info("[gralkor] recall — session:%s group:%s queryChars:%d max:%d",
                 req.session_id, sanitized, len(req.query), req.max_results)
-    logger.debug("[gralkor] recall query: %s", req.query)
+    logger.debug("[gralkor] [test] recall query: %s", req.query)
     t0 = time.monotonic()
 
     async with _driver_lock:
@@ -784,7 +766,7 @@ async def recall(req: RecallRequest) -> RecallResponse:
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info("[gralkor] recall result — %d facts blockChars:%d %.0fms",
                 len(facts), len(block), duration_ms)
-    logger.debug("[gralkor] recall block: %s", block)
+    logger.debug("[gralkor] [test] recall block: %s", block)
     return RecallResponse(memory_block=block)
 
 
@@ -802,10 +784,7 @@ async def capture(req: CaptureRequest) -> Response:
     sanitized = _sanitize_group_id(req.group_id)
     turn = _turn_body_to_turn(req.turn)
     capture_buffer.append(req.session_id, sanitized, turn)
-    buffered = len(capture_buffer.turns_for(req.session_id))
-    logger.info("[gralkor] capture — session:%s group:%s events:%d buffered:%d",
-                req.session_id, sanitized, len(turn.events), buffered)
-    logger.debug("[gralkor] capture turn: user_query=%s events=%s assistant_answer=%s",
+    logger.debug("[gralkor] [test] capture turn: user_query=%s events=%s assistant_answer=%s",
                  turn.user_query, turn.events, turn.assistant_answer)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -816,7 +795,7 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     conversation = _conversation_for_session(req.session_id)
     logger.info("[gralkor] tools.memory_search — session:%s group:%s queryChars:%d max:%d/%d",
                 req.session_id, sanitized, len(req.query), req.max_results, req.max_entity_results)
-    logger.debug("[gralkor] tools.memory_search query: %s", req.query)
+    logger.debug("[gralkor] [test] tools.memory_search query: %s", req.query)
     t0 = time.monotonic()
 
     async with _driver_lock:
@@ -847,19 +826,15 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info("[gralkor] tools.memory_search result — %d facts %d entities textChars:%d %.0fms",
                 len(facts), len(nodes), len(text), duration_ms)
-    logger.debug("[gralkor] tools.memory_search text: %s", text)
+    logger.debug("[gralkor] [test] tools.memory_search text: %s", text)
     return MemorySearchResponse(text=text)
 
 
 @router.post("/tools/memory_add", response_model=MemoryAddResponse)
 async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
     sanitized = _sanitize_group_id(req.group_id)
-    logger.info("[gralkor] tools.memory_add — group:%s bodyChars:%d",
-                sanitized, len(req.content))
-    logger.debug("[gralkor] tools.memory_add body: %s", req.content)
-    t0 = time.monotonic()
     async with _driver_lock:
-        result = await graphiti.add_episode(
+        await graphiti.add_episode(
             name=f"manual-add-{int(time.time() * 1000)}",
             episode_body=req.content,
             source_description=req.source_description,
@@ -870,9 +845,6 @@ async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
             edge_types=ontology_edge_types,
             edge_type_map=ontology_edge_type_map,
         )
-    duration_ms = (time.monotonic() - t0) * 1000
-    logger.info("[gralkor] tools.memory_add stored — group:%s uuid:%s %.0fms",
-                sanitized, result.episode.uuid, duration_ms)
     return MemoryAddResponse(status="stored")
 
 

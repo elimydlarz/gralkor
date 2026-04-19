@@ -83,7 +83,7 @@ Jido consumers embed Gralkor in their own supervision tree and talk to it over l
 
    **Session identity.** Gralkor's capture buffer is keyed by `session_id`, which the plugin takes from `agent.state.__strategy__.thread.id` (the current `Jido.AI.Thread`). One Jido conversation thread per Gralkor session — concurrent agents for the same principal never collide on the buffer, and the session rotates naturally when the thread rotates. `group_id` is the sanitized `agent.id` (per-principal graph partition).
 
-5. **Verify boot.** `iex -S mix` → `curl http://127.0.0.1:4000/health` → `{"status":"ok",…}`. Send a message through the bot; watch for `POST /recall` then (after the capture idle window) `[gralkor] episode added …` in the logs.
+5. **Verify boot.** `iex -S mix` → `curl http://127.0.0.1:4000/health` → `{"status":"ok",…}`. Send a message through the bot; watch for `[gralkor] recall — …` then (after the capture idle window) `[gralkor] capture flushed — …` in the logs.
 
 No Docker, no separate Gralkor service. `mix deps.get` + `iex -S mix` brings the whole memory stack up.
 
@@ -129,7 +129,7 @@ All endpoints are unauthenticated — see the Auth note above.
 `Gralkor.Server`:
 
 - `init/1` returns `{:ok, state, {:continue, :boot}}` — never blocks.
-- `handle_continue(:boot, …)` writes `config.yaml`, spawns `uv run uvicorn main:app`, health-polls at 500ms until 200 or a configurable boot timeout, then schedules a 60s monitor.
+- `handle_continue(:boot, …)` writes `config.yaml`, reaps any stale Python child via `server.pid`, pre-flights the bind port (stops with `{:boot_failed, :port_in_use}` if already bound — covers orphans the pid-file reap can't identify), spawns `uv run uvicorn main:app`, health-polls at 500ms until 200 or a configurable boot timeout, then schedules a 60s monitor.
 - `terminate/2` sends `SIGTERM` to the OS pid and waits up to 30s for clean exit before `SIGKILL`.
 
 ## Running locally

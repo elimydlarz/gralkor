@@ -88,10 +88,6 @@ async def test_flush_logs_entry_and_success_at_info(mock_graphiti, caplog):
 
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         assert any(
-            "[gralkor] capture flush —" in m and "group:flush_grp" in m and "turns:1" in m
-            for m in info_msgs
-        ), info_msgs
-        assert any(
             "[gralkor] capture flushed —" in m and "group:flush_grp" in m
             and "uuid:ep-001" in m and "bodyChars:" in m
             for m in info_msgs
@@ -101,13 +97,12 @@ async def test_flush_logs_entry_and_success_at_info(mock_graphiti, caplog):
         main_mod.capture_buffer = original_buffer
 
 
-async def test_flush_logs_skip_on_empty_body(mock_graphiti, caplog):
+async def test_flush_skips_on_empty_body(mock_graphiti, caplog):
     original_graphiti = main_mod.graphiti
     original_buffer = main_mod.capture_buffer
     main_mod.graphiti = mock_graphiti
 
     try:
-        caplog.set_level(logging.INFO, logger="main")
         main_mod.capture_buffer = CaptureBuffer(
             idle_seconds=0.05,
             flush_callback=main_mod._capture_flush,
@@ -126,8 +121,6 @@ async def test_flush_logs_skip_on_empty_body(mock_graphiti, caplog):
             )
             await asyncio.sleep(0.25)
 
-        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
-        assert any("[gralkor] capture flush skipped —" in m for m in info_msgs), info_msgs
         mock_graphiti.add_episode.assert_not_awaited()
     finally:
         main_mod.graphiti = original_graphiti
@@ -166,7 +159,7 @@ async def test_flush_logs_body_at_debug(mock_graphiti, caplog):
 
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert any(
-            "[gralkor] capture flush body:" in m and "sensitive" in m and "answer" in m
+            "[gralkor] [test] capture flush body:" in m and "sensitive" in m and "answer" in m
             for m in debug_msgs
         ), debug_msgs
     finally:

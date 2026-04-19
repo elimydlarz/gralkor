@@ -201,9 +201,9 @@ class TestObservability:
             json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
-        assert any("[gralkor] recall query: sensitive question" in m for m in debug_msgs), debug_msgs
+        assert any("[gralkor] [test] recall query: sensitive question" in m for m in debug_msgs), debug_msgs
         assert any(
-            "[gralkor] recall block:" in m and "Alice knows Bob" in m and "interp" in m
+            "[gralkor] [test] recall block:" in m and "Alice knows Bob" in m and "interp" in m
             for m in debug_msgs
         ), debug_msgs
 
@@ -215,7 +215,7 @@ class TestObservability:
             json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
-        assert not any("[gralkor] recall block:" in m for m in debug_msgs)
+        assert not any("[gralkor] [test] recall block:" in m for m in debug_msgs)
 
 
 async def test_strips_gralkor_memory_from_buffered_turns(client, mock_graphiti):

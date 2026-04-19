@@ -166,6 +166,29 @@ defmodule Gralkor.ServerTest do
            "unexpected reason: #{inspect(reason)}"
   end
 
+  test "boot fails fast with {:boot_failed, :port_in_use} when the port is already bound by a foreign process",
+       %{config: config, port: port} do
+    name = unique_name()
+
+    {:ok, listener} = :gen_tcp.listen(port, ip: {127, 0, 0, 1}, reuseaddr: true)
+
+    Process.flag(:trap_exit, true)
+
+    {:ok, pid} =
+      Server.start_link(
+        name: name,
+        config: config,
+        executable: "/bin/true",
+        executable_args: []
+      )
+
+    ref = Process.monitor(pid)
+
+    assert_receive {:DOWN, ^ref, :process, ^pid, {:boot_failed, :port_in_use}}, 5_000
+
+    :ok = :gen_tcp.close(listener)
+  end
+
   test "stops with {:health_degraded, _} when the monitor tick sees /health fail",
        %{config: config, python_exe: python, port: port} do
     name = unique_name()
