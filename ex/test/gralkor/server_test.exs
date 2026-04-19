@@ -75,52 +75,7 @@ defmodule Gralkor.ServerTest do
     config_yaml = Path.join(config.data_dir, "config.yaml")
     assert File.exists?(config_yaml)
 
-    pid_file = Path.join(config.data_dir, "server.pid")
-    assert File.exists?(pid_file), "server.pid should be written on successful spawn"
-
     :ok = stop_and_wait(pid)
-
-    refute File.exists?(pid_file), "server.pid should be removed on graceful terminate"
-  end
-
-  test "reaps a stale python pid left behind by a prior crash before spawning", %{config: config, python_exe: python, port: port} do
-    # Spawn a long-lived child to stand in for an orphaned python from a prior
-    # BEAM SIGKILL. Record its pid in server.pid. Boot the server; it should
-    # reap the stale process before spawning its own.
-    File.mkdir_p!(config.data_dir)
-
-    sleep_exe = System.find_executable("sleep")
-    stale_port = Port.open({:spawn_executable, sleep_exe}, [:binary, :exit_status, {:args, ["300"]}])
-    {:os_pid, stale_pid} = Port.info(stale_port, :os_pid)
-
-    File.write!(Path.join(config.data_dir, "server.pid"), Integer.to_string(stale_pid))
-    assert os_process_alive?(stale_pid)
-
-    name = unique_name()
-
-    {:ok, pid} =
-      Server.start_link(
-        name: name,
-        config: config,
-        executable: python,
-        executable_args: [@fixture_path, Integer.to_string(port)]
-      )
-
-    wait_for_healthy(pid, 10_000)
-
-    refute os_process_alive?(stale_pid), "stale pid should have been reaped on boot"
-    fresh_os_pid = :sys.get_state(pid).os_pid
-    assert is_integer(fresh_os_pid)
-    assert fresh_os_pid != stale_pid
-
-    :ok = stop_and_wait(pid)
-
-    # Drain any lingering exit_status message from the reaped stale port.
-    receive do
-      {^stale_port, {:exit_status, _}} -> :ok
-    after
-      0 -> :ok
-    end
   end
 
   test "terminate sends SIGTERM and the child exits", %{config: config, python_exe: python, port: port} do

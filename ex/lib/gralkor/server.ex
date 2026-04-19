@@ -56,14 +56,12 @@ defmodule Gralkor.Server do
   @impl true
   def handle_continue(:boot, state) do
     :ok = Config.write_yaml(state.config)
-    :ok = reap_stale_python(state.config.data_dir)
 
     bind_port = port_from_url(state.config.server_url)
 
     if port_free?(bind_port) do
       port = spawn_python(state.config, state.opts)
       {:os_pid, os_pid} = Port.info(port, :os_pid)
-      :ok = write_pid_file(state.config.data_dir, os_pid)
       boot_timeout_ms = Keyword.get(state.opts, :boot_timeout_ms, @default_boot_timeout_ms)
 
       case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
@@ -73,7 +71,6 @@ defmodule Gralkor.Server do
 
         {:error, reason} ->
           kill_os_pid(os_pid, "KILL")
-          remove_pid_file(state.config.data_dir)
           {:stop, {:boot_failed, reason}, state}
       end
     else
@@ -116,22 +113,17 @@ defmodule Gralkor.Server do
   def handle_info(_msg, state), do: {:noreply, state}
 
   @impl true
-  def terminate(_reason, %{os_pid: nil} = state) do
-    remove_pid_file(state.config.data_dir)
-    :ok
-  end
+  def terminate(_reason, %{os_pid: nil}), do: :ok
 
-  def terminate(_reason, %{os_pid: os_pid, port: port} = state) do
+  def terminate(_reason, %{os_pid: os_pid, port: port}) do
     kill_os_pid(os_pid, "TERM")
 
     case wait_for_exit(port, @shutdown_grace_ms) do
       :ok ->
-        remove_pid_file(state.config.data_dir)
         :ok
 
       :timeout ->
         kill_os_pid(os_pid, "KILL")
-        remove_pid_file(state.config.data_dir)
         :ok
     end
   end
@@ -254,8 +246,7 @@ defmodule Gralkor.Server do
   defp kill_os_pid(_os_pid, _signal), do: :ok
 
   # ── Pre-spawn port check ─────────────────────────────────
-  # Reap only covers pids we previously wrote to server.pid. Orphans from older
-  # runs (or any unrelated listener) can't be reaped — fail fast here so the
+  # Orphans from prior runs can't be cleaned up from here — fail fast so the
   # supervisor doesn't crash-loop doomed uvicorn attempts that all EADDRINUSE.
 
   defp port_from_url(url) do
@@ -273,64 +264,6 @@ defmodule Gralkor.Server do
 
       {:error, _reason} ->
         false
-    end
-  end
-
-  # ── Stale pid reaping ───────────────────────────────────
-  # BEAM SIGKILL / Ctrl-C abort skips terminate/2, orphaning the Python child
-  # holding our port. On next boot, read the prior pid from disk and reap it
-  # (SIGTERM, wait, SIGKILL) so the fresh spawn can bind cleanly.
-
-  @pid_file "server.pid"
-  @reap_wait_ms 3_000
-
-  defp pid_file_path(data_dir), do: Path.join(data_dir, @pid_file)
-
-  defp write_pid_file(data_dir, os_pid) when is_integer(os_pid) do
-    File.mkdir_p!(data_dir)
-    File.write!(pid_file_path(data_dir), Integer.to_string(os_pid))
-    :ok
-  end
-
-  defp remove_pid_file(data_dir) do
-    _ = File.rm(pid_file_path(data_dir))
-    :ok
-  end
-
-  defp reap_stale_python(data_dir) do
-    with {:ok, contents} <- File.read(pid_file_path(data_dir)),
-         {pid, ""} <- contents |> String.trim() |> Integer.parse(),
-         true <- os_pid_alive?(pid) do
-      Logger.warning("[gralkor] reaping stale python (pid=#{pid}) from previous run")
-      kill_os_pid(pid, "TERM")
-      wait_for_os_exit(pid, @reap_wait_ms)
-      if os_pid_alive?(pid), do: kill_os_pid(pid, "KILL")
-      remove_pid_file(data_dir)
-      :ok
-    else
-      _ ->
-        remove_pid_file(data_dir)
-        :ok
-    end
-  end
-
-  defp os_pid_alive?(pid) when is_integer(pid) do
-    {_, exit_code} = System.cmd("kill", ["-0", Integer.to_string(pid)], stderr_to_stdout: true)
-    exit_code == 0
-  end
-
-  defp wait_for_os_exit(pid, timeout_ms) do
-    deadline = System.monotonic_time(:millisecond) + timeout_ms
-    do_wait_os_exit(pid, deadline)
-  end
-
-  defp do_wait_os_exit(pid, deadline) do
-    cond do
-      not os_pid_alive?(pid) -> :ok
-      System.monotonic_time(:millisecond) >= deadline -> :timeout
-      true ->
-        Process.sleep(100)
-        do_wait_os_exit(pid, deadline)
     end
   end
 end

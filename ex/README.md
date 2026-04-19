@@ -129,7 +129,7 @@ All endpoints are unauthenticated — see the Auth note above.
 `Gralkor.Server`:
 
 - `init/1` returns `{:ok, state, {:continue, :boot}}` — never blocks.
-- `handle_continue(:boot, …)` writes `config.yaml`, reaps any stale Python child via `server.pid`, pre-flights the bind port (stops with `{:boot_failed, :port_in_use}` if already bound — covers orphans the pid-file reap can't identify), spawns `uv run uvicorn main:app`, health-polls at 500ms until 200 or a configurable boot timeout, then schedules a 60s monitor.
+- `handle_continue(:boot, …)` writes `config.yaml`, pre-flights the bind port (stops with `{:boot_failed, :port_in_use}` if already bound), spawns `uv run uvicorn main:app`, health-polls at 500ms until 200 or a configurable boot timeout, then schedules a 60s monitor.
 - `terminate/2` sends `SIGTERM` to the OS pid and waits up to 30s for clean exit before `SIGKILL`.
 
 ## Running locally

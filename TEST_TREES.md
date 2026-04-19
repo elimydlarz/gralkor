@@ -514,9 +514,7 @@ ex-server-lifecycle (Elixir supervisor in ex/)
   boot sequence
     when handle_continue(:boot) runs
       then Gralkor.Config.write_yaml writes config.yaml at $GRALKOR_DATA_DIR/config.yaml
-      then any stale python from a prior BEAM SIGKILL is reaped via $GRALKOR_DATA_DIR/server.pid (SIGTERM → wait → SIGKILL)
       then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
-      then the new OS pid is written to $GRALKOR_DATA_DIR/server.pid
       then env vars are forwarded: GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
       then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or the configured boot_timeout_ms (default 120_000)
     when the deadline passes with no healthy response
@@ -524,7 +522,7 @@ ex-server-lifecycle (Elixir supervisor in ex/)
     when the spawned port exits during boot
       then the boot loop peeks the mailbox each iteration and fails fast
       then stops with {:boot_failed, :port_exited} (no full-timeout wait)
-    when the configured port is already bound by a foreign process (orphan not recorded in server.pid, or any other listener)
+    when the configured port is already bound (orphan from a prior BEAM crash or any other listener)
       then stops with {:boot_failed, :port_in_use} before spawning (no crash-loop of doomed uvicorn attempts)
     when boot succeeds
       then health monitor is scheduled at the configured monitor_interval_ms (default 60_000)
@@ -545,7 +543,6 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then sends SIGTERM via System.cmd("kill", ["-TERM", pid])
       then waits up to 30s for {port, {:exit_status, _}}
       then sends SIGKILL via System.cmd("kill", ["-KILL", pid]) if still running
-      then removes $GRALKOR_DATA_DIR/server.pid
 ex-config-writing (Gralkor.Config)
   from_env
     when GRALKOR_DATA_DIR is set
