@@ -10,6 +10,7 @@ defmodule Gralkor.MixProject do
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       compilers: Mix.compilers() ++ [:gralkor_priv],
       releases: releases(),
@@ -38,9 +39,13 @@ defmodule Gralkor.MixProject do
     [
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      {:plug, "~> 1.18", only: :test}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp releases do
     [

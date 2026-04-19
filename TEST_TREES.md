@@ -759,6 +759,90 @@ downstream-error-handling
         then propagates as 500
 ```
 
+## Elixir Client
+
+```
+ex-client (port contract, shared)
+  when recall/3 is called with group_id, session_id, and query
+    when the backend has a memory block
+      then {:ok, block} is returned
+    when the backend has no memory
+      then {:ok, nil} is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when capture/3 is called with session_id, group_id, and turn
+    when the backend acknowledges the capture
+      then :ok is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when end_session/1 is called with a session_id
+    when the backend acknowledges the end
+      then :ok is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when memory_search/3 is called with group_id, session_id, and query
+    when the backend returns results
+      then {:ok, text} is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when memory_add/3 is called with group_id, content, and source_description
+    when the backend acknowledges the add
+      then :ok is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when health_check/0 is called
+    when the backend is healthy
+      then :ok is returned
+    if the backend fails
+      then {:error, reason} is returned
+ex-sanitize-group-id
+  when the id contains hyphens
+    then hyphens are replaced with underscores
+  when the id has consecutive hyphens
+    then each hyphen is replaced independently
+  when the id has no hyphens
+    then it is returned unchanged
+ex-impl-resolver
+  when :gralkor_client is unset in app env
+    then Gralkor.Client.HTTP is returned
+  when :gralkor_client is configured to a module
+    then that module is returned
+ex-client-http
+  then no Authorization header is attached to any request
+  if Gralkor responds with a non-2xx status
+    then {:error, {:http_status, status, body}} is returned
+  if the app env is missing
+    then the call raises
+  if session_id is blank on recall/capture/memory_search/end_session
+    then the call raises with ArgumentError (Gralkor requires a non-blank session_id)
+  when the outgoing body contains Elixir tuples (e.g. {:ok, _} tool results in capture events)
+    then tuples are recursively converted to lists before Jason encodes the body (no Jason crash)
+  runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
+ex-client-in-memory
+  when an operation is called
+    then the call is recorded with its arguments for later inspection
+  if no response is configured for an operation
+    then {:error, :not_configured} is returned
+  when reset/0 is called
+    then configured responses and recorded calls are cleared
+  runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
+ex-connection
+  when starting up
+    then Gralkor.Client.health_check/0 is polled until it responds :ok, blocking boot
+    if Gralkor does not respond healthy within the boot window
+      then startup fails so the supervisor can react
+  after boot
+    then the process is idle (no periodic polling) — runtime outages surface on the next actual call
+ex-orphan-reaper
+  when no process is listening on port 4000
+    then no kill is attempted and :ok is returned
+  when a process whose command line contains `gralkor/priv/server` is listening on port 4000
+    then that process is SIGKILLed and :ok is returned
+  when a process whose command line does not contain `gralkor/priv/server` is listening on port 4000
+    then the function raises with the foreign command line
+  (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash)
+```
+
 ## Functional Journey
 
 ```
