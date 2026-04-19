@@ -180,6 +180,53 @@ class TestRetry:
         assert 0.15 <= gap3 <= 0.3
 
 
+class TestFlushSession:
+    async def test_flushes_turns_via_callback(self, flush_callback):
+        buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
+        buffer.append("sess-1", "grp", make_turn("q1"))
+        buffer.append("sess-1", "grp", make_turn("q2"))
+        buffer.flush("sess-1")
+        # Callback is scheduled, not awaited.
+        await asyncio.sleep(0.01)
+        flush_callback.assert_awaited_once()
+        args = flush_callback.await_args.args
+        assert args[0] == "grp"
+        assert [t.user_query for t in args[1]] == ["q1", "q2"]
+
+    async def test_removes_entry_immediately(self, flush_callback):
+        buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
+        buffer.append("sess-1", "grp", make_turn())
+        buffer.flush("sess-1")
+        assert not buffer.has("sess-1")
+        assert buffer.turns_for("sess-1") == []
+
+    async def test_returns_without_awaiting_callback(self, flush_callback):
+        slow_event = asyncio.Event()
+
+        async def slow_callback(_group, _turns):
+            await slow_event.wait()
+
+        buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=slow_callback)
+        buffer.append("sess-1", "grp", make_turn())
+        # Must return promptly even though the callback is blocked.
+        buffer.flush("sess-1")
+        slow_event.set()
+
+    async def test_cancels_idle_timer(self, flush_callback):
+        buffer = CaptureBuffer(idle_seconds=0.05, flush_callback=flush_callback)
+        buffer.append("sess-1", "grp", make_turn())
+        buffer.flush("sess-1")
+        # If the idle timer still fires, we'd see a second callback invocation.
+        await asyncio.sleep(0.1)
+        assert flush_callback.await_count == 1
+
+    async def test_noop_for_unknown_session(self, flush_callback):
+        buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
+        buffer.flush("never-captured")
+        await asyncio.sleep(0.01)
+        flush_callback.assert_not_awaited()
+
+
 class TestFlushAll:
     async def test_flushes_all_pending_sessions_immediately(self, flush_callback):
         buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)

@@ -111,6 +111,18 @@ class CaptureBuffer:
                 await asyncio.sleep(self._retry_delays[attempt])
                 attempt += 1
 
+    def flush(self, session_id: str) -> None:
+        entry = self._entries.pop(session_id, None)
+        if entry is None:
+            return
+        if entry.idle_handle is not None:
+            entry.idle_handle.cancel()
+        task = asyncio.create_task(
+            self._flush_with_retry(session_id, entry.group_id, entry.turns)
+        )
+        self._pending_flushes.add(task)
+        task.add_done_callback(self._pending_flushes.discard)
+
     async def flush_all(self) -> None:
         for session_id in list(self._entries.keys()):
             entry = self._entries.pop(session_id, None)

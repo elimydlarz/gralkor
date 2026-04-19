@@ -474,6 +474,10 @@ class CaptureRequest(BaseModel):
     turn: TurnBody
 
 
+class SessionEndRequest(BaseModel):
+    session_id: str = Field(min_length=1)
+
+
 class MemorySearchRequest(BaseModel):
     session_id: str
     group_id: str
@@ -551,6 +555,14 @@ def _turn_body_to_turn(body: TurnBody) -> Turn:
         events=list(body.events),
         assistant_answer=body.assistant_answer,
     )
+
+
+def _elide_tokens(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: "[...]" if k == "token" else _elide_tokens(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_elide_tokens(v) for v in value]
+    return value
 
 
 def _conversation_for_session(session_id: str) -> list[ConversationMessage]:
@@ -785,7 +797,17 @@ async def capture(req: CaptureRequest) -> Response:
     turn = _turn_body_to_turn(req.turn)
     capture_buffer.append(req.session_id, sanitized, turn)
     logger.debug("[gralkor] [test] capture turn: user_query=%s events=%s assistant_answer=%s",
-                 turn.user_query, turn.events, turn.assistant_answer)
+                 turn.user_query, _elide_tokens(turn.events), turn.assistant_answer)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/session_end", status_code=status.HTTP_204_NO_CONTENT)
+async def session_end(req: SessionEndRequest) -> Response:
+    if capture_buffer is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
+    turns = len(capture_buffer.turns_for(req.session_id))
+    capture_buffer.flush(req.session_id)
+    logger.info("[gralkor] session_end session:%s turns:%d", req.session_id, turns)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

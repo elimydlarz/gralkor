@@ -73,6 +73,7 @@ Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness
 
 - `POST /recall` — before-prompt auto-recall
 - `POST /capture` — fire-and-forget turn capture (server buffers, distils, ingests on idle)
+- `POST /session_end` — flush the session's buffer now (fire-and-forget; 204 before the graph write); for consumers that know when a session is over
 - `POST /tools/memory_search`, `POST /tools/memory_add` — consumer-facing tools
 - `POST /distill` — standalone distillation (for clients that want raw distill access)
 - Existing: `POST /episodes`, `POST /search`, `GET /health`

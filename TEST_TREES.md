@@ -323,6 +323,8 @@ POST /capture endpoint
   observability
     when test mode is enabled (logger level DEBUG)
       then logs "[gralkor] [test] capture turn: …" at DEBUG (user_query, events, assistant_answer)
+      when an event carries a `token` field (e.g. a ReAct checkpoint resumption token)
+        then the token value is rendered as "[...]" so the log stays readable
   idle flush (_capture_flush in main.py)
     when the distilled episode body is empty
       then does not call add_episode (no log)
@@ -330,6 +332,19 @@ POST /capture endpoint
       then logs "[gralkor] capture flushed — group:… uuid:… bodyChars:… <ms>" at INFO
     when test mode is enabled
       then also logs "[gralkor] [test] capture flush body: <episode_body>" at DEBUG
+POST /session_end endpoint
+  request shape
+    then body is {session_id}
+  when called for a session_id with buffered turns
+    then the session's idle timer is cancelled
+    and the session's buffered turns are flushed via the same callback and retry machinery as idle flush
+    and 204 No Content is returned without awaiting the flush completion
+  when called for a session_id with no buffered turns
+    then 204 No Content is returned and no flush is scheduled
+  if session_id is missing or blank
+    then 422 is returned
+  observability
+    then logs "[gralkor] session_end session:… turns:N" at INFO
 capture-buffer (Python)
   append
     when called for a new session_id
@@ -352,6 +367,15 @@ capture-buffer (Python)
       then flush_callback is invoked with (group_id, list_of_turns) derived from the entry
       and the entry is removed from the buffer
       and subsequent turns_for(session_id) calls return []
+  flush(session_id)
+    when called for a session_id with buffered turns
+      then the session's idle timer is cancelled
+      and flush_callback is scheduled with (group_id, list_of_turns) derived from the entry
+      and the call returns without awaiting the scheduled flush
+      and the entry is removed from the buffer
+      and subsequent turns_for(session_id) calls return []
+    when called for a session_id with no entry
+      then returns without scheduling any flush
   retry schedule
     when flush_callback raises a retryable error
       then retries at 1s, 2s, 4s (exponential)
@@ -786,6 +810,12 @@ jido-memory-journey (Elixir-driven functional suite in ex/test/functional/)
         and idle_seconds elapses
           then the episode is ingested into the bound group_id
           and POST /search finds an edge mentioning the turn content
+  session_end flush
+    given a pending turn in the capture buffer (no idle elapsed)
+      when POST /session_end is called with the session_id
+        then 204 is returned before the episode is ingested
+        and the episode lands in the bound group_id without waiting for the idle window
+        and POST /search finds an edge mentioning the turn content
   graceful-shutdown flush
     given a pending turn in the capture buffer (no idle elapsed)
       when GenServer.stop(Gralkor.Server) runs

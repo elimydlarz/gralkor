@@ -104,4 +104,27 @@ class TestObservability:
             for m in debug_msgs
         ), debug_msgs
 
+    async def test_elides_token_fields_in_events(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.DEBUG, logger="main")
+        huge = "x" * 5000
+        await client.post(
+            "/capture",
+            json={
+                "session_id": "s",
+                "group_id": "g",
+                "turn": {
+                    "user_query": "q",
+                    "events": [
+                        {"kind": "checkpoint", "data": {"reason": "after_llm", "token": huge}},
+                    ],
+                    "assistant_answer": "a",
+                },
+            },
+        )
+        debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+        capture_msg = next(m for m in debug_msgs if "[gralkor] [test] capture turn:" in m)
+        assert huge not in capture_msg
+        assert "[...]" in capture_msg
+        assert "after_llm" in capture_msg
+
 

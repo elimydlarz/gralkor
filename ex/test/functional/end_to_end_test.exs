@@ -76,6 +76,31 @@ defmodule Gralkor.Functional.EndToEndTest do
     wait_for_graph(url, group, "teal", 120_000)
   end
 
+  test "capture → session_end flushes without waiting for the idle window", %{url: url} do
+    group = "jido_func_end_#{System.unique_integer([:positive])}"
+    session = "sess_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{status: 204}} =
+             post(url, "/capture", %{
+               session_id: session,
+               group_id: group,
+               turn: %{
+                 user_query: "My dog's name is Banjo.",
+                 events: [],
+                 assistant_answer: "Noted — Banjo."
+               }
+             })
+
+    t0 = System.monotonic_time(:millisecond)
+    assert {:ok, %{status: 204}} = post(url, "/session_end", %{session_id: session})
+    elapsed = System.monotonic_time(:millisecond) - t0
+    # Endpoint must return before the graph write completes; tolerate up to 2s
+    # to avoid flakiness on slow CI, but well under the 60s write budget.
+    assert elapsed < 2_000, "session_end took #{elapsed}ms (should return promptly)"
+
+    wait_for_graph(url, group, "Banjo", 120_000)
+  end
+
   # ── Harness ─────────────────────────────────────────────
 
   defp start_server do
