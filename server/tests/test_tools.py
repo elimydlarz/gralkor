@@ -23,6 +23,31 @@ def _empty_search_result() -> SimpleNamespace:
 
 
 class TestMemorySearch:
+    async def test_rejects_blank_session_id(self, client, mock_graphiti):
+        resp = await client.post(
+            "/tools/memory_search",
+            json={
+                "session_id": "",
+                "group_id": "grp",
+                "query": "q",
+                "max_results": 20,
+                "max_entity_results": 10,
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_rejects_missing_session_id(self, client, mock_graphiti):
+        resp = await client.post(
+            "/tools/memory_search",
+            json={
+                "group_id": "grp",
+                "query": "q",
+                "max_results": 20,
+                "max_entity_results": 10,
+            },
+        )
+        assert resp.status_code == 422
+
     async def test_uses_slow_mode_with_cross_encoder(self, client, mock_graphiti):
         mock_graphiti.search_.return_value = SimpleNamespace(
             edges=[make_edge(fact="A")],
