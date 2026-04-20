@@ -1067,15 +1067,6 @@ clawhub-arm64-wheel-distribution
     then the publish aborts with an error
   when gh release upload fails
     then publish-clawhub.sh exits non-zero (rollback fires for non-current levels)
-publish-all
-  when publish:all succeeds
-    then npm is published first with the version bump
-    and clawhub is published second at the bumped version (current)
-    and only one version bump occurs
-  when npm publish fails
-    then clawhub publish does not run
-  when npm publish succeeds but clawhub publish fails
-    then a recovery hint is printed directing the user to run publish:clawhub current
 publish-ex-version-integrity
   when publish succeeds
     then @version is bumped in ex/mix.exs
