@@ -879,6 +879,16 @@ ts-client (port contract, shared)
       then { ok: true } is returned
     if the backend fails
       then { error: reason } is returned
+  when buildIndices() is called
+    when the backend acknowledges the rebuild
+      then { ok: { status } } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when buildCommunities(group_id) is called
+    when the backend returns counts
+      then { ok: { communities, edges } } is returned
+    if the backend fails
+      then { error: reason } is returned
 ts-sanitize-group-id
   when the id contains hyphens
     then hyphens are replaced with underscores

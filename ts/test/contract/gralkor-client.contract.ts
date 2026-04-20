@@ -24,7 +24,15 @@ export interface ContractSetup {
   make: () => GralkorClient;
   configureBackend: (
     client: GralkorClient,
-    op: "recall" | "capture" | "endSession" | "memorySearch" | "memoryAdd" | "healthCheck",
+    op:
+      | "recall"
+      | "capture"
+      | "endSession"
+      | "memorySearch"
+      | "memoryAdd"
+      | "healthCheck"
+      | "buildIndices"
+      | "buildCommunities",
     response: Result<unknown>,
   ) => void | Promise<void>;
 }
@@ -124,6 +132,38 @@ export function gralkorClientContract(setup: ContractSetup): void {
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "healthCheck", { error: "boom" });
       const r = await client.healthCheck();
+      expect("error" in r).toBe(true);
+    });
+  });
+
+  describe("port contract: buildIndices", () => {
+    it("returns { ok: { status } } when the backend acknowledges", async () => {
+      await setup.configureBackend(client, "buildIndices", {
+        ok: { status: "stored" },
+      });
+      const r = await client.buildIndices();
+      expect(r).toEqual({ ok: { status: "stored" } });
+    });
+
+    it("returns { error: reason } when the backend fails", async () => {
+      await setup.configureBackend(client, "buildIndices", { error: "boom" });
+      const r = await client.buildIndices();
+      expect("error" in r).toBe(true);
+    });
+  });
+
+  describe("port contract: buildCommunities", () => {
+    it("returns { ok: { communities, edges } } when the backend returns counts", async () => {
+      await setup.configureBackend(client, "buildCommunities", {
+        ok: { communities: 3, edges: 17 },
+      });
+      const r = await client.buildCommunities("g1");
+      expect(r).toEqual({ ok: { communities: 3, edges: 17 } });
+    });
+
+    it("returns { error: reason } when the backend fails", async () => {
+      await setup.configureBackend(client, "buildCommunities", { error: "boom" });
+      const r = await client.buildCommunities("g1");
       expect("error" in r).toBe(true);
     });
   });

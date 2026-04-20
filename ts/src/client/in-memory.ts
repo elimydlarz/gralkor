@@ -1,6 +1,14 @@
 import type { GralkorClient, Result, Turn } from "../client.js";
 
-type Op = "recall" | "capture" | "endSession" | "memorySearch" | "memoryAdd" | "healthCheck";
+type Op =
+  | "recall"
+  | "capture"
+  | "endSession"
+  | "memorySearch"
+  | "memoryAdd"
+  | "healthCheck"
+  | "buildIndices"
+  | "buildCommunities";
 
 /**
  * In-memory twin of {@link GralkorClient} for tests.
@@ -20,6 +28,8 @@ export class GralkorInMemoryClient implements GralkorClient {
   readonly adds: Array<[string, string, string | null]> = [];
   readonly endSessions: Array<[string]> = [];
   readonly healthChecks: Array<[]> = [];
+  readonly indicesBuilds: Array<[]> = [];
+  readonly communitiesBuilds: Array<[string]> = [];
 
   setResponse(op: Op, response: Result<unknown>): void {
     this.responses.set(op, response);
@@ -33,6 +43,8 @@ export class GralkorInMemoryClient implements GralkorClient {
     this.adds.length = 0;
     this.endSessions.length = 0;
     this.healthChecks.length = 0;
+    this.indicesBuilds.length = 0;
+    this.communitiesBuilds.length = 0;
   }
 
   private respond<T>(op: Op): Promise<Result<T>> {
@@ -72,5 +84,17 @@ export class GralkorInMemoryClient implements GralkorClient {
   async healthCheck(): Promise<Result<true>> {
     this.healthChecks.push([]);
     return this.respond("healthCheck");
+  }
+
+  async buildIndices(): Promise<Result<{ status: string }>> {
+    this.indicesBuilds.push([]);
+    return this.respond("buildIndices");
+  }
+
+  async buildCommunities(
+    groupId: string,
+  ): Promise<Result<{ communities: number; edges: number }>> {
+    this.communitiesBuilds.push([groupId]);
+    return this.respond("buildCommunities");
   }
 }

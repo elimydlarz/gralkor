@@ -106,6 +106,30 @@ export class GralkorHttpClient implements GralkorClient {
     return "error" in res ? res : { ok: true };
   }
 
+  async buildIndices(): Promise<Result<{ status: string }>> {
+    const res = await this.post("/build-indices", {}, 60_000);
+    if ("error" in res) return res;
+    const body = res.ok as { status?: string };
+    if (typeof body.status !== "string") return { error: { kind: "unexpected_body", body } };
+    return { ok: { status: body.status } };
+  }
+
+  async buildCommunities(
+    groupId: string,
+  ): Promise<Result<{ communities: number; edges: number }>> {
+    const res = await this.post(
+      "/build-communities",
+      { group_id: groupId },
+      120_000,
+    );
+    if ("error" in res) return res;
+    const body = res.ok as { communities?: number; edges?: number };
+    if (typeof body.communities !== "number" || typeof body.edges !== "number") {
+      return { error: { kind: "unexpected_body", body } };
+    }
+    return { ok: { communities: body.communities, edges: body.edges } };
+  }
+
   private post(path: string, body: unknown, timeoutMs: number): Promise<Result<unknown>> {
     return this.request("POST", path, body, timeoutMs);
   }

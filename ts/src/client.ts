@@ -66,6 +66,12 @@ export interface GralkorClient {
 
   /** Liveness probe. */
   healthCheck(): Promise<Result<true>>;
+
+  /** Admin: rebuild graph search indices. Idempotent; run after schema changes. */
+  buildIndices(): Promise<Result<{ status: string }>>;
+
+  /** Admin: detect and build entity communities for a group. Improves search quality. */
+  buildCommunities(groupId: string): Promise<Result<{ communities: number; edges: number }>>;
 }
 
 /**

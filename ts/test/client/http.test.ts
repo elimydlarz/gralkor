@@ -3,7 +3,15 @@ import { GralkorHttpClient } from "../../src/client/http.js";
 import { gralkorClientContract } from "../contract/gralkor-client.contract.js";
 import type { Result } from "../../src/client.js";
 
-type StubKey = "recall" | "capture" | "endSession" | "memorySearch" | "memoryAdd" | "healthCheck";
+type StubKey =
+  | "recall"
+  | "capture"
+  | "endSession"
+  | "memorySearch"
+  | "memoryAdd"
+  | "healthCheck"
+  | "buildIndices"
+  | "buildCommunities";
 
 type Stub = {
   status: number;
@@ -31,6 +39,8 @@ function makeStubbedClient(): {
       path === "/tools/memory_search" ? "memorySearch" :
       path === "/tools/memory_add" ? "memoryAdd" :
       path === "/health" ? "healthCheck" :
+      path === "/build-indices" ? "buildIndices" :
+      path === "/build-communities" ? "buildCommunities" :
       null;
 
     if (!key) throw new Error(`no stub for path ${path}`);
@@ -53,6 +63,8 @@ function makeStubbedClient(): {
         key === "recall" ? { memory_block: response.ok === null ? "" : response.ok } :
         key === "memorySearch" ? { text: response.ok } :
         key === "memoryAdd" ? { status: "stored" } :
+        key === "buildIndices" ? (response.ok as Record<string, unknown>) :
+        key === "buildCommunities" ? (response.ok as Record<string, unknown>) :
         {};
       stubs.set(key, {
         status: key === "capture" || key === "endSession" ? 204 : 200,
