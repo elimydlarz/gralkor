@@ -51,6 +51,8 @@ defmodule Gralkor.Client.HTTP do
   @recall_timeout_ms 5_000
   @tool_search_timeout_ms 10_000
   @memory_add_timeout_ms 60_000
+  @build_indices_timeout_ms 60_000
+  @build_communities_timeout_ms 120_000
 
   @impl true
   def recall(group_id, session_id, query) do
@@ -140,6 +142,29 @@ defmodule Gralkor.Client.HTTP do
     case Req.get(url <> "/health", req_opts) |> handle_response() do
       {:ok, _body} -> :ok
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def build_indices do
+    case post("/build-indices", %{}, @build_indices_timeout_ms) do
+      {:ok, %{"status" => status}} when is_binary(status) -> {:ok, %{status: status}}
+      {:ok, body} -> {:error, {:unexpected_body, body}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def build_communities(group_id) when is_binary(group_id) do
+    case post("/build-communities", %{group_id: group_id}, @build_communities_timeout_ms) do
+      {:ok, %{"communities" => c, "edges" => e}} when is_integer(c) and is_integer(e) ->
+        {:ok, %{communities: c, edges: e}}
+
+      {:ok, body} ->
+        {:error, {:unexpected_body, body}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

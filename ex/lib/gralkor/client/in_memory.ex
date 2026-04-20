@@ -38,12 +38,22 @@ defmodule Gralkor.Client.InMemory do
   @doc "Set the response for the next (and all subsequent) `health_check/0` calls."
   def set_health(response), do: GenServer.call(__MODULE__, {:set, :health_check, response})
 
+  @doc "Set the response for the next (and all subsequent) `build_indices/0` calls."
+  def set_build_indices(response),
+    do: GenServer.call(__MODULE__, {:set, :build_indices, response})
+
+  @doc "Set the response for the next (and all subsequent) `build_communities/1` calls."
+  def set_build_communities(response),
+    do: GenServer.call(__MODULE__, {:set, :build_communities, response})
+
   def recalls, do: GenServer.call(__MODULE__, {:calls, :recall})
   def captures, do: GenServer.call(__MODULE__, {:calls, :capture})
   def searches, do: GenServer.call(__MODULE__, {:calls, :memory_search})
   def adds, do: GenServer.call(__MODULE__, {:calls, :memory_add})
   def end_sessions, do: GenServer.call(__MODULE__, {:calls, :end_session})
   def health_checks, do: GenServer.call(__MODULE__, {:calls, :health_check})
+  def indices_builds, do: GenServer.call(__MODULE__, {:calls, :build_indices})
+  def communities_builds, do: GenServer.call(__MODULE__, {:calls, :build_communities})
 
   # ── Client behaviour ────────────────────────────────────────
 
@@ -70,6 +80,14 @@ defmodule Gralkor.Client.InMemory do
   @impl Gralkor.Client
   def health_check,
     do: GenServer.call(__MODULE__, {:call, :health_check, []})
+
+  @impl Gralkor.Client
+  def build_indices,
+    do: GenServer.call(__MODULE__, {:call, :build_indices, []})
+
+  @impl Gralkor.Client
+  def build_communities(group_id),
+    do: GenServer.call(__MODULE__, {:call, :build_communities, [group_id]})
 
   # ── GenServer ──────────────────────────────────────────────
 

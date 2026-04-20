@@ -108,6 +108,36 @@ defmodule Gralkor.Client.HTTPTest do
     stub(fn conn -> Plug.Conn.send_resp(conn, 503, "") end)
   end
 
+  defp configure_backend(:build_indices, {:ok, %{status: status}}) do
+    stub(fn conn ->
+      assert conn.method == "POST"
+      assert conn.request_path == "/build-indices"
+      Req.Test.json(conn, %{"status" => status})
+    end)
+  end
+
+  defp configure_backend(:build_indices, {:error, _}) do
+    stub(fn conn ->
+      assert conn.request_path == "/build-indices"
+      Plug.Conn.send_resp(conn, 503, "")
+    end)
+  end
+
+  defp configure_backend(:build_communities, {:ok, %{communities: c, edges: e}}) do
+    stub(fn conn ->
+      body = expect_post(conn, "/build-communities")
+      assert %{"group_id" => _} = body
+      Req.Test.json(conn, %{"communities" => c, "edges" => e})
+    end)
+  end
+
+  defp configure_backend(:build_communities, {:error, _}) do
+    stub(fn conn ->
+      _ = expect_post(conn, "/build-communities")
+      Plug.Conn.send_resp(conn, 503, "")
+    end)
+  end
+
   use Gralkor.ClientContract, client: HTTP
 
   # ── Adapter-specific behaviour ───────────────────────────────────────

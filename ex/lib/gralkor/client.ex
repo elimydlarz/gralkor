@@ -28,6 +28,10 @@ defmodule Gralkor.Client do
               :ok | {:error, term()}
   @callback end_session(session_id()) :: :ok | {:error, term()}
   @callback health_check() :: :ok | {:error, term()}
+  @callback build_indices() :: {:ok, %{status: String.t()}} | {:error, term()}
+  @callback build_communities(group_id()) ::
+              {:ok, %{communities: non_neg_integer(), edges: non_neg_integer()}}
+              | {:error, term()}
 
   @spec impl() :: module()
   def impl, do: Application.get_env(:gralkor, :client, Gralkor.Client.HTTP)

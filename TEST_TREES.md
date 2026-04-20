@@ -795,6 +795,16 @@ ex-client (port contract, shared)
       then :ok is returned
     if the backend fails
       then {:error, reason} is returned
+  when build_indices/0 is called
+    when the backend acknowledges the rebuild
+      then {:ok, %{status: String.t()}} is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when build_communities/1 is called with a group_id
+    when the backend returns counts
+      then {:ok, %{communities: non_neg_integer(), edges: non_neg_integer()}} is returned
+    if the backend fails
+      then {:error, reason} is returned
 ex-sanitize-group-id
   when the id contains hyphens
     then hyphens are replaced with underscores

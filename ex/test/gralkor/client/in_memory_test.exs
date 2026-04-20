@@ -14,6 +14,8 @@ defmodule Gralkor.Client.InMemoryTest do
   defp configure_backend(:memory_add, resp), do: InMemory.set_memory_add(resp)
   defp configure_backend(:end_session, resp), do: InMemory.set_end_session(resp)
   defp configure_backend(:health_check, resp), do: InMemory.set_health(resp)
+  defp configure_backend(:build_indices, resp), do: InMemory.set_build_indices(resp)
+  defp configure_backend(:build_communities, resp), do: InMemory.set_build_communities(resp)
 
   use Gralkor.ClientContract, client: InMemory
 
@@ -25,6 +27,8 @@ defmodule Gralkor.Client.InMemoryTest do
       InMemory.set_memory_add(:ok)
       InMemory.set_end_session(:ok)
       InMemory.set_health(:ok)
+      InMemory.set_build_indices({:ok, %{status: "stored"}})
+      InMemory.set_build_communities({:ok, %{communities: 2, edges: 5}})
 
       _ = InMemory.recall("g1", "s1", "q")
       _ = InMemory.capture("s1", "g1", %{user_query: "q", assistant_answer: "a", events: []})
@@ -32,6 +36,8 @@ defmodule Gralkor.Client.InMemoryTest do
       _ = InMemory.memory_add("g1", "content", "source")
       _ = InMemory.end_session("s1")
       _ = InMemory.health_check()
+      _ = InMemory.build_indices()
+      _ = InMemory.build_communities("g1")
 
       assert InMemory.recalls() == [["g1", "s1", "q"]]
 
@@ -43,6 +49,8 @@ defmodule Gralkor.Client.InMemoryTest do
       assert InMemory.adds() == [["g1", "content", "source"]]
       assert InMemory.end_sessions() == [["s1"]]
       assert InMemory.health_checks() == [[]]
+      assert InMemory.indices_builds() == [[]]
+      assert InMemory.communities_builds() == [["g1"]]
     end
   end
 
@@ -57,6 +65,8 @@ defmodule Gralkor.Client.InMemoryTest do
       assert {:error, :not_configured} = InMemory.memory_add("g1", "c", nil)
       assert {:error, :not_configured} = InMemory.end_session("s1")
       assert {:error, :not_configured} = InMemory.health_check()
+      assert {:error, :not_configured} = InMemory.build_indices()
+      assert {:error, :not_configured} = InMemory.build_communities("g1")
     end
   end
 

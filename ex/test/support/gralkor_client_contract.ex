@@ -96,6 +96,30 @@ defmodule Gralkor.ClientContract do
           assert {:error, _} = @client.health_check()
         end
       end
+
+      describe "port contract: build_indices/0" do
+        test "returns {:ok, %{status: _}} when the backend acknowledges" do
+          configure_backend(:build_indices, {:ok, %{status: "stored"}})
+          assert {:ok, %{status: "stored"}} = @client.build_indices()
+        end
+
+        test "returns {:error, reason} when the backend fails" do
+          configure_backend(:build_indices, {:error, :boom})
+          assert {:error, _} = @client.build_indices()
+        end
+      end
+
+      describe "port contract: build_communities/1" do
+        test "returns {:ok, %{communities: _, edges: _}} when the backend returns counts" do
+          configure_backend(:build_communities, {:ok, %{communities: 3, edges: 17}})
+          assert {:ok, %{communities: 3, edges: 17}} = @client.build_communities("g1")
+        end
+
+        test "returns {:error, reason} when the backend fails" do
+          configure_backend(:build_communities, {:error, :boom})
+          assert {:error, _} = @client.build_communities("g1")
+        end
+      end
     end
   end
 end
