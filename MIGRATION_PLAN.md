@@ -1,106 +1,95 @@
 # Migration: TS side → Python-server-heavy architecture
 
-Mirror the Elixir-side three-way split onto the TS/OpenClaw side. The Python server owns state (capture buffer, distillation, interpretation); the adapters wrap it for each language ecosystem; harness-specific glue lives in its own package.
+Mirror the Elixir-side three-way split onto the TS/OpenClaw side. The Python server owns state (capture buffer, distillation, interpretation); the adapters wrap it for each language ecosystem and internalise the Python source at their own build time; harness-specific glue depends on the adapter and never touches the Python source directly.
 
 ## Target structure
 
 | Package | Location | Role | Ships Python server? | Status |
 |---|---|---|---|---|
-| Python core | `gralkor/server/` | FalkorDB + Graphiti behind FastAPI. Owns capture buffer, distill, interpret. | (source of truth) | Complete. |
-| `:gralkor` (Hex) | `gralkor/ex/` | Elixir adapter: `Gralkor.Client` port, HTTP adapter, InMemory twin, Connection, Server supervisor, OrphanReaper. | Yes — bundled into `priv/server/` by a custom `:gralkor_priv` compiler at build time. | Complete at v1.1. |
-| `@susu-eng/gralkor-ts` (npm) | `gralkor/ts/` | **NEW.** TS adapter: `GralkorClient` interface, HTTP adapter, InMemory twin, server-manager (accepts `serverDir` from caller), Connection (waitForHealth). Mirrors `ex/`. | **No.** Pure client library; the consumer supplies the server dir path to `createServerManager`. | Built, 42 tests green. Awaiting publish. |
-| `:jido_gralkor` (Hex) | `jido_gralkor/` repo | Jido-on-BEAM harness. | No — depends on `:gralkor` which already ships the server. | Complete at v0.1. |
-| `@susu-eng/openclaw-gralkor` (npm) | `openclaw_gralkor/` repo | **NEW repo — OpenClaw harness.** Plugin manifest, hooks, tools, CLI. Depends on `@susu-eng/gralkor-ts`. | **Yes** — bundles `server/` (the consumer-installs-via-clawhub side, parallel to what `:gralkor` Hex does with `priv/server/`). | To build. |
+| Python core | `gralkor/server/` | FalkorDB + Graphiti behind FastAPI. Owns capture buffer, distill, interpret. Never published as a standalone artifact. | (source of truth) | Complete. |
+| Hex `:gralkor_ex` | `gralkor/ex/` | Elixir adapter. `Gralkor.Client` port, HTTP adapter, InMemory twin, Connection, Server supervisor, OrphanReaper. **Package name**: `:gralkor_ex` (rename from `:gralkor`). **Module namespace**: `Gralkor.*` (unchanged — matches Elixir convention of package name ≠ module). | **Yes — internalised at build.** `compile.gralkor_priv` copies `gralkor/server/` → `ex/priv/server/` during `mix hex.publish`. `priv/` in `:files`. | `:gralkor@1.2.0` published. Rename pending. |
+| npm `@susu-eng/gralkor-ts` | `gralkor/ts/` | TS adapter. `GralkorClient` interface, HTTP adapter, InMemory twin, server-manager, Connection. | **Yes — internalised at build.** Pre-build step copies `../server/` → `ts/dist/server/` (or similar). `files:` ships it. `createServerManager`'s default `serverDir` resolves to the bundled path. | `0.2.0` published (without server bundling — bug). `0.3.0` will fix. |
+| Hex `:jido_gralkor` | `jido_gralkor/` repo | Jido-on-BEAM harness. Depends on `:gralkor_ex`. | **No** — server comes in via `:gralkor_ex`'s `priv/server/`. | `0.2.0` published (still on `:gralkor`). Update to `:gralkor_ex` at next bump. |
+| npm `@susu-eng/openclaw-gralkor` | `openclaw_gralkor/` repo | OpenClaw harness. Depends on `@susu-eng/gralkor-ts`. | **No** — server comes in via `gralkor-ts`'s bundled path; `openclaw-gralkor`'s `files:` does not list `server/`. | `1.0.0` scaffolded locally (wrongly bundles server copy). Fix before publish. |
 
 ## Naming
 
-All five packages now follow the core→adapter→harness symmetry. Each dependency arrow points from harness to adapter:
+All five packages follow the core→adapter→harness symmetry. Every dependency arrow points from harness → adapter → (adapter-internalised core):
 
-- Hex: `:jido_gralkor` → `:gralkor` (adapter) → (Python core via `priv/server`)
-- npm: `@susu-eng/openclaw-gralkor` → `@susu-eng/gralkor-ts` (adapter) → (Python core via the harness's own `server/`)
+- Hex: `:jido_gralkor` → `:gralkor_ex` → (priv/server bundled at build)
+- npm: `@susu-eng/openclaw-gralkor` → `@susu-eng/gralkor-ts` → (dist/server bundled at build)
 
-The earlier proposal to keep the existing npm name (`@susu-eng/gralkor`) for the OpenClaw plugin is **rescinded**. That name falsely implied the plugin was the core and created a "core depends on adapter" smell when we said the plugin would depend on `gralkor-ts`. Renaming aligns the npm side with the Hex side. Cost: one rename in `agents/`'s install command.
+Package-name suffixes (`_ex`, `-ts`) live at package level; module names stay unsuffixed (`Gralkor.Client`, `GralkorClient`) — matches Elixir/TS conventions.
 
-## Deprecation / transition plan for the npm rename
+## The architectural win
 
-1. `openclaw_gralkor` v1.0.0 publishes as `@susu-eng/openclaw-gralkor` — first release after the rename.
-2. Publish a final `@susu-eng/gralkor` release that is a **stub package**: its entry point `throw`s with a clear message — `"@susu-eng/gralkor has been renamed to @susu-eng/openclaw-gralkor. Run: openclaw plugins install @susu-eng/openclaw-gralkor"`. Tag it as `latest` on npm, then `npm deprecate @susu-eng/gralkor "moved to @susu-eng/openclaw-gralkor"`.
-3. Operators who run `openclaw plugins update gralkor@latest` get the stub, see the message, reinstall under the new name.
-4. `agents/` migrates by running the new install command once.
-
-## What moves server-side (the architectural win)
-
-Python server already implements (see existing trees in `TEST_TREES.md`):
-
-- **Capture buffer** (`capture_buffer.py`) — session-keyed append, idle flush, session_end flush, 3× exponential-backoff retry.
-- **Behaviour distillation** — per-turn via `/capture`; standalone `/distill` endpoint.
-- **Recall interpretation** — `interpret_facts` inside `/recall`.
-
-So the following disappear from the TS side:
-
-- `DebouncedFlush` class (~55 lines) — client-side keyed debouncer.
-- `flushSessionBuffer` (~70 lines) — transcript formatting + retry loop.
-- `distill.ts` (~130 lines) — client-side transcript distillation.
-- `llm-client.ts` (~145 lines) — client-side LLM abstraction.
-- `SessionBuffer` + client-side message caching.
-- SIGTERM flush handler (server's lifespan shutdown handles buffer flushing).
-
-Net: current `hooks.ts` (~673 lines) collapses to ~80 lines across three hook files in `openclaw_gralkor`.
+The Python server owns what used to be client-side: capture buffer (session-keyed append, idle flush, session_end flush, 3× retry), behaviour distillation (per-turn), recall interpretation. Client-side artifacts that disappear from TS: `DebouncedFlush` (~55 LoC), `flushSessionBuffer` (~70), `distill.ts` (~130), `llm-client.ts` (~145), `SessionBuffer` + message cache, SIGTERM flush handler. Net: `hooks.ts` shrinks from ~673 LoC to ~80 across three hook files.
 
 ## Step sequencing
 
-Trees first per `/change`; implementation follows trees per `/tdd`.
+### Step 1 — `gralkor/ts/` package — DONE AT 0.2.0 (server not bundled — bug)
 
-### Step 1 — `gralkor/ts/` package — DONE
+1. ✅ Test trees, scaffold, contract suite, client interface + HTTP adapter + InMemory twin, server-manager port, connection helper.
+2. ✅ `@susu-eng/gralkor-ts@0.1.0` published.
+3. ✅ `@susu-eng/gralkor-ts@0.2.0` published (adds `buildIndices` + `buildCommunities`).
+4. ❌ Server was NOT bundled. This contradicted the target architecture.
 
-1. ✅ `## TypeScript Client` section added to `gralkor/TEST_TREES.md`: `ts-client` (port contract), `ts-sanitize-group-id`, `ts-client-http`, `ts-client-in-memory`, `ts-connection`.
-2. ✅ Scaffolded with `package.json` (name `@susu-eng/gralkor-ts`), `tsconfig.json`, `vitest.config.ts`.
-3. ✅ Shared contract suite at `test/contract/gralkor-client.contract.ts`.
-4. ✅ `src/client.ts` — `GralkorClient` interface + `Result<T, E>` + `sanitizeGroupId`.
-5. ✅ `src/client/http.ts` — `GralkorHttpClient` with per-endpoint timeouts, no retry, no auth, throws on blank session_id.
-6. ✅ `src/client/in-memory.ts` — `GralkorInMemoryClient` with call recording + `reset()`.
-7. ✅ `src/server-manager.ts` + `src/server-env.ts` ported.
-8. ✅ `src/connection.ts` — `waitForHealth()`.
-9. ✅ 42/42 vitest green.
-10. **PAUSE — user publishes `@susu-eng/gralkor-ts@0.1.0` to npm.** (Script `scripts/publish-ts.sh` to be added for future releases.)
+### Step 2 — `openclaw_gralkor/` repo — DONE AT 1.0.0 LOCALLY (wrongly bundles server)
 
-### Step 2 — `openclaw_gralkor/` repo
+1. ✅ Local scaffold, hooks + tools + session-map + ctx-to-turn + native-indexer, four tools including the two DO-NOT-CALL admin tools.
+2. ✅ 48/48 tests green locally.
+3. ❌ Repo committed `server/` directly — should have come via gralkor-ts dep.
+4. ❌ Not yet published.
 
-1. `gh repo create openclaw_gralkor --public --description "OpenClaw plugin: long-term memory via Gralkor" --source . --push` (after scaffold).
-2. Scaffold `package.json` with name `@susu-eng/openclaw-gralkor` and dep on `@susu-eng/gralkor-ts@^0.1.0`. Move `openclaw.plugin.json` from gralkor root into the new repo; update its `id` if needed.
-3. Add `CLAUDE.md` with `## Test Trees`:
-   - Hook trees: `before_prompt_build → POST /recall + inject`, `agent_end → POST /capture` (no client buffering), `session_end → POST /session_end`.
-   - `ctxToTurn` tree (OpenClaw ctx → `{user_query, assistant_answer, events}` for `/capture`).
-   - Four tool trees (`memory_search`, `memory_add`, `memory_build_indices`, `memory_build_communities`).
-   - `session-map` tree.
-   - `native-indexer` tree (minus the current `addEpisode` plumbing; calls `client.memoryAdd()`).
-4. Port `publish-npm.sh`, `publish-clawhub.sh`, `.clawhubignore`, `publish-all.sh`, the `server/` directory (bundled for clawhub install), `scripts/build-arm64-wheel.sh`, `scripts/pack.sh` from gralkor root.
-5. Port + simplify `src/index.ts`, `src/register.ts`, `src/hooks.ts` (split into three small files), `src/tools.ts`, `src/native-indexer.ts`. Use `@susu-eng/gralkor-ts`'s `GralkorHttpClient` + `createServerManager` + `waitForHealth`.
-6. Delete entirely: `DebouncedFlush`, `flushSessionBuffer`, `distill.ts`, `llm-client.ts`, SIGTERM flush handler, client-side session-buffer state.
-7. Tests: vitest against `GralkorInMemoryClient` for all hook/tool behaviour.
-8. **PAUSE — user publishes `@susu-eng/openclaw-gralkor@1.0.0` to npm + clawhub.**
+### Step 3 — Bundle server in gralkor-ts → republish downstream
 
-### Step 3 — Deprecate old `@susu-eng/gralkor` + clean up gralkor root
+1. Add a pre-build step to `gralkor/ts/`: copy `../server/` → `ts/dist/server/` (with `.venv`/`__pycache__`/`wheels`/`tests` exclusions matching `compile.gralkor_priv`). Gitignore `ts/dist/`.
+2. Update `createServerManager` default `serverDir`: resolve to the bundled path relative to the installed `gralkor-ts` package. Callers who don't override `serverDir` get the bundled server automatically.
+3. Add `server/*` paths (under the bundled dir) to `ts/package.json`'s `files:` so they ship in the npm tarball.
+4. **PAUSE — user publishes `@susu-eng/gralkor-ts@0.3.0`.** Minor bump — additive on its own surface (adds shipping + default serverDir); no breaking change to existing call sites.
+5. In `openclaw_gralkor/`: delete `server/` from the working tree, add `server/` to `.gitignore`, remove `server/*` entries from `package.json`'s `files:`, and drop the `serverDir: join(pluginDir, "server")` override in `register.ts` so `createServerManager` uses gralkor-ts's bundled default.
+6. Bump `openclaw_gralkor` to `@susu-eng/openclaw-gralkor@1.1.0`, dep on `@susu-eng/gralkor-ts@^0.3.0`.
+7. **PAUSE — user publishes `@susu-eng/openclaw-gralkor@1.1.0` to npm + clawhub.**
 
-1. Publish a final stub release of `@susu-eng/gralkor` (next version after 27.2.15) that prints the rename message and exits; `npm deprecate` it.
-2. Delete `src/`, `openclaw.plugin.json`, `.clawhubignore`, `publish-npm.sh`, `publish-clawhub.sh`, `publish-all.sh`, and anything else OpenClaw-specific from gralkor root (all moved to `openclaw_gralkor`). Keep `server/`, `ex/`, `ts/`.
-3. Delete migrated trees from `gralkor/TEST_TREES.md`: those describing pre-migration client-side buffering, distillation, tool wrappers, auto-recall client plumbing, and any native-indexer behaviour that moved to `openclaw_gralkor`. Server-side trees (`capture-buffer`, `POST /capture`, `POST /session_end`, `POST /distill`, `POST /tools/memory_search`, `POST /tools/memory_add`, `/recall`, `/health`, Python-side `interpret-facts` and `message-clean`) stay. Precise deletion list finalised while executing Step 3.
-4. Update `gralkor/README.md`: describe the monorepo (server + ex + ts) and point operators at the right harness package for each ecosystem.
-5. Update `gralkor/ts/README.md`: line 5 points at `@susu-eng/openclaw-gralkor` (not `@susu-eng/gralkor`).
+### Step 4 — Rename Hex `:gralkor` → `:gralkor_ex`
+
+1. `gralkor/ex/mix.exs`: change `app: :gralkor` → `app: :gralkor_ex`. Bump `@version` to `1.3.0`.
+2. Module namespace stays `Gralkor.*` (no forced module rename — Hex package name ≠ module name is idiomatic).
+3. Any internal references to `Application.get_env(:gralkor, ...)` → `Application.get_env(:gralkor_ex, ...)` where applicable. (Check: config keys use `:gralkor` app name today; those migrate.)
+4. **PAUSE — user publishes `:gralkor_ex@1.3.0` to Hex.**
+5. `mix hex.retire gralkor 1.2.0 other --message "Renamed to :gralkor_ex for naming symmetry with @susu-eng/gralkor-ts on npm. Update deps to {:gralkor_ex, \"~> 1.3\"}."` (retires the latest, optionally all versions).
+6. In `jido_gralkor/mix.exs`: dep `{:gralkor, "~> 1.2"}` → `{:gralkor_ex, "~> 1.3"}`. Any `Application.get_env(:gralkor, ...)` reads update too. Bump `jido_gralkor` to `0.3.0`. Publish.
+7. In `susu-2/mix.exs`: dep `{:gralkor, "~> 1.2"}` → `{:gralkor_ex, "~> 1.3"}`. Any direct `Gralkor.Client.*` call sites (e.g. `reset_session`'s `Client.impl().end_session(...)`) stay unchanged (module namespace is the same). Config keys update: `:gralkor, :client_http` → `:gralkor_ex, :client_http`, etc. Run tests.
+
+### Step 5 — Deprecation stub of old npm `@susu-eng/gralkor` + gralkor root cleanup
+
+1. Publish a final `@susu-eng/gralkor` release that is a **stub**: entry point throws with a clear message pointing operators at `@susu-eng/openclaw-gralkor`. `npm deprecate @susu-eng/gralkor "moved to @susu-eng/openclaw-gralkor"`.
+2. Delete from `gralkor/` root (all OpenClaw-plugin infra that moved to `openclaw_gralkor/`): `src/`, `openclaw.plugin.json`, `.clawhubignore`, `.env.example`, `config.yaml`, any `.npmignore`, `scripts/publish-npm.sh`, `publish-clawhub.sh`, `publish-all.sh`, `pack.sh`, `build-arm64-wheel.sh`, `test/integration/publish-npm.integration.test.ts`, `test/integration/publish-clawhub.integration.test.ts`, `publish-all.integration.test.ts`, `test/harness/`, root `stryker.config.mjs`, root `vitest.config.ts`, root `vitest.stryker.config.ts`, root `tsconfig.json`.
+3. Trim root `package.json`: drop openclaw manifest, `dependencies`, `peerDependencies`, all `publish:npm`/`publish:clawhub`/`publish:all`/`test:*`/`pack`/`setup:server`/`test:mutate` scripts. Keep just `publish:ex`, `publish:ts`. Or delete `package.json` entirely.
+4. Prune migrated trees from `gralkor/TEST_TREES.md`: client-side buffering, distillation, SIGTERM-flush, OpenClaw tool wrappers, auto-recall client plumbing, native-indexer, `publish-npm`, `publish-clawhub`, `publish-all`, `bundled-wheel-arch-selection`, `secret-resolution`. Server-side trees stay (capture-buffer, `/capture`, `/session_end`, `/distill`, `/recall`, `/tools/memory_*`, `/health`, Python-side trees). Precise list finalised while executing.
+5. Rewrite `gralkor/README.md` for the new topology (server + ex + ts + pointers to harness packages).
+6. Delete `MIGRATION_PLAN.md` (job done).
+
+### Step 6 — `agents/`
+
+1. `openclaw plugins install @susu-eng/openclaw-gralkor` (new name). Drop `@susu-eng/gralkor`.
 
 ## Risks / open questions
 
-1. **Per-turn mapping.** OpenClaw's `agent_end` ctx carries a list of messages; `/capture` wants one turn `{user_query, assistant_answer, events}`. `ctxToTurn()` helper in `openclaw_gralkor` handles this, driven by its own test tree.
-2. **Native-indexer API fit.** Current uses `client.addEpisode()`; post-migration uses `client.memoryAdd()`. Payload shape already compatible per the existing `POST /tools/memory_add` tree.
-3. **clawhub pipeline cross-repo dependency.** `publish-clawhub.sh` currently uploads the arm64 wheel to a GitHub Release in the `gralkor` repo. The script moves to `openclaw_gralkor` but still needs to trigger `gralkor`-repo release upload. Options: (a) keep the wheel upload in gralkor as a manual step invoked before publishing openclaw_gralkor; (b) publish wheels as a separate `@susu-eng/gralkor-wheels-arm64` npm package. (a) is easier; (b) is cleaner. Pick during Step 2.
-4. **Test fixtures.** `test/fixtures/fake_gralkor.py` is shared between TS tests (current) and Ex tests (has its own copy in `ex/test/fixtures/`). `gralkor/ts/` unit tests use `InMemoryClient` only; any future fixture-based integration tests can share the existing Python fixture or duplicate. `openclaw_gralkor` similarly uses `InMemoryClient` for unit tests.
+1. **clawhub pipeline cross-repo dependency.** `publish-clawhub.sh` uploads the arm64 wheel to a GitHub Release. Whose repo? Currently it's `gralkor`'s. Post-migration: openclaw_gralkor owns the publish but the wheel itself has no natural home because the Python source lives elsewhere. Options: (a) move the wheel-build step under `gralkor-ts`'s pre-publish (wheel ships inside the npm tarball, no GitHub release needed); (b) keep the wheel upload in gralkor as a manual step before the openclaw_gralkor publish. (a) is cleaner — aligns with "gralkor-ts internalises the Python pieces".
+2. **Retiring Hex `:gralkor`.** `mix hex.retire` accepts a reason; no stub-package mechanism like npm. Consumers (jido_gralkor, susu-2) need dep rename. Only two consumers, both ours.
+3. **Module-name migration pressure.** I'm keeping `Gralkor.*` module names even after the Hex package becomes `:gralkor_ex`. If future drift wants the module name to match too (`GralkorEx.*`), it's a bigger breaking rename. Decided: not doing it — Elixir convention is package-name ≠ module-name.
 
 ## Done definition
 
-- `gralkor/ts/` publishes to npm as `@susu-eng/gralkor-ts`, passes full vitest suite, mirrors `ex/`'s port contract behaviour.
-- `openclaw_gralkor/` is a standalone repo, publishes `@susu-eng/openclaw-gralkor` to npm + clawhub, passes its own vitest suite, depends on `@susu-eng/gralkor-ts`.
-- Final stub release of `@susu-eng/gralkor` published and deprecated on npm.
-- Current `gralkor/src/` is gone; `gralkor/TEST_TREES.md` contains only core (Python server), ex, and ts trees; OpenClaw-specific trees live in `openclaw_gralkor/CLAUDE.md`.
+- `gralkor/ts/` publishes `@susu-eng/gralkor-ts@0.3.0` shipping the Python server bundled at build time.
+- `openclaw_gralkor/` publishes `@susu-eng/openclaw-gralkor@1.1.0`, no bundled `server/`, inherits server from gralkor-ts.
+- `gralkor/ex/` publishes `:gralkor_ex@1.3.0`; old `:gralkor` retired on Hex.
+- `jido_gralkor` publishes `0.3.0` depending on `:gralkor_ex`.
+- `susu-2/mix.exs` on `:gralkor_ex`.
+- Final stub release of `@susu-eng/gralkor` npm published and `npm deprecate`-ed.
+- `gralkor/src/` gone; root is just `server/` + `ex/` + `ts/` + monorepo scaffolding.
+- `gralkor/TEST_TREES.md` is server + ex + ts only.
 - `gralkor/README.md` reflects the new topology.
-- `agents/` has run `openclaw plugins install @susu-eng/openclaw-gralkor` once.
-- All four test suites green: `gralkor/ex` (62), `jido_gralkor` (22), `gralkor/ts` (42), `openclaw_gralkor` (~50 projected).
+- `agents/` on `@susu-eng/openclaw-gralkor`.
+- All suites green: `gralkor/ex` (70+), `jido_gralkor` (28+), `gralkor/ts` (50+), `openclaw_gralkor` (48+).

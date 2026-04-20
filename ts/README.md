@@ -2,7 +2,7 @@
 
 TypeScript adapter for [Gralkor](https://github.com/elimydlarz/gralkor) — a temporally-aware knowledge-graph memory service (Graphiti + FalkorDB) wrapped as a Python/FastAPI server.
 
-Gives you an HTTP client, an in-memory test twin, a boot-readiness helper, and a Python-subprocess server manager. Mirror of the `:gralkor` Hex package for the BEAM. For OpenClaw agents use [`@susu-eng/openclaw-gralkor`](https://www.npmjs.com/package/@susu-eng/openclaw-gralkor); this package is what it builds on.
+Gives you an HTTP client, an in-memory test twin, a boot-readiness helper, and a Python-subprocess server manager — **with the Python server bundled**. `createServerManager({ dataDir, port, version })` spawns the packaged server without you needing to supply a path. Mirror of the `:gralkor_ex` Hex package for the BEAM. For OpenClaw agents use [`@susu-eng/openclaw-gralkor`](https://www.npmjs.com/package/@susu-eng/openclaw-gralkor); this package is what it builds on.
 
 ## Install
 
@@ -15,10 +15,11 @@ pnpm add @susu-eng/gralkor-ts
 ```ts
 import { GralkorHttpClient, waitForHealth, createServerManager } from "@susu-eng/gralkor-ts";
 
-// If your process owns the Python server, spawn it first:
+// If your process owns the Python server, spawn it first.
+// serverDir defaults to the bundled copy inside this package — only
+// override it for a development checkout of gralkor/server/.
 const manager = createServerManager({
   dataDir: process.env.GRALKOR_DATA_DIR!,
-  serverDir: "/path/to/gralkor/server",
   port: 4000,
   version: "1.0.0",
 });

@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor-ts",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TypeScript adapter for the Gralkor memory server — HTTP client, in-memory test twin, and boot-readiness helper. Mirror of the :gralkor Hex package for the BEAM.",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,13 +16,16 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "bundle-server": "node scripts/bundle-server.mjs",
+    "build": "pnpm run bundle-server && tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
   },
   "files": [
     "dist",
+    "server",
     "README.md"
   ],
   "repository": {

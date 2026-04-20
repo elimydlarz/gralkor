@@ -2,6 +2,7 @@ import { execFile, type ChildProcess, spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type ModelConfig, type OntologyConfig, type OntologyAttributeValue } from "./config.js";
 import { buildSyncEnv, buildPipEnv, buildSpawnEnv } from "./server-env.js";
@@ -13,9 +14,26 @@ const HEALTH_TIMEOUT_MS = 120_000;
 const MONITOR_INTERVAL_MS = 60_000;
 const STOP_GRACE_MS = 5_000;
 
+/**
+ * Path to the Python server source bundled with this package. Resolves at
+ * runtime relative to this module's compiled location — at publish time the
+ * server is copied into `<pkg>/server/` by `scripts/bundle-server.mjs`, and
+ * this module ends up at `<pkg>/dist/server-manager.js`, so `../server`
+ * resolves to the bundled directory. Mirrors the Elixir side's
+ * `:code.priv_dir(:gralkor_ex) ++ "/server"`.
+ */
+export function bundledServerDir(): string {
+  return fileURLToPath(new URL("../server", import.meta.url));
+}
+
 export interface ServerManagerOptions {
   dataDir: string;
-  serverDir: string;
+  /**
+   * Path to the Python server directory. Defaults to the bundled copy
+   * that ships inside this npm package. Override if you want to point
+   * at a development checkout of `gralkor/server/`.
+   */
+  serverDir?: string;
   port: number;
   /** Plugin version — used to fetch the arm64 wheel from GitHub Releases when not bundled. */
   version: string;
@@ -38,6 +56,7 @@ export interface ServerManager {
 }
 
 export function createServerManager(opts: ServerManagerOptions): ServerManager {
+  const serverDir = opts.serverDir ?? bundledServerDir();
   let proc: ChildProcess | null = null;
   let monitorTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -96,13 +115,13 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // GitHub Releases (ClawHub path — wheel exceeds ClawHub's 20 MB limit).
     const useBundledWheels = process.platform === "linux" && process.arch === "arm64";
     const bundledWheels = useBundledWheels
-      ? await resolveBundledWheels(opts.serverDir, opts.dataDir, opts.version)
+      ? await resolveBundledWheels(serverDir, opts.dataDir, opts.version)
       : [];
 
     const syncEnv = buildSyncEnv(venvDir);
 
     const syncArgs = [
-      "sync", "--no-dev", "--frozen", "--directory", opts.serverDir,
+      "sync", "--no-dev", "--frozen", "--directory", serverDir,
       ...(bundledWheels.length > 0 ? ["--no-install-package", "falkordblite"] : []),
     ];
 
@@ -201,7 +220,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       venvPython,
       ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(opts.port), "--no-access-log"],
       {
-        cwd: opts.serverDir,
+        cwd: serverDir,
         env,
         stdio: ["ignore", "pipe", "pipe"],
       },
