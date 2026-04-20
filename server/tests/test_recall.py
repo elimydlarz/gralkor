@@ -25,6 +25,22 @@ def append_turn(session_id: str, group_id: str, *messages: Message) -> None:
     main_mod.capture_buffer.append(session_id, group_id, list(messages))
 
 
+async def test_rejects_blank_session_id(client, mock_graphiti):
+    resp = await client.post(
+        "/recall",
+        json={"session_id": "", "group_id": "grp", "query": "q", "max_results": 10},
+    )
+    assert resp.status_code == 422
+
+
+async def test_rejects_missing_session_id(client, mock_graphiti):
+    resp = await client.post(
+        "/recall",
+        json={"group_id": "grp", "query": "q", "max_results": 10},
+    )
+    assert resp.status_code == 422
+
+
 async def test_returns_empty_block_when_no_facts(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     resp = await client.post(
