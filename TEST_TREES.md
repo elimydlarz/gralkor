@@ -113,6 +113,8 @@ POST /capture endpoint
   request shape
     then body is {session_id, group_id, messages: [{role, content}, …]}
     then role ∈ {"user", "assistant", "behaviour"}; content is a string the adapter produced
+  if session_id is missing or blank
+    then 422 is returned (Gralkor requires a non-blank session_id)
   then appends the message list to capture_buffer keyed by session_id (group_id is sanitized
     and bound to the entry on first append)
   then returns 204 No Content (no body)
