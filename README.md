@@ -65,9 +65,13 @@ Gralkor is _good_ memory, not cheap memory. You can push the llm choice and perh
 - Hooks: auto-capture (stores full multi-turn conversations after each agent run), auto-recall (injects relevant facts before the agent responds)
 - Set up: `plugins.slots.memory = "gralkor"` in `openclaw.json`
 
-## Using Gralkor from a Jido (Elixir) agent
+## Using Gralkor from Elixir / Jido
 
-Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness-agnostic HTTP API so Elixir/Jido agents can use it too. The Elixir supervisor in `ex/` runs Gralkor as a managed subprocess either embedded in your Jido app's supervision tree (dev) or as a standalone container (production).
+Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness-agnostic HTTP API. The Elixir package in `ex/` — published as [`:gralkor` on Hex](https://hex.pm/packages/gralkor) — wraps it: supervises the Python server, exposes a `Gralkor.Client` port with HTTP and in-memory adapters, ships a boot-readiness gate, and auto-recovers from orphaned uvicorn processes on dev reboot.
+
+**For Jido agents**, use [`:jido_gralkor`](https://hex.pm/packages/jido_gralkor) — it pulls `:gralkor` transitively and adds three modules (a plugin + two ReAct tools) that turn the Client port into transparent long-term memory on your agent. That package's README is the Jido-dev entry point; it covers the full wiring recipe.
+
+**For any Elixir app** (non-Jido), see [`ex/README.md`](./ex/README.md) — how to supervise the server, gate your boot on readiness, and call `Gralkor.Client.impl/0` from your own code.
 
 **HTTP endpoints** (unauthenticated — loopback-only; consumer supervises the server):
 
@@ -77,10 +81,6 @@ Gralkor is primarily an OpenClaw plugin, but the Python server exposes a harness
 - `POST /tools/memory_search`, `POST /tools/memory_add` — consumer-facing tools
 - `POST /distill` — standalone distillation (for clients that want raw distill access)
 - Existing: `POST /episodes`, `POST /search`, `GET /health`
-
-Add Gralkor as a mix dependency (path or Hex) and supervise `Gralkor.Server` in your Jido app's supervision tree. The GenServer spawns uvicorn via a Port, polls `/health`, and handles graceful shutdown (SIGTERM → buffer flush → SIGKILL). `mix deps.get` + `iex -S mix` brings the whole memory stack up; OTP supervision owns the lifecycle.
-
-Full installation and wiring recipe for a Jido consumer (e.g. Susu2) is in [`ex/README.md`](./ex/README.md).
 
 ## Quick Start
 
