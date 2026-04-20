@@ -4,84 +4,52 @@ These trees are the contract between intent and implementation. Each top-level n
 
 Never modify silently. If implementation has drifted, decide explicitly: update the trees (and tests) to match, or pare the implementation back.
 
+## Canonical turn shape
+
+```
+canonical-message (shared)
+  a captured turn is a list of messages with:
+    role ∈ {"user", "assistant", "behaviour"}
+    content: str (opaque — adapters render harness-internal events however they like)
+  the server never branches on content interior structure — only on role (for distillation labels
+    and interpretation context). Anything the server wants to strip or rewrite (gralkor-memory
+    envelopes, system-line artefacts, etc.) is an adapter concern and lives in the harness's
+    adapter, not here.
+```
+
 ## Recall
 
 ```
 recall-interpretation
   applies to both auto-recall (fast) and memory_search tool (slow) — both share the same interpret helper
   when recall returns results
-    then calls llmClient with conversation messages (within token budget) and raw facts
+    then calls llmClient with conversation messages (within char budget) and raw facts
     and output includes "Interpretation:" section with LLM output after raw facts
-  when conversation history exceeds the token budget
+  when conversation history exceeds the char budget
     then oldest messages are dropped until context fits
     and most recent messages are always preserved
   if llmClient is missing or the LLM call fails
     then the recall call throws (no fallback)
   for server-side endpoints (POST /recall and POST /tools/memory_search)
-    then conversation messages are looked up by session_id from the server's CaptureBuffer
+    then conversation messages are sourced by flat-walking every buffered turn for the session,
+      preserving order and role
     when no turns have been captured for the session
       then interpretation runs with empty conversation context
-auto-recall-further-querying
-  when auto-recall returns results
-    then prependContext includes an instruction to search memory up to 3 times in parallel with diverse queries
-  when memory_search tool execute returns results
-    then response contains facts and an interpretation section
-    and response does not contain further querying instruction
-unified-search (memory_search tool)
-  when session_key is not registered in the session map
-    then throws error (does not route to default group)
-  when searching
-    when graph returns results
-      then response includes graph facts under "Facts:" header
-      and response includes an "Interpretation:" section produced by the shared interpret helper
-    when neither returns results
-      then response is "No facts found."
-    when mode is "slow"
-      then uses cross-encoder + BFS search (graphiti.search_())
-      and returns at most search.maxResults facts (default 20) and search.maxEntityResults entities (default 10)
-      and entity node summaries are returned alongside facts
-      when node summaries are returned
-        then nodes appear in output under "Entities:" section
-      when no facts and no nodes are returned
-        then response is "No facts found."
-  when server is not ready
-    then throws error
-auto-recall-search-strategy
-  when auto-recall executes
-    then registers the session in the groupIdBySession map (setSessionData)
-    and injects Session-key into the <gralkor-memory> block
-    and retrieves groupId from the map for the search (not re-derived from agentId)
-    and uses fast mode (RRF, edges only via graphiti.search())
-    and returns at most autoRecall.maxResults facts (default 10) and 0 entities
-extractInjectQuery
-  then returns the trailing run of user messages from event.messages
-  then each message is cleaned via cleanUserMessageText before inclusion
-  then multiple consecutive user messages are joined in original order
-  when trailing user messages are separated by no non-user messages
-    then all are included (drip messages)
-  when a non-user message appears between user messages
-    then only user messages after the last non-user message are included
-  when a user message is empty after cleaning
-    then it is skipped (not included in the query)
-  when all trailing user messages are empty after cleaning
-    then returns null
-  when messages array is empty
-    then returns null
-  when messages array has no user messages
-    then returns null
 POST /recall endpoint
   request shape
     then body is {session_id, group_id, query, max_results}
     then group_id is sanitized (hyphens → underscores) before use
     then driver is routed to target graph (_ensure_driver_graph) before search
+  if session_id is missing or blank
+    then 422 is returned (Gralkor requires a non-blank session_id)
   conversation context
-    then messages are sourced from capture_buffer.turns_for(session_id)
-    then each buffered Turn contributes a "user" message (user_query) and an "assistant" message (assistant_answer)
-    then events on the Turn are not included (they are distilled at flush time, not raw conversation)
+    then messages are sourced from capture_buffer.turns_for(session_id), flat-walked
+    then every Message in every buffered turn is included in order, with its role label
     when the session has no entry in capture_buffer
       then interpretation runs with an empty conversation context (no error)
     when two sessions share a group_id
       then each session's recall sees only its own buffered turns
+    then the server never strips or rewrites Message content — adapters hand in clean strings
   when graph returns no facts
     then response is {"memory_block": ""} (empty string, not null)
     and interpret is not called
@@ -93,8 +61,6 @@ POST /recall endpoint
     and response includes "Facts:" section with formatted facts
     and response includes "Interpretation:" section with LLM output
     and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
-  when buffered turns contain <gralkor-memory> XML
-    then XML is stripped via strip_gralkor_memory_xml before interpret_facts runs
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
   when autoRecall.maxResults config is set
@@ -110,221 +76,52 @@ interpret-facts (Python)
     then raises (fail-fast; no fallback)
   when llm_client returns empty or whitespace response
     then raises
-  when conversation history fits within token budget
+  when conversation history fits within char budget
     then all messages passed to LLM with formatted facts
-  when conversation history exceeds token budget (250_000 chars)
+  when conversation history exceeds char budget (250_000 * 4)
     then oldest messages are dropped until context fits
     and most recent messages are always preserved
   then uses INTERPRET_SYSTEM_PROMPT
   then passes response_model with a single "text" field to generate_response
   then returns the trimmed .text field from the response dict
-message-clean (Python)
-  strip_gralkor_memory_xml
-    when text contains <gralkor-memory>...</gralkor-memory>
-      then block is removed (including nested content)
-    when text has no gralkor-memory block
-      then text is returned unchanged
-    when text has multiple gralkor-memory blocks
-      then all are removed
-  SYSTEM_MESSAGE_PATTERNS (is_system_line)
-    then matches "A new session was started..."
-    then matches "Current time:..." (case insensitive)
-    then matches "✅ New session started..." (with or without emoji)
-    then matches "System: [timestamp] ..." event lines
-    then matches "[User sent media without caption]"
-  SYSTEM_MESSAGE_MULTILINE_PATTERNS
-    then matches file-naming slug prompt ("Based on this conversation, generate a short N-N word filename slug...Reply with ONLY the slug")
-  clean_user_message_text
-    when message matches a SYSTEM_MESSAGE_MULTILINE_PATTERNS entry
-      then returns empty string (message dropped) — early-out
-    when message contains "(untrusted metadata)" block
-      then block stripped, surrounding user content preserved
-    when message contains "(untrusted, for context)" reply-context block
-      then block stripped, surrounding user content preserved
-    when message contains <gralkor-memory> XML
-      then XML removed via strip_gralkor_memory_xml
-    when message contains "Untrusted context (metadata...)" footer block
-      then entire footer block stripped
-    when message contains system lines mixed with user content
-      then system lines stripped per-line via is_system_line
-      and real user content preserved
-    when message is entirely system content
-      then returns empty string
-  build_interpretation_context
-    then cleans each message via clean_user_message_text
-    then drops messages with empty cleaned text
-    then assembles context as "Conversation context:\n{messages}\n\nMemory facts:\n{facts}"
-    when total char length exceeds budget
-      then oldest messages are dropped until context fits
+build_interpretation_context (Python)
+  then labels each message by role: "User", "Assistant", "Agent did" (for behaviour)
+  then drops messages with empty cleaned content
+  then assembles context as "Conversation context:\n{messages}\n\nMemory facts to interpret:\n{facts}"
+  when total char length exceeds budget
+    then oldest messages are dropped until context fits
+  then does NOT inspect or mutate content beyond whitespace trimming (no XML stripping,
+    no system-line filtering — those are adapter concerns)
 ```
 
 ## Capture
 
 ```
-createAgentEndHandler
-  when autoCapture is disabled
-    then skips buffering
-  when event.messages is empty
-    then skips buffering
-  when autoCapture is enabled and messages present
-    then buffers messages in debouncer keyed by sessionKey || agentId || "default"
-capture-hygiene
-  extractMessagesFromCtx
-    message roles
-      when role is "user"
-        then text/output_text blocks extracted and cleaned via cleanUserMessageText
-      when role is "assistant"
-        then text blocks have gralkor-memory XML stripped via stripGralkorMemoryXml
-        and text blocks checked individually via isSystemMessage, system blocks dropped
-        and thinking blocks extracted (type "thinking")
-        and tool call blocks (toolCall/toolUse/functionCall) serialized as tool_use
-      when role is "toolResult"
-        then gralkor-memory XML stripped via stripGralkorMemoryXml
-        and converted to assistant message with tool_result block
-        and text truncated to 1000 chars
-      when role is "tool" (Ollama adapter)
-        then treated same as "toolResult" (including gralkor-memory stripping)
-      when role is "compactionSummary" or unknown
-        then silently dropped
-  cleanUserMessageText
-    when message matches a SYSTEM_MESSAGE_MULTILINE_PATTERNS entry (whole-message system template)
-      then returns empty string (message dropped) — early-out before per-step cleaning
-    when message contains (untrusted metadata) JSON block
-      then block stripped, surrounding user content preserved
-    when message contains (untrusted, for context) reply-context JSON block
-      then block stripped, surrounding user content preserved
-    when message contains <gralkor-memory> XML
-      then XML removed via stripGralkorMemoryXml (feedback loop prevention)
-    when message contains Untrusted context (metadata...) footer block
-      then entire footer block stripped (header + JSON body)
-    when message contains system lines mixed with user content
-      then system lines stripped per-line via isSystemLine
-      and real user content preserved
-    when message is entirely system content
-      then returns empty string (message dropped)
-  SYSTEM_MESSAGE_PATTERNS (isSystemLine / isSystemMessage)
-    then matches "A new session was started..."
-    then matches "Current time:..." (case insensitive)
-    then matches "✅ New session started..." (with or without emoji)
-    then matches "System: [timestamp] ..." event lines
-    then matches "[User sent media without caption]"
-  SYSTEM_MESSAGE_MULTILINE_PATTERNS (whole-message system templates)
-    then matches file-naming slug prompt from external plugins ("Based on this conversation, generate a short N-N word filename slug...Reply with ONLY the slug")
-    then checked as early-out in cleanUserMessageText before per-step cleaning
-    then exported: SYSTEM_MESSAGE_PATTERNS, isSystemMessage, isSystemLine, cleanUserMessageText, stripGralkorMemoryXml (internal)
-behaviour-distillation
-  formatTranscript (plugin-side, src/distill.ts)
-    when assistant message has thinking blocks
-      then grouped into behaviour for that turn
-    when assistant message has tool_use blocks
-      then grouped into behaviour for that turn
-    when assistant message has tool_result blocks
-      then grouped into behaviour for that turn
-    when turn has behaviour blocks and llmClient available
-      then blocks joined with --- separator
-      and the distill input includes the user message and the agent's response alongside the behaviour blocks for context
-      and the system prompt instructs the LLM to capture dead ends and intermediary steps, not just the final response
-      and distilled via LLM into first-person past-tense summary
-      and injected as "Assistant: (behaviour: {summary})" before assistant text
-    when behaviour blocks contain memory_search results (recalled facts)
-      then distillation describes the intent (e.g. "consulted memory")
-      and does NOT restate the recalled fact content
-    when behaviour blocks contain thinking that references recalled data
-      then distillation captures the reasoning and decisions
-      and does NOT echo the specific data that was recalled
-    when distillation fails for a turn
-      then behaviour line silently dropped, assistant text preserved
-    when llmClient is null
-      then behaviour blocks silently omitted, text blocks preserved
-    when turn has only text blocks (no behaviour)
-      then text rendered as "Assistant: {text}" with no behaviour line
-    user messages
-      then rendered as "User: {text}"
-flushSessionBuffer
-  when groupId is retrieved from the session map for the buffer key
-    then uses that groupId for the episode (not re-derived from agentId)
-  when flush succeeds on first attempt
-    then returns without retry
-  when flush fails with retryable error
-    then retries up to 3 times with exponential backoff (1s/2s/4s)
-  when flush fails with 4xx client error
-    then does not retry
-  when all retries exhausted
-    then logs error (message dropped) without crashing
-  when messages are empty after filtering
-    then skips flush (no API call)
-DebouncedFlush
-  set and flush
-    when set then flush for same key
-      then delivers value exactly once
-    when set called twice for same key
-      then replaces previous value
-    when flush called for non-existing key
-      then is a no-op
-  idle timeout
-    when idle timeout elapses after set
-      then flushes the value
-    when set called again before timeout
-      then resets the timer (debounce)
-  state queries
-    when entries exist
-      then has() returns true, pendingCount reflects count
-    when no entries
-      then has() returns false, pendingCount is 0
-  dispose
-    when dispose called with pending entries
-      then cancels all timers and clears entries
-  flushAll
-    when multiple keys have pending entries
-      then all entries are flushed and all timers cleared
-    when no entries are pending
-      then flushAll is a no-op
-    when one flush fails and another succeeds
-      then successful flush still completes (allSettled)
-sigterm-flush
-  DebouncedFlush.flushAll
-    when multiple keys have pending entries
-      then all entries are flushed
-      and all timers are cleared
-    when no entries are pending
-      then flushAll is a no-op
-    when one flush fails and another succeeds
-      then the successful flush still completes (allSettled)
-  SIGTERM handler
-    when SIGTERM is received with pending buffers
-      then flushAll is called
-      and pending count is logged
-    when SIGTERM is received with no pending buffers
-      then flushAll is not called
-    when register() is called multiple times
-      then only one SIGTERM handler is installed
 POST /distill endpoint
   request shape
-    then body is {turns: [{user_query, events: [...], assistant_answer}]}
-    then events is a list of arbitrary shapes — no schema enforcement; the distill pipeline JSON-serialises them into the LLM prompt (inference tolerates loose input)
+    then body is {turns: [[{role, content}, …]]} — each turn is a list of canonical Messages
   then calls format_transcript(turns, graphiti.llm_client)
   then response is {"episode_body": string}
-  when multiple turns have events
-    then distillation runs in parallel (asyncio.gather)
+  when multiple turns contain behaviour messages
+    then distillation runs in parallel (asyncio.gather) — one LLM call per turn
   when a single turn's distillation raises
-    then that turn's behaviour is silently dropped (empty string)
+    then that turn's behaviour line is silently dropped (empty string)
     and surrounding turns still produce output
-  when a turn's user_query contains <gralkor-memory> XML
-    then distilled behaviour does not echo the recalled data
+  when a turn has only user and assistant messages (no behaviour)
+    then rendered as "User: …\nAssistant: …" with no behaviour line, no LLM call
 POST /capture endpoint
   request shape
-    then body is {session_id, group_id, turn: {user_query, events, assistant_answer}}
-    then events is a list of arbitrary shapes (same as /distill)
-  then appends turn to capture_buffer keyed by session_id (group_id is sanitized and bound to the entry on first append)
+    then body is {session_id, group_id, messages: [{role, content}, …]}
+    then role ∈ {"user", "assistant", "behaviour"}; content is a string the adapter produced
+  then appends the message list to capture_buffer keyed by session_id (group_id is sanitized
+    and bound to the entry on first append)
   then returns 204 No Content (no body)
   then returns immediately (does not call distill synchronously)
   when idle_seconds elapses after the last append
     then flush is triggered via the registered callback, routed to the bound group_id
   observability
     when test mode is enabled (logger level DEBUG)
-      then logs "[gralkor] [test] capture turn: …" at DEBUG (user_query, events, assistant_answer)
-      when an event carries a `token` field (e.g. a ReAct checkpoint resumption token)
-        then the token value is rendered as "[...]" so the log stays readable
+      then logs "[gralkor] [test] capture messages: [(role, content), …]" at DEBUG
   idle flush (_capture_flush in main.py)
     when the distilled episode body is empty
       then does not call add_episode (no log)
@@ -348,7 +145,7 @@ POST /session_end endpoint
 capture-buffer (Python)
   append
     when called for a new session_id
-      then entry created bound to the supplied group_id and the turn
+      then entry created bound to the supplied group_id and the turn (list of Messages)
       and idle timer scheduled
     when called again for same session_id before idle elapses
       then idle timer is cancelled and rescheduled
@@ -359,18 +156,18 @@ capture-buffer (Python)
       then raises (sessions are not re-bindable across groups)
   turns_for(session_id)
     when the session has buffered turns
-      then returns them in append order
+      then returns list[list[Message]] in append order — each turn is a list of Messages
     when the session has never been appended to (or was just flushed)
       then returns an empty list
   flush on idle
     when idle_seconds elapses
-      then flush_callback is invoked with (group_id, list_of_turns) derived from the entry
+      then flush_callback is invoked with (group_id, list[list[Message]]) derived from the entry
       and the entry is removed from the buffer
       and subsequent turns_for(session_id) calls return []
   flush(session_id)
     when called for a session_id with buffered turns
       then the session's idle timer is cancelled
-      and flush_callback is scheduled with (group_id, list_of_turns) derived from the entry
+      and flush_callback is scheduled with (group_id, list[list[Message]]) derived from the entry
       and the call returns without awaiting the scheduled flush
       and the entry is removed from the buffer
       and subsequent turns_for(session_id) calls return []
@@ -394,61 +191,32 @@ capture-buffer (Python)
   lifespan shutdown
     when FastAPI lifespan enters shutdown
       then capture_buffer.flush_all is awaited
-turns_to_conversation (Python)
-  when a turn has a user_query
-    then emits a ConversationMessage(role="user", text=user_query)
-  when a turn has an assistant_answer
-    then emits a ConversationMessage(role="assistant", text=assistant_answer)
-  when a turn has empty strings for either field
-    then that field contributes no message
-  then events on the turn never become ConversationMessages (they are distilled, not raw conversation)
 format-transcript (Python)
   inputs
-    then takes a list[Turn] directly (no EpisodeMessage/EpisodeBlock intermediate)
-    then Turn.events is list[Any] — loose shapes: dicts, strings, nested content
-  event rendering
-    when event is a string
-      then it's used verbatim (trimmed)
-    when event is a dict or nested structure
-      then it's JSON-serialised for the distill prompt (default=str, ensure_ascii=False)
-    when events contain unfamiliar fields (e.g. ReAct's :llm_completed, :tool_started)
-      then they're still passed through — the distill LLM reasons over the raw shape
-  transcript
-    when turn has events and llm_client available
-      then events are joined with "\n---\n" as the "Actions:" section
-      and distill input includes user message and assistant response for context
-      and system prompt instructs capturing dead ends and intermediary steps
-      and distilled via llm_client into first-person past-tense summary
-      and rendered as "Assistant: (behaviour: {summary})" before assistant text
-    when events reference recalled memory
-      then distillation describes intent ("consulted memory") and does NOT echo recalled fact content
+    then takes list[list[Message]] — each turn is a list of canonical Messages
+  distill input per turn
+    when a turn contains a message with role="behaviour"
+      then all messages in the turn are rendered with role labels ("User: …", "Agent did: …",
+        "Assistant: …") and passed to the distill LLM as the "thinking" prompt
+    when a turn has no behaviour messages
+      then distillation is skipped for that turn (no LLM call)
+  transcript rendering
+    when a turn has behaviour and llm_client is available
+      then distilled via llm_client into first-person past-tense summary
+      and rendered as "Assistant: (behaviour: {summary})" before the assistant text for that turn
     when distillation fails for a turn (safe_distill)
-      then behaviour line silently dropped, assistant text preserved
+      then behaviour line silently dropped, user/assistant text preserved
     when llm_client is None
-      then events silently omitted, user/assistant text preserved
-    when turn has no events
-      then rendered as "User: ...\nAssistant: ..." with no behaviour line, no LLM call
-    then passes response_model with a single "behaviour" field to generate_response
-    then parallel distillation across turns via asyncio.gather
+      then behaviour lines are silently omitted, user/assistant text preserved
+    when a turn has no behaviour
+      then rendered as "User: …\nAssistant: …" with no behaviour line, no LLM call
+  then passes response_model with a single "behaviour" field to generate_response
+  then parallel distillation across turns with behaviour via asyncio.gather
 ```
 
 ## Tools
 
 ```
-memory_build_indices tool
-  when server is ready
-    then calls client.buildIndices
-    and returns success message
-  when server is not ready
-    then throws error
-memory_build_communities tool
-  when server is ready
-    then calls client.buildCommunities with group ID
-    and returns community and edge counts
-  when session_key is not registered in the session map
-    then throws error (does not route to default group)
-  when server is not ready
-    then throws error
 POST /tools/memory_search endpoint
   request shape
     then body is {session_id, group_id, query, max_results, max_entity_results}
@@ -471,8 +239,6 @@ POST /tools/memory_search endpoint
     and interpret is NOT called
   when at most search.maxResults facts are returned (default 20)
     and at most search.maxEntityResults entities are returned (default 10)
-  when buffered turns contain <gralkor-memory> XML
-    then XML is stripped before interpret_facts runs
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
   observability
@@ -492,45 +258,24 @@ POST /tools/memory_add endpoint
   then response is {"status": "stored"}
   when source_description is omitted
     then defaults to "manual"
+POST /build-indices endpoint
+  request shape
+    then body is {} (no arguments — the operation runs across the whole graph, not a specific group)
+  then calls graphiti.build_indices_and_constraints() under _driver_lock
+  then response is {"status": string}
+  (admin-only — the adapter libraries expose this as an explicit call; consumer harnesses guard invocation with DO-NOT-CALL-UNLESS-ASKED semantics)
+POST /build-communities endpoint
+  request shape
+    then body is {group_id}
+    then group_id is sanitized before use
+  then calls graphiti.build_communities for that group under _driver_lock
+  then response is {"communities": non_neg_integer, "edges": non_neg_integer} with the counts produced
+  (admin-only — expensive per-group operation; harness-level DO-NOT-CALL guards apply)
 ```
 
 ## Startup
 
 ```
-startup
-  then the server is started as fire-and-forget during registration
-  then subsequent register() calls reuse the existing manager (no duplicate starts)
-  when the port is already healthy
-    then adopts the running server without killing or respawning
-    and starts the health monitor
-    and returns without writing a pid file
-  when a previous pid is on record
-    then sends SIGTERM to the previous pid
-    and polls until the port is free (up to 10s) before spawning
-  when stop() is called
-    then deletes the pid file
-  when self-start succeeds
-    then serverReady resolves
-  when self-start fails
-    then the error is logged
-    and serverReady remains unresolved
-  native memory indexing
-    then indexer is fired fire-and-forget from before_prompt_build on each session start
-    then already-indexed files (marker at end) cost only a disk read — no server call
-    when ctx.workspaceDir is set
-      then uses ctx.workspaceDir as the workspace to scan
-    when ctx.workspaceDir is not set
-      then falls back to config.workspaceDir
-    when workspaceDir does not exist
-      then indexer skips without error
-multi-load resilience
-  when plugin is loaded multiple times (as OpenClaw does)
-    and the first instance's service resolves the ReadyGate
-      then a second instance's auto-recall handler still searches the graph
-      then a second instance's memory_add tool does not throw
-    and no instance has resolved the ReadyGate
-      then auto-recall handler throws (fail-fast)
-      then memory_add tool throws (fail-fast)
 ex-server-lifecycle (Elixir supervisor in ex/)
   init
     when init returns
@@ -589,57 +334,54 @@ ex-config-writing (Gralkor.Config)
     when llm_provider is nil
       then omits the llm section entirely (server applies default)
     (embedder section follows the same rules)
-bundled-wheel-arch-selection
-  when on linux/arm64 and the install dir (serverDir/wheels) has .whl files
-    then resolveBundledWheels returns those paths (no network)
-    and uv sync skips falkordblite (--no-install-package falkordblite)
-    and the bundled wheel is installed via uv pip install --no-deps
-  when on linux/arm64 and the install dir has no wheels
-    and the cache (dataDir/wheels) already has the wheel
-    then resolveBundledWheels returns the cached path (no network)
-  when on linux/arm64 and neither the install dir nor the cache has the wheel
-    then resolveBundledWheels downloads it from
-      https://github.com/elimydlarz/gralkor/releases/download/v${version}/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl
-    and writes it into dataDir/wheels for reuse
-    when the download responds non-2xx
-      then throws (no PyPI fallback — the PyPI sdist embeds x86-64 binaries on glibc < 2.39)
-  when on non-linux-arm64 (macOS, linux/x86-64)
-    then resolveBundledWheels is not called
-    and uv sync installs falkordblite from PyPI normally
-  when bundled wheel install fails on linux/arm64
-    then throws (no silent fallback to PyPI)
-secret-resolution
-  when config contains a plaintext API key string
-    then env var is set to that string (trimmed)
-  when config value is empty or whitespace
-    then env var is not set
-  when config value is undefined or absent
-    then env var is not set
-  then env vars are built synchronously and passed to the server manager
-  then process.env is not read for API keys
-native-memory-indexing
-  discoverFiles(workspaceDir, groupId)
-    then finds {workspaceDir}/MEMORY.md with caller-provided groupId
-    then finds {workspaceDir}/memory/*.md with caller-provided groupId
-    when workspaceDir does not exist
-      then returns empty list
-  indexFile
-    when file has no marker
-      then ingests entire file content
-      and appends marker at end of file
-    when file has marker at end (nothing after it)
-      then skips ingest
-      and does not modify the file
-    when file has marker mid-file (new content after it)
-      then ingests only content after the marker
-      and moves marker to new end of file
-    when ingest fails
-      then does not move the marker (file left unchanged)
-  runNativeIndexer(client, workspaceDir, groupId)
-    when workspaceDir does not exist
-      then skips gracefully without error
-    when a file errors
-      then logs error and continues with remaining files
+ts-server-manager (createServerManager in ts/)
+  bundledServerDir
+    then resolves to the "server" sibling of the compiled module's directory (i.e. <pkg>/server/) — mirrors the Elixir side's :code.priv_dir(:gralkor_ex) ++ "/server"
+  construction
+    then serverDir defaults to bundledServerDir() (the copy shipped inside @susu-eng/gralkor-ts)
+    then consumers may override serverDir to point at a development checkout
+    then the returned manager starts with isRunning() === false
+  serializeOntologyYaml (helper written into config.yaml at start time)
+    when the ontology has entities
+      then emits an "ontology: entities:" block with description and optional attribute entries
+    when the ontology has edges
+      then emits an "edges:" block under ontology
+    when the ontology has an edgeMap
+      then emits an "edgeMap:" block with "EntityA,EntityB" keys and their edge lists
+    when the ontology is empty (no entities, edges, or edgeMap)
+      then emits just "ontology:\n"
+  start — adopt path
+    when another process already serves /health on the configured port (pre-flight check)
+      then the manager adopts it (no spawn) and returns once healthy
+      and starts the health monitor
+  start — spawn path (NOT covered by unit tests; exercised only by consumers in production)
+    when no process serves /health
+      then uv run uvicorn main:app is spawned with cwd = serverDir
+      and env includes GOOGLE_API_KEY / ANTHROPIC / OPENAI / GROQ where supplied
+      and /health is polled at 500ms intervals until 200 or the boot window expires
+    if /health never returns 200 within the boot window
+      then start rejects with a timeout error
+  health monitor (NOT covered by unit tests; exercised only by consumers in production)
+    then after the server is healthy, /health is polled every 60s
+    when /health returns non-2xx or errors
+      then the failure is logged (monitor keeps polling; does not kill the server)
+  stop (NOT covered by unit tests; exercised only by consumers in production)
+    when the spawned process is ours
+      then SIGTERM is sent and we wait up to STOP_GRACE_MS for clean exit
+      if the process is still running after the grace window
+        then SIGKILL is sent
+ts-bundle-server (scripts/bundle-server.mjs)
+  then runs as the pre-build step (package.json's "build": "pnpm run bundle-server && tsc")
+  when gralkor/server/ exists at ../server relative to ts/
+    then its contents are copied into ts/server/
+    and destination is wiped before copy (no stale files)
+    and these paths are skipped: .venv, .pytest_cache, __pycache__, wheels, tests, mutants, tmp
+    and these extensions are skipped: *.pyc
+    (matches Mix.Tasks.Compile.GralkorPriv's skip list so both adapters ship the same slice)
+  when ../server does not exist
+    then the script exits non-zero (caller must fix the path)
+  then ts/server/ is gitignored (build artifact, regenerated from canonical source on every publish)
+  then package.json's files: includes "server" so the bundle ships in the npm tarball
 ```
 
 ## Configuration
@@ -662,18 +404,6 @@ validateOntologyConfig
     then rejects
   when edgeMap references undeclared edge
     then rejects
-config-defaults-single-source
-  when configSchema is read from index.ts
-    then defaults match defaultConfig in config.ts
-  when openclaw.plugin.json is read
-    then defaults match defaultConfig in config.ts
-test-mode-query-logging
-  when auto-recall searches in test mode
-    then the extracted user message (search query) is logged
-  when memory_search tool executes in test mode
-    then the query argument is logged
-  when test mode is disabled
-    then queries are not logged
 server-config-defaults (server/main.py)
   when config omits llm.provider
     then _build_llm_client uses DEFAULT_LLM_PROVIDER ("gemini")
@@ -695,13 +425,6 @@ cross-encoder-selection
     then uses OpenAIRerankerClient
   when llm provider is not gemini and OPENAI_API_KEY is not set
     then cross_encoder is None
-sanitizeGroupId
-  when agentId contains hyphens
-    then hyphens are replaced with underscores
-  when agentId has no hyphens
-    then returned unchanged
-  then applied exactly once: at the setSessionData write boundary in index.ts
-  then all readers (tools, auto-recall, flush) get the pre-sanitized value from the map
 ```
 
 ## Operations
@@ -714,25 +437,11 @@ sanitizeGroupId
     then returns status ok with graph connected false and error message
   when graphiti is not initialized
     then returns status ok with graph connected false
-openclaw gralkor status
-  when server is running and healthy
-    then shows process state, config summary, data dir, graph stats, venv state
-  when server is unreachable
-    then shows process state, config summary, data dir, and unreachable error
 rate-limit-retry
   server side
     when upstream LLM returns a rate-limit error
       then 429 response includes Retry-After header
-  client side
-    when server returns 429 with Retry-After header
-      then client waits for the specified duration and retries
-    when server returns 429 repeatedly
-      then client keeps retrying (no cap)
-    when request is aborted via AbortSignal during rate-limit wait
-      then client stops retrying and throws
-    when server returns 429 then succeeds on retry
-      then the successful response is returned
-    then 429 retries are independent of the 5xx/network retry budget
+    (client-side retry handling is no longer part of :gralkor_ex or @susu-eng/gralkor-ts — the adapters surface the 429 as an error and let consumers decide; see consumer-owned retry logic in @susu-eng/openclaw-gralkor if needed)
 driver-lock-serialization
   when concurrent requests target different group_ids
     then add_episode, search, and build_communities are serialized (no concurrent execution)
@@ -770,7 +479,8 @@ ex-client (port contract, shared)
       then {:ok, nil} is returned
     if the backend fails
       then {:error, reason} is returned
-  when capture/3 is called with session_id, group_id, and turn
+  when capture/3 is called with session_id, group_id, and messages
+    messages is a list of canonical Gralkor.Message structs (role ∈ {"user", "assistant", "behaviour"}, content: String.t())
     when the backend acknowledges the capture
       then :ok is returned
     if the backend fails
@@ -813,9 +523,9 @@ ex-sanitize-group-id
   when the id has no hyphens
     then it is returned unchanged
 ex-impl-resolver
-  when :gralkor_client is unset in app env
+  when :gralkor_ex/:client is unset in app env
     then Gralkor.Client.HTTP is returned
-  when :gralkor_client is configured to a module
+  when :gralkor_ex/:client is configured to a module
     then that module is returned
 ex-client-http
   then no Authorization header is attached to any request
@@ -825,8 +535,6 @@ ex-client-http
     then the call raises
   if session_id is blank on recall/capture/memory_search/end_session
     then the call raises with ArgumentError (Gralkor requires a non-blank session_id)
-  when the outgoing body contains Elixir tuples (e.g. {:ok, _} tool results in capture events)
-    then tuples are recursively converted to lists before Jason encodes the body (no Jason crash)
   runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
 ex-client-in-memory
   when an operation is called
@@ -864,7 +572,8 @@ ts-client (port contract, shared)
       then { ok: null } is returned
     if the backend fails
       then { error: reason } is returned
-  when capture(session_id, group_id, turn) is called
+  when capture(session_id, group_id, messages) is called
+    messages is an array of canonical {role, content} objects (role ∈ "user" | "assistant" | "behaviour")
     when the backend acknowledges the capture
       then { ok: true } is returned
     if the backend fails
@@ -935,38 +644,6 @@ ts-connection
 ## Functional Journey
 
 ```
-memory-journey
-  given workspace/memory/session-001.md seeded with "Eli has the lucky number LuckyNumber47" before gateway start
-    when a real agent run (openclaw agent --agent main) triggers before_prompt_build
-      then native indexer fires and indexes session-001.md to group "main" (ctx.workspaceDir + agentId)
-      then injection reveals 47 as the current lucky number
-    when the same real agent run captures the conversation (agent_end → flush)
-      then 99 is searchable as the current lucky number
-      when memory_add stores lucky number changed to 42
-        then manual search reveals 42 as the current lucky number
-        and earlier values (47, 99) appear in results as superseded (invalid_at set)
-        and manual search returns both facts and entity nodes
-  agent-partition-isolation
-    given data stored under one group_id (session-keyed agent)
-      then it is searchable within that group
-      and it is NOT returned when searching a different group
-  concurrent-agent-isolation
-    given two agents writing to different groups simultaneously
-      then alpha fact is searchable in alpha group
-      and beta fact is searchable in beta group
-      and alpha fact does NOT appear in beta group
-      and beta fact does NOT appear in alpha group
-  hyphenated-agent-id-sanitization
-    given a real agent run through openclaw agent --agent my-hyphen-agent
-      then the episode is stored under the sanitized group "my_hyphen_agent"
-      and the fact IS searchable under "my_hyphen_agent"
-      and the fact IS also searchable under "my-hyphen-agent" (server sanitizes group IDs to match)
-  session-flush-write-read-symmetry
-    given two concurrent session flushes to different groups (source: message)
-      then session A data is readable from session A group
-      and session B data is readable from session B group
-      and session A data does NOT appear when reading session B group
-      and session B data does NOT appear when reading session A group
 jido-memory-journey (Elixir-driven functional suite in ex/test/functional/)
   prerequisites
     given a real Python server booted by Gralkor.Server with real Graphiti + falkordblite + Gemini
@@ -1007,70 +684,10 @@ jido-memory-journey (Elixir-driven functional suite in ex/test/functional/)
 ## Distribution
 
 ```
-publish-version-integrity
-  when publish succeeds
-    then version is bumped in package.json and openclaw.plugin.json
-    and a git tag is created for the new version (push manually)
-  when not logged in to npm
-    then exits before version bump
-    and no rollback is needed
-  when publish fails (build error or npm reject)
-    then version files are rolled back to their pre-publish values
-    and no git tag is created
-  when successive publishes fail
-    then version does not increment multiple times
-  when DRY_RUN is set
-    then version is bumped and synced across manifests
-    and build and publish are skipped
-    and no git tag is created
-  when level is current
-    then version is not incremented
-    and manifests remain at current version
-    and build and publish still run
-    and a git tag is created for the current version
-  when level is current and publish fails
-    then no rollback runs
-    and version files remain unchanged
-publish-clawhub-version-integrity
-  when publish succeeds
-    then version is bumped in package.json and openclaw.plugin.json
-    and a git tag is created for the new version (push manually)
-  when not logged in to clawhub
-    then exits before version bump
-    and no rollback is needed
-  when publish fails (build error or clawhub reject)
-    then version files are rolled back to their pre-publish values
-    and no git tag is created
-  when successive publishes fail
-    then version does not increment multiple times
-  when DRY_RUN is set
-    then version is bumped and synced across manifests
-    and build and publish are skipped
-    and no git tag is created
-  when level is current
-    then version is not incremented
-    and manifests remain at current version
-    and build and publish still run
-    and a git tag is created for the current version
-  when level is current and publish fails
-    then no rollback runs
-    and version files remain unchanged
-clawhub-arm64-wheel-distribution
-  then publish-clawhub.sh excludes server/wheels via .clawhubignore
-    (the wheel exceeds ClawHub's 20 MB upload limit)
-  then before publishing the package, publish-clawhub.sh uploads
-    the freshly-built arm64 wheel to the matching v${version} GitHub Release
-    (creating the release if it doesn't exist) via gh release upload
-  when PUBLISH_SKIP_GH_RELEASE is set
-    then the GitHub Release upload is skipped (used by tests)
-  when no .whl file exists in server/wheels after the build step
-    then the publish aborts with an error
-  when gh release upload fails
-    then publish-clawhub.sh exits non-zero (rollback fires for non-current levels)
 publish-ex-version-integrity
   when publish succeeds
     then @version is bumped in ex/mix.exs
-    and a git tag ex-v${version} is created for the new version (push manually)
+    and a git tag gralkor-ex-v${version} is created for the new version (push manually)
   when not logged in to Hex
     then exits before version bump
     and no rollback is needed
@@ -1086,10 +703,8 @@ publish-ex-version-integrity
   when level is current
     then @version is not incremented
     and publish still runs
-    and a git tag ex-v${version} is created for the current version
+    and a git tag gralkor-ex-v${version} is created for the current version
   when level is current and publish fails
     then no rollback runs
     and ex/mix.exs remains unchanged
-install-sequencing-docs
-  then README documents recommended install sequencing for operators
 ```
