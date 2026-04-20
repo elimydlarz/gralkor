@@ -1,91 +1,15 @@
 {
-  "name": "@susu-eng/gralkor",
-  "displayName": "Gralkor",
-  "version": "27.3.0",
-  "description": "OpenClaw memory plugin powered by Graphiti knowledge graphs and FalkorDB",
+  "name": "gralkor-monorepo",
+  "private": true,
+  "description": "Gralkor monorepo — Python server (server/) + Elixir adapter (ex/) + TypeScript adapter (ts/). This root is not published; only the sub-packages are.",
   "type": "module",
-  "main": "./dist/index.js",
-  "openclaw": {
-    "extensions": [
-      "./dist/index.js"
-    ],
-    "compat": {
-      "pluginApi": ">=2026.4.2"
-    },
-    "build": {
-      "openclawVersion": "2026.4.2"
-    }
-  },
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "pnpm run typecheck && pnpm run test:unit && pnpm run test:integration",
-    "test:unit": "pnpm run test:unit:ts && pnpm run test:unit:py",
-    "test:unit:ts": "vitest run",
-    "test:unit:py": "cd server && uv run pytest tests/ --ignore=tests/test_integration.py",
-    "test:integration": "pnpm run test:integration:ts && pnpm run test:integration:py",
-    "test:integration:ts": "vitest run --config test/integration/vitest.config.ts",
-    "test:integration:py": "cd server && uv run pytest tests/test_integration.py",
-    "test:functional": "bash test/harness/functional-env.sh test",
-    "test:functional:both": "bash scripts/functional-test-both.sh",
-    "test:functional:results": "bash scripts/functional-test-results.sh /tmp/gralkor-functional-arm64.log /tmp/gralkor-functional-amd64.log",
-    "test:functional:up": "bash test/harness/functional-env.sh up",
-    "test:functional:run": "bash test/harness/functional-env.sh run",
-    "test:functional:down": "bash test/harness/functional-env.sh down",
-    "test:mutate": "stryker run",
-    "setup:server": "cd server && uv sync",
-    "pack": "bash scripts/pack.sh",
-    "publish:npm": "bash scripts/publish-npm.sh",
-    "publish:clawhub": "bash scripts/publish-clawhub.sh",
     "publish:ex": "bash scripts/publish-ex.sh",
     "publish:ts": "bash scripts/publish-ts.sh"
   },
-  "files": [
-    "dist",
-    "server/main.py",
-    "server/pyproject.toml",
-    "server/uv.lock",
-    "server/requirements.txt",
-    "server/wheels",
-    "openclaw.plugin.json",
-    "config.yaml",
-    ".env.example"
-  ],
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/elimydlarz/gralkor.git"
-  },
-  "homepage": "https://github.com/elimydlarz/gralkor#readme",
-  "bugs": {
-    "url": "https://github.com/elimydlarz/gralkor/issues"
-  },
-  "author": "susu-eng",
-  "keywords": [
-    "openclaw",
-    "openclaw-plugin",
-    "graphiti",
-    "falkordb",
-    "knowledge-graph",
-    "memory",
-    "ai-agent"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "openclaw": "2026.4.2"
-  },
-  "peerDependencies": {
-    "openclaw": "2026.4.2"
-  },
-  "devDependencies": {
-    "@types/node": "^25.0.0",
-    "memfs": "^4.57.1",
-    "typescript": "^5.7.0",
-    "vitest": "^4.1.2"
   },
   "license": "MIT"
 }

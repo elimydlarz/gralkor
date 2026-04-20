@@ -1,6 +1,8 @@
-# gralkor
+# gralkor_ex
 
-OTP supervisor for [Gralkor](https://github.com/elimydlarz/gralkor) — a temporally-aware knowledge-graph memory service (Graphiti + FalkorDB) wrapped as a Python/FastAPI server.
+OTP supervisor + HTTP client for [Gralkor](https://github.com/elimydlarz/gralkor) — a temporally-aware knowledge-graph memory service (Graphiti + FalkorDB) wrapped as a Python/FastAPI server.
+
+> **Renamed from `:gralkor`.** The Hex package was renamed `:gralkor → :gralkor_ex` at v1.3.0 to match the npm side's `@susu-eng/gralkor-ts` and make the naming symmetric: both are adapters with their language suffix, and both depend on the shared `gralkor/server/` Python core. Old `:gralkor` is retired on Hex with a pointer here. Update: `{:gralkor_ex, "~> 1.3"}`; module names (`Gralkor.Client`, `Gralkor.Server`, etc.) are unchanged.
 
 Embed `Gralkor.Server` in your Jido (or any Elixir) supervision tree. The GenServer spawns the Python server as a Port, polls `/health` during boot, monitors it, and handles graceful shutdown. Your application talks to it over HTTP on a loopback port.
 
@@ -19,30 +21,30 @@ The Python source ships inside the package (`priv/server/`); no separate clone o
 ```elixir
 def deps do
   [
-    {:gralkor, "~> 1.1"}
+    {:gralkor_ex, "~> 1.3"}
   ]
 end
 ```
 
-Using Gralkor from a **Jido agent**? Install [`:jido_gralkor`](https://hex.pm/packages/jido_gralkor) instead — it pulls `:gralkor` transitively and ships the Jido-shaped glue (a plugin + two ReAct tools) so you don't wire the HTTP client by hand. `:jido_gralkor`'s README is the Jido-dev entry point.
+Using Gralkor from a **Jido agent**? Install [`:jido_gralkor`](https://hex.pm/packages/jido_gralkor) instead — it pulls `:gralkor_ex` transitively and ships the Jido-shaped glue (a plugin + two ReAct tools) so you don't wire the HTTP client by hand. `:jido_gralkor`'s README is the Jido-dev entry point.
 
 ## Elixir API surface
 
 The package ships:
 
-- **`Gralkor.Server`** (supervised by `:gralkor`'s own application) — manages the Python child: spawns `uv run uvicorn main:app` via a Port, health-polls `/health` during boot, monitors at 60s intervals, and sends `SIGTERM` → `SIGKILL` on shutdown.
+- **`Gralkor.Server`** (supervised by `:gralkor_ex`'s own application) — manages the Python child: spawns `uv run uvicorn main:app` via a Port, health-polls `/health` during boot, monitors at 60s intervals, and sends `SIGTERM` → `SIGKILL` on shutdown.
 - **`Gralkor.Config`** — struct built from env vars (`Gralkor.Config.from_env/0`); writes `config.yaml` for the Python child.
-- **`Gralkor.Client`** — behaviour defining `recall/3`, `capture/3`, `memory_search/3`, `memory_add/3`, `end_session/1`, `health_check/0`. Includes `sanitize_group_id/1` (hyphens → underscores; RediSearch constraint) and `impl/0` which resolves the configured adapter from `Application.get_env(:gralkor, :client)` (defaults to `Gralkor.Client.HTTP`).
-- **`Gralkor.Client.HTTP`** — Req-based adapter. Reads `:gralkor, :client_http` (keys: `:url` required, `:plug` optional `Req.Test` plug for stubbing). No auth, `retry: false`, per-endpoint `receive_timeout`s calibrated to workload (2s `/health`, 5s `/recall`/`/capture`/`/session_end`, 10s `/tools/memory_search`, 60s `/tools/memory_add`). Normalises Elixir tuples to lists before Jason encodes (so `{:ok, _}` tool results in capture event traces don't crash).
-- **`Gralkor.Client.InMemory`** — test-only GenServer twin that satisfies the full `Gralkor.Client` port contract. Real behaviour (records calls, returns canned responses) rather than a mock. Shipped in `lib/` so consumers can use it in their own test suites — `start_link/0` in `test_helper.exs`, swap via `config :gralkor, client: Gralkor.Client.InMemory` in `config/test.exs`. Call `reset/0` in `setup`.
+- **`Gralkor.Client`** — behaviour defining `recall/3`, `capture/3`, `memory_search/3`, `memory_add/3`, `end_session/1`, `health_check/0`, `build_indices/0`, `build_communities/1`. Includes `sanitize_group_id/1` (hyphens → underscores; RediSearch constraint) and `impl/0` which resolves the configured adapter from `Application.get_env(:gralkor_ex, :client)` (defaults to `Gralkor.Client.HTTP`).
+- **`Gralkor.Client.HTTP`** — Req-based adapter. Reads `:gralkor_ex, :client_http` (keys: `:url` required, `:plug` optional `Req.Test` plug for stubbing). No auth, `retry: false`, per-endpoint `receive_timeout`s calibrated to workload (2s `/health`, 5s `/recall`/`/capture`/`/session_end`, 10s `/tools/memory_search`, 60s `/tools/memory_add`). Normalises Elixir tuples to lists before Jason encodes (so `{:ok, _}` tool results in capture event traces don't crash).
+- **`Gralkor.Client.InMemory`** — test-only GenServer twin that satisfies the full `Gralkor.Client` port contract. Real behaviour (records calls, returns canned responses) rather than a mock. Shipped in `lib/` so consumers can use it in their own test suites — `start_link/0` in `test_helper.exs`, swap via `config :gralkor_ex, client: Gralkor.Client.InMemory` in `config/test.exs`. Call `reset/0` in `setup`.
 - **`Gralkor.Connection`** — boot-readiness GenServer. `init/1` synchronously polls `Client.health_check/0` until healthy or the boot window expires; stops with `{:gralkor_unreachable, reason}` on timeout so your supervisor decides. After boot the process sits idle — runtime outages surface via fail-fast on the next call.
 - **`Gralkor.OrphanReaper`** — pre-OTP cleanup. `reap/0` shells `lsof` for port 4000; if a process whose command line contains `gralkor/priv/server` holds it (leftover uvicorn from a crashed BEAM), SIGKILLs it; if anything else holds it, raises. Intended to run from your `mix start` entrypoint before `Mix.Task.run("app.start")` — must precede `Gralkor.Server`'s own port-free check, which refuses to clean up foreign holders.
 
 ## Install into a non-Jido consumer
 
-1. Add `{:gralkor, "~> 1.1"}` to your deps.
+1. Add `{:gralkor_ex, "~> 1.3"}` to your deps.
 
-2. **Do not supervise `Gralkor.Server` yourself.** The `:gralkor` application already does when `GRALKOR_DATA_DIR` is set. Double-supervising raises `already started`.
+2. **Do not supervise `Gralkor.Server` yourself.** The `:gralkor_ex` application already does when `GRALKOR_DATA_DIR` is set. Double-supervising raises `already started`.
 
 3. **Gate your startup on Gralkor's readiness.** Add `Gralkor.Connection` to your own supervision tree — it blocks boot until `/health` returns 200:
 
@@ -57,7 +59,7 @@ The package ships:
 
    ```elixir
    url = System.get_env("GRALKOR_URL", "http://127.0.0.1:4000")
-   Application.put_env(:gralkor, :client_http, url: url)
+   Application.put_env(:gralkor_ex, :client_http, url: url)
    ```
 
 5. **Call the client.** From anywhere in your app:

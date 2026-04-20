@@ -66,11 +66,10 @@ defmodule Gralkor.Functional.EndToEndTest do
              post(url, "/capture", %{
                session_id: session,
                group_id: group,
-               turn: %{
-                 user_query: "Remember that my favourite colour is teal.",
-                 events: [],
-                 assistant_answer: "Got it — teal it is."
-               }
+               messages: [
+                 %{role: "user", content: "Remember that my favourite colour is teal."},
+                 %{role: "assistant", content: "Got it — teal it is."}
+               ]
              })
 
     wait_for_graph(url, group, "teal", 120_000)
@@ -84,11 +83,10 @@ defmodule Gralkor.Functional.EndToEndTest do
              post(url, "/capture", %{
                session_id: session,
                group_id: group,
-               turn: %{
-                 user_query: "My dog's name is Banjo.",
-                 events: [],
-                 assistant_answer: "Noted — Banjo."
-               }
+               messages: [
+                 %{role: "user", content: "My dog's name is Banjo."},
+                 %{role: "assistant", content: "Noted — Banjo."}
+               ]
              })
 
     t0 = System.monotonic_time(:millisecond)

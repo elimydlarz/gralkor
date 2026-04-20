@@ -12,8 +12,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const tsRoot = resolve(__dirname, "..");
 const gralkorRoot = resolve(tsRoot, "..");
-const src = join(gralkorRoot, "server");
-const dest = join(tsRoot, "server");
+// Tests override these via env to run the copy against a temp fixture
+// without touching the real gralkor/server → ts/server build artifact.
+const src = process.env.BUNDLE_SERVER_SRC ?? join(gralkorRoot, "server");
+const dest = process.env.BUNDLE_SERVER_DEST ?? join(tsRoot, "server");
 
 const SKIP_DIRS = new Set([
   ".venv",

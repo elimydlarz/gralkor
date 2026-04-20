@@ -9,7 +9,7 @@ import main as main_mod
 
 from graphiti_core.nodes import EpisodeType
 
-from pipelines.distill import Turn
+from pipelines.messages import Message
 
 from .conftest import make_edge, make_entity
 
@@ -157,11 +157,10 @@ class TestMemorySearch:
         main_mod.capture_buffer.append(
             "sess-tool",
             "grp",
-            Turn(
-                user_query="earlier tool question",
-                events=[],
-                assistant_answer="earlier tool answer",
-            ),
+            [
+                Message(role="user", content="earlier tool question"),
+                Message(role="assistant", content="earlier tool answer"),
+            ],
         )
         mock_graphiti.search_.return_value = SimpleNamespace(
             edges=[make_edge(fact="A")],

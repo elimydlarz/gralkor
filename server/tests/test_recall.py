@@ -3,7 +3,11 @@
 Composes fast search + format + interpret + XML wrap.
 Empty search → {"memory_block": ""}.
 Conversation context for interpretation is read from capture_buffer by
-session_id — callers do not pass conversation messages on the wire.
+session_id (a flat walk of all buffered Messages across all buffered turns).
+Callers do not pass conversation messages on the wire.
+
+The server no longer strips adapter-injected artifacts from buffered
+messages — adapters are expected to clean at capture time.
 """
 
 from __future__ import annotations
@@ -12,9 +16,13 @@ import logging
 from datetime import datetime, timezone
 
 import main as main_mod
-from pipelines.distill import Turn
+from pipelines.messages import Message
 
 from .conftest import make_edge
+
+
+def append_turn(session_id: str, group_id: str, *messages: Message) -> None:
+    main_mod.capture_buffer.append(session_id, group_id, list(messages))
 
 
 async def test_returns_empty_block_when_no_facts(client, mock_graphiti):
@@ -81,10 +89,11 @@ async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
 
 
 async def test_conversation_context_comes_from_capture_buffer(client, mock_graphiti):
-    main_mod.capture_buffer.append(
+    append_turn(
         "sess-with-history",
         "grp",
-        Turn(user_query="earlier question", events=[], assistant_answer="earlier answer"),
+        Message(role="user", content="earlier question"),
+        Message(role="assistant", content="earlier answer"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
     mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
@@ -101,6 +110,30 @@ async def test_conversation_context_comes_from_capture_buffer(client, mock_graph
     interpret_context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
     assert "earlier question" in interpret_context
     assert "earlier answer" in interpret_context
+
+
+async def test_behaviour_messages_appear_in_interpretation_context(client, mock_graphiti):
+    append_turn(
+        "sess-with-behaviour",
+        "grp",
+        Message(role="user", content="q"),
+        Message(role="behaviour", content="thought: I should check memory"),
+        Message(role="assistant", content="a"),
+    )
+    mock_graphiti.search.return_value = [make_edge(fact="F")]
+    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+
+    await client.post(
+        "/recall",
+        json={
+            "session_id": "sess-with-behaviour",
+            "group_id": "grp",
+            "query": "q",
+            "max_results": 10,
+        },
+    )
+    interpret_context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
+    assert "Agent did: thought: I should check memory" in interpret_context
 
 
 async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_graphiti):
@@ -121,15 +154,17 @@ async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_
 
 
 async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti):
-    main_mod.capture_buffer.append(
+    append_turn(
         "sess-alpha",
         "grp",
-        Turn(user_query="alpha secret", events=[], assistant_answer="alpha reply"),
+        Message(role="user", content="alpha secret"),
+        Message(role="assistant", content="alpha reply"),
     )
-    main_mod.capture_buffer.append(
+    append_turn(
         "sess-beta",
         "grp",
-        Turn(user_query="beta secret", events=[], assistant_answer="beta reply"),
+        Message(role="user", content="beta secret"),
+        Message(role="assistant", content="beta reply"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
     mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
@@ -146,6 +181,30 @@ async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti
     context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
     assert "alpha secret" in context
     assert "beta secret" not in context
+
+
+async def test_server_passes_buffered_content_unchanged_to_interpretation(client, mock_graphiti):
+    append_turn(
+        "sess-passthrough",
+        "grp",
+        Message(role="user", content="<gralkor-memory>leaked</gralkor-memory>actual question"),
+        Message(role="assistant", content="a"),
+    )
+    mock_graphiti.search.return_value = [make_edge(fact="A")]
+    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+
+    await client.post(
+        "/recall",
+        json={
+            "session_id": "sess-passthrough",
+            "group_id": "grp",
+            "query": "q",
+            "max_results": 10,
+        },
+    )
+    interpret_context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
+    assert "<gralkor-memory>" in interpret_context
+    assert "actual question" in interpret_context
 
 
 class TestObservability:
@@ -216,32 +275,3 @@ class TestObservability:
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert not any("[gralkor] [test] recall block:" in m for m in debug_msgs)
-
-
-async def test_strips_gralkor_memory_from_buffered_turns(client, mock_graphiti):
-    main_mod.capture_buffer.append(
-        "sess-leak",
-        "grp",
-        Turn(
-            user_query="<gralkor-memory>leaked</gralkor-memory>actual question",
-            events=[],
-            assistant_answer="a",
-        ),
-    )
-    mock_graphiti.search.return_value = [make_edge(fact="A")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
-
-    await client.post(
-        "/recall",
-        json={
-            "session_id": "sess-leak",
-            "group_id": "grp",
-            "query": "q",
-            "max_results": 10,
-        },
-    )
-    interpret_context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
-    assert "leaked" not in interpret_context
-    assert "actual question" in interpret_context
-
-

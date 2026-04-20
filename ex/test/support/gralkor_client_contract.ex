@@ -38,14 +38,14 @@ defmodule Gralkor.ClientContract do
       describe "port contract: capture/3" do
         test "returns :ok when the backend acknowledges the capture" do
           configure_backend(:capture, :ok)
-          turn = %{user_query: "q", assistant_answer: "a", events: []}
-          assert :ok = @client.capture("s1", "g1", turn)
+          messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
+          assert :ok = @client.capture("s1", "g1", messages)
         end
 
         test "returns {:error, reason} when the backend fails" do
           configure_backend(:capture, {:error, :boom})
-          turn = %{user_query: "q", assistant_answer: "a", events: []}
-          assert {:error, _} = @client.capture("s1", "g1", turn)
+          messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
+          assert {:error, _} = @client.capture("s1", "g1", messages)
         end
       end
 

@@ -44,7 +44,7 @@ defmodule Gralkor.Config do
 
   @spec default_server_dir() :: String.t()
   def default_server_dir do
-    case :code.priv_dir(:gralkor) do
+    case :code.priv_dir(:gralkor_ex) do
       {:error, :bad_name} -> "/app/server"
       priv -> Path.join(to_string(priv), "server")
     end

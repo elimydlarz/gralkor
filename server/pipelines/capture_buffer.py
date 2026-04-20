@@ -5,8 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
-from .distill import Turn
-from .message_clean import ConversationMessage
+from .messages import Message
 
 
 logger = logging.getLogger(__name__)
@@ -19,13 +18,13 @@ class CaptureClientError(Exception):
     """Raised when a downstream client returned a non-retryable 4xx response."""
 
 
-FlushCallback = Callable[[str, list[Turn]], Awaitable[None]]
+FlushCallback = Callable[[str, list[list[Message]]], Awaitable[None]]
 
 
 @dataclass
 class _Entry:
     group_id: str
-    turns: list[Turn] = field(default_factory=list)
+    turns: list[list[Message]] = field(default_factory=list)
     idle_handle: asyncio.TimerHandle | None = None
 
 
@@ -42,7 +41,7 @@ class CaptureBuffer:
         self._retry_delays = retry_delays
         self._pending_flushes: set[asyncio.Task[None]] = set()
 
-    def append(self, session_id: str, group_id: str, turn: Turn) -> None:
+    def append(self, session_id: str, group_id: str, messages: list[Message]) -> None:
         entry = self._entries.get(session_id)
         if entry is None:
             entry = _Entry(group_id=group_id)
@@ -52,7 +51,7 @@ class CaptureBuffer:
                 f"session_id {session_id!r} already bound to group_id "
                 f"{entry.group_id!r}; refusing to rebind to {group_id!r}"
             )
-        entry.turns.append(turn)
+        entry.turns.append(list(messages))
         if entry.idle_handle is not None:
             entry.idle_handle.cancel()
         loop = asyncio.get_running_loop()
@@ -60,9 +59,9 @@ class CaptureBuffer:
             self._idle_seconds, self._schedule_flush, session_id
         )
 
-    def turns_for(self, session_id: str) -> list[Turn]:
+    def turns_for(self, session_id: str) -> list[list[Message]]:
         entry = self._entries.get(session_id)
-        return list(entry.turns) if entry is not None else []
+        return [list(turn) for turn in entry.turns] if entry is not None else []
 
     def _schedule_flush(self, session_id: str) -> None:
         entry = self._entries.pop(session_id, None)
@@ -75,7 +74,7 @@ class CaptureBuffer:
         task.add_done_callback(self._pending_flushes.discard)
 
     async def _flush_with_retry(
-        self, session_id: str, group_id: str, turns: list[Turn]
+        self, session_id: str, group_id: str, turns: list[list[Message]]
     ) -> None:
         attempt = 0
         while True:
@@ -145,15 +144,3 @@ class CaptureBuffer:
 
     def has(self, session_id: str) -> bool:
         return session_id in self._entries
-
-
-def turns_to_conversation(turns: list[Turn]) -> list[ConversationMessage]:
-    messages: list[ConversationMessage] = []
-    for turn in turns:
-        if turn.user_query:
-            messages.append(ConversationMessage(role="user", text=turn.user_query))
-        if turn.assistant_answer:
-            messages.append(
-                ConversationMessage(role="assistant", text=turn.assistant_answer)
-            )
-    return messages

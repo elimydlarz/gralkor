@@ -1,6 +1,0 @@
-__pycache__/
-.pytest_cache/
-server/tests/
-server/pytest.ini
-server/requirements-dev.txt
-*.pyc

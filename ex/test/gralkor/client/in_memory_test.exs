@@ -30,8 +30,10 @@ defmodule Gralkor.Client.InMemoryTest do
       InMemory.set_build_indices({:ok, %{status: "stored"}})
       InMemory.set_build_communities({:ok, %{communities: 2, edges: 5}})
 
+      messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
+
       _ = InMemory.recall("g1", "s1", "q")
-      _ = InMemory.capture("s1", "g1", %{user_query: "q", assistant_answer: "a", events: []})
+      _ = InMemory.capture("s1", "g1", messages)
       _ = InMemory.memory_search("g1", "s1", "q")
       _ = InMemory.memory_add("g1", "content", "source")
       _ = InMemory.end_session("s1")
@@ -40,10 +42,7 @@ defmodule Gralkor.Client.InMemoryTest do
       _ = InMemory.build_communities("g1")
 
       assert InMemory.recalls() == [["g1", "s1", "q"]]
-
-      assert InMemory.captures() == [
-               ["s1", "g1", %{user_query: "q", assistant_answer: "a", events: []}]
-             ]
+      assert InMemory.captures() == [["s1", "g1", messages]]
 
       assert InMemory.searches() == [["g1", "s1", "q"]]
       assert InMemory.adds() == [["g1", "content", "source"]]
@@ -59,7 +58,7 @@ defmodule Gralkor.Client.InMemoryTest do
       assert {:error, :not_configured} = InMemory.recall("g1", "s1", "q")
 
       assert {:error, :not_configured} =
-               InMemory.capture("s1", "g1", %{user_query: "q", assistant_answer: "a", events: []})
+               InMemory.capture("s1", "g1", [Gralkor.Message.new("user", "q")])
 
       assert {:error, :not_configured} = InMemory.memory_search("g1", "s1", "q")
       assert {:error, :not_configured} = InMemory.memory_add("g1", "c", nil)

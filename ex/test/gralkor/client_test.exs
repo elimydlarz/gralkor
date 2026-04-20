@@ -19,26 +19,26 @@ defmodule Gralkor.ClientTest do
 
   describe "impl" do
     test "defaults to Client.HTTP when no config is set" do
-      previous = Application.get_env(:gralkor, :client)
-      Application.delete_env(:gralkor, :client)
+      previous = Application.get_env(:gralkor_ex, :client)
+      Application.delete_env(:gralkor_ex, :client)
 
       try do
         assert Client.impl() == Gralkor.Client.HTTP
       after
-        if previous, do: Application.put_env(:gralkor, :client, previous)
+        if previous, do: Application.put_env(:gralkor_ex, :client, previous)
       end
     end
 
     test "uses the configured client when set" do
-      previous = Application.get_env(:gralkor, :client)
-      Application.put_env(:gralkor, :client, Gralkor.Client.InMemory)
+      previous = Application.get_env(:gralkor_ex, :client)
+      Application.put_env(:gralkor_ex, :client, Gralkor.Client.InMemory)
 
       try do
         assert Client.impl() == Gralkor.Client.InMemory
       after
         if previous,
-          do: Application.put_env(:gralkor, :client, previous),
-          else: Application.delete_env(:gralkor, :client)
+          do: Application.put_env(:gralkor_ex, :client, previous),
+          else: Application.delete_env(:gralkor_ex, :client)
       end
     end
   end

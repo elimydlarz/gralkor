@@ -33,12 +33,16 @@ defmodule Gralkor.Client.HTTPTest do
       assert %{
                "session_id" => _,
                "group_id" => _,
-               "turn" => %{
-                 "user_query" => _,
-                 "assistant_answer" => _,
-                 "events" => _
-               }
+               "messages" => messages
              } = body
+
+      assert is_list(messages)
+
+      for msg <- messages do
+        assert %{"role" => role, "content" => content} = msg
+        assert role in ["user", "assistant", "behaviour"]
+        assert is_binary(content)
+      end
 
       Plug.Conn.send_resp(conn, 204, "")
     end)
@@ -167,19 +171,19 @@ defmodule Gralkor.Client.HTTPTest do
 
   describe "if the app env is missing" do
     test "the call raises" do
-      previous = Application.get_env(:gralkor, :client_http)
-      Application.delete_env(:gralkor, :client_http)
+      previous = Application.get_env(:gralkor_ex, :client_http)
+      Application.delete_env(:gralkor_ex, :client_http)
 
       try do
         assert_raise ArgumentError, fn -> HTTP.recall("g1", "s1", "q") end
       after
-        Application.put_env(:gralkor, :client_http, previous)
+        Application.put_env(:gralkor_ex, :client_http, previous)
       end
     end
   end
 
-  describe "when capture/3 is given events containing Elixir tuples" do
-    test "tuples are normalised to lists before JSON encoding (no Jason crash)" do
+  describe "capture/3 wire shape" do
+    test "serialises Gralkor.Message structs to {role, content} JSON" do
       parent = self()
 
       stub(fn conn ->
@@ -188,33 +192,21 @@ defmodule Gralkor.Client.HTTPTest do
         Plug.Conn.send_resp(conn, 204, "")
       end)
 
-      turn = %{
-        user_query: "q",
-        assistant_answer: "a",
-        events: [
-          %{
-            kind: :tool_completed,
-            data: %{
-              tool_name: "memory_search",
-              result: {:ok, %{result: "Facts: (none)"}}
-            }
-          },
-          %{
-            kind: :tool_completed,
-            data: %{
-              tool_name: "memory_add",
-              result: {:error, %{reason: :timeout}}
-            }
-          }
-        ]
-      }
+      messages = [
+        Gralkor.Message.new("user", "hello"),
+        Gralkor.Message.new("behaviour", "thought: considering"),
+        Gralkor.Message.new("assistant", "hi!")
+      ]
 
-      assert :ok = HTTP.capture("s1", "g1", turn)
+      assert :ok = HTTP.capture("s1", "g1", messages)
 
       assert_receive {:body, body}
-      [first, second] = body["turn"]["events"]
-      assert first["data"]["result"] == ["ok", %{"result" => "Facts: (none)"}]
-      assert second["data"]["result"] == ["error", %{"reason" => "timeout"}]
+
+      assert body["messages"] == [
+               %{"role" => "user", "content" => "hello"},
+               %{"role" => "behaviour", "content" => "thought: considering"},
+               %{"role" => "assistant", "content" => "hi!"}
+             ]
     end
   end
 
@@ -226,10 +218,10 @@ defmodule Gralkor.Client.HTTPTest do
     end
 
     test "capture/3 raises" do
-      turn = %{user_query: "q", assistant_answer: "a", events: []}
+      messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
 
       assert_raise ArgumentError, ~r/session_id must be a non-blank string/, fn ->
-        HTTP.capture("", "g1", turn)
+        HTTP.capture("", "g1", messages)
       end
     end
 

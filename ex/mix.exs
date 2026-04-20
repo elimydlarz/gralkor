@@ -1,12 +1,12 @@
 defmodule Gralkor.MixProject do
   use Mix.Project
 
-  @version "1.2.0"
+  @version "1.3.0"
   @source_url "https://github.com/elimydlarz/gralkor"
 
   def project do
     [
-      app: :gralkor,
+      app: :gralkor_ex,
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -49,7 +49,7 @@ defmodule Gralkor.MixProject do
 
   defp releases do
     [
-      gralkor: [
+      gralkor_ex: [
         include_executables_for: [:unix],
         applications: [runtime_tools: :permanent]
       ]

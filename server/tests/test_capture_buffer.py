@@ -1,9 +1,9 @@
 """Tree: capture-buffer (Python).
 
 Per-session_id asyncio buffer with idle flush, retry schedule, and flush_all.
-Each entry stores the group_id bound on first append, so the flush routes the
-episode to the right FalkorDB graph without the session id needing to encode it.
-Used by POST /capture to batch turns before ingestion.
+Each entry stores the group_id bound on first append plus a list of turns,
+where each turn is a list of canonical Messages. The flush routes the turn
+list to the right FalkorDB graph without the session id needing to encode it.
 """
 
 from __future__ import annotations
@@ -13,17 +13,17 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from pipelines.capture_buffer import (
-    CaptureBuffer,
-    CaptureClientError,
-    turns_to_conversation,
-)
-from pipelines.distill import Turn
-from pipelines.message_clean import ConversationMessage
+from pipelines.capture_buffer import CaptureBuffer, CaptureClientError
+from pipelines.messages import Message
 
 
-def make_turn(user: str = "q", answer: str = "a") -> Turn:
-    return Turn(user_query=user, events=[], assistant_answer=answer)
+def make_turn(user: str = "q", answer: str = "a") -> list[Message]:
+    messages: list[Message] = []
+    if user:
+        messages.append(Message(role="user", content=user))
+    if answer:
+        messages.append(Message(role="assistant", content=answer))
+    return messages
 
 
 @pytest.fixture
@@ -75,7 +75,19 @@ class TestTurnsFor:
         buffer.append("sess-1", "grp", make_turn("first"))
         buffer.append("sess-1", "grp", make_turn("second"))
         turns = buffer.turns_for("sess-1")
-        assert [t.user_query for t in turns] == ["first", "second"]
+        user_texts = [
+            m.content for turn in turns for m in turn if m.role == "user"
+        ]
+        assert user_texts == ["first", "second"]
+
+    async def test_each_turn_is_its_own_list_of_messages(self, flush_callback):
+        buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
+        buffer.append("sess-1", "grp", make_turn("q1", "a1"))
+        buffer.append("sess-1", "grp", make_turn("q2", "a2"))
+        turns = buffer.turns_for("sess-1")
+        assert len(turns) == 2
+        assert all(isinstance(turn, list) for turn in turns)
+        assert all(isinstance(m, Message) for turn in turns for m in turn)
 
     async def test_returns_empty_when_session_unknown(self, flush_callback):
         buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
@@ -186,12 +198,12 @@ class TestFlushSession:
         buffer.append("sess-1", "grp", make_turn("q1"))
         buffer.append("sess-1", "grp", make_turn("q2"))
         buffer.flush("sess-1")
-        # Callback is scheduled, not awaited.
         await asyncio.sleep(0.01)
         flush_callback.assert_awaited_once()
         args = flush_callback.await_args.args
         assert args[0] == "grp"
-        assert [t.user_query for t in args[1]] == ["q1", "q2"]
+        user_texts = [m.content for turn in args[1] for m in turn if m.role == "user"]
+        assert user_texts == ["q1", "q2"]
 
     async def test_removes_entry_immediately(self, flush_callback):
         buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=flush_callback)
@@ -208,7 +220,6 @@ class TestFlushSession:
 
         buffer = CaptureBuffer(idle_seconds=10.0, flush_callback=slow_callback)
         buffer.append("sess-1", "grp", make_turn())
-        # Must return promptly even though the callback is blocked.
         buffer.flush("sess-1")
         slow_event.set()
 
@@ -216,7 +227,6 @@ class TestFlushSession:
         buffer = CaptureBuffer(idle_seconds=0.05, flush_callback=flush_callback)
         buffer.append("sess-1", "grp", make_turn())
         buffer.flush("sess-1")
-        # If the idle timer still fires, we'd see a second callback invocation.
         await asyncio.sleep(0.1)
         assert flush_callback.await_count == 1
 
@@ -257,19 +267,3 @@ class TestFlushAll:
         buffer.append("sess-b", "grp-b", make_turn())
         await buffer.flush_all()
         assert flush_callback.await_count == 2
-
-
-class TestTurnsToConversation:
-    def test_flattens_turn_into_user_and_assistant_messages(self):
-        turns = [make_turn("hi", "hello"), make_turn("how?", "like so")]
-        msgs = turns_to_conversation(turns)
-        assert msgs == [
-            ConversationMessage(role="user", text="hi"),
-            ConversationMessage(role="assistant", text="hello"),
-            ConversationMessage(role="user", text="how?"),
-            ConversationMessage(role="assistant", text="like so"),
-        ]
-
-    def test_skips_empty_fields(self):
-        msgs = turns_to_conversation([Turn(user_query="", events=[], assistant_answer="a")])
-        assert msgs == [ConversationMessage(role="assistant", text="a")]

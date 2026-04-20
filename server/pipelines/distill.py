@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
+
+from .messages import Message
 
 if TYPE_CHECKING:
     from graphiti_core.llm_client import LLMClient
@@ -25,50 +25,41 @@ DISTILL_SYSTEM_PROMPT = (
 )
 
 
-@dataclass
-class Turn:
-    user_query: str
-    events: list[Any] = field(default_factory=list)
-    assistant_answer: str = ""
+_ROLE_LABEL: dict[str, str] = {
+    "user": "User",
+    "assistant": "Assistant",
+    "behaviour": "Agent did",
+}
 
 
 class DistillResult(BaseModel):
     behaviour: str
 
 
-def _serialize_event(event: Any) -> str:
-    if isinstance(event, str):
-        return event.strip()
-    try:
-        return json.dumps(event, default=str, ensure_ascii=False)
-    except (TypeError, ValueError):
-        return str(event)
+def _label(role: str) -> str:
+    return _ROLE_LABEL.get(role, role.capitalize())
 
 
-def _build_distill_input(turn: Turn) -> str:
-    events_text = "\n---\n".join(
-        rendered for event in turn.events if (rendered := _serialize_event(event))
-    ).strip()
-    if not events_text:
+def _build_distill_input(messages: list[Message]) -> str:
+    has_behaviour = any(m.role == "behaviour" and m.content.strip() for m in messages)
+    if not has_behaviour:
         return ""
 
-    sections: list[str] = []
-    user_text = turn.user_query.strip()
-    if user_text:
-        sections.append(f"User: {user_text}")
-    sections.append(f"Actions:\n{events_text}")
-    response_text = turn.assistant_answer.strip()
-    if response_text:
-        sections.append(f"Response: {response_text}")
-    return "\n\n".join(sections)
+    lines: list[str] = []
+    for msg in messages:
+        text = msg.content.strip()
+        if not text:
+            continue
+        lines.append(f"{_label(msg.role)}: {text}")
+    return "\n".join(lines)
 
 
 async def _distill_one(llm_client: "LLMClient", thinking: str) -> str:
-    from graphiti_core.prompts.models import Message
+    from graphiti_core.prompts.models import Message as LLMMessage
 
     prompt = [
-        Message(role="system", content=DISTILL_SYSTEM_PROMPT),
-        Message(role="user", content=thinking),
+        LLMMessage(role="system", content=DISTILL_SYSTEM_PROMPT),
+        LLMMessage(role="user", content=thinking),
     ]
     response = await llm_client.generate_response(
         prompt,
@@ -91,10 +82,10 @@ async def safe_distill(llm_client: "LLMClient", thinking: str) -> str:
 
 
 async def format_transcript(
-    turns: list[Turn],
+    turns: list[list[Message]],
     llm_client: "LLMClient | None",
 ) -> str:
-    distill_inputs = [(i, _build_distill_input(t)) for i, t in enumerate(turns)]
+    distill_inputs = [(i, _build_distill_input(turn)) for i, turn in enumerate(turns)]
     distill_inputs = [(i, text) for i, text in distill_inputs if text]
 
     summaries: dict[int, str] = {}
@@ -108,13 +99,17 @@ async def format_transcript(
 
     lines: list[str] = []
     for i, turn in enumerate(turns):
-        user_text = turn.user_query.strip()
-        if user_text:
-            lines.append(f"User: {user_text}")
+        user_texts = [m.content.strip() for m in turn if m.role == "user" and m.content.strip()]
+        for text in user_texts:
+            lines.append(f"User: {text}")
+
         summary = summaries.get(i)
         if summary:
             lines.append(f"Assistant: (behaviour: {summary})")
-        answer_text = turn.assistant_answer.strip()
-        if answer_text:
-            lines.append(f"Assistant: {answer_text}")
+
+        answer_texts = [
+            m.content.strip() for m in turn if m.role == "assistant" and m.content.strip()
+        ]
+        for text in answer_texts:
+            lines.append(f"Assistant: {text}")
     return "\n".join(lines)

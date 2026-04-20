@@ -82,14 +82,14 @@ if [[ -z "${DRY_RUN:-}" ]]; then
   [[ "$level" != "current" ]] && trap - ERR
 
   if [[ "$level" != "current" ]]; then
-    git commit --only "$mix_file" -m "ex-v$version" || \
+    git commit --only "$mix_file" -m "gralkor-ex-v$version" || \
       git diff --quiet HEAD -- "$mix_file"
   fi
-  if git rev-parse "ex-v$version" >/dev/null 2>&1; then
-    echo "Tag ex-v$version already exists — skipping"
+  if git rev-parse "gralkor-ex-v$version" >/dev/null 2>&1; then
+    echo "Tag gralkor-ex-v$version already exists — skipping"
   else
-    git tag "ex-v$version"
+    git tag "gralkor-ex-v$version"
   fi
 
-  echo "Published ex-v$version to Hex — tag created locally. Push manually: git push --follow-tags"
+  echo "Published gralkor-ex-v$version to Hex — tag created locally. Push manually: git push --follow-tags"
 fi

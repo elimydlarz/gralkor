@@ -34,11 +34,11 @@ async def test_capture_idle_flush_calls_add_episode(mock_graphiti):
                 json={
                     "session_id": "smoke-sess",
                     "group_id": "smoke-grp",
-                    "turn": {
-                        "user_query": "remember this",
-                        "events": [{"kind": "thinking", "text": "processing"}],
-                        "assistant_answer": "stored",
-                    },
+                    "messages": [
+                        {"role": "user", "content": "remember this"},
+                        {"role": "behaviour", "content": "thought: processing"},
+                        {"role": "assistant", "content": "stored"},
+                    ],
                 },
             )
             assert resp.status_code == 204
@@ -77,11 +77,11 @@ async def test_flush_logs_entry_and_success_at_info(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-flush",
                     "group_id": "flush-grp",
-                    "turn": {
-                        "user_query": "q",
-                        "events": [{"k": "thinking"}],
-                        "assistant_answer": "a",
-                    },
+                    "messages": [
+                        {"role": "user", "content": "q"},
+                        {"role": "behaviour", "content": "thought: considering"},
+                        {"role": "assistant", "content": "a"},
+                    ],
                 },
             )
             await asyncio.sleep(0.25)
@@ -116,7 +116,7 @@ async def test_flush_skips_on_empty_body(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-empty",
                     "group_id": "grp",
-                    "turn": {"user_query": "", "events": [], "assistant_answer": ""},
+                    "messages": [],
                 },
             )
             await asyncio.sleep(0.25)
@@ -148,11 +148,11 @@ async def test_flush_logs_body_at_debug(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-dbg",
                     "group_id": "grp",
-                    "turn": {
-                        "user_query": "sensitive",
-                        "events": [{"k": "t"}],
-                        "assistant_answer": "answer",
-                    },
+                    "messages": [
+                        {"role": "user", "content": "sensitive"},
+                        {"role": "behaviour", "content": "thought: x"},
+                        {"role": "assistant", "content": "answer"},
+                    ],
                 },
             )
             await asyncio.sleep(0.25)
@@ -190,7 +190,10 @@ async def test_lifespan_flush_all_drains_buffer(mock_graphiti):
                 json={
                     "session_id": "sess-drain",
                     "group_id": "grp",
-                    "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
+                    "messages": [
+                        {"role": "user", "content": "q"},
+                        {"role": "assistant", "content": "a"},
+                    ],
                 },
             )
 

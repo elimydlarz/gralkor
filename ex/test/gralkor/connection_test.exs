@@ -5,14 +5,14 @@ defmodule Gralkor.ConnectionTest do
   alias Gralkor.Connection
 
   setup do
-    previous = Application.get_env(:gralkor, :client)
-    Application.put_env(:gralkor, :client, InMemory)
+    previous = Application.get_env(:gralkor_ex, :client)
+    Application.put_env(:gralkor_ex, :client, InMemory)
     start_supervised!(InMemory)
 
     on_exit(fn ->
       if previous,
-        do: Application.put_env(:gralkor, :client, previous),
-        else: Application.delete_env(:gralkor, :client)
+        do: Application.put_env(:gralkor_ex, :client, previous),
+        else: Application.delete_env(:gralkor_ex, :client)
     end)
 
     :ok

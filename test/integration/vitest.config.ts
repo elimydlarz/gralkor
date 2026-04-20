@@ -1,9 +1,0 @@
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    reporters: ["tree"],
-    include: ["**/*.integration.test.ts"],
-    exclude: ["test/harness/**", "node_modules/**"],
-  },
-});

@@ -18,7 +18,10 @@ async def test_returns_204_for_session_with_buffered_turns(client, mock_graphiti
         json={
             "session_id": "sess-end-1",
             "group_id": "grp",
-            "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
+            "messages": [
+                {"role": "user", "content": "q"},
+                {"role": "assistant", "content": "a"},
+            ],
         },
     )
     assert main_mod.capture_buffer.has("sess-end-1")
@@ -35,7 +38,10 @@ async def test_removes_entry_from_buffer(client, mock_graphiti):
         json={
             "session_id": "sess-end-2",
             "group_id": "grp",
-            "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
+            "messages": [
+                {"role": "user", "content": "q"},
+                {"role": "assistant", "content": "a"},
+            ],
         },
     )
     await client.post("/session_end", json={"session_id": "sess-end-2"})
@@ -63,7 +69,10 @@ async def test_logs_session_end_at_info(client, mock_graphiti, caplog):
         json={
             "session_id": "sess-log",
             "group_id": "grp",
-            "turn": {"user_query": "q", "events": [], "assistant_answer": "a"},
+            "messages": [
+                {"role": "user", "content": "q"},
+                {"role": "assistant", "content": "a"},
+            ],
         },
     )
     caplog.set_level(logging.INFO, logger="main")
