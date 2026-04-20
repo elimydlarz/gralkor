@@ -222,6 +222,8 @@ format-transcript (Python)
 POST /tools/memory_search endpoint
   request shape
     then body is {session_id, group_id, query, max_results, max_entity_results}
+  if session_id is missing or blank
+    then 422 is returned (Gralkor requires a non-blank session_id)
   then group_id is sanitized before use
   then driver is routed to target graph before search
   then uses slow mode (graphiti.search_) with COMBINED_HYBRID_SEARCH_CROSS_ENCODER
