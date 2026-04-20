@@ -473,7 +473,7 @@ class SessionEndRequest(BaseModel):
 
 
 class MemorySearchRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(min_length=1)
     group_id: str
     query: str
     max_results: int = 20
