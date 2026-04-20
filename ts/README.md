@@ -2,7 +2,7 @@
 
 TypeScript adapter for [Gralkor](https://github.com/elimydlarz/gralkor) — a temporally-aware knowledge-graph memory service (Graphiti + FalkorDB) wrapped as a Python/FastAPI server.
 
-Gives you an HTTP client, an in-memory test twin, a boot-readiness helper, and a Python-subprocess server manager. Mirror of the `:gralkor` Hex package for the BEAM. For OpenClaw agents use [`@susu-eng/gralkor`](https://www.npmjs.com/package/@susu-eng/gralkor); this package is what it builds on.
+Gives you an HTTP client, an in-memory test twin, a boot-readiness helper, and a Python-subprocess server manager. Mirror of the `:gralkor` Hex package for the BEAM. For OpenClaw agents use [`@susu-eng/openclaw-gralkor`](https://www.npmjs.com/package/@susu-eng/openclaw-gralkor); this package is what it builds on.
 
 ## Install
 
@@ -74,7 +74,7 @@ expect(client.recalls).toEqual([["my_group", "session-abc", "query"]]);
 
 This package is a **thin adapter**. It doesn't know about auto-recall, auto-capture, tools, agents, ReAct, or any harness-specific concepts. All of those live in the consumer:
 
-- **OpenClaw agents** → [`@susu-eng/gralkor`](https://www.npmjs.com/package/@susu-eng/gralkor)
+- **OpenClaw agents** → [`@susu-eng/openclaw-gralkor`](https://www.npmjs.com/package/@susu-eng/openclaw-gralkor)
 - **Jido (BEAM) agents** → [`:jido_gralkor` on Hex](https://hex.pm/packages/jido_gralkor) (uses the BEAM-side `:gralkor`, not this one)
 
 Capture buffering, idle flush, per-turn distillation, and LLM interpretation all happen server-side. This adapter just posts turns and fetches recall results.

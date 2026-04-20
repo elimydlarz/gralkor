@@ -13,12 +13,12 @@ function readVersion(mixFile: string): string {
   return m[1];
 }
 
-describe("publish-hex-version-integrity", () => {
+describe("publish-ex-version-integrity", () => {
   let tempDir: string;
   let mixFile: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "gralkor-publish-hex-"));
+    tempDir = mkdtempSync(join(tmpdir(), "gralkor-publish-ex-"));
     mkdirSync(join(tempDir, "ex"));
     mkdirSync(join(tempDir, "scripts"));
     cpSync(
@@ -26,8 +26,8 @@ describe("publish-hex-version-integrity", () => {
       join(tempDir, "ex/mix.exs"),
     );
     cpSync(
-      join(PROJECT_ROOT, "scripts/publish-hex.sh"),
-      join(tempDir, "scripts/publish-hex.sh"),
+      join(PROJECT_ROOT, "scripts/publish-ex.sh"),
+      join(tempDir, "scripts/publish-ex.sh"),
     );
     mixFile = join(tempDir, "ex/mix.exs");
 
@@ -52,7 +52,7 @@ describe("publish-hex-version-integrity", () => {
     it("then @version is bumped in ex/mix.exs", () => {
       const before = readVersion(mixFile);
 
-      execSync("bash scripts/publish-hex.sh patch", {
+      execSync("bash scripts/publish-ex.sh patch", {
         cwd: tempDir,
         env: {
           ...process.env,
@@ -70,7 +70,7 @@ describe("publish-hex-version-integrity", () => {
     });
 
     it("and a git tag ex-v${version} is created for the new version", () => {
-      execSync("bash scripts/publish-hex.sh patch", {
+      execSync("bash scripts/publish-ex.sh patch", {
         cwd: tempDir,
         env: {
           ...process.env,
@@ -95,7 +95,7 @@ describe("publish-hex-version-integrity", () => {
       const before = readVersion(mixFile);
 
       try {
-        execSync("bash scripts/publish-hex.sh patch", {
+        execSync("bash scripts/publish-ex.sh patch", {
           cwd: tempDir,
           env: { ...process.env, PUBLISH_HEX_WHOAMI_CMD: "false" },
           stdio: "ignore",
@@ -115,7 +115,7 @@ describe("publish-hex-version-integrity", () => {
       const before = readVersion(mixFile);
 
       try {
-        execSync("bash scripts/publish-hex.sh patch", {
+        execSync("bash scripts/publish-ex.sh patch", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -133,7 +133,7 @@ describe("publish-hex-version-integrity", () => {
 
     it("and no git tag is created", () => {
       try {
-        execSync("bash scripts/publish-hex.sh patch", {
+        execSync("bash scripts/publish-ex.sh patch", {
           cwd: tempDir,
           env: {
             ...process.env,
@@ -157,7 +157,7 @@ describe("publish-hex-version-integrity", () => {
 
       for (let i = 0; i < 3; i++) {
         try {
-          execSync("bash scripts/publish-hex.sh patch", {
+          execSync("bash scripts/publish-ex.sh patch", {
             cwd: tempDir,
             env: {
               ...process.env,
@@ -179,7 +179,7 @@ describe("publish-hex-version-integrity", () => {
     it("then @version is bumped in ex/mix.exs", () => {
       const before = readVersion(mixFile);
 
-      execSync("bash scripts/publish-hex.sh patch", {
+      execSync("bash scripts/publish-ex.sh patch", {
         cwd: tempDir,
         env: { ...process.env, DRY_RUN: "1" },
         stdio: "ignore",
@@ -190,7 +190,7 @@ describe("publish-hex-version-integrity", () => {
 
     it("and publish is skipped and no git tag is created", () => {
       expect(() =>
-        execSync("bash scripts/publish-hex.sh patch", {
+        execSync("bash scripts/publish-ex.sh patch", {
           cwd: tempDir,
           env: { ...process.env, DRY_RUN: "1" },
           stdio: "ignore",
@@ -206,7 +206,7 @@ describe("publish-hex-version-integrity", () => {
     it("then @version is not incremented but a git tag is created", () => {
       const before = readVersion(mixFile);
 
-      execSync("bash scripts/publish-hex.sh current", {
+      execSync("bash scripts/publish-ex.sh current", {
         cwd: tempDir,
         env: {
           ...process.env,
@@ -229,7 +229,7 @@ describe("publish-hex-version-integrity", () => {
       const before = readVersion(mixFile);
 
       try {
-        execSync("bash scripts/publish-hex.sh current", {
+        execSync("bash scripts/publish-ex.sh current", {
           cwd: tempDir,
           env: {
             ...process.env,

@@ -37,7 +37,8 @@
     "pack": "bash scripts/pack.sh",
     "publish:npm": "bash scripts/publish-npm.sh",
     "publish:clawhub": "bash scripts/publish-clawhub.sh",
-    "publish:hex": "bash scripts/publish-hex.sh",
+    "publish:ex": "bash scripts/publish-ex.sh",
+    "publish:ts": "bash scripts/publish-ts.sh",
     "publish:all": "bash scripts/publish-all.sh"
   },
   "files": [

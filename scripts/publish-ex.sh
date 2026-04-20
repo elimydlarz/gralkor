@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 level="${1:-}"
 if [[ -z "$level" || ! "$level" =~ ^(major|minor|patch|current)$ ]]; then
-  echo "Usage: pnpm run publish:hex -- <major|minor|patch|current>" >&2
+  echo "Usage: pnpm run publish:ex -- <major|minor|patch|current>" >&2
   exit 1
 fi
 

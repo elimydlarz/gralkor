@@ -1056,7 +1056,7 @@ publish-all
     then clawhub publish does not run
   when npm publish succeeds but clawhub publish fails
     then a recovery hint is printed directing the user to run publish:clawhub current
-publish-hex-version-integrity
+publish-ex-version-integrity
   when publish succeeds
     then @version is bumped in ex/mix.exs
     and a git tag ex-v${version} is created for the new version (push manually)
