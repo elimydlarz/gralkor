@@ -463,7 +463,7 @@ class DistillResponse(BaseModel):
 
 
 class CaptureRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(min_length=1)
     group_id: str
     messages: list[Message]
 
