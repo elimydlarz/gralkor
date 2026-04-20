@@ -12,6 +12,29 @@ import logging
 import main as main_mod
 
 
+async def test_rejects_blank_session_id(client, mock_graphiti):
+    resp = await client.post(
+        "/capture",
+        json={
+            "session_id": "",
+            "group_id": "grp",
+            "messages": [{"role": "user", "content": "q"}],
+        },
+    )
+    assert resp.status_code == 422
+
+
+async def test_rejects_missing_session_id(client, mock_graphiti):
+    resp = await client.post(
+        "/capture",
+        json={
+            "group_id": "grp",
+            "messages": [{"role": "user", "content": "q"}],
+        },
+    )
+    assert resp.status_code == 422
+
+
 async def test_returns_204(client, mock_graphiti):
     resp = await client.post(
         "/capture",
