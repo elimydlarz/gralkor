@@ -843,6 +843,75 @@ ex-orphan-reaper
   (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash)
 ```
 
+## TypeScript Client
+
+```
+ts-client (port contract, shared)
+  when recall(group_id, session_id, query) is called
+    when the backend has a memory block
+      then { ok: block } is returned
+    when the backend has no memory
+      then { ok: null } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when capture(session_id, group_id, turn) is called
+    when the backend acknowledges the capture
+      then { ok: true } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when endSession(session_id) is called
+    when the backend acknowledges the end
+      then { ok: true } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when memorySearch(group_id, session_id, query) is called
+    when the backend returns results
+      then { ok: text } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when memoryAdd(group_id, content, source_description) is called
+    when the backend acknowledges the add
+      then { ok: true } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when healthCheck() is called
+    when the backend is healthy
+      then { ok: true } is returned
+    if the backend fails
+      then { error: reason } is returned
+ts-sanitize-group-id
+  when the id contains hyphens
+    then hyphens are replaced with underscores
+  when the id has consecutive hyphens
+    then each hyphen is replaced independently
+  when the id has no hyphens
+    then it is returned unchanged
+ts-client-http
+  then no Authorization header is attached to any request
+  if Gralkor responds with a non-2xx status
+    then { error: { kind: "http_status", status, body } } is returned
+  if session_id is blank on recall/capture/memorySearch/endSession
+    then the call throws (Gralkor requires a non-blank session_id)
+  then automatic retries are disabled — every failure surfaces on the first attempt (matches the Elixir adapter's retry: false)
+  then per-endpoint timeouts are applied: /health 2s, /recall + /capture + /session_end + /tools/memory_search 5s/5s/5s/10s, /tools/memory_add 60s
+  runs the shared ts-client port contract (via test/contract/gralkor-client.contract.ts)
+ts-client-in-memory
+  when an operation is called
+    then the call is recorded with its arguments for later inspection
+  if no response is configured for an operation
+    then { error: "not_configured" } is returned
+  when reset() is called
+    then configured responses and recorded calls are cleared
+  runs the shared ts-client port contract (via test/contract/gralkor-client.contract.ts)
+ts-connection
+  when waitForHealth(client, opts) is called
+    then client.healthCheck() is polled until it resolves ok or the timeout elapses
+    if the backend does not respond healthy within the timeout
+      then the promise rejects so the caller can decide whether to retry or fail
+  after ready
+    then no further polling is scheduled — runtime outages surface on the next actual call
+```
+
 ## Functional Journey
 
 ```

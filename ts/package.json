@@ -1,0 +1,57 @@
+{
+  "name": "@susu-eng/gralkor-ts",
+  "version": "0.1.0",
+  "description": "TypeScript adapter for the Gralkor memory server — HTTP client, in-memory test twin, and boot-readiness helper. Mirror of the :gralkor Hex package for the BEAM.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/elimydlarz/gralkor.git",
+    "directory": "ts"
+  },
+  "homepage": "https://github.com/elimydlarz/gralkor#readme",
+  "bugs": {
+    "url": "https://github.com/elimydlarz/gralkor/issues"
+  },
+  "author": "susu-eng",
+  "license": "MIT",
+  "keywords": [
+    "gralkor",
+    "memory",
+    "knowledge-graph",
+    "graphiti",
+    "falkordb"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
+  }
+}
