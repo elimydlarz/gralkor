@@ -7,8 +7,8 @@ defmodule Gralkor.OrphanReaper do
   refuses to clean up foreign holders and crashes.
 
   Rationale: a BEAM abort (Ctrl+C → `a`, SIGKILL, crash) doesn't reliably
-  run `Gralkor.Server.terminate/2`, which is the only path that SIGTERMs
-  the uvicorn OS pid. So aborts sometimes leave uvicorn orphaned
+  run Gralkor.Server's graceful-shutdown path, which is the only path
+  that SIGTERMs the uvicorn OS pid. So aborts sometimes leave uvicorn orphaned
   (reparented to launchd) with port 4000 still bound. The reaper looks
   for such an orphan, verifies it is ours (command line contains
   `gralkor/priv/server`), and SIGKILLs it. If the holder is anything
