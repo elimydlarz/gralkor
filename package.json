@@ -38,8 +38,7 @@
     "publish:npm": "bash scripts/publish-npm.sh",
     "publish:clawhub": "bash scripts/publish-clawhub.sh",
     "publish:ex": "bash scripts/publish-ex.sh",
-    "publish:ts": "bash scripts/publish-ts.sh",
-    "publish:all": "bash scripts/publish-all.sh"
+    "publish:ts": "bash scripts/publish-ts.sh"
   },
   "files": [
     "dist",
