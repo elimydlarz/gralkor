@@ -18,11 +18,11 @@ from fastapi import APIRouter, FastAPI, HTTPException, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, create_model
 
-from pipelines.capture_buffer import CaptureBuffer, CaptureClientError, turns_to_conversation
-from pipelines.distill import Turn, format_transcript
+from pipelines.capture_buffer import CaptureBuffer, CaptureClientError
+from pipelines.distill import format_transcript
 from pipelines.formatting import format_fact, format_node
 from pipelines.interpret import interpret_facts
-from pipelines.message_clean import ConversationMessage
+from pipelines.messages import Message
 
 
 
@@ -378,7 +378,7 @@ CAPTURE_IDLE_SECONDS_DEFAULT = 300.0
 capture_buffer: CaptureBuffer | None = None
 
 
-async def _capture_flush(group_id: str, turns: list[Turn]) -> None:
+async def _capture_flush(group_id: str, turns: list[list[Message]]) -> None:
     if graphiti is None:
         return
     t0 = time.monotonic()
@@ -444,7 +444,7 @@ class GroupIdRequest(BaseModel):
 
 
 class RecallRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(min_length=1)
     group_id: str
     query: str
     max_results: int = 10
@@ -454,14 +454,8 @@ class RecallResponse(BaseModel):
     memory_block: str
 
 
-class TurnBody(BaseModel):
-    user_query: str
-    events: list[Any] = Field(default_factory=list)
-    assistant_answer: str
-
-
 class DistillRequest(BaseModel):
-    turns: list[TurnBody]
+    turns: list[list[Message]]
 
 
 class DistillResponse(BaseModel):
@@ -471,7 +465,7 @@ class DistillResponse(BaseModel):
 class CaptureRequest(BaseModel):
     session_id: str
     group_id: str
-    turn: TurnBody
+    messages: list[Message]
 
 
 class SessionEndRequest(BaseModel):
@@ -549,26 +543,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _turn_body_to_turn(body: TurnBody) -> Turn:
-    return Turn(
-        user_query=body.user_query,
-        events=list(body.events),
-        assistant_answer=body.assistant_answer,
-    )
-
-
-def _elide_tokens(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {k: "[...]" if k == "token" else _elide_tokens(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_elide_tokens(v) for v in value]
-    return value
-
-
-def _conversation_for_session(session_id: str) -> list[ConversationMessage]:
+def _conversation_for_session(session_id: str) -> list[Message]:
     if capture_buffer is None:
         return []
-    return turns_to_conversation(capture_buffer.turns_for(session_id))
+    flat: list[Message] = []
+    for turn in capture_buffer.turns_for(session_id):
+        flat.extend(turn)
+    return flat
 
 
 FURTHER_QUERYING_INSTRUCTION = (
@@ -784,8 +765,7 @@ async def recall(req: RecallRequest) -> RecallResponse:
 
 @router.post("/distill", response_model=DistillResponse)
 async def distill(req: DistillRequest) -> DistillResponse:
-    turns = [_turn_body_to_turn(t) for t in req.turns]
-    episode_body = await format_transcript(turns, graphiti.llm_client if graphiti else None)
+    episode_body = await format_transcript(req.turns, graphiti.llm_client if graphiti else None)
     return DistillResponse(episode_body=episode_body)
 
 
@@ -794,10 +774,9 @@ async def capture(req: CaptureRequest) -> Response:
     if capture_buffer is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
     sanitized = _sanitize_group_id(req.group_id)
-    turn = _turn_body_to_turn(req.turn)
-    capture_buffer.append(req.session_id, sanitized, turn)
-    logger.debug("[gralkor] [test] capture turn: user_query=%s events=%s assistant_answer=%s",
-                 turn.user_query, _elide_tokens(turn.events), turn.assistant_answer)
+    capture_buffer.append(req.session_id, sanitized, req.messages)
+    logger.debug("[gralkor] [test] capture messages: %s",
+                 [(m.role, m.content) for m in req.messages])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
