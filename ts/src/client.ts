@@ -26,10 +26,11 @@ export function isErr<T, E>(r: Result<T, E>): r is { error: E } {
   return "error" in r;
 }
 
-export interface Turn {
-  user_query: string;
-  assistant_answer: string;
-  events: unknown[];
+export type Role = "user" | "assistant" | "behaviour";
+
+export interface Message {
+  role: Role;
+  content: string;
 }
 
 export interface GralkorClient {
@@ -44,7 +45,7 @@ export interface GralkorClient {
   capture(
     sessionId: string,
     groupId: string,
-    turn: Turn,
+    messages: Message[],
   ): Promise<Result<true>>;
 
   /** Flushes the session's buffer now; returns immediately (server handles the write async). */
