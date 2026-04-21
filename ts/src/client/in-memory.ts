@@ -57,8 +57,8 @@ export class GralkorInMemoryClient implements GralkorClient {
     return this.respond("recall");
   }
 
-  async capture(sessionId: string, groupId: string, turn: Turn): Promise<Result<true>> {
-    this.captures.push([sessionId, groupId, turn]);
+  async capture(sessionId: string, groupId: string, messages: Message[]): Promise<Result<true>> {
+    this.captures.push([sessionId, groupId, messages]);
     return this.respond("capture");
   }
 
