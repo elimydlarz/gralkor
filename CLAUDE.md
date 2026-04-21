@@ -61,9 +61,9 @@ Both compilers wipe the destination first (so transient files like `.venv`, `__p
 FastAPI app in `main.py`. Pipelines live under `server/pipelines/`.
 
 - `pipelines/formatting.py` — `format_fact`, `format_node`, `format_timestamp`.
-- `pipelines/message_clean.py` — `clean_user_message_text`, `strip_gralkor_memory_xml`, `build_interpretation_context` (token-budgeted; oldest dropped first).
-- `pipelines/interpret.py` — `interpret_facts(messages, facts_text, llm_client)`; Pydantic `InterpretResult` as `response_model` so all providers (Gemini/OpenAI/Anthropic/Groq) return `{"text": …}` consistently.
-- `pipelines/distill.py` — `format_transcript(turns, llm_client)`, `safe_distill`. Uses `DistillResult` response_model. `Turn.events` is `list[Any]` — consumer sends whatever event shape it has; the renderer JSON-serialises each event into the distill prompt.
+- `pipelines/messages.py` — canonical `Message` Pydantic model (role ∈ `{"user", "assistant", "behaviour"}`, `content: str`). Single shape crossing the port; roles `user` / `assistant` are transcript text, `behaviour` is whatever harness-internal activity the adapter rolled up (thinking, tool calls, tool results) rendered as a string.
+- `pipelines/interpret.py` — `interpret_facts(messages, facts_text, llm_client)` + `build_interpretation_context` (token-budgeted; oldest dropped first, role labels applied). Pydantic `InterpretResult` as `response_model` so all providers (Gemini/OpenAI/Anthropic/Groq) return `{"text": …}` consistently.
+- `pipelines/distill.py` — `format_transcript(turns, llm_client)`, `safe_distill`. Uses `DistillResult` response_model. Input is `list[list[Message]]` — a list of turns, each turn a list of canonical Messages; the distiller reads any `behaviour` messages per turn and rolls them into a first-person past-tense summary.
 - `pipelines/capture_buffer.py` — asyncio `CaptureBuffer` keyed by `session_id`. `loop.call_later` idle timer, retry schedule 1s/2s/4s (4xx not retried via `CaptureClientError`), `flush_all` drains on lifespan shutdown. `flush(session_id)` cancels the entry's idle timer and schedules the same retry-backed flush synchronously — used by `/session_end`.
 
 Endpoints:
