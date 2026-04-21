@@ -142,6 +142,7 @@ Full contract in [TEST_TREES.md](./TEST_TREES.md). Sections:
 - **Startup** — `ex-server-lifecycle`, `ex-config-writing`, `ts-server-manager`, `ts-bundle-server`.
 - **Configuration** — `validateOntologyConfig` (ts/), `server-config-defaults`, `cross-encoder-selection`.
 - **Operations** — `/health`, `rate-limit-retry`, `driver-lock-serialization`, `downstream-error-handling`.
+- **Timeouts** — `client-timeouts` (shared adapter contract: retry-disabled, per-endpoint receive windows, admin-no-deadline).
 - **Elixir Client** — `ex-client`, `ex-sanitize-group-id`, `ex-impl-resolver`, `ex-client-http`, `ex-client-in-memory`, `ex-connection`, `ex-orphan-reaper`.
 - **TypeScript Client** — mirror of the Elixir Client section for `ts/`.
 - **Functional Journey** — `jido-memory-journey` (Elixir-driven end-to-end with real LLM + falkordblite).
