@@ -26,6 +26,10 @@ describe("bundle-server.mjs", () => {
     dest = join(workDir, "out");
   });
 
+  afterEach(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
   it("copies the source tree into the destination", async () => {
     mkdirSync(src, { recursive: true });
     writeFileSync(join(src, "main.py"), "print('hi')");
@@ -36,7 +40,6 @@ describe("bundle-server.mjs", () => {
 
     expect(readFileSync(join(dest, "main.py"), "utf-8")).toBe("print('hi')");
     expect(readFileSync(join(dest, "pipelines", "interpret.py"), "utf-8")).toBe("x = 1");
-    rmSync(workDir, { recursive: true, force: true });
   });
 
   it("wipes the destination before copying so stale files are removed", async () => {
@@ -49,7 +52,6 @@ describe("bundle-server.mjs", () => {
 
     expect(existsSync(join(dest, "new.py"))).toBe(true);
     expect(existsSync(join(dest, "stale.py"))).toBe(false);
-    rmSync(workDir, { recursive: true, force: true });
   });
 
   it.each([".venv", ".pytest_cache", "__pycache__", "wheels", "tests", "mutants", "tmp"])(
@@ -64,7 +66,6 @@ describe("bundle-server.mjs", () => {
 
       expect(existsSync(join(dest, "keep.py"))).toBe(true);
       expect(existsSync(join(dest, skipDir))).toBe(false);
-      rmSync(workDir, { recursive: true, force: true });
     },
   );
 
@@ -77,12 +78,10 @@ describe("bundle-server.mjs", () => {
 
     expect(existsSync(join(dest, "keep.py"))).toBe(true);
     expect(existsSync(join(dest, "drop.pyc"))).toBe(false);
-    rmSync(workDir, { recursive: true, force: true });
   });
 
   it("exits non-zero when the source does not exist", async () => {
     const missing = join(workDir, "does-not-exist");
     await expect(runBundleServer(missing, dest)).rejects.toMatchObject({ code: 1 });
-    rmSync(workDir, { recursive: true, force: true });
   });
 });
