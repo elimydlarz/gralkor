@@ -308,6 +308,29 @@ function providerSection(key: "llm" | "embedder", cfg: ModelConfig | undefined):
   return `${key}:\n  provider: "${cfg.provider}"\n  model: "${cfg.model}"`;
 }
 
+/**
+ * Build the `config.yaml` contents for the Python server.
+ *
+ * Sections are emitted only when the consumer passes that piece of config.
+ * When `llmConfig` / `embedderConfig` are omitted, the corresponding blocks
+ * are absent from the YAML and the server falls back to its own defaults in
+ * `server/main.py` — the single source of truth for model choice.
+ */
+export function buildConfigYaml(opts: {
+  llmConfig?: ModelConfig;
+  embedderConfig?: ModelConfig;
+  ontologyConfig?: OntologyConfig;
+  test?: boolean;
+}): string {
+  const sections: string[] = [
+    providerSection("llm", opts.llmConfig),
+    providerSection("embedder", opts.embedderConfig),
+  ].filter((s) => s !== "");
+  if (opts.test) sections.push("test: true");
+  if (opts.ontologyConfig) sections.push(serializeOntologyYaml(opts.ontologyConfig).trimEnd());
+  return sections.length === 0 ? "" : sections.join("\n") + "\n";
+}
+
 function yamlQuote(s: string): string {
   if (/[:#{}[\]|>&*!%@`]/.test(s) || s !== s.trim()) {
     return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
