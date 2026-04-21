@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { validateOntologyConfig } from "../src/config.js";
+import {
+  PROTECTED_EDGE_ATTRS,
+  PROTECTED_ENTITY_ATTRS,
+  RESERVED_ENTITY_NAMES,
+  validateOntologyConfig,
+} from "../src/config.js";
 
 describe("validateOntologyConfig", () => {
   it("accepts undefined ontology", () => {
