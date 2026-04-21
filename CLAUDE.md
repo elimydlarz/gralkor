@@ -96,7 +96,7 @@ Endpoints:
 
 ## Elixir adapter (`ex/`)
 
-Published as `:gralkor_ex` on Hex (renamed from `:gralkor` at 1.3.0 for naming symmetry with `@susu-eng/gralkor-ts`; module namespace `Gralkor.*` unchanged).
+Published as `:gralkor_ex` on Hex. The package name was renamed from `:gralkor` at 1.3.0 so the published packages on either side carry matching `gralkor_ex` / `@susu-eng/gralkor-ts` names — version streams are independent (the npm package is at 1.0.0; the Hex package is at 2.0.0). Module namespace `Gralkor.*` is unchanged.
 
 Modules:
 

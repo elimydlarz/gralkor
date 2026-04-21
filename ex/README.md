@@ -2,7 +2,7 @@
 
 OTP supervisor + HTTP client for [Gralkor](https://github.com/elimydlarz/gralkor) — a temporally-aware knowledge-graph memory service (Graphiti + FalkorDB) wrapped as a Python/FastAPI server.
 
-> **Renamed from `:gralkor`.** The Hex package was renamed `:gralkor → :gralkor_ex` at v1.3.0 to match the npm side's `@susu-eng/gralkor-ts` and make the naming symmetric: both are adapters with their language suffix, and both depend on the shared `gralkor/server/` Python core. Old `:gralkor` is retired on Hex with a pointer here. Update: `{:gralkor_ex, "~> 1.3"}`; module names (`Gralkor.Client`, `Gralkor.Server`, etc.) are unchanged.
+> **Renamed from `:gralkor`.** The Hex package was renamed `:gralkor → :gralkor_ex` at v1.3.0 so the published packages on either side carry matching `gralkor_ex` / `@susu-eng/gralkor-ts` names — both are adapters with their language suffix, and both depend on the shared `gralkor/server/` Python core. Version streams are independent (this Hex package is at 2.0.0; the npm package is at 1.0.0). Old `:gralkor` is retired on Hex with a pointer here. Update: `{:gralkor_ex, "~> 2.0"}`; module names (`Gralkor.Client`, `Gralkor.Server`, etc.) are unchanged.
 
 Embed `Gralkor.Server` in your Jido (or any Elixir) supervision tree. The GenServer spawns the Python server as a Port, polls `/health` during boot, monitors it, and handles graceful shutdown. Your application talks to it over HTTP on a loopback port.
 
@@ -21,7 +21,7 @@ The Python source ships inside the package (`priv/server/`); no separate clone o
 ```elixir
 def deps do
   [
-    {:gralkor_ex, "~> 1.3"}
+    {:gralkor_ex, "~> 2.0"}
   ]
 end
 ```
@@ -42,7 +42,7 @@ The package ships:
 
 ## Install into a non-Jido consumer
 
-1. Add `{:gralkor_ex, "~> 1.3"}` to your deps.
+1. Add `{:gralkor_ex, "~> 2.0"}` to your deps.
 
 2. **Do not supervise `Gralkor.Server` yourself.** The `:gralkor_ex` application already does when `GRALKOR_DATA_DIR` is set. Double-supervising raises `already started`.
 

@@ -34,11 +34,15 @@ export interface Message {
 }
 
 export interface GralkorClient {
-  /** Returns the memory block for this session, or null if there is no memory. */
+  /**
+   * Returns the memory block for this session, or null if there is no memory.
+   * `maxResults` overrides the server's default (10); omit to use the server default.
+   */
   recall(
     groupId: string,
     sessionId: string,
     query: string,
+    maxResults?: number,
   ): Promise<Result<string | null>>;
 
   /** Buffers a turn on the server; the server flushes on idle or explicit endSession. */
@@ -51,11 +55,17 @@ export interface GralkorClient {
   /** Flushes the session's buffer now; returns immediately (server handles the write async). */
   endSession(sessionId: string): Promise<Result<true>>;
 
-  /** LLM-interpreted search result text. */
+  /**
+   * LLM-interpreted search result text.
+   * `maxResults` (default 20) and `maxEntityResults` (default 10) override the server's defaults;
+   * omit to use the server defaults.
+   */
   memorySearch(
     groupId: string,
     sessionId: string,
     query: string,
+    maxResults?: number,
+    maxEntityResults?: number,
   ): Promise<Result<string>>;
 
   /** Ingests a single piece of content; server does entity/edge extraction. */

@@ -151,4 +151,46 @@ describe("GralkorHttpClient (adapter-specific)", () => {
       expect(calls).toBe(1);
     });
   });
+
+  describe("when recall is called without maxResults", () => {
+    it("omits max_results from the request body so the server applies its default", async () => {
+      harness.stub("recall", { ok: null });
+      await harness.client.recall("g1", "s1", "q");
+      const body = JSON.parse(String(harness.lastRequest()?.init.body));
+      expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q" });
+    });
+  });
+
+  describe("when recall is called with maxResults", () => {
+    it("includes max_results in the request body", async () => {
+      harness.stub("recall", { ok: null });
+      await harness.client.recall("g1", "s1", "q", 5);
+      const body = JSON.parse(String(harness.lastRequest()?.init.body));
+      expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q", max_results: 5 });
+    });
+  });
+
+  describe("when memorySearch is called without max args", () => {
+    it("omits both max_results and max_entity_results from the request body", async () => {
+      harness.stub("memorySearch", { ok: "text" });
+      await harness.client.memorySearch("g1", "s1", "q");
+      const body = JSON.parse(String(harness.lastRequest()?.init.body));
+      expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q" });
+    });
+  });
+
+  describe("when memorySearch is called with maxResults and maxEntityResults", () => {
+    it("includes both in the request body", async () => {
+      harness.stub("memorySearch", { ok: "text" });
+      await harness.client.memorySearch("g1", "s1", "q", 7, 3);
+      const body = JSON.parse(String(harness.lastRequest()?.init.body));
+      expect(body).toEqual({
+        group_id: "g1",
+        session_id: "s1",
+        query: "q",
+        max_results: 7,
+        max_entity_results: 3,
+      });
+    });
+  });
 });

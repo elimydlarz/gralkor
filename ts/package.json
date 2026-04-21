@@ -1,6 +1,6 @@
 {
   "name": "@susu-eng/gralkor-ts",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "TypeScript adapter for the Gralkor memory server — HTTP client, in-memory test twin, and boot-readiness helper. Mirror of the :gralkor Hex package for the BEAM.",
   "type": "module",
   "main": "./dist/index.js",

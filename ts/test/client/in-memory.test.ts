@@ -39,7 +39,7 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
       await client.buildIndices();
       await client.buildCommunities("g1");
 
-      expect(client.recalls).toEqual([["g1", "s1", "q"]]);
+      expect(client.recalls).toEqual([["g1", "s1", "q", undefined]]);
       expect(client.captures).toEqual([
         [
           "s1",
@@ -50,7 +50,7 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
           ],
         ],
       ]);
-      expect(client.searches).toEqual([["g1", "s1", "q"]]);
+      expect(client.searches).toEqual([["g1", "s1", "q", undefined, undefined]]);
       expect(client.adds).toEqual([["g1", "content", "source"]]);
       expect(client.endSessions).toEqual([["s1"]]);
       expect(client.healthChecks).toEqual([[]]);
@@ -78,12 +78,28 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
     it("clears configured responses and recorded calls", async () => {
       client.setResponse("recall", { ok: "block" });
       await client.recall("g1", "s1", "q");
-      expect(client.recalls).toEqual([["g1", "s1", "q"]]);
+      expect(client.recalls).toEqual([["g1", "s1", "q", undefined]]);
 
       client.reset();
 
       expect(client.recalls).toEqual([]);
       expect(await client.recall("g1", "s1", "q")).toEqual({ error: "not_configured" });
+    });
+  });
+
+  describe("when recall is called with maxResults", () => {
+    it("records the maxResults arg alongside the others", async () => {
+      client.setResponse("recall", { ok: "block" });
+      await client.recall("g1", "s1", "q", 5);
+      expect(client.recalls).toEqual([["g1", "s1", "q", 5]]);
+    });
+  });
+
+  describe("when memorySearch is called with maxResults and maxEntityResults", () => {
+    it("records both alongside the others", async () => {
+      client.setResponse("memorySearch", { ok: "text" });
+      await client.memorySearch("g1", "s1", "q", 7, 3);
+      expect(client.searches).toEqual([["g1", "s1", "q", 7, 3]]);
     });
   });
 });

@@ -37,7 +37,8 @@ recall-interpretation
       then interpretation runs with empty conversation context
 POST /recall endpoint
   request shape
-    then body is {session_id, group_id, query, max_results}
+    then body is {session_id, group_id, query, max_results?}
+    then max_results is optional — when omitted the server applies its default (10)
     then group_id is sanitized (hyphens → underscores) before use
     then driver is routed to target graph (_ensure_driver_graph) before search
   if session_id is missing or blank
@@ -63,8 +64,8 @@ POST /recall endpoint
     and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
-  when autoRecall.maxResults config is set
-    then at most that many facts are returned (default 10)
+  when the request body includes max_results
+    then at most that many facts are returned (server default when omitted: 10)
   observability
     then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
     then logs "[gralkor] recall result — <N> facts blockChars:… <ms>" at INFO on every call (0 facts included)
@@ -221,7 +222,8 @@ format-transcript (Python)
 ```
 POST /tools/memory_search endpoint
   request shape
-    then body is {session_id, group_id, query, max_results, max_entity_results}
+    then body is {session_id, group_id, query, max_results?, max_entity_results?}
+    then max_results and max_entity_results are optional — when omitted the server applies its defaults (20 / 10)
   if session_id is missing or blank
     then 422 is returned (Gralkor requires a non-blank session_id)
   then group_id is sanitized before use
@@ -241,8 +243,8 @@ POST /tools/memory_search endpoint
   when graph returns no facts and no entities
     then response is "Facts: (none)\nEntities: (none)"
     and interpret is NOT called
-  when at most search.maxResults facts are returned (default 20)
-    and at most search.maxEntityResults entities are returned (default 10)
+  when the request body includes max_results / max_entity_results
+    then at most that many facts / entities are returned (server defaults when omitted: 20 / 10)
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
   observability
@@ -554,6 +556,9 @@ ex-client-http
     then the call raises
   if session_id is blank on recall/capture/memory_search/end_session
     then the call raises with ArgumentError (Gralkor requires a non-blank session_id)
+  then Req's automatic retries are disabled (retry: false) — every failure surfaces on the first attempt
+  then per-endpoint receive_timeouts are applied: /health 2s, /recall 5s, /capture 5s, /session_end 5s, /tools/memory_search 10s, /tools/memory_add 60s
+  then /build-indices and /build-communities pass :infinity as receive_timeout — they are admin operations whose graph scans can run for minutes to hours
   runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
 ex-client-in-memory
   when an operation is called
@@ -584,7 +589,11 @@ ex-orphan-reaper
 
 ```
 ts-client (port contract, shared)
-  when recall(group_id, session_id, query) is called
+  when recall(group_id, session_id, query, max_results?) is called
+    when max_results is provided
+      then it is forwarded to the backend (HTTP body includes max_results; in-memory recorder captures it)
+    when max_results is omitted
+      then no max_results is forwarded (server applies its default of 10)
     when the backend has a memory block
       then { ok: block } is returned
     when the backend has no memory
@@ -602,7 +611,11 @@ ts-client (port contract, shared)
       then { ok: true } is returned
     if the backend fails
       then { error: reason } is returned
-  when memorySearch(group_id, session_id, query) is called
+  when memorySearch(group_id, session_id, query, max_results?, max_entity_results?) is called
+    when max_results / max_entity_results are provided
+      then they are forwarded to the backend (HTTP body includes the corresponding fields; in-memory recorder captures them)
+    when either is omitted
+      then that field is not forwarded (server applies its defaults of 20 / 10)
     when the backend returns results
       then { ok: text } is returned
     if the backend fails
@@ -641,7 +654,8 @@ ts-client-http
   if session_id is blank on recall/capture/memorySearch/endSession
     then the call throws (Gralkor requires a non-blank session_id)
   then automatic retries are disabled — every failure surfaces on the first attempt (matches the Elixir adapter's retry: false)
-  then per-endpoint timeouts are applied: /health 2s, /recall + /capture + /session_end + /tools/memory_search 5s/5s/5s/10s, /tools/memory_add 60s
+  then per-endpoint timeouts are applied: /health 2s, /recall 5s, /capture 5s, /session_end 5s, /tools/memory_search 10s, /tools/memory_add 60s
+  then /build-indices and /build-communities have no client-side timeout — they are admin operations whose graph scans can run for minutes to hours
   runs the shared ts-client port contract (via test/contract/gralkor-client.contract.ts)
 ts-client-in-memory
   when an operation is called

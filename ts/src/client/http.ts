@@ -22,6 +22,8 @@ export interface GralkorHttpClientOptions {
  *   - `/session_end`           — 5 000
  *   - `/tools/memory_search`   — 10 000
  *   - `/tools/memory_add`      — 60 000 (Graphiti extraction is slow)
+ *   - `/build-indices`         — none (admin; minutes-to-hours on large graphs)
+ *   - `/build-communities`     — none (admin; minutes-to-hours on large graphs)
  *
  * Blank session ids throw `Error` — Gralkor requires a non-blank session_id.
  */
@@ -39,14 +41,17 @@ export class GralkorHttpClient implements GralkorClient {
     groupId: string,
     sessionId: string,
     query: string,
+    maxResults?: number,
   ): Promise<Result<string | null>> {
     requireSessionId(sessionId);
-    const res = await this.post("/recall", { group_id: groupId, session_id: sessionId, query }, 5_000);
+    const body: Record<string, unknown> = { group_id: groupId, session_id: sessionId, query };
+    if (maxResults !== undefined) body.max_results = maxResults;
+    const res = await this.post("/recall", body, 5_000);
     if ("error" in res) return res;
-    const body = res.ok as { memory_block?: string };
-    if (body.memory_block === undefined) return { error: { kind: "unexpected_body", body } };
-    if (body.memory_block === "") return { ok: null };
-    return { ok: body.memory_block };
+    const respBody = res.ok as { memory_block?: string };
+    if (respBody.memory_block === undefined) return { error: { kind: "unexpected_body", body: respBody } };
+    if (respBody.memory_block === "") return { ok: null };
+    return { ok: respBody.memory_block };
   }
 
   async capture(sessionId: string, groupId: string, messages: Message[]): Promise<Result<true>> {
@@ -69,17 +74,18 @@ export class GralkorHttpClient implements GralkorClient {
     groupId: string,
     sessionId: string,
     query: string,
+    maxResults?: number,
+    maxEntityResults?: number,
   ): Promise<Result<string>> {
     requireSessionId(sessionId);
-    const res = await this.post(
-      "/tools/memory_search",
-      { group_id: groupId, session_id: sessionId, query },
-      10_000,
-    );
+    const body: Record<string, unknown> = { group_id: groupId, session_id: sessionId, query };
+    if (maxResults !== undefined) body.max_results = maxResults;
+    if (maxEntityResults !== undefined) body.max_entity_results = maxEntityResults;
+    const res = await this.post("/tools/memory_search", body, 10_000);
     if ("error" in res) return res;
-    const body = res.ok as { text?: string };
-    if (body.text === undefined) return { error: { kind: "unexpected_body", body } };
-    return { ok: body.text };
+    const respBody = res.ok as { text?: string };
+    if (respBody.text === undefined) return { error: { kind: "unexpected_body", body: respBody } };
+    return { ok: respBody.text };
   }
 
   async memoryAdd(
@@ -99,7 +105,7 @@ export class GralkorHttpClient implements GralkorClient {
   }
 
   async buildIndices(): Promise<Result<{ status: string }>> {
-    const res = await this.post("/build-indices", {}, 60_000);
+    const res = await this.post("/build-indices", {}, undefined);
     if ("error" in res) return res;
     const body = res.ok as { status?: string };
     if (typeof body.status !== "string") return { error: { kind: "unexpected_body", body } };
@@ -109,11 +115,7 @@ export class GralkorHttpClient implements GralkorClient {
   async buildCommunities(
     groupId: string,
   ): Promise<Result<{ communities: number; edges: number }>> {
-    const res = await this.post(
-      "/build-communities",
-      { group_id: groupId },
-      120_000,
-    );
+    const res = await this.post("/build-communities", { group_id: groupId }, undefined);
     if ("error" in res) return res;
     const body = res.ok as { communities?: number; edges?: number };
     if (typeof body.communities !== "number" || typeof body.edges !== "number") {
@@ -122,7 +124,7 @@ export class GralkorHttpClient implements GralkorClient {
     return { ok: { communities: body.communities, edges: body.edges } };
   }
 
-  private post(path: string, body: unknown, timeoutMs: number): Promise<Result<unknown>> {
+  private post(path: string, body: unknown, timeoutMs: number | undefined): Promise<Result<unknown>> {
     return this.request("POST", path, body, timeoutMs);
   }
 
@@ -130,10 +132,11 @@ export class GralkorHttpClient implements GralkorClient {
     method: "GET" | "POST",
     path: string,
     body: unknown | undefined,
-    timeoutMs: number,
+    timeoutMs: number | undefined,
   ): Promise<Result<unknown>> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer =
+      timeoutMs === undefined ? null : setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
@@ -163,7 +166,7 @@ export class GralkorHttpClient implements GralkorClient {
         },
       };
     } finally {
-      clearTimeout(timer);
+      if (timer !== null) clearTimeout(timer);
     }
   }
 }

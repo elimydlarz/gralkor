@@ -22,9 +22,9 @@ type Op =
 export class GralkorInMemoryClient implements GralkorClient {
   private responses = new Map<Op, Result<unknown>>();
 
-  readonly recalls: Array<[string, string, string]> = [];
+  readonly recalls: Array<[string, string, string, number | undefined]> = [];
   readonly captures: Array<[string, string, Message[]]> = [];
-  readonly searches: Array<[string, string, string]> = [];
+  readonly searches: Array<[string, string, string, number | undefined, number | undefined]> = [];
   readonly adds: Array<[string, string, string | null]> = [];
   readonly endSessions: Array<[string]> = [];
   readonly healthChecks: Array<[]> = [];
@@ -52,8 +52,13 @@ export class GralkorInMemoryClient implements GralkorClient {
     return Promise.resolve(r as Result<T>);
   }
 
-  async recall(groupId: string, sessionId: string, query: string): Promise<Result<string | null>> {
-    this.recalls.push([groupId, sessionId, query]);
+  async recall(
+    groupId: string,
+    sessionId: string,
+    query: string,
+    maxResults?: number,
+  ): Promise<Result<string | null>> {
+    this.recalls.push([groupId, sessionId, query, maxResults]);
     return this.respond("recall");
   }
 
@@ -67,8 +72,14 @@ export class GralkorInMemoryClient implements GralkorClient {
     return this.respond("endSession");
   }
 
-  async memorySearch(groupId: string, sessionId: string, query: string): Promise<Result<string>> {
-    this.searches.push([groupId, sessionId, query]);
+  async memorySearch(
+    groupId: string,
+    sessionId: string,
+    query: string,
+    maxResults?: number,
+    maxEntityResults?: number,
+  ): Promise<Result<string>> {
+    this.searches.push([groupId, sessionId, query, maxResults, maxEntityResults]);
     return this.respond("memorySearch");
   }
 
