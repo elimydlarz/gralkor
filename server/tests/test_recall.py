@@ -89,6 +89,17 @@ async def test_uses_fast_mode(client, mock_graphiti):
     assert call_kwargs["num_results"] == 5
 
 
+async def test_applies_default_max_results_when_omitted(client, mock_graphiti):
+    mock_graphiti.search.return_value = []
+    await client.post(
+        "/recall",
+        json={"session_id": "sess", "group_id": "grp", "query": "q"},
+    )
+    mock_graphiti.search.assert_awaited_once()
+    call_kwargs = mock_graphiti.search.await_args.kwargs
+    assert call_kwargs["num_results"] == 10
+
+
 async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     await client.post(
