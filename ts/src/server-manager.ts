@@ -140,23 +140,17 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       );
     }
 
-    // Write dynamic config.yaml from plugin settings (with defaults)
+    // Write dynamic config.yaml from plugin settings. Sections are omitted when
+    // the consumer doesn't pass that piece of config — the server fills in its
+    // own defaults (single source of truth in server/main.py).
     const configPath = join(opts.dataDir, "config.yaml");
-    let configYaml = [
-      "llm:",
-      `  provider: "${opts.llmConfig?.provider ?? DEFAULT_LLM_PROVIDER}"`,
-      `  model: "${opts.llmConfig?.model ?? DEFAULT_LLM_MODEL}"`,
-      "embedder:",
-      `  provider: "${opts.embedderConfig?.provider ?? DEFAULT_EMBEDDER_PROVIDER}"`,
-      `  model: "${opts.embedderConfig?.model ?? DEFAULT_EMBEDDER_MODEL}"`,
-      "",
-    ].join("\n");
-    if (opts.test) {
-      configYaml += "test: true\n";
-    }
-    if (opts.ontologyConfig) {
-      configYaml += serializeOntologyYaml(opts.ontologyConfig);
-    }
+    const sections: string[] = [
+      providerSection("llm", opts.llmConfig),
+      providerSection("embedder", opts.embedderConfig),
+    ].filter((s) => s !== "");
+    if (opts.test) sections.push("test: true");
+    if (opts.ontologyConfig) sections.push(serializeOntologyYaml(opts.ontologyConfig).trimEnd());
+    const configYaml = sections.length === 0 ? "" : sections.join("\n") + "\n";
     await writeFile(configPath, configYaml, "utf-8");
 
     const env = buildSpawnEnv({
