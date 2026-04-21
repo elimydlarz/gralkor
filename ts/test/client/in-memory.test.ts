@@ -41,7 +41,14 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
 
       expect(client.recalls).toEqual([["g1", "s1", "q"]]);
       expect(client.captures).toEqual([
-        ["s1", "g1", { user_query: "q", assistant_answer: "a", events: [] }],
+        [
+          "s1",
+          "g1",
+          [
+            { role: "user", content: "q" },
+            { role: "assistant", content: "a" },
+          ],
+        ],
       ]);
       expect(client.searches).toEqual([["g1", "s1", "q"]]);
       expect(client.adds).toEqual([["g1", "content", "source"]]);
