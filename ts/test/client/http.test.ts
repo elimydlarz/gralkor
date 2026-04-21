@@ -194,3 +194,119 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 });
+
+describe("client-timeouts", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const hangingFetch: typeof fetch = (_input, init) =>
+    new Promise((_resolve, reject) => {
+      const signal = init?.signal;
+      if (signal?.aborted) {
+        reject(new DOMException("aborted", "AbortError"));
+        return;
+      }
+      signal?.addEventListener("abort", () =>
+        reject(new DOMException("aborted", "AbortError")),
+      );
+    });
+
+  const timed: Array<{
+    path: string;
+    ms: number;
+    call: (c: GralkorHttpClient) => Promise<unknown>;
+  }> = [
+    { path: "/health", ms: 2_000, call: (c) => c.healthCheck() },
+    { path: "/recall", ms: 5_000, call: (c) => c.recall("g", "s", "q") },
+    {
+      path: "/capture",
+      ms: 5_000,
+      call: (c) => c.capture("s", "g", [{ role: "user", content: "q" }]),
+    },
+    { path: "/session_end", ms: 5_000, call: (c) => c.endSession("s") },
+    {
+      path: "/tools/memory_search",
+      ms: 10_000,
+      call: (c) => c.memorySearch("g", "s", "q"),
+    },
+    {
+      path: "/tools/memory_add",
+      ms: 60_000,
+      call: (c) => c.memoryAdd("g", "content", null),
+    },
+  ];
+
+  for (const { path, ms, call } of timed) {
+    it(`${path} aborts at ${ms}ms`, async () => {
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: hangingFetch,
+      });
+      const promise = call(client);
+
+      await vi.advanceTimersByTimeAsync(ms + 10);
+      const r = (await promise) as { error?: { kind: string } };
+      expect(r.error?.kind).toBe("network");
+    });
+  }
+
+  const admin: Array<{
+    path: string;
+    call: (c: GralkorHttpClient) => Promise<unknown>;
+    body: unknown;
+    expected: unknown;
+  }> = [
+    {
+      path: "/build-indices",
+      call: (c) => c.buildIndices(),
+      body: { status: "ok" },
+      expected: { ok: { status: "ok" } },
+    },
+    {
+      path: "/build-communities",
+      call: (c) => c.buildCommunities("g"),
+      body: { communities: 3, edges: 17 },
+      expected: { ok: { communities: 3, edges: 17 } },
+    },
+  ];
+
+  for (const { path, call, body, expected } of admin) {
+    it(`${path} has no client-side deadline`, async () => {
+      let resolveFetch!: (r: Response) => void;
+      const controlledFetch: typeof fetch = (_input, init) =>
+        new Promise((resolve, reject) => {
+          const signal = init?.signal;
+          if (signal?.aborted) {
+            reject(new DOMException("aborted", "AbortError"));
+            return;
+          }
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+          resolveFetch = resolve;
+        });
+
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: controlledFetch,
+      });
+      const promise = call(client);
+
+      await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+      await Promise.resolve();
+
+      resolveFetch(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      const r = await promise;
+      expect(r).toEqual(expected);
+    });
+  }
+});
