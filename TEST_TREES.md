@@ -487,6 +487,15 @@ downstream-error-handling
         then returns 502 with {"error": "provider error", "detail": "<message>"}
       when no recognizable status code
         then propagates as 500
+upstream-idle-survival
+  applies to every server-side call into a Gemini-backed graphiti helper
+    (embedder, LLM, reranker) — exercised by /recall, /tools/memory_search,
+    /distill flush, /capture flush, /build-indices, /build-communities
+  when an endpoint is called after the server has been idle long enough for
+    its pooled upstream connection to have gone away
+    then the endpoint still responds within its normal latency envelope
+      (in particular, /recall fits inside the 5 s Elixir client budget — see
+       Timeouts > client-timeouts)
 ```
 
 ## Timeouts

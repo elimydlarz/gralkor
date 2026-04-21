@@ -51,7 +51,20 @@ DEFAULT_EMBEDDER_PROVIDER = "gemini"
 DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview"
 
 
-def _build_llm_client(cfg: dict):
+def _build_genai_client():
+    import httpx
+    from google import genai
+    from google.genai.types import HttpOptions
+
+    timeout = httpx.Timeout(connect=3.0, read=None, write=None, pool=3.0)
+    http_options = HttpOptions(
+        client_args={"transport": httpx.HTTPTransport(retries=1), "timeout": timeout},
+        async_client_args={"transport": httpx.AsyncHTTPTransport(retries=1), "timeout": timeout},
+    )
+    return genai.Client(http_options=http_options)
+
+
+def _build_llm_client(cfg: dict, genai_client=None):
     provider = cfg.get("llm", {}).get("provider") or DEFAULT_LLM_PROVIDER
     model = cfg.get("llm", {}).get("model") or (
         DEFAULT_LLM_MODEL if provider == DEFAULT_LLM_PROVIDER else None
@@ -65,7 +78,7 @@ def _build_llm_client(cfg: dict):
     if provider == "gemini":
         from graphiti_core.llm_client.gemini_client import GeminiClient
 
-        return GeminiClient(config=llm_cfg)
+        return GeminiClient(config=llm_cfg, client=genai_client)
     if provider == "groq":
         from graphiti_core.llm_client.groq_client import GroqClient
 
@@ -77,7 +90,7 @@ def _build_llm_client(cfg: dict):
     return OpenAIClient(config=llm_cfg)
 
 
-def _build_embedder(cfg: dict):
+def _build_embedder(cfg: dict, genai_client=None):
     provider = cfg.get("embedder", {}).get("provider") or DEFAULT_EMBEDDER_PROVIDER
     model = cfg.get("embedder", {}).get("model") or (
         DEFAULT_EMBEDDER_MODEL if provider == DEFAULT_EMBEDDER_PROVIDER else None
@@ -87,7 +100,7 @@ def _build_embedder(cfg: dict):
         from graphiti_core.embedder.gemini import GeminiEmbedder, GeminiEmbedderConfig
 
         ecfg = GeminiEmbedderConfig(embedding_model=model) if model else GeminiEmbedderConfig()
-        return GeminiEmbedder(ecfg)
+        return GeminiEmbedder(ecfg, client=genai_client)
 
     from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
 
@@ -95,13 +108,13 @@ def _build_embedder(cfg: dict):
     return OpenAIEmbedder(ecfg)
 
 
-def _build_cross_encoder(cfg: dict):
+def _build_cross_encoder(cfg: dict, genai_client=None):
     """Match cross-encoder to LLM provider; fall back to OpenAI only if key is present."""
     provider = cfg.get("llm", {}).get("provider", "gemini")
 
     if provider == "gemini":
         from graphiti_core.cross_encoder.gemini_reranker_client import GeminiRerankerClient
-        return GeminiRerankerClient()
+        return GeminiRerankerClient(client=genai_client)
 
     if os.environ.get("OPENAI_API_KEY"):
         from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
@@ -246,11 +259,12 @@ async def lifespan(_app: FastAPI):
         raise
     driver = FalkorDriver(falkor_db=db)
 
+    genai_client = _build_genai_client()
     graphiti = Graphiti(
         graph_driver=driver,
-        llm_client=_build_llm_client(cfg),
-        embedder=_build_embedder(cfg),
-        cross_encoder=_build_cross_encoder(cfg),
+        llm_client=_build_llm_client(cfg, genai_client=genai_client),
+        embedder=_build_embedder(cfg, genai_client=genai_client),
+        cross_encoder=_build_cross_encoder(cfg, genai_client=genai_client),
     )
     # Only build indices on first boot; skip if they already exist.
     existing = await graphiti.driver.execute_query("CALL db.indexes()")
