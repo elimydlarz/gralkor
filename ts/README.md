@@ -34,11 +34,10 @@ if ("ok" in recall && recall.ok !== null) {
   console.log(recall.ok); // memory block
 }
 
-await client.capture("session-abc", "my_group", {
-  user_query: "hi",
-  assistant_answer: "hello",
-  events: [],
-});
+await client.capture("session-abc", "my_group", [
+  { role: "user", content: "hi" },
+  { role: "assistant", content: "hello" },
+]);
 ```
 
 ## Return shape
