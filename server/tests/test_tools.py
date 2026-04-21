@@ -159,6 +159,32 @@ class TestMemorySearch:
         assert "- E1:" in text
         assert "- E2:" not in text
 
+    async def test_applies_defaults_when_max_args_omitted(self, client, mock_graphiti):
+        entities = [make_entity(uuid=f"n{i}", name=f"E{i}") for i in range(12)]
+        mock_graphiti.search_.return_value = SimpleNamespace(
+            edges=[],
+            nodes=entities,
+            episodes=[],
+            communities=[],
+            edge_reranker_scores=[],
+            node_reranker_scores=[],
+            episode_reranker_scores=[],
+            community_reranker_scores=[],
+        )
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+        resp = await client.post(
+            "/tools/memory_search",
+            json={"session_id": "sess", "group_id": "grp", "query": "q"},
+        )
+        assert resp.status_code == 200
+
+        call = mock_graphiti.search_.await_args
+        assert call.kwargs["config"].limit == 20
+
+        text = resp.json()["text"]
+        assert "- E9:" in text
+        assert "- E10:" not in text
+
     async def test_sanitizes_group_id(self, client, mock_graphiti):
         mock_graphiti.search_.return_value = SimpleNamespace(
             edges=[], nodes=[], episodes=[], communities=[],
