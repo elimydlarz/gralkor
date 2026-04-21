@@ -556,9 +556,7 @@ ex-client-http
     then the call raises
   if session_id is blank on recall/capture/memory_search/end_session
     then the call raises with ArgumentError (Gralkor requires a non-blank session_id)
-  then Req's automatic retries are disabled (retry: false) — every failure surfaces on the first attempt
-  then per-endpoint receive_timeouts are applied: /health 2s, /recall 5s, /capture 5s, /session_end 5s, /tools/memory_search 10s, /tools/memory_add 60s
-  then /build-indices and /build-communities pass :infinity as receive_timeout — they are admin operations whose graph scans can run for minutes to hours
+  (retry + per-endpoint receive_timeout behaviour is described in the Timeouts tree)
   runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
 ex-client-in-memory
   when an operation is called
