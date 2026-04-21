@@ -49,19 +49,11 @@ export class GralkorHttpClient implements GralkorClient {
     return { ok: body.memory_block };
   }
 
-  async capture(sessionId: string, groupId: string, turn: Turn): Promise<Result<true>> {
+  async capture(sessionId: string, groupId: string, messages: Message[]): Promise<Result<true>> {
     requireSessionId(sessionId);
     const res = await this.post(
       "/capture",
-      {
-        session_id: sessionId,
-        group_id: groupId,
-        turn: {
-          user_query: turn.user_query,
-          assistant_answer: turn.assistant_answer,
-          events: turn.events,
-        },
-      },
+      { session_id: sessionId, group_id: groupId, messages },
       5_000,
     );
     return "error" in res ? res : { ok: true };
