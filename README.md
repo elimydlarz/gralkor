@@ -66,7 +66,7 @@ The server does all the memory thinking; adapters are thin HTTP clients; harness
 |---|---|
 | `GET /health` | Boot-readiness + health monitor |
 | `POST /recall` | Pre-prompt auto-recall — fast search + LLM interpretation |
-| `POST /capture` | Turn capture — fire-and-forget; server buffers, distils, ingests on idle |
+| `POST /capture` | Turn capture — takes a list of canonical `{role, content}` messages (roles: `user`/`assistant`/`behaviour`); server buffers, distils, ingests on idle |
 | `POST /session_end` | Flush the session's buffer now (fire-and-forget; 204 before the graph write) |
 | `POST /tools/memory_search` | LLM-facing tool — slow search (cross-encoder) + interpretation |
 | `POST /tools/memory_add` | LLM-facing tool — store content as an episode |
