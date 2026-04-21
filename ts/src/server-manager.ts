@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { DEFAULT_LLM_PROVIDER, DEFAULT_LLM_MODEL, DEFAULT_EMBEDDER_PROVIDER, DEFAULT_EMBEDDER_MODEL, type ModelConfig, type OntologyConfig, type OntologyAttributeValue } from "./config.js";
+import type { ModelConfig, OntologyConfig, OntologyAttributeValue } from "./config.js";
 import { buildSyncEnv, buildPipEnv, buildSpawnEnv } from "./server-env.js";
 
 const execFileAsync = promisify(execFile);
