@@ -140,18 +140,8 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       );
     }
 
-    // Write dynamic config.yaml from plugin settings. Sections are omitted when
-    // the consumer doesn't pass that piece of config — the server fills in its
-    // own defaults (single source of truth in server/main.py).
     const configPath = join(opts.dataDir, "config.yaml");
-    const sections: string[] = [
-      providerSection("llm", opts.llmConfig),
-      providerSection("embedder", opts.embedderConfig),
-    ].filter((s) => s !== "");
-    if (opts.test) sections.push("test: true");
-    if (opts.ontologyConfig) sections.push(serializeOntologyYaml(opts.ontologyConfig).trimEnd());
-    const configYaml = sections.length === 0 ? "" : sections.join("\n") + "\n";
-    await writeFile(configPath, configYaml, "utf-8");
+    await writeFile(configPath, buildConfigYaml(opts), "utf-8");
 
     const env = buildSpawnEnv({
       extra: opts.env,
