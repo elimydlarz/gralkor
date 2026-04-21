@@ -63,7 +63,7 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
     it("returns { error: 'not_configured' }", async () => {
       expect(await client.recall("g1", "s1", "q")).toEqual({ error: "not_configured" });
       expect(
-        await client.capture("s1", "g1", { user_query: "q", assistant_answer: "a", events: [] }),
+        await client.capture("s1", "g1", [{ role: "user", content: "q" }]),
       ).toEqual({ error: "not_configured" });
       expect(await client.memorySearch("g1", "s1", "q")).toEqual({ error: "not_configured" });
       expect(await client.memoryAdd("g1", "c", null)).toEqual({ error: "not_configured" });
