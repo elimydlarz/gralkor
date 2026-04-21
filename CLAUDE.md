@@ -72,8 +72,8 @@ Endpoints:
 |---|---|---|
 | `GET /health` | `200` when graph reachable | Consumers poll during boot; adapters disable client-side retry so failures surface fast |
 | `POST /recall` | `{session_id, group_id, query, max_results}` → `{memory_block}` | Fast search → interpret (conversation context from `capture_buffer.turns_for(session_id)`) → `<gralkor-memory trust="untrusted">`. Empty graph → `{"memory_block": ""}` |
-| `POST /distill` | `{turns: [{user_query, events, assistant_answer}]}` → `{episode_body}` | Parallel distillation via `asyncio.gather`; silent drop per turn on LLM failure |
-| `POST /capture` | `{session_id, group_id, turn}` → `204` | Appends to `capture_buffer` keyed by `session_id` (binds `group_id` on first append). Idle flush → `format_transcript` → `graphiti.add_episode` under bound `group_id` |
+| `POST /distill` | `{turns: [[{role, content}, …], …]}` → `{episode_body}` | Parallel distillation via `asyncio.gather`; silent drop per turn on LLM failure |
+| `POST /capture` | `{session_id, group_id, messages: [{role, content}, …]}` → `204` | Appends the message list to `capture_buffer` keyed by `session_id` (binds `group_id` on first append). Idle flush → `format_transcript` → `graphiti.add_episode` under bound `group_id` |
 | `POST /session_end` | `{session_id}` → `204` | Cancels idle timer and schedules the same flush path as idle. Returns 204 without awaiting the graph write (fire-and-forget at every layer) |
 | `POST /tools/memory_search` | `{session_id, group_id, query, max_results, max_entity_results}` → `{text}` | Slow search with cross-encoder. Empty → `"Facts: (none)\nEntities: (none)"` without calling interpret |
 | `POST /tools/memory_add` | `{group_id, content, source_description?}` → `{"status":"stored"}` | Wraps `/episodes` with `source=EpisodeType.text`; auto-generates `name` + `idempotency_key` |
