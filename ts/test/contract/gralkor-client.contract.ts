@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import type { GralkorClient, Result } from "../../src/client.js";
+import type { GralkorClient, Message, Result } from "../../src/client.js";
 
 /**
  * Shared port-contract assertions for `GralkorClient` implementations.
