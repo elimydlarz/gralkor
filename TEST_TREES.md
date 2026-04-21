@@ -489,6 +489,36 @@ downstream-error-handling
         then propagates as 500
 ```
 
+## Timeouts
+
+```
+client-timeouts (shared adapter contract — both ex and ts enforce the same design)
+  no client-side retry
+    when the server returns a non-2xx or the transport fails
+      then the first failure surfaces immediately — no retry loop, no backoff
+      (ex: Req's retry: false; ts: fetch is called exactly once)
+  per-endpoint receive window (milliseconds)
+    /health                 2_000
+    /recall                 5_000
+    /capture                5_000
+    /session_end            5_000
+    /tools/memory_search   10_000
+    /tools/memory_add      60_000
+  admin endpoints have no client-side deadline
+    /build-indices and /build-communities scan the whole graph and can run minutes to hours
+    ex adapter passes receive_timeout: :infinity
+    ts adapter passes no AbortController timer (timeoutMs: undefined)
+  coverage notes
+    ts: retry-disabled + all six receive windows + both admin-no-deadline paths are
+        exercised in test/client/http.test.ts via vi.useFakeTimers and a fetch stub
+        that honours AbortSignal
+    ex: retry-disabled is exercised in test/gralkor/client/http_test.exs via Req.Test
+        (stub that counts calls). Per-endpoint receive windows and :infinity are NOT
+        exercised at unit level — Req.Test bypasses Finch, so the receive_timeout
+        timer never fires in plug-based tests. These values are enforced by code
+        review of the module attrs in lib/gralkor/client/http.ex.
+```
+
 ## Elixir Client
 
 ```
