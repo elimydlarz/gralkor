@@ -11,15 +11,16 @@ defmodule Gralkor.OrphanReaper do
   that SIGTERMs the uvicorn OS pid. So aborts sometimes leave uvicorn orphaned
   (reparented to launchd) with port 4000 still bound. The reaper looks
   for such an orphan, verifies it is ours (command line contains
-  `gralkor/priv/server`), and SIGKILLs it. If the holder is anything
-  else, the reaper raises — we don't kill foreign processes.
+  `gralkor_ex/priv/server` — the packaged server path under
+  `:code.priv_dir(:gralkor_ex)`), and SIGKILLs it. If the holder is
+  anything else, the reaper raises — we don't kill foreign processes.
 
   `System.cmd/3` is injectable via `opts[:shell]` so the logic is
   unit-testable without side effects.
   """
 
   @port 4000
-  @marker "gralkor/priv/server"
+  @marker "gralkor_ex/priv/server"
 
   @type shell :: (String.t(), [String.t()], keyword() -> {String.t(), integer()})
 

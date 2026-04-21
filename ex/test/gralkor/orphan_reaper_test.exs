@@ -21,16 +21,17 @@ defmodule Gralkor.OrphanReaperTest do
       refute_received {:shell, "kill", _}
     end
 
-    test "when a gralkor/priv/server process is listening, SIGKILLs it and returns :ok" do
+    test "when the listener is the app's own packaged server, SIGKILLs it and returns :ok" do
       me = self()
+      packaged_uvicorn = Path.join([:code.priv_dir(:gralkor_ex), "server", ".venv", "bin", "uvicorn"])
+      packaged_cmdline = "#{packaged_uvicorn} main:app --host 127.0.0.1 --port 4000"
 
       shell = fn
         "lsof", _, _ ->
           {"12345\n", 0}
 
         "ps", ["-o", "command=", "-p", "12345"], _ ->
-          {"/path/to/_build/dev/lib/gralkor/priv/server/.venv/bin/uvicorn main:app --port 4000",
-           0}
+          {packaged_cmdline, 0}
 
         "kill", ["-9", "12345"], _ ->
           send(me, {:killed, "12345"})

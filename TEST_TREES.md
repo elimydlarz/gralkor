@@ -606,11 +606,11 @@ ex-connection
 ex-orphan-reaper
   when no process is listening on port 4000
     then no kill is attempted and :ok is returned
-  when a process whose command line contains `gralkor/priv/server` is listening on port 4000
+  when the listener on port 4000 is the app's own packaged server (the path `Gralkor.Server` spawns uvicorn from, rooted at `:code.priv_dir(:gralkor_ex)`)
     then that process is SIGKILLed and :ok is returned
-  when a process whose command line does not contain `gralkor/priv/server` is listening on port 4000
+  when the listener on port 4000 is any other process
     then the function raises with the foreign command line
-  (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash)
+  (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash. The "own packaged server" identification anchors to the real priv_dir so a package rename cannot silently break recognition.)
 ```
 
 ## TypeScript Client
