@@ -1,7 +1,8 @@
 export type {
   GralkorClient,
+  Message,
   Result,
-  Turn,
+  Role,
 } from "./client.js";
 
 export { sanitizeGroupId, isOk, isErr } from "./client.js";
@@ -26,8 +27,4 @@ export {
   validateOntologyConfig,
   GRALKOR_URL,
   GRALKOR_PORT,
-  DEFAULT_LLM_PROVIDER,
-  DEFAULT_LLM_MODEL,
-  DEFAULT_EMBEDDER_PROVIDER,
-  DEFAULT_EMBEDDER_MODEL,
 } from "./config.js";
