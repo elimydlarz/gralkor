@@ -651,9 +651,7 @@ ts-client-http
     then { error: { kind: "http_status", status, body } } is returned
   if session_id is blank on recall/capture/memorySearch/endSession
     then the call throws (Gralkor requires a non-blank session_id)
-  then automatic retries are disabled — every failure surfaces on the first attempt (matches the Elixir adapter's retry: false)
-  then per-endpoint timeouts are applied: /health 2s, /recall 5s, /capture 5s, /session_end 5s, /tools/memory_search 10s, /tools/memory_add 60s
-  then /build-indices and /build-communities have no client-side timeout — they are admin operations whose graph scans can run for minutes to hours
+  (retry + per-endpoint timeout behaviour is described in the Timeouts tree)
   runs the shared ts-client port contract (via test/contract/gralkor-client.contract.ts)
 ts-client-in-memory
   when an operation is called
