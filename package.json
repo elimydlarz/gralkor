@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "publish:ex": "bash scripts/publish-ex.sh",
-    "publish:ts": "bash scripts/publish-ts.sh"
+    "publish:ts": "bash scripts/publish-ts.sh",
+    "test:unit": "(cd server && uv run pytest --ignore=tests/test_integration.py) && (cd ex && mix test.unit) && (cd ts && pnpm test)",
+    "test:int": "(cd server && uv run pytest tests/test_integration.py) && (cd ex && mix test.integration)",
+    "test:fun": "(cd ex && mix test.functional)",
+    "test:all": "pnpm run test:unit && pnpm run test:int && pnpm run test:fun"
   },
   "repository": {
     "type": "git",
