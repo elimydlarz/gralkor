@@ -23,19 +23,8 @@ _CHARS_PER_TOKEN = 4
 INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * _CHARS_PER_TOKEN
 
 
-_ROLE_LABEL: dict[str, str] = {
-    "user": "User",
-    "assistant": "Assistant",
-    "behaviour": "Agent did",
-}
-
-
 class InterpretResult(BaseModel):
     text: str
-
-
-def _label(role: str) -> str:
-    return _ROLE_LABEL.get(role, role.capitalize())
 
 
 def build_interpretation_context(
@@ -48,7 +37,7 @@ def build_interpretation_context(
         text = msg.content.strip()
         if not text:
             continue
-        lines.append(f"{_label(msg.role)}: {text}")
+        lines.append(f"{label_for(msg.role)}: {text}")
 
     budget = char_budget
     trimmed: list[str] = []
