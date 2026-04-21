@@ -1,4 +1,4 @@
-import type { GralkorClient, Result, Turn } from "../client.js";
+import type { GralkorClient, Message, Result } from "../client.js";
 
 type Op =
   | "recall"
