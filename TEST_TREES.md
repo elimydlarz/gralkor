@@ -345,6 +345,21 @@ ts-server-manager (createServerManager in ts/)
     then serverDir defaults to bundledServerDir() (the copy shipped inside @susu-eng/gralkor-ts)
     then consumers may override serverDir to point at a development checkout
     then the returned manager starts with isRunning() === false
+  buildConfigYaml (helper written into config.yaml at start time)
+    when neither llmConfig nor embedderConfig nor ontologyConfig nor test is supplied
+      then returns the empty string — no llm/embedder section is written and the server applies its own defaults (single source of truth in server/main.py)
+    when llmConfig is supplied
+      then emits an "llm:" block with the passed provider + model
+    when llmConfig is omitted
+      then no "llm:" block is written (server fills in defaults)
+    when embedderConfig is supplied
+      then emits an "embedder:" block with the passed provider + model
+    when embedderConfig is omitted
+      then no "embedder:" block is written (server fills in defaults)
+    when test is true
+      then appends "test: true"
+    when ontologyConfig is supplied
+      then appends the serialised ontology block
   serializeOntologyYaml (helper written into config.yaml at start time)
     when the ontology has entities
       then emits an "ontology: entities:" block with description and optional attribute entries
