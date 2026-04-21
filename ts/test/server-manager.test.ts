@@ -34,7 +34,6 @@ describe("createServerManager", () => {
 
     afterEach(() => {
       vi.unstubAllGlobals();
-      vi.useRealTimers();
       rmSync(workDir, { recursive: true, force: true });
     });
 
@@ -50,7 +49,6 @@ describe("createServerManager", () => {
 
       await manager.start();
 
-      // Adopted — no child process was spawned, so isRunning() stays false.
       expect(manager.isRunning()).toBe(false);
       expect(fetchStub).toHaveBeenCalledWith(
         "http://127.0.0.1:4000/health",
