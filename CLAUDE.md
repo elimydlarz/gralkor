@@ -120,11 +120,11 @@ Published as `@susu-eng/gralkor-ts` on npm. Mirrors the Elixir adapter's port la
 
 Modules:
 
-- `src/client.ts` — `GralkorClient` port interface, `sanitizeGroupId()` helper.
+- `src/client.ts` — `GralkorClient` port interface, canonical `Message` / `Role` types, `sanitizeGroupId()` helper.
 - `src/client/http.ts` — `GralkorHttpClient` (fetch-based). Per-endpoint timeouts, `{ ok }` / `{ error }` result shape.
 - `src/client/in-memory.ts` — `GralkorInMemoryClient`. Canned responses + call recording + `reset()`. Also exported from `@susu-eng/gralkor-ts/testing`.
 - `src/connection.ts` — `waitForHealth(client, opts)`. Polls `healthCheck()` with backoff until healthy or timeout; throws on timeout.
-- `src/server-manager.ts` — `createServerManager(opts)` spawns `uv run uvicorn main:app` as a managed child. Pre-flight `/health` check: if the server is already healthy, adopt it without spawning. On `linux/arm64`, resolves a prebuilt `falkordblite` wheel (bundled under `server/wheels/` or downloaded from GH Releases into `dataDir/wheels/`) because PyPI's arm64 sdist embeds x86-64 binaries on glibc < 2.39 hosts.
+- `src/server-manager.ts` — `createServerManager(opts)` spawns `uv run uvicorn main:app` as a managed child. Pre-flight `/health` check: if the server is already healthy, adopt it without spawning. `buildConfigYaml(opts)` emits `llm:` / `embedder:` sections only when the consumer passes `llmConfig` / `embedderConfig` — otherwise the server applies its own defaults. On `linux/arm64`, resolves a prebuilt `falkordblite` wheel (bundled under `server/wheels/` or downloaded from GH Releases into `dataDir/wheels/`) because PyPI's arm64 sdist embeds x86-64 binaries on glibc < 2.39 hosts.
 - `src/server-env.ts` — `buildSyncEnv`, `buildPipEnv`, `buildSpawnEnv` — consolidate env var wiring for the three uv invocations.
 - `scripts/bundle-server.mjs` — pre-build step that copies `../server/` → `ts/server/`. Runs before `tsc` (via `"build": "pnpm run bundle-server && tsc"`).
 
