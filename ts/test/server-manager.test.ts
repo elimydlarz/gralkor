@@ -61,6 +61,47 @@ describe("createServerManager", () => {
   });
 });
 
+describe("buildConfigYaml", () => {
+  it("emits an empty string when no config pieces are supplied", () => {
+    expect(buildConfigYaml({})).toBe("");
+  });
+
+  it("omits the llm section when llmConfig is unset (server fills in defaults)", () => {
+    const yaml = buildConfigYaml({ embedderConfig: { provider: "gemini", model: "m" } });
+    expect(yaml).not.toContain("llm:");
+    expect(yaml).toContain("embedder:");
+  });
+
+  it("omits the embedder section when embedderConfig is unset", () => {
+    const yaml = buildConfigYaml({ llmConfig: { provider: "gemini", model: "m" } });
+    expect(yaml).toContain("llm:");
+    expect(yaml).not.toContain("embedder:");
+  });
+
+  it("emits both sections when both configs are supplied", () => {
+    const yaml = buildConfigYaml({
+      llmConfig: { provider: "openai", model: "gpt-5" },
+      embedderConfig: { provider: "gemini", model: "e" },
+    });
+    expect(yaml).toContain('provider: "openai"');
+    expect(yaml).toContain('model: "gpt-5"');
+    expect(yaml).toContain('provider: "gemini"');
+    expect(yaml).toContain('model: "e"');
+  });
+
+  it("appends test: true when opts.test is set", () => {
+    expect(buildConfigYaml({ test: true })).toContain("test: true");
+  });
+
+  it("appends the ontology block when ontologyConfig is supplied", () => {
+    const yaml = buildConfigYaml({
+      ontologyConfig: { entities: { Project: { description: "a project" } } },
+    });
+    expect(yaml).toContain("ontology:");
+    expect(yaml).toContain("Project:");
+  });
+});
+
 describe("serializeOntologyYaml", () => {
   it("emits just 'ontology:' for an empty ontology", () => {
     expect(serializeOntologyYaml({})).toBe("ontology:\n");
