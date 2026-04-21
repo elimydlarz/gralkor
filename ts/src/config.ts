@@ -27,13 +27,13 @@ export interface OntologyConfig {
   edgeMap?: Record<string, string[]>;
 }
 
-const RESERVED_ENTITY_NAMES = new Set(["Entity", "Episodic", "Community", "Saga"]);
+export const RESERVED_ENTITY_NAMES = new Set(["Entity", "Episodic", "Community", "Saga"]);
 
-const PROTECTED_ENTITY_ATTRS = new Set([
+export const PROTECTED_ENTITY_ATTRS = new Set([
   "uuid", "name", "group_id", "labels", "created_at", "summary", "attributes", "name_embedding",
 ]);
 
-const PROTECTED_EDGE_ATTRS = new Set([
+export const PROTECTED_EDGE_ATTRS = new Set([
   "uuid", "group_id", "source_node_uuid", "target_node_uuid", "created_at",
   "name", "fact", "fact_embedding", "episodes", "expired_at", "valid_at", "invalid_at", "attributes",
 ]);
