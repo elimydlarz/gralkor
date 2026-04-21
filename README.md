@@ -90,9 +90,8 @@ Each cadence is independent. Each sub-package embeds `server/` into its tarball 
 
 - Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md).
 - Server tests under `server/tests/`; Elixir tests under `ex/test/`; TS tests under `ts/test/`.
-- `ex/`: `mix test` (unit), `mix test.integration`, `mix test.functional`.
-- `ts/`: `pnpm --filter gralkor-ts... test` (vitest).
-- `server/`: `cd server && uv run pytest`.
+- From the repo root: `pnpm run test:unit`, `pnpm run test:int`, `pnpm run test:fun`, `pnpm run test:all`.
+- Per component: `cd ex && mix test.unit|test.integration|test.functional` · `cd server && uv run pytest` · `cd ts && pnpm test`.
 
 ## Licence
 
