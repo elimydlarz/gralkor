@@ -126,8 +126,8 @@ describe("GralkorHttpClient (adapter-specific)", () => {
       await expect(harness.client.recall("g1", "", "q")).rejects.toThrow(/session_id/);
     });
     it("capture/3 throws", async () => {
-      const turn = { user_query: "q", assistant_answer: "a", events: [] };
-      await expect(harness.client.capture("", "g1", turn)).rejects.toThrow(/session_id/);
+      const messages = [{ role: "user" as const, content: "q" }];
+      await expect(harness.client.capture("", "g1", messages)).rejects.toThrow(/session_id/);
     });
     it("memorySearch/3 throws", async () => {
       await expect(harness.client.memorySearch("g1", "", "q")).rejects.toThrow(/session_id/);
