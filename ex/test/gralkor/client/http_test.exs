@@ -210,6 +210,22 @@ defmodule Gralkor.Client.HTTPTest do
     end
   end
 
+  describe "retry behaviour" do
+    test "does not retry on failure (first error surfaces immediately)" do
+      parent = self()
+
+      stub(fn conn ->
+        send(parent, :stub_called)
+        Plug.Conn.send_resp(conn, 503, "")
+      end)
+
+      assert {:error, {:http_status, 503, _}} = HTTP.recall("g1", "s1", "q")
+
+      assert_received :stub_called
+      refute_received :stub_called
+    end
+  end
+
   describe "if session_id is blank" do
     test "recall/3 raises" do
       assert_raise ArgumentError, ~r/session_id must be a non-blank string/, fn ->
