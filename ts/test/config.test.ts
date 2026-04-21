@@ -22,7 +22,7 @@ describe("validateOntologyConfig", () => {
   });
 
   describe("when an entity name is a reserved graph label", () => {
-    it.each(["Entity", "Episodic", "Community", "Saga"])(
+    it.each([...RESERVED_ENTITY_NAMES])(
       "rejects reserved name %s",
       (name) => {
         expect(() =>
@@ -35,52 +35,33 @@ describe("validateOntologyConfig", () => {
   });
 
   describe("when an entity attribute uses a protected EntityNode field name", () => {
-    const protectedNames = [
-      "uuid",
-      "name",
-      "group_id",
-      "labels",
-      "created_at",
-      "summary",
-      "attributes",
-      "name_embedding",
-    ];
-    it.each(protectedNames)("rejects protected entity attribute %s", (attr) => {
-      expect(() =>
-        validateOntologyConfig({
-          entities: {
-            Project: { description: "x", attributes: { [attr]: "value" } },
-          },
-        }),
-      ).toThrow(/Protected attribute/);
-    });
+    it.each([...PROTECTED_ENTITY_ATTRS])(
+      "rejects protected entity attribute %s",
+      (attr) => {
+        expect(() =>
+          validateOntologyConfig({
+            entities: {
+              Project: { description: "x", attributes: { [attr]: "value" } },
+            },
+          }),
+        ).toThrow(/Protected attribute/);
+      },
+    );
   });
 
   describe("when an edge attribute uses a protected EntityEdge field name", () => {
-    const protectedNames = [
-      "uuid",
-      "group_id",
-      "source_node_uuid",
-      "target_node_uuid",
-      "created_at",
-      "name",
-      "fact",
-      "fact_embedding",
-      "episodes",
-      "expired_at",
-      "valid_at",
-      "invalid_at",
-      "attributes",
-    ];
-    it.each(protectedNames)("rejects protected edge attribute %s", (attr) => {
-      expect(() =>
-        validateOntologyConfig({
-          edges: {
-            Uses: { description: "x", attributes: { [attr]: "value" } },
-          },
-        }),
-      ).toThrow(/Protected attribute/);
-    });
+    it.each([...PROTECTED_EDGE_ATTRS])(
+      "rejects protected edge attribute %s",
+      (attr) => {
+        expect(() =>
+          validateOntologyConfig({
+            edges: {
+              Uses: { description: "x", attributes: { [attr]: "value" } },
+            },
+          }),
+        ).toThrow(/Protected attribute/);
+      },
+    );
   });
 
   describe("when edgeMap key format is invalid", () => {
