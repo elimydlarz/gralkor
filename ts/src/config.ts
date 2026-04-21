@@ -86,8 +86,3 @@ export function validateOntologyConfig(ontology?: OntologyConfig): void {
 
 export const GRALKOR_URL = "http://127.0.0.1:4000";
 export const GRALKOR_PORT = 4000;
-
-export const DEFAULT_LLM_PROVIDER = "gemini";
-export const DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite-preview";
-export const DEFAULT_EMBEDDER_PROVIDER = "gemini";
-export const DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview";
