@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from .messages import Message
+from .messages import Message, label_for
 
 if TYPE_CHECKING:
     from graphiti_core.llm_client import LLMClient
