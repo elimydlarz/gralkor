@@ -28,7 +28,10 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
       client.setResponse("buildCommunities", { ok: { communities: 2, edges: 5 } });
 
       await client.recall("g1", "s1", "q");
-      await client.capture("s1", "g1", { user_query: "q", assistant_answer: "a", events: [] });
+      await client.capture("s1", "g1", [
+        { role: "user", content: "q" },
+        { role: "assistant", content: "a" },
+      ]);
       await client.memorySearch("g1", "s1", "q");
       await client.memoryAdd("g1", "content", "source");
       await client.endSession("s1");
