@@ -23,7 +23,7 @@ export class GralkorInMemoryClient implements GralkorClient {
   private responses = new Map<Op, Result<unknown>>();
 
   readonly recalls: Array<[string, string, string]> = [];
-  readonly captures: Array<[string, string, Turn]> = [];
+  readonly captures: Array<[string, string, Message[]]> = [];
   readonly searches: Array<[string, string, string]> = [];
   readonly adds: Array<[string, string, string | null]> = [];
   readonly endSessions: Array<[string]> = [];
