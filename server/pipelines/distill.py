@@ -25,19 +25,8 @@ DISTILL_SYSTEM_PROMPT = (
 )
 
 
-_ROLE_LABEL: dict[str, str] = {
-    "user": "User",
-    "assistant": "Assistant",
-    "behaviour": "Agent did",
-}
-
-
 class DistillResult(BaseModel):
     behaviour: str
-
-
-def _label(role: str) -> str:
-    return _ROLE_LABEL.get(role, role.capitalize())
 
 
 def _build_distill_input(messages: list[Message]) -> str:
@@ -50,7 +39,7 @@ def _build_distill_input(messages: list[Message]) -> str:
         text = msg.content.strip()
         if not text:
             continue
-        lines.append(f"{_label(msg.role)}: {text}")
+        lines.append(f"{label_for(msg.role)}: {text}")
     return "\n".join(lines)
 
 
