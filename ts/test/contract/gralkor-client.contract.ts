@@ -65,17 +65,20 @@ export function gralkorClientContract(setup: ContractSetup): void {
   });
 
   describe("port contract: capture", () => {
-    const turn = { user_query: "q", assistant_answer: "a", events: [] };
+    const messages: Message[] = [
+      { role: "user", content: "q" },
+      { role: "assistant", content: "a" },
+    ];
 
     it("returns { ok: true } when the backend acknowledges the capture", async () => {
       await setup.configureBackend(client, "capture", { ok: true });
-      const r = await client.capture("s1", "g1", turn);
+      const r = await client.capture("s1", "g1", messages);
       expect(r).toEqual({ ok: true });
     });
 
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "capture", { error: "boom" });
-      const r = await client.capture("s1", "g1", turn);
+      const r = await client.capture("s1", "g1", messages);
       expect("error" in r).toBe(true);
     });
   });
