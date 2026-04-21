@@ -313,6 +313,11 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
   return { start, stop, isRunning };
 }
 
+function providerSection(key: "llm" | "embedder", cfg: ModelConfig | undefined): string {
+  if (!cfg) return "";
+  return `${key}:\n  provider: "${cfg.provider}"\n  model: "${cfg.model}"`;
+}
+
 function yamlQuote(s: string): string {
   if (/[:#{}[\]|>&*!%@`]/.test(s) || s !== s.trim()) {
     return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
