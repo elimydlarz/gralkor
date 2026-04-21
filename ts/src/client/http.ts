@@ -1,4 +1,4 @@
-import type { GralkorClient, Result, Turn } from "../client.js";
+import type { GralkorClient, Message, Result } from "../client.js";
 
 export interface GralkorHttpClientOptions {
   /** Base URL of the Gralkor server (e.g. `http://127.0.0.1:4000`). No trailing slash required. */
