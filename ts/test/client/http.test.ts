@@ -137,8 +137,50 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 
-  describe("retry behaviour", () => {
-    it("does not retry on failure (first error surfaces immediately)", async () => {
+  describe("when the transport fails with a connection-level error, then the call is retried exactly once, when the retry succeeds", () => {
+    it("the response is returned normally", async () => {
+      let calls = 0;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async () => {
+          calls += 1;
+          if (calls === 1) {
+            const err = new Error("connection reset") as Error & { code?: string };
+            err.code = "ECONNRESET";
+            throw err;
+          }
+          return new Response(JSON.stringify({ memory_block: "" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      });
+      const result = await client.recall("g1", "s1", "q");
+      expect(result).toEqual({ ok: null });
+      expect(calls).toBe(2);
+    });
+  });
+
+  describe("when the transport fails with a connection-level error, then the call is retried exactly once, when the retry also fails", () => {
+    it("the failure surfaces to the caller", async () => {
+      let calls = 0;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async () => {
+          calls += 1;
+          const err = new Error("socket timeout") as Error & { code?: string };
+          err.code = "ETIMEDOUT";
+          throw err;
+        },
+      });
+      const result = await client.recall("g1", "s1", "q");
+      expect("error" in result).toBe(true);
+      expect(calls).toBe(2);
+    });
+  });
+
+  describe("when the server returns any HTTP response (including non-2xx)", () => {
+    it("no retry is attempted — the response surfaces immediately", async () => {
       let calls = 0;
       const client = new GralkorHttpClient({
         baseUrl: "http://gralkor.test",
@@ -147,7 +189,32 @@ describe("GralkorHttpClient (adapter-specific)", () => {
           return new Response("", { status: 503 });
         },
       });
-      await client.recall("g1", "s1", "q");
+      const result = await client.recall("g1", "s1", "q");
+      expect("error" in result).toBe(true);
+      if ("error" in result) {
+        expect((result.error as { kind: string }).kind).toBe("http_status");
+      }
+      expect(calls).toBe(1);
+    });
+  });
+
+  describe("if the transport fails with any other error", () => {
+    it("no retry is attempted — the failure surfaces immediately (fail-fast default)", async () => {
+      let calls = 0;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async () => {
+          calls += 1;
+          const err = new Error("dns lookup failed") as Error & { code?: string };
+          err.code = "ENOTFOUND";
+          throw err;
+        },
+      });
+      const result = await client.recall("g1", "s1", "q");
+      expect("error" in result).toBe(true);
+      if ("error" in result) {
+        expect((result.error as { kind: string }).kind).toBe("network");
+      }
       expect(calls).toBe(1);
     });
   });

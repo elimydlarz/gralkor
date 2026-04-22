@@ -179,11 +179,22 @@ defmodule Gralkor.Client.HTTP do
     url = Keyword.fetch!(config, :url)
 
     req_opts =
-      [receive_timeout: timeout_ms, retry: false]
+      [
+        receive_timeout: timeout_ms,
+        retry: &retry_on_transient_transport_error/2,
+        max_retries: 1,
+        retry_delay: 1
+      ]
       |> maybe_put(:plug, Keyword.get(config, :plug))
 
     {url, req_opts}
   end
+
+  defp retry_on_transient_transport_error(_request, %Req.TransportError{reason: reason})
+       when reason in [:closed, :timeout, :econnreset],
+       do: true
+
+  defp retry_on_transient_transport_error(_request, _response_or_exception), do: false
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)

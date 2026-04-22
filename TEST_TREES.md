@@ -502,10 +502,17 @@ upstream-idle-survival
 
 ```
 client-timeouts (shared adapter contract — both ex and ts enforce the same design)
-  no client-side retry
-    when the server returns a non-2xx or the transport fails
-      then the first failure surfaces immediately — no retry loop, no backoff
-      (ex: Req's retry: false; ts: fetch is called exactly once)
+  retry once on transient transport errors
+    when the transport fails with a connection-level error (:closed, :timeout, :econnreset)
+      then the call is retried exactly once
+        when the retry succeeds
+          then the response is returned normally
+        when the retry also fails
+          then the failure surfaces to the caller
+    when the server returns any HTTP response (including non-2xx)
+      then no retry is attempted — the response surfaces immediately
+    if the transport fails with any other error
+      then no retry is attempted — the failure surfaces immediately (fail-fast default)
   per-endpoint receive window (milliseconds)
     /health                 2_000
     /recall                 5_000
@@ -518,10 +525,10 @@ client-timeouts (shared adapter contract — both ex and ts enforce the same des
     ex adapter passes receive_timeout: :infinity
     ts adapter passes no AbortController timer (timeoutMs: undefined)
   coverage notes
-    ts: retry-disabled + all six receive windows + both admin-no-deadline paths are
+    ts: retry-once + all six receive windows + both admin-no-deadline paths are
         exercised in test/client/http.test.ts via vi.useFakeTimers and a fetch stub
         that honours AbortSignal
-    ex: retry-disabled is exercised in test/gralkor/client/http_test.exs via Req.Test
+    ex: retry-once is exercised in test/gralkor/client/http_test.exs via Req.Test
         (stub that counts calls). Per-endpoint receive windows and :infinity are NOT
         exercised at unit level — Req.Test bypasses Finch, so the receive_timeout
         timer never fires in plug-based tests. These values are enforced by code

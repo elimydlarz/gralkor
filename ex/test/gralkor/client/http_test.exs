@@ -210,16 +210,71 @@ defmodule Gralkor.Client.HTTPTest do
     end
   end
 
-  describe "retry behaviour" do
-    test "does not retry on failure (first error surfaces immediately)" do
+  describe "when the transport fails with a connection-level error, then the call is retried exactly once, when the retry succeeds" do
+    test "the response is returned normally" do
       parent = self()
 
-      stub(fn conn ->
+      Req.Test.expect(:gralkor_stub, fn conn ->
+        send(parent, :stub_called)
+        Req.Test.transport_error(conn, :closed)
+      end)
+
+      Req.Test.expect(:gralkor_stub, fn conn ->
+        send(parent, :stub_called)
+        Req.Test.json(conn, %{"memory_block" => ""})
+      end)
+
+      assert {:ok, nil} = HTTP.recall("g1", "s1", "q")
+
+      assert_received :stub_called
+      assert_received :stub_called
+      refute_received :stub_called
+    end
+  end
+
+  describe "when the transport fails with a connection-level error, then the call is retried exactly once, when the retry also fails" do
+    test "the failure surfaces to the caller" do
+      parent = self()
+
+      Req.Test.expect(:gralkor_stub, 2, fn conn ->
+        send(parent, :stub_called)
+        Req.Test.transport_error(conn, :timeout)
+      end)
+
+      assert {:error, %Req.TransportError{reason: :timeout}} = HTTP.recall("g1", "s1", "q")
+
+      assert_received :stub_called
+      assert_received :stub_called
+      refute_received :stub_called
+    end
+  end
+
+  describe "when the server returns any HTTP response (including non-2xx)" do
+    test "no retry is attempted — the response surfaces immediately" do
+      parent = self()
+
+      Req.Test.expect(:gralkor_stub, fn conn ->
         send(parent, :stub_called)
         Plug.Conn.send_resp(conn, 503, "")
       end)
 
       assert {:error, {:http_status, 503, _}} = HTTP.recall("g1", "s1", "q")
+
+      assert_received :stub_called
+      refute_received :stub_called
+    end
+  end
+
+  describe "if the transport fails with any other error" do
+    test "no retry is attempted — the failure surfaces immediately (fail-fast default)" do
+      parent = self()
+
+      Req.Test.expect(:gralkor_stub, fn conn ->
+        send(parent, :stub_called)
+        Req.Test.transport_error(conn, :econnrefused)
+      end)
+
+      assert {:error, %Req.TransportError{reason: :econnrefused}} = HTTP.recall("g1", "s1", "q")
 
       assert_received :stub_called
       refute_received :stub_called

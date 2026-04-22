@@ -11,8 +11,9 @@ export interface GralkorHttpClientOptions {
  * HTTP adapter for {@link GralkorClient}.
  *
  * No auth: the server binds to loopback and expects its consumer to supervise it.
- * Retries are disabled (matches the Elixir adapter's `retry: false`) — every
- * failure surfaces immediately so the caller can decide how to fail open.
+ * Retry-once on transient transport errors (ECONNRESET / ETIMEDOUT / UND_ERR_SOCKET)
+ * — mirrors the Elixir adapter, which mirrors the server→Gemini `httpx.HTTPTransport(retries=1)`
+ * pattern. HTTP responses and other transport errors surface immediately.
  *
  * Per-endpoint timeouts (milliseconds), calibrated to the workload:
  *
@@ -134,41 +135,62 @@ export class GralkorHttpClient implements GralkorClient {
     body: unknown | undefined,
     timeoutMs: number | undefined,
   ): Promise<Result<unknown>> {
-    const controller = new AbortController();
-    const timer =
-      timeoutMs === undefined ? null : setTimeout(() => controller.abort(), timeoutMs);
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      const controller = new AbortController();
+      const timer =
+        timeoutMs === undefined ? null : setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-        method,
-        headers: body !== undefined ? { "content-type": "application/json" } : undefined,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: controller.signal,
-      });
+      try {
+        const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+          method,
+          headers: body !== undefined ? { "content-type": "application/json" } : undefined,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
 
-      if (res.status >= 200 && res.status < 300) {
-        const text = await res.text();
-        if (text === "") return { ok: null };
-        try {
-          return { ok: JSON.parse(text) };
-        } catch {
-          return { ok: text };
+        if (res.status >= 200 && res.status < 300) {
+          const text = await res.text();
+          if (text === "") return { ok: null };
+          try {
+            return { ok: JSON.parse(text) };
+          } catch {
+            return { ok: text };
+          }
         }
-      }
 
-      const errBody = await res.text().catch(() => "");
-      return { error: { kind: "http_status", status: res.status, body: errBody } };
-    } catch (err) {
-      return {
-        error: {
-          kind: "network",
-          cause: err instanceof Error ? err.message : String(err),
-        },
-      };
-    } finally {
-      if (timer !== null) clearTimeout(timer);
+        const errBody = await res.text().catch(() => "");
+        return { error: { kind: "http_status", status: res.status, body: errBody } };
+      } catch (err) {
+        if (attempt === 0 && isTransientTransportError(err)) continue;
+        return {
+          error: {
+            kind: "network",
+            cause: err instanceof Error ? err.message : String(err),
+          },
+        };
+      } finally {
+        if (timer !== null) clearTimeout(timer);
+      }
     }
+    throw new Error("unreachable");
   }
+}
+
+function isTransientTransportError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = extractCode(err);
+  return code === "ECONNRESET" || code === "ETIMEDOUT" || code === "UND_ERR_SOCKET";
+}
+
+function extractCode(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  const e = err as { code?: unknown; cause?: unknown };
+  if (typeof e.code === "string") return e.code;
+  if (e.cause && typeof e.cause === "object") {
+    const inner = (e.cause as { code?: unknown }).code;
+    if (typeof inner === "string") return inner;
+  }
+  return undefined;
 }
 
 function requireSessionId(id: string): void {
