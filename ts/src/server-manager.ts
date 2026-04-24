@@ -1,6 +1,6 @@
 import { execFile, type ChildProcess, spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -65,30 +65,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
 
     await mkdir(opts.dataDir, { recursive: true });
 
-    // Fast pre-flight: if the server is already healthy (e.g. module was
-    // re-evaluated by the host after a successful boot), adopt it immediately
-    // without re-running setup or killing the running process.
-    try {
-      const res = await fetch(`http://127.0.0.1:${opts.port}/health`,
-        { signal: AbortSignal.timeout(2000) });
-      if (res.ok) {
-        await res.text();
-        console.log("[gralkor] boot: server already running and healthy, adopting");
-        monitorTimer = setInterval(async () => {
-          try {
-            const r = await fetch(`http://127.0.0.1:${opts.port}/health`);
-            await r.text();
-            if (!r.ok) console.warn("[gralkor] Server health check returned", r.status);
-          } catch (err) {
-            console.warn("[gralkor] Server health check failed:", err instanceof Error ? err.message : err);
-          }
-        }, MONITOR_INTERVAL_MS);
-        return;
-      }
-    } catch {
-      // Not running yet — proceed with full boot
-    }
-
     console.log("[gralkor] boot: starting...");
 
     const venvDir = join(opts.dataDir, "venv");
@@ -150,53 +126,11 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       configPath,
     });
 
-    // Pre-flight health check: if the server is already running and healthy
-    // (e.g. module was re-evaluated by the host mid-boot), adopt it rather
-    // than killing and respawning. This is the primary guard against the
-    // "enable plugin via live config update" case where the gateway reloads
-    // the module while the server is still starting.
-    try {
-      const res = await fetch(`http://127.0.0.1:${opts.port}/health`,
-        { signal: AbortSignal.timeout(2000) });
-      if (res.ok) {
-        await res.text(); // drain
-        const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
-        console.log(`[gralkor] boot: server already running and healthy, adopting (${bootDuration}s)`);
-        // Start monitor and return without spawning
-        monitorTimer = setInterval(async () => {
-          try {
-            const r = await fetch(`http://127.0.0.1:${opts.port}/health`);
-            await r.text();
-            if (!r.ok) console.warn("[gralkor] Server health check returned", r.status);
-          } catch (err) {
-            console.warn("[gralkor] Server health check failed:", err instanceof Error ? err.message : err);
-          }
-        }, MONITOR_INTERVAL_MS);
-        return;
-      }
-    } catch {
-      // Not running yet — proceed with normal boot
-    }
-
-    // Kill any previously-spawned server. This handles the case where the host
-    // re-evaluates the module (resetting the in-process serverManager cache),
-    // and ensures the new server always starts with current config.
-    const pidFile = join(opts.dataDir, "server.pid");
-    try {
-      const pid = parseInt(await readFile(pidFile, "utf-8"), 10);
-      if (!isNaN(pid)) {
-        console.log(`[gralkor] boot: killing previous server (pid ${pid})...`);
-        try {
-          process.kill(pid, "SIGTERM");
-        } catch {
-          // Already dead — that's fine
-        }
-        // Poll until the port is free (up to 10s)
-        await waitForPortFree(opts.port, 10_000);
-      }
-    } catch {
-      // No PID file — nothing to kill
-    }
+    // Kill whatever holds the port — we reserve it. No discrimination; if a
+    // process is on our port, it doesn't belong there. This covers: our prior
+    // incarnation after module re-eval, an orphan from a crashed host, or any
+    // other collision.
+    await killHoldersOfPort(opts.port);
 
     console.log("[gralkor] Starting Graphiti server on port", opts.port);
 
@@ -231,11 +165,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
       proc = null;
     });
 
-    // Record PID so a subsequent start() can kill this process if the module is re-evaluated
-    if (proc.pid !== undefined) {
-      await writeFile(pidFile, String(proc.pid), "utf-8");
-    }
-
     console.log("[gralkor] boot: server process spawned (pid:", proc.pid, "), polling health...");
 
     // Wait for server to become healthy
@@ -269,13 +198,6 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     }
 
     if (!proc) return;
-
-    // Remove PID file so a future start() doesn't try to kill a dead process
-    try {
-      await unlink(join(opts.dataDir, "server.pid"));
-    } catch {
-      // Already gone
-    }
 
     const child = proc;
     proc = null;
@@ -423,21 +345,43 @@ async function resolveBundledWheels(serverDir: string, dataDir: string, version:
   return [dest];
 }
 
-async function waitForPortFree(port: number, timeoutMs: number): Promise<void> {
+async function killHoldersOfPort(port: number): Promise<void> {
+  const pids = await findPortHolders(port);
+  if (pids.length === 0) return;
+
+  console.log(`[gralkor] boot: port ${port} held by pid(s) ${pids.join(",")} — killing`);
+  for (const pid of pids) {
+    try { process.kill(pid, "SIGTERM"); } catch { /* already gone */ }
+  }
+
+  if (await waitForPortFree(port, 5_000)) return;
+
+  for (const pid of await findPortHolders(port)) {
+    try { process.kill(pid, "SIGKILL"); } catch { /* already gone */ }
+  }
+
+  if (!(await waitForPortFree(port, 2_000))) {
+    throw new Error(`port ${port} still bound after SIGTERM+SIGKILL`);
+  }
+}
+
+async function findPortHolders(port: number): Promise<number[]> {
+  try {
+    const { stdout } = await execFileAsync("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"]);
+    return stdout.split("\n").map(s => Number(s.trim())).filter(n => Number.isInteger(n) && n > 0);
+  } catch {
+    // lsof exits non-zero when nothing matches — treat as empty
+    return [];
+  }
+}
+
+async function waitForPortFree(port: number, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/health`,
-        { signal: AbortSignal.timeout(500) });
-      await res.text();
-      // Still responding — wait and retry
-      await new Promise((r) => setTimeout(r, 300));
-    } catch {
-      // Port no longer accepting connections — it's free
-      return;
-    }
+    if ((await findPortHolders(port)).length === 0) return true;
+    await new Promise((r) => setTimeout(r, 100));
   }
-  console.warn("[gralkor] boot: port did not free within timeout, proceeding anyway");
+  return false;
 }
 
 async function waitForHealth(port: number): Promise<void> {

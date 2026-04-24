@@ -37,17 +37,27 @@ recall-interpretation
       then interpretation runs with empty conversation context
 POST /recall endpoint
   request shape
-    then body is {session_id, group_id, query, max_results?}
-    then max_results is optional — when omitted the server applies its default (10)
+    when the request body includes a non-blank session_id
+      then body is {session_id, group_id, query, …}
+    when the request body omits session_id
+      then body is {group_id, query, …}
+    when the request body includes max_results
+      then at most that many facts are returned
+    when the request body omits max_results
+      then the server applies its default (10)
     then group_id is sanitized (hyphens → underscores) before use
     then driver is routed to target graph (_ensure_driver_graph) before search
-  if session_id is missing or blank
-    then 422 is returned (Gralkor requires a non-blank session_id)
+  if the request body includes a blank session_id
+    then 422 is returned (Gralkor requires session_id to be a non-blank string or absent)
   conversation context
-    then messages are sourced from capture_buffer.turns_for(session_id), flat-walked
-    then every Message in every buffered turn is included in order, with its role label
-    when the session has no entry in capture_buffer
+    when the request body includes a non-blank session_id and capture_buffer has an entry for it
+      then messages are sourced from capture_buffer.turns_for(session_id), flat-walked
+      and every Message in every buffered turn is included in order, with its role label
+    when the request body includes a non-blank session_id but capture_buffer has no entry for it
       then interpretation runs with an empty conversation context (no error)
+    when the request body omits session_id
+      then interpretation runs with an empty conversation context (no error)
+      and capture_buffer is not consulted
     when two sessions share a group_id
       then each session's recall sees only its own buffered turns
     then the server never strips or rewrites Message content — adapters hand in clean strings
@@ -64,11 +74,11 @@ POST /recall endpoint
     and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
-  when the request body includes max_results
-    then at most that many facts are returned (server default when omitted: 10)
   observability
     then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
-    then logs "[gralkor] recall result — <N> facts blockChars:… <ms>" at INFO on every call (0 facts included)
+    then logs "[gralkor] recall result — <N> facts blockChars:… <ms> (lock_wait:… search:… interpret:…)" at INFO on every call
+      and when facts is 0 the blockChars field is omitted but the (lock_wait:… search:… interpret:…) tail is still present
+      and interpret:… is 0 when interpret_facts was not called (empty facts)
     when test mode is enabled (logger level DEBUG)
       then also logs "[gralkor] [test] recall query: <raw query>" at DEBUG
       and when facts are returned also logs "[gralkor] [test] recall block: <memory block>" at DEBUG
@@ -177,12 +187,15 @@ capture-buffer (Python)
     when called for a session_id with no entry
       then returns without scheduling any flush
   retry schedule
-    when flush_callback raises a retryable error
+    buffer retries only for failure classes L6.5 cannot handle — see Retry ownership
+    when flush_callback raises a 4xx CaptureClientError
+      then does not retry and logs "capture dropped (4xx)" (contract error — non-retryable)
+    when flush_callback raises a Vertex-upstream error (google.genai.errors.APIError or graphiti RateLimitError)
+      then does not retry and logs "capture dropped (upstream exhausted at L6.5)" — the SDK has already retried within its configured bounds; retrying at this layer would amplify load
+    when flush_callback raises any other Exception (server-internal: graph write failure, Falkor driver error, internal distill crash)
       then retries at 1s, 2s, 4s (exponential)
-    when flush_callback raises after 3 retries
+    when flush_callback raises a server-internal error after 3 retries
       then logs "capture exhausted" and drops
-    when flush_callback raises a 4xx-equivalent error
-      then does not retry and logs "capture dropped (4xx)"
   flush_all
     when called with pending entries
       then cancels all idle timers
@@ -249,7 +262,10 @@ POST /tools/memory_search endpoint
     then _driver_lock serializes the calls
   observability
     then logs "[gralkor] tools.memory_search — session:… group:… queryChars:… max:<res>/<ent>" at INFO on every call
-    then logs "[gralkor] tools.memory_search result — <N> facts <M> entities textChars:… <ms>" at INFO on every call (0/0 included)
+    then logs "[gralkor] tools.memory_search result — <N> facts <M> entities textChars:… <ms> (lock_wait:… search:… interpret:…)" at INFO on every call
+      and when both facts and entities are 0 the textChars field is omitted but the (lock_wait:… search:… interpret:…) tail is still present
+      and interpret:… is 0 when interpret_facts was not called (empty result)
+      and search:… covers graphiti.search_ including the cross-encoder rerank (no separate rerank field — graphiti runs them as a single call)
     when test mode is enabled (logger level DEBUG)
       then also logs "[gralkor] [test] tools.memory_search query: <raw query>" at DEBUG
       and when facts or entities are returned also logs "[gralkor] [test] tools.memory_search text: <text>" at DEBUG
@@ -292,6 +308,7 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then Port.open spawns "uv run uvicorn main:app --host 127.0.0.1 --port 4000 --timeout-graceful-shutdown 30" with cd: server_dir
       then env vars are forwarded: GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GROQ_API_KEY, FALKORDB_DATA_DIR, CONFIG_PATH
       then Gralkor.Health.check(/health) polls at 500ms intervals until 200 or the configured boot_timeout_ms (default 120_000)
+      then Gralkor.Health.check disables Req's implicit retry (retry: false) — a single failed poll must surface immediately so the next 500ms tick can try again, not wait for Req's 1s/2s/4s retry schedule
     when the deadline passes with no healthy response
       then stops with {:boot_failed, :boot_timeout} (supervisor restart)
     when the spawned port exits during boot
@@ -299,15 +316,8 @@ ex-server-lifecycle (Elixir supervisor in ex/)
       then stops with {:boot_failed, :port_exited} (no full-timeout wait)
     when the configured port is already bound (orphan from a prior BEAM crash or any other listener)
       then stops with {:boot_failed, :port_in_use} before spawning (no crash-loop of doomed uvicorn attempts)
-    when boot succeeds
-      then health monitor is scheduled at the configured monitor_interval_ms (default 60_000)
-  health monitor
-    when /health check returns 200
-      then reschedules itself at the configured monitor_interval_ms
-    when /health check fails (5xx or transport error)
-      then GenServer stops with {:health_degraded, reason}
-      then supervisor restarts the GenServer (which respawns Python)
-    then Gralkor.Health.check disables Req's implicit retry (retry: false) — a single failed poll must surface immediately, not incur Req's 1s/2s/4s retry schedule
+  liveness
+    then liveness is detected exclusively from Port messages ({:exit_status, _} and {:EXIT, _}) — once boot is healthy, /health is not polled again
   python crash
     when Port emits {:exit_status, N}
       then GenServer stops with {:python_exited, N}
@@ -371,15 +381,18 @@ ts-server-manager (createServerManager in ts/)
       then emits an "edgeMap:" block with "EntityA,EntityB" keys and their edge lists
     when the ontology is empty (no entities, edges, or edgeMap)
       then emits just "ontology:\n"
-  start — adopt path
-    when another process already serves /health on the configured port (pre-flight check)
-      then the manager adopts it (no spawn) and returns once healthy
-      and starts the health monitor
-  start — spawn path (NOT covered by unit tests; exercised only by consumers in production)
-    when no process serves /health
-      then uv run uvicorn main:app is spawned with cwd = serverDir
-      and env includes GOOGLE_API_KEY / ANTHROPIC / OPENAI / GROQ where supplied
-      and /health is polled at 500ms intervals until 200 or the boot window expires
+  start (NOT covered by unit tests; exercised only by consumers in production)
+    then the configured port is reserved for us — any process holding it is killed before spawning
+    when lsof reports any pid listening on the port
+      then SIGTERM is sent to each pid
+      and the port is polled until free (up to 5s)
+      if the port is still bound after SIGTERM
+        then SIGKILL is sent and the port is polled again (up to 2s)
+        if still bound after SIGKILL
+          then start rejects with a clear error
+    then uv run uvicorn main:app is spawned with cwd = serverDir
+    and env includes GOOGLE_API_KEY / ANTHROPIC / OPENAI / GROQ where supplied
+    and /health is polled at 500ms intervals until 200 or the boot window expires
     if /health never returns 200 within the boot window
       then start rejects with a timeout error
   health monitor (NOT covered by unit tests; exercised only by consumers in production)
@@ -452,12 +465,11 @@ cross-encoder-selection
 
 ```
 /health endpoint
-  when graphiti is initialized and FalkorDB is connected
-    then returns status ok with graph connected true and node/edge counts
-  when graphiti is initialized but query fails
-    then returns status ok with graph connected false and error message
-  when graphiti is not initialized
-    then returns status ok with graph connected false
+  then responds in constant time — independent of graph size (no MATCH, no counts)
+  when the FalkorDB driver answers a cheap probe
+    then returns 200
+  if the probe raises or times out
+    then returns 503 with an error detail
 rate-limit-retry
   server side
     when upstream LLM returns a rate-limit error
@@ -487,6 +499,20 @@ downstream-error-handling
         then returns 502 with {"error": "provider error", "detail": "<message>"}
       when no recognizable status code
         then propagates as 500
+server-warmup-on-boot
+  during lifespan startup, after the index check and before yielding to accept traffic
+    then graphiti.search is invoked once with a throwaway query and group_id (fast path warmup)
+    then graphiti.search_ is invoked once with COMBINED_HYBRID_SEARCH_CROSS_ENCODER and a throwaway query/group_id (slow path warmup)
+    then interpret_facts is invoked once with an empty conversation and a throwaway facts_text (LLM client warmup)
+    then logs "[gralkor] warmup — search:… search_:… interpret:… <total>ms" at INFO
+    then the calls are run under _driver_lock for the search pair (same contract as /recall and /tools/memory_search)
+  if any warmup call raises
+    then the exception is caught and logged at :warning as "[gralkor] warmup failed (non-fatal): <reason>"
+    and boot proceeds — warmup is best-effort
+  rationale (not behaviour)
+    a cold first /recall was observed at ~12 s with graphiti.search alone contributing ~11 s;
+    warming pays the cold cost once inside lifespan (before the consumer's health poll can succeed)
+    so the user's first message does not block on graphiti's first-use work
 upstream-idle-survival
   applies to every server-side call into a Gemini-backed graphiti helper
     (embedder, LLM, reranker) — exercised by /recall, /tools/memory_search,
@@ -498,48 +524,89 @@ upstream-idle-survival
        Timeouts > client-timeouts)
 ```
 
+## Retry ownership
+
+```
+retry-ownership (stack-wide invariant — other tree nodes in this file cite this section)
+  then exactly one layer retries any given failure class
+  then layers above the owner derive their timeout from that layer's worst case
+  then no two layers retry the same class
+  failure class: Vertex-upstream (HTTP 408, 429, 500, 502, 503, 504 from Gemini/Vertex)
+    owner: the google-genai SDK (L6.5) — configured via HttpOptions in gralkor/server/main.py
+      then retry_options=HttpRetryOptions(attempts=2, initial_delay=1s, max_delay=3s, exp_base=2)
+      then per-attempt timeout is HttpOptions.timeout (10_000 ms) — enforced by httpx
+    then no layer above the SDK retries this class
+  failure class: LLM malformed output (structured-output parse failures, dedup idx hallucinations, refusal)
+    owner: graphiti's GeminiClient (L6b)
+      then 2 attempts; the error text is appended to the next prompt
+    then no layer above graphiti retries this class
+  failure class: client ↔ server transport (TCP reset, socket closed, connect timeout between adapter and Gralkor server)
+    owner: the client adapter (Elixir Req / TS fetch, L3)
+      then exactly once, immediate (no backoff)
+      then on retry exhaustion, the failure surfaces to the plugin
+    then no layer above the adapter retries this class
+  failure class: server-internal (graph write failure, Falkor driver error, internal distill crash)
+    owner for the capture chain: the capture buffer (1 s / 2 s / 4 s exponential)
+    for all other chains: no owner — the failure surfaces immediately
+  failure class: consumer-budget expired (the outermost timeout at the consumer)
+    owner: the consumer (Susu2.ChatAgent 30 s ask_sync, OpenClaw turn budget)
+      then returns to the user; logs at :warn; does not retry
+```
+
+Cross-referenced from `MENTAL_MODEL.md › Invariants › Retry ownership` and from `RETRY_MAP.md › Doctrine` at the workspace root. `RETRY_PLAN.md` tracks the migration from the current tree state (per-section) to full alignment with this invariant — sections below may temporarily describe pre-doctrine behaviour until their phase lands.
+
 ## Timeouts
 
 ```
 client-timeouts (shared adapter contract — both ex and ts enforce the same design)
-  retry once on transient transport errors
+  retry once on transient client ↔ server transport errors (adapter is the owner for this class per Retry ownership)
     when the transport fails with a connection-level error (:closed, :timeout, :econnreset)
       then the call is retried exactly once
         when the retry succeeds
           then the response is returned normally
         when the retry also fails
           then the failure surfaces to the caller
-    when the server returns any HTTP response (including non-2xx)
-      then no retry is attempted — the response surfaces immediately
+    when the server returns any non-2xx HTTP response (including 429 from the upstream LLM provider)
+      then no retry is attempted — the response surfaces immediately as {:error, {:http_status, status, body}}
+      and for 429 specifically, the google-genai SDK at L6.5 inside the server has already retried within its configured bounds; a retry at this layer would amplify load without a meaningful chance of success (see Retry ownership)
     if the transport fails with any other error
       then no retry is attempted — the failure surfaces immediately (fail-fast default)
   per-endpoint receive window (milliseconds)
-    /health                 2_000
-    /recall                 5_000
-    /capture                5_000
-    /session_end            5_000
-    /tools/memory_search   10_000
-    /tools/memory_add      60_000
+    /health                 2_000   — cheap liveness check
+    /recall                25_000   — encompasses the L6.5 worst case for one logical Gemini call (embedder + interpret are sequential; see Retry ownership)
+    /capture                5_000   — fire-and-forget; server returns 204 after buffering, flush owns its own retry budget
+    /session_end            5_000   — fire-and-forget; server returns 204 after scheduling the flush
+    /tools/memory_search   30_000   — slow search with cross-encoder reranker + interpret; a few seconds more than /recall
+    /tools/memory_add      60_000   — Graphiti entity/edge extraction; background Task in consumer
   admin endpoints have no client-side deadline
     /build-indices and /build-communities scan the whole graph and can run minutes to hours
     ex adapter passes receive_timeout: :infinity
     ts adapter passes no AbortController timer (timeoutMs: undefined)
   coverage notes
-    ts: retry-once + all six receive windows + both admin-no-deadline paths are
+    ts: retry-once on transport errors + all six receive windows + both admin-no-deadline paths are
         exercised in test/client/http.test.ts via vi.useFakeTimers and a fetch stub
-        that honours AbortSignal
-    ex: retry-once is exercised in test/gralkor/client/http_test.exs via Req.Test
-        (stub that counts calls). Per-endpoint receive windows and :infinity are NOT
-        exercised at unit level — Req.Test bypasses Finch, so the receive_timeout
-        timer never fires in plug-based tests. These values are enforced by code
-        review of the module attrs in lib/gralkor/client/http.ex.
+        that honours AbortSignal. 429 is NOT retried at this layer — the google-genai SDK at
+        L6.5 owns Vertex-upstream retries (see Retry ownership).
+    ex: retry-once on transport errors is exercised in test/gralkor/client/http_test.exs via
+        Req.Test (stub that counts calls and controls the response status). 429-surfaces-
+        immediately is asserted alongside the other non-2xx paths. Per-endpoint receive windows
+        and :infinity are NOT exercised at unit level — Req.Test bypasses Finch, so the
+        receive_timeout timer never fires in plug-based tests. These values are enforced by
+        code review of the module attrs in lib/gralkor/client/http.ex.
 ```
 
 ## Elixir Client
 
 ```
 ex-client (port contract, shared)
-  when recall/3 is called with group_id, session_id, and query
+  when recall/3 is called with a non-blank string session_id
+    when the backend has a memory block
+      then {:ok, block} is returned
+    when the backend has no memory
+      then {:ok, nil} is returned
+    if the backend fails
+      then {:error, reason} is returned
+  when recall/3 is called with a nil session_id
     when the backend has a memory block
       then {:ok, block} is returned
     when the backend has no memory
@@ -600,8 +667,22 @@ ex-client-http
     then {:error, {:http_status, status, body}} is returned
   if the app env is missing
     then the call raises
-  if session_id is blank on recall/capture/memory_search/end_session
-    then the call raises with ArgumentError (Gralkor requires a non-blank session_id)
+  when recall is called with a non-blank string session_id
+    then the session_id field is included in the HTTP body
+  when recall is called with a nil session_id
+    then the session_id field is omitted from the HTTP body
+  if capture is called with a blank string session_id
+    then the call raises with ArgumentError
+  if capture is called with a nil session_id
+    then the call raises with ArgumentError
+  if memory_search is called with a blank string session_id
+    then the call raises with ArgumentError
+  if memory_search is called with a nil session_id
+    then the call raises with ArgumentError
+  if end_session is called with a blank string session_id
+    then the call raises with ArgumentError
+  if end_session is called with a nil session_id
+    then the call raises with ArgumentError
   (retry + per-endpoint receive_timeout behaviour is described in the Timeouts tree)
   runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
 ex-client-in-memory
@@ -622,18 +703,29 @@ ex-connection
 ex-orphan-reaper
   when no process is listening on port 4000
     then no kill is attempted and :ok is returned
-  when the listener on port 4000 is the app's own packaged server (the path `Gralkor.Server` spawns uvicorn from, rooted at `:code.priv_dir(:gralkor_ex)`)
+  when the listener on port 4000 is a uvicorn main:app process on --port 4000 (the invariant shape `Gralkor.Server` spawns, regardless of priv-dir layout or symlink resolution)
     then that process is SIGKILLed and :ok is returned
-  when the listener on port 4000 is any other process
+  when the listener on port 4000 is any other process (missing any of the identifier substrings)
     then the function raises with the foreign command line
-  (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash. The "own packaged server" identification anchors to the real priv_dir so a package rename cannot silently break recognition.)
+  (intended to run before ex-server-lifecycle's boot sequence; cleans up Gralkor's own stale uvicorn so the :port_in_use check never fires for orphans from a prior BEAM crash. Identification keys on command-line args — not priv-dir paths — because mix symlinks path-dep priv dirs and ps reports the resolved physical path, so a path-substring match would miss legitimate orphans under path-dep builds.)
 ```
 
 ## TypeScript Client
 
 ```
 ts-client (port contract, shared)
-  when recall(group_id, session_id, query, max_results?) is called
+  when recall is called with a non-blank string session_id
+    when max_results is provided
+      then it is forwarded to the backend (HTTP body includes max_results; in-memory recorder captures it)
+    when max_results is omitted
+      then no max_results is forwarded (server applies its default of 10)
+    when the backend has a memory block
+      then { ok: block } is returned
+    when the backend has no memory
+      then { ok: null } is returned
+    if the backend fails
+      then { error: reason } is returned
+  when recall is called with a null session_id
     when max_results is provided
       then it is forwarded to the backend (HTTP body includes max_results; in-memory recorder captures it)
     when max_results is omitted
@@ -695,8 +787,22 @@ ts-client-http
   then no Authorization header is attached to any request
   if Gralkor responds with a non-2xx status
     then { error: { kind: "http_status", status, body } } is returned
-  if session_id is blank on recall/capture/memorySearch/endSession
-    then the call throws (Gralkor requires a non-blank session_id)
+  when recall is called with a non-blank string session_id
+    then the session_id field is included in the HTTP body
+  when recall is called with a null session_id
+    then the session_id field is omitted from the HTTP body
+  if capture is called with a blank string session_id
+    then the call throws
+  if capture is called with a null session_id
+    then the call throws
+  if memorySearch is called with a blank string session_id
+    then the call throws
+  if memorySearch is called with a null session_id
+    then the call throws
+  if endSession is called with a blank string session_id
+    then the call throws
+  if endSession is called with a null session_id
+    then the call throws
   (retry + per-endpoint timeout behaviour is described in the Timeouts tree)
   runs the shared ts-client port contract (via test/contract/gralkor-client.contract.ts)
 ts-client-in-memory

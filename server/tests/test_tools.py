@@ -337,6 +337,46 @@ class TestMemorySearchObservability:
             for m in debug_msgs
         ), debug_msgs
 
+    async def test_result_line_includes_per_stage_timings(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.INFO, logger="main")
+        mock_graphiti.search_.return_value = SimpleNamespace(
+            edges=[make_edge(fact="A")],
+            nodes=[make_entity(name="Alice")],
+            episodes=[], communities=[],
+            edge_reranker_scores=[], node_reranker_scores=[],
+            episode_reranker_scores=[], community_reranker_scores=[],
+        )
+        mock_graphiti.llm_client.generate_response.return_value = {"text": "i"}
+        await client.post(
+            "/tools/memory_search",
+            json={
+                "session_id": "s", "group_id": "g", "query": "q",
+                "max_results": 20, "max_entity_results": 10,
+            },
+        )
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+        result_lines = [m for m in info_msgs if "[gralkor] tools.memory_search result —" in m]
+        assert result_lines, info_msgs
+        line = result_lines[0]
+        assert "(lock_wait:" in line and "search:" in line and "interpret:" in line, line
+
+    async def test_result_line_includes_per_stage_timings_when_empty(self, client, mock_graphiti, caplog):
+        caplog.set_level(logging.INFO, logger="main")
+        mock_graphiti.search_.return_value = _empty_search_result()
+        await client.post(
+            "/tools/memory_search",
+            json={
+                "session_id": "s", "group_id": "g", "query": "q",
+                "max_results": 20, "max_entity_results": 10,
+            },
+        )
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
+        result_lines = [m for m in info_msgs if "[gralkor] tools.memory_search result —" in m]
+        assert result_lines, info_msgs
+        line = result_lines[0]
+        assert "0 facts 0 entities" in line
+        assert "(lock_wait:" in line and "search:" in line and "interpret:0" in line, line
+
 
 class TestMemoryAdd:
     async def test_wraps_episodes_with_source_text(self, client, mock_graphiti):

@@ -45,6 +45,31 @@ defmodule Gralkor.OrphanReaperTest do
       assert_received {:log, "[orphan_reaper] killing orphan uvicorn pid=12345"}
     end
 
+    test "when the listener's path differs from :code.priv_dir (path-dep symlink resolution), still recognizes by command-line identifiers and SIGKILLs" do
+      me = self()
+
+      # Simulates the command line seen when susu-2 uses a path dep to ../gralkor/ex:
+      # mix symlinks the priv dir, ps reports the resolved physical path, which
+      # does not contain :code.priv_dir(:gralkor_ex) as a substring.
+      resolved_cmdline =
+        "/opt/homebrew/bin/python3.13 /Users/someone/projects/gralkor-and-friends/gralkor/ex/priv/server/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 4000 --no-access-log --timeout-graceful-shutdown 30"
+
+      shell = fn
+        "lsof", _, _ ->
+          {"54321\n", 0}
+
+        "ps", ["-o", "command=", "-p", "54321"], _ ->
+          {resolved_cmdline, 0}
+
+        "kill", ["-9", "54321"], _ ->
+          send(me, {:killed, "54321"})
+          {"", 0}
+      end
+
+      assert OrphanReaper.reap(shell: shell, log: fn _ -> :ok end) == :ok
+      assert_received {:killed, "54321"}
+    end
+
     test "when a foreign process holds port 4000, raises with the foreign command line" do
       shell = fn
         "lsof", _, _ ->

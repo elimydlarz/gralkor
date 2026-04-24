@@ -13,20 +13,28 @@ defmodule Gralkor.Client.HTTP do
   supervision tree, bound to loopback. The consumer owns the trust
   boundary.
 
-  Per-endpoint `receive_timeout`s, calibrated to the workload:
+  Per-endpoint `receive_timeout`s, calibrated to the workload. The two
+  endpoints that call Gemini synchronously (`/recall` and
+  `/tools/memory_search`) are sized to encompass the google-genai SDK's
+  per-attempt timeout (10 s) and its bounded retry policy (2 attempts,
+  1–3 s backoff — see `server/main.py` and `gralkor/TEST_TREES.md >
+  Retry ownership`). Under sustained Vertex throttling the SDK may still
+  exceed these windows; the consumer's `jido_gralkor` plugin then
+  degrades gracefully to a memory-less turn.
 
     * `/health` (2 s) — cheap liveness check; tight so `Gralkor.Connection`
       doesn't flap when the server is under LLM load.
-    * `/recall` (5 s) — fast graph search (`graphiti.search()` — RRF,
-      edges only) plus one small LLM interpretation call. Typical ~1–2 s;
-      5 s means something's actually wrong.
-    * `/tools/memory_search` (10 s) — *slow* graph search
+    * `/recall` (25 s) — graph search (`graphiti.search()` — RRF, edges
+      only, calls the embedder) plus `interpret_facts` LLM call. Two
+      sequential L6 calls; each worst-case ~23 s under SDK retry. 25 s
+      covers one full L6.5 retry cycle on the slower call.
+    * `/tools/memory_search` (30 s) — *slow* graph search
       (`graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER`
-      — cross-encoder reranking + BFS, facts + entity summaries) plus
-      LLM interpretation. The cross-encoder dominates; 5 s drops
-      legitimate results and the LLM hallucinates "no memory found".
-      10 s is the working ceiling.
+      — cross-encoder reranking + BFS) plus `interpret_facts`. More
+      upstream work per call than `/recall`; sized a few seconds higher.
     * `/capture` (5 s) — server returns 204 immediately after buffering.
+      No synchronous LLM call here; the flush runs in the server-side
+      capture buffer (its own retry schedule).
     * `/session_end` (5 s) — server returns 204 immediately after
       scheduling the flush.
     * `/tools/memory_add` (60 s) — Graphiti entity/edge extraction is
@@ -46,19 +54,17 @@ defmodule Gralkor.Client.HTTP do
   @health_timeout_ms 2_000
   @capture_timeout_ms 5_000
   @end_session_timeout_ms 5_000
-  @recall_timeout_ms 5_000
-  @tool_search_timeout_ms 10_000
+  @recall_timeout_ms 25_000
+  @tool_search_timeout_ms 30_000
   @memory_add_timeout_ms 60_000
+
 
   @impl true
   def recall(group_id, session_id, query) do
-    require_session_id!(session_id)
+    body = %{group_id: group_id, query: query}
+    body = if is_binary(session_id), do: Map.put(body, :session_id, session_id), else: body
 
-    post(
-      "/recall",
-      %{group_id: group_id, session_id: session_id, query: query},
-      @recall_timeout_ms
-    )
+    post("/recall", body, @recall_timeout_ms)
     |> case do
       {:ok, %{"memory_block" => ""}} -> {:ok, nil}
       {:ok, %{"memory_block" => block}} -> {:ok, block}
@@ -182,17 +188,22 @@ defmodule Gralkor.Client.HTTP do
       [
         receive_timeout: timeout_ms,
         retry: &retry_on_transient_transport_error/2,
-        max_retries: 1,
-        retry_delay: 1
+        max_retries: 1
       ]
       |> maybe_put(:plug, Keyword.get(config, :plug))
 
     {url, req_opts}
   end
 
+  # Client ↔ server transport retry only. The google-genai SDK at the
+  # server owns Vertex-upstream 429/5xx retries (see
+  # gralkor/TEST_TREES.md > Retry ownership); if a 429 reaches this
+  # layer the SDK has already given up, and retrying here would just
+  # amplify load. Similarly non-2xx HTTP responses and non-transport
+  # errors surface immediately.
   defp retry_on_transient_transport_error(_request, %Req.TransportError{reason: reason})
        when reason in [:closed, :timeout, :econnreset],
-       do: true
+       do: {:delay, 1}
 
   defp retry_on_transient_transport_error(_request, _response_or_exception), do: false
 

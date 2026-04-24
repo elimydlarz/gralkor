@@ -121,19 +121,77 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 
-  describe("if session_id is blank", () => {
-    it("recall/3 throws", async () => {
-      await expect(harness.client.recall("g1", "", "q")).rejects.toThrow(/session_id/);
-    });
-    it("capture/3 throws", async () => {
+  describe("if capture is called with a blank string session_id", () => {
+    it("the call throws", async () => {
       const messages = [{ role: "user" as const, content: "q" }];
       await expect(harness.client.capture("", "g1", messages)).rejects.toThrow(/session_id/);
     });
-    it("memorySearch/3 throws", async () => {
+  });
+
+  describe("if capture is called with a null session_id", () => {
+    it("the call throws", async () => {
+      const messages = [{ role: "user" as const, content: "q" }];
+      await expect(
+        harness.client.capture(null as unknown as string, "g1", messages),
+      ).rejects.toThrow(/session_id/);
+    });
+  });
+
+  describe("if memorySearch is called with a blank string session_id", () => {
+    it("the call throws", async () => {
       await expect(harness.client.memorySearch("g1", "", "q")).rejects.toThrow(/session_id/);
     });
-    it("endSession/1 throws", async () => {
+  });
+
+  describe("if memorySearch is called with a null session_id", () => {
+    it("the call throws", async () => {
+      await expect(
+        harness.client.memorySearch("g1", null as unknown as string, "q"),
+      ).rejects.toThrow(/session_id/);
+    });
+  });
+
+  describe("if endSession is called with a blank string session_id", () => {
+    it("the call throws", async () => {
       await expect(harness.client.endSession("")).rejects.toThrow(/session_id/);
+    });
+  });
+
+  describe("if endSession is called with a null session_id", () => {
+    it("the call throws", async () => {
+      await expect(
+        harness.client.endSession(null as unknown as string),
+      ).rejects.toThrow(/session_id/);
+    });
+  });
+
+  describe("when recall is called with a non-blank string session_id", () => {
+    it("the session_id field is included in the HTTP body", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async (_url, init) => {
+          capturedBody = JSON.parse(init?.body as string);
+          return new Response(JSON.stringify({ memory_block: "" }), { status: 200 });
+        },
+      });
+      await client.recall("g1", "s1", "q");
+      expect(capturedBody?.session_id).toBe("s1");
+    });
+  });
+
+  describe("when recall is called with a null session_id", () => {
+    it("the session_id field is omitted from the HTTP body", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async (_url, init) => {
+          capturedBody = JSON.parse(init?.body as string);
+          return new Response(JSON.stringify({ memory_block: "" }), { status: 200 });
+        },
+      });
+      await client.recall("g1", null, "q");
+      expect(capturedBody).not.toHaveProperty("session_id");
     });
   });
 
@@ -288,7 +346,7 @@ describe("client-timeouts", () => {
     call: (c: GralkorHttpClient) => Promise<unknown>;
   }> = [
     { path: "/health", ms: 2_000, call: (c) => c.healthCheck() },
-    { path: "/recall", ms: 5_000, call: (c) => c.recall("g", "s", "q") },
+    { path: "/recall", ms: 25_000, call: (c) => c.recall("g", "s", "q") },
     {
       path: "/capture",
       ms: 5_000,
@@ -297,7 +355,7 @@ describe("client-timeouts", () => {
     { path: "/session_end", ms: 5_000, call: (c) => c.endSession("s") },
     {
       path: "/tools/memory_search",
-      ms: 10_000,
+      ms: 30_000,
       call: (c) => c.memorySearch("g", "s", "q"),
     },
     {

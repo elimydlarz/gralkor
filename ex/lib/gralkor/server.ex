@@ -4,8 +4,9 @@ defmodule Gralkor.Server do
 
   - init/1 never blocks; handle_continue(:boot) runs the slow work.
   - Boot sequence: write config.yaml → Port.open(uv run uvicorn) → health-poll
-    at 500ms until 200 or 120s timeout → schedule 60s monitor.
-  - Health monitor stops the GenServer on failure; supervisor restarts.
+    at 500ms until 200 or 120s timeout.
+  - Liveness is detected exclusively from Port messages ({:exit_status, _} /
+    {:EXIT, _}). /health is not polled after boot.
   - Graceful shutdown: SIGTERM the OS pid, wait up to 30s for {:exit_status, _},
     then SIGKILL.
   """
@@ -19,7 +20,6 @@ defmodule Gralkor.Server do
 
   @health_poll_interval_ms 500
   @default_boot_timeout_ms 120_000
-  @default_monitor_interval_ms 60_000
   @shutdown_grace_ms 30_000
 
   @type state :: %{
@@ -66,7 +66,6 @@ defmodule Gralkor.Server do
 
       case wait_for_health(state.config.server_url, port, boot_timeout_ms) do
         :ok ->
-          schedule_monitor(state.opts)
           {:noreply, %{state | port: port, os_pid: os_pid}}
 
         {:error, reason} ->
@@ -83,18 +82,6 @@ defmodule Gralkor.Server do
   end
 
   @impl true
-  def handle_info(:health_check, state) do
-    case Health.check(state.config.server_url) do
-      :ok ->
-        schedule_monitor(state.opts)
-        {:noreply, state}
-
-      {:error, reason} ->
-        Logger.error("[gralkor] health degraded: #{inspect(reason)}")
-        {:stop, {:health_degraded, reason}, state}
-    end
-  end
-
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
     Logger.error("[gralkor] python exited status=#{status}")
     {:stop, {:python_exited, status}, %{state | port: nil, os_pid: nil}}
@@ -206,11 +193,6 @@ defmodule Gralkor.Server do
         Process.sleep(@health_poll_interval_ms)
         do_wait_for_health(url, port, deadline)
     end
-  end
-
-  defp schedule_monitor(opts) do
-    interval = Keyword.get(opts, :monitor_interval_ms, @default_monitor_interval_ms)
-    Process.send_after(self(), :health_check, interval)
   end
 
   defp port_exited?(port) do

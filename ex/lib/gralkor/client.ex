@@ -15,7 +15,7 @@ defmodule Gralkor.Client do
   @type session_id :: String.t()
   @type messages :: [Gralkor.Message.t()]
 
-  @callback recall(group_id(), session_id(), query :: String.t()) ::
+  @callback recall(group_id(), session_id() | nil, query :: String.t()) ::
               {:ok, String.t() | nil} | {:error, term()}
   @callback capture(session_id(), group_id(), messages()) :: :ok | {:error, term()}
   @callback memory_search(group_id(), session_id(), query :: String.t()) ::

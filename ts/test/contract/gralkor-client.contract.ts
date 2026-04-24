@@ -44,7 +44,7 @@ export function gralkorClientContract(setup: ContractSetup): void {
     client = setup.make();
   });
 
-  describe("port contract: recall", () => {
+  describe("port contract: recall with a non-blank string session_id", () => {
     it("returns { ok: block } when the backend has memory", async () => {
       await setup.configureBackend(client, "recall", { ok: "<gralkor-memory>facts</gralkor-memory>" });
       const r = await client.recall("g1", "s1", "q");
@@ -60,6 +60,26 @@ export function gralkorClientContract(setup: ContractSetup): void {
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "recall", { error: "boom" });
       const r = await client.recall("g1", "s1", "q");
+      expect("error" in r).toBe(true);
+    });
+  });
+
+  describe("port contract: recall with a null session_id", () => {
+    it("returns { ok: block } when the backend has memory", async () => {
+      await setup.configureBackend(client, "recall", { ok: "<gralkor-memory>facts</gralkor-memory>" });
+      const r = await client.recall("g1", null, "q");
+      expect(r).toEqual({ ok: "<gralkor-memory>facts</gralkor-memory>" });
+    });
+
+    it("returns { ok: null } when the backend has no memory", async () => {
+      await setup.configureBackend(client, "recall", { ok: null });
+      const r = await client.recall("g1", null, "q");
+      expect(r).toEqual({ ok: null });
+    });
+
+    it("returns { error: reason } when the backend fails", async () => {
+      await setup.configureBackend(client, "recall", { error: "boom" });
+      const r = await client.recall("g1", null, "q");
       expect("error" in r).toBe(true);
     });
   });

@@ -144,7 +144,7 @@ defmodule Gralkor.ServerTest do
     :ok = :gen_tcp.close(listener)
   end
 
-  test "stops with {:health_degraded, _} when the monitor tick sees /health fail",
+  test "post-boot /health failures do not stop the GenServer (Port exit is sole liveness signal)",
        %{config: config, python_exe: python, port: port} do
     name = unique_name()
 
@@ -156,15 +156,18 @@ defmodule Gralkor.ServerTest do
         config: config,
         executable: python,
         executable_args: [@fixture_path, Integer.to_string(port)],
-        monitor_interval_ms: 150,
         extra_env: [{"FAIL_AFTER_SECONDS", "1"}]
       )
 
     wait_for_healthy(pid, 10_000)
+    os_pid = :sys.get_state(pid).os_pid
 
     ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, :process, ^pid, reason}, 10_000
-    assert match?({:health_degraded, _}, reason), "unexpected reason: #{inspect(reason)}"
+    refute_receive {:DOWN, ^ref, :process, ^pid, _}, 3_000
+    assert Process.alive?(pid)
+    assert os_process_alive?(os_pid)
+
+    :ok = stop_and_wait(pid)
   end
 
   test "python crash stops the GenServer", %{config: config, python_exe: python, port: port} do

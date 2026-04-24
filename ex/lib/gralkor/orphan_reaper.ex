@@ -10,17 +10,24 @@ defmodule Gralkor.OrphanReaper do
   run Gralkor.Server's graceful-shutdown path, which is the only path
   that SIGTERMs the uvicorn OS pid. So aborts sometimes leave uvicorn orphaned
   (reparented to launchd) with port 4000 still bound. The reaper looks
-  for such an orphan, verifies it is ours (command line contains
-  `gralkor_ex/priv/server` — the packaged server path under
-  `:code.priv_dir(:gralkor_ex)`), and SIGKILLs it. If the holder is
-  anything else, the reaper raises — we don't kill foreign processes.
+  for such an orphan, verifies it is ours (command line contains every
+  one of `@identifiers` — the invariant shape of the uvicorn invocation
+  that `Gralkor.Server` spawns, regardless of mix layout or symlinked
+  priv paths), and SIGKILLs it. If the holder is anything else, the
+  reaper raises — we don't kill foreign processes.
+
+  Path-based identification was tried first and dropped: under path
+  deps, mix symlinks the priv dir, and `ps` reports the resolved
+  physical path while `:code.priv_dir(:gralkor_ex)` returns the symlink
+  — substring match fails on the same directory. Command-line
+  identifiers are layout-independent.
 
   `System.cmd/3` is injectable via `opts[:shell]` so the logic is
   unit-testable without side effects.
   """
 
   @port 4000
-  @marker "gralkor_ex/priv/server"
+  @identifiers ["uvicorn", "main:app", "--port #{4000}"]
 
   @type shell :: (String.t(), [String.t()], keyword() -> {String.t(), integer()})
 
@@ -37,7 +44,7 @@ defmodule Gralkor.OrphanReaper do
         pid = pids |> String.trim() |> String.split("\n", trim: true) |> hd()
         {cmd, 0} = sh.("ps", ["-o", "command=", "-p", pid], stderr_to_stdout: true)
 
-        if String.contains?(cmd, @marker) do
+        if Enum.all?(@identifiers, &String.contains?(cmd, &1)) do
           log.("[orphan_reaper] killing orphan uvicorn pid=#{pid}")
           _ = sh.("kill", ["-9", pid], stderr_to_stdout: true)
           :ok

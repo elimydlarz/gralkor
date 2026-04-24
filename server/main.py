@@ -52,14 +52,42 @@ DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview"
 
 
 def _build_genai_client():
-    import httpx
-    from google import genai
-    from google.genai.types import HttpOptions
+    """Build the shared google-genai client.
 
-    timeout = httpx.Timeout(connect=3.0, read=None, write=None, pool=3.0)
+    The SDK owns Vertex-upstream retries (see gralkor/TEST_TREES.md › Retry
+    ownership). Two knobs flow into every generate_content / embed_content
+    call via HttpOptions:
+
+    - ``timeout`` (ms) — per-attempt ceiling. The SDK passes this as the
+      per-request httpx timeout (``_api_client.py`` :1157, :1169, :1305,
+      :1358), which overrides client-level defaults. Refreshed on every
+      tenacity retry, so a hung call fails per-attempt rather than
+      stalling the whole cycle.
+    - ``retry_options`` — tenacity retry config for the SDK's internal
+      loop. Replaces the library defaults (5 attempts / 1-60 s backoff),
+      which are too generous for our consumer budgets. The 2/1/3 shape
+      gives ~23 s worst case per logical L6 call, which fits two
+      sequential calls (embedder + interpret) under the adapter's
+      25-30 s /recall and /tools/memory_search budgets.
+
+    No layer above the SDK retries the Vertex-upstream classes (408, 429,
+    500, 502, 503, 504). httpx itself is pure plumbing here — the SDK's
+    per-attempt timeout flows into ``httpx_client.send(..., timeout=...)``
+    and overrides client-level defaults, so there is no reason to
+    configure httpx at all.
+    """
+    from google import genai
+    from google.genai.types import HttpOptions, HttpRetryOptions
+
     http_options = HttpOptions(
-        client_args={"transport": httpx.HTTPTransport(retries=1), "timeout": timeout},
-        async_client_args={"transport": httpx.AsyncHTTPTransport(retries=1), "timeout": timeout},
+        timeout=10_000,
+        retry_options=HttpRetryOptions(
+            attempts=2,
+            initial_delay=1.0,
+            max_delay=3.0,
+            exp_base=2,
+            http_status_codes=[408, 429, 500, 502, 503, 504],
+        ),
     )
     return genai.Client(http_options=http_options)
 
@@ -295,6 +323,8 @@ async def lifespan(_app: FastAPI):
     idle_seconds = float(cfg.get("capture", {}).get("idle_seconds", CAPTURE_IDLE_SECONDS_DEFAULT))
     capture_buffer = CaptureBuffer(idle_seconds=idle_seconds, flush_callback=_capture_flush)
 
+    await _warmup(graphiti)
+
     yield
 
     await capture_buffer.flush_all()
@@ -392,6 +422,34 @@ CAPTURE_IDLE_SECONDS_DEFAULT = 300.0
 capture_buffer: CaptureBuffer | None = None
 
 
+_WARMUP_GROUP_ID = "_warmup"
+_WARMUP_QUERY = "warmup"
+
+
+async def _warmup(g) -> None:
+    t0 = time.monotonic()
+    try:
+        async with _driver_lock:
+            t_fast_start = time.monotonic()
+            await g.search(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], num_results=1)
+            t_fast_done = time.monotonic()
+            config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
+            config.limit = 1
+            await g.search_(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], config=config)
+        t_slow_done = time.monotonic()
+        await interpret_facts([], _WARMUP_QUERY, g.llm_client)
+        t_interpret_done = time.monotonic()
+        logger.info(
+            "[gralkor] warmup — search:%.0f search_:%.0f interpret:%.0f %.0fms",
+            (t_fast_done - t_fast_start) * 1000,
+            (t_slow_done - t_fast_done) * 1000,
+            (t_interpret_done - t_slow_done) * 1000,
+            (time.monotonic() - t0) * 1000,
+        )
+    except Exception as e:
+        logger.warning("[gralkor] warmup failed (non-fatal): %s", e)
+
+
 async def _capture_flush(group_id: str, turns: list[list[Message]]) -> None:
     if graphiti is None:
         return
@@ -458,7 +516,7 @@ class GroupIdRequest(BaseModel):
 
 
 class RecallRequest(BaseModel):
-    session_id: str = Field(min_length=1)
+    session_id: str | None = Field(default=None, min_length=1)
     group_id: str
     query: str
     max_results: int = 10
@@ -573,31 +631,11 @@ FURTHER_QUERYING_INSTRUCTION = (
 
 @router.get("/health")
 async def health():
-    result: dict = {"status": "ok"}
-
-    if graphiti is not None:
-        try:
-            node_result = await graphiti.driver.execute_query(
-                "MATCH (n) RETURN count(n) AS node_count"
-            )
-            edge_result = await graphiti.driver.execute_query(
-                "MATCH ()-[r]->() RETURN count(r) AS edge_count"
-            )
-            result["graph"] = {
-                "connected": True,
-                "node_count": node_result[0][0]["node_count"] if node_result and node_result[0] else 0,
-                "edge_count": edge_result[0][0]["edge_count"] if edge_result and edge_result[0] else 0,
-            }
-        except Exception as e:
-            result["graph"] = {"connected": False, "error": str(e)}
-    else:
-        result["graph"] = {"connected": False, "error": "graphiti not initialized"}
-
-    data_dir = os.getenv("FALKORDB_DATA_DIR", "")
-    if data_dir:
-        result["data_dir"] = data_dir
-
-    return result
+    try:
+        await graphiti.driver.execute_query("RETURN 1")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"status": "ok"}
 
 
 @router.post("/episodes")
@@ -740,28 +778,34 @@ async def build_communities(req: GroupIdRequest):
 @router.post("/recall", response_model=RecallResponse)
 async def recall(req: RecallRequest) -> RecallResponse:
     sanitized = _sanitize_group_id(req.group_id)
-    conversation = _conversation_for_session(req.session_id)
+    conversation = [] if req.session_id is None else _conversation_for_session(req.session_id)
     logger.info("[gralkor] recall — session:%s group:%s queryChars:%d max:%d",
                 req.session_id, sanitized, len(req.query), req.max_results)
     logger.debug("[gralkor] [test] recall query: %s", req.query)
     t0 = time.monotonic()
 
     async with _driver_lock:
+        t_lock = time.monotonic()
         _ensure_driver_graph([sanitized])
         edges = await graphiti.search(
             query=_sanitize_query(req.query),
             group_ids=[sanitized],
             num_results=req.max_results,
         )
+    t_search = time.monotonic()
 
     facts = [_serialize_fact(e) for e in edges]
     if not facts:
-        logger.info("[gralkor] recall result — 0 facts %.0fms",
-                    (time.monotonic() - t0) * 1000)
+        duration_ms = (time.monotonic() - t0) * 1000
+        logger.info(
+            "[gralkor] recall result — 0 facts %.0fms (lock_wait:%.0f search:%.0f interpret:0)",
+            duration_ms, (t_lock - t0) * 1000, (t_search - t_lock) * 1000,
+        )
         return RecallResponse(memory_block="")
 
     facts_text = "\n".join(format_fact(f) for f in facts)
     interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
+    t_interpret = time.monotonic()
 
     block = (
         '<gralkor-memory trust="untrusted">\n'
@@ -771,8 +815,11 @@ async def recall(req: RecallRequest) -> RecallResponse:
         "</gralkor-memory>"
     )
     duration_ms = (time.monotonic() - t0) * 1000
-    logger.info("[gralkor] recall result — %d facts blockChars:%d %.0fms",
-                len(facts), len(block), duration_ms)
+    logger.info(
+        "[gralkor] recall result — %d facts blockChars:%d %.0fms (lock_wait:%.0f search:%.0f interpret:%.0f)",
+        len(facts), len(block), duration_ms,
+        (t_lock - t0) * 1000, (t_search - t_lock) * 1000, (t_interpret - t_search) * 1000,
+    )
     logger.debug("[gralkor] [test] recall block: %s", block)
     return RecallResponse(memory_block=block)
 
@@ -814,6 +861,7 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     t0 = time.monotonic()
 
     async with _driver_lock:
+        t_lock = time.monotonic()
         _ensure_driver_graph([sanitized])
         config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
         config.limit = req.max_results
@@ -822,13 +870,17 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
             group_ids=[sanitized],
             config=config,
         )
+    t_search = time.monotonic()
 
     facts = [_serialize_fact(e) for e in search_result.edges]
     nodes = [_serialize_node(n) for n in search_result.nodes[: req.max_entity_results]]
 
     if not facts and not nodes:
-        logger.info("[gralkor] tools.memory_search result — 0 facts 0 entities %.0fms",
-                    (time.monotonic() - t0) * 1000)
+        duration_ms = (time.monotonic() - t0) * 1000
+        logger.info(
+            "[gralkor] tools.memory_search result — 0 facts 0 entities %.0fms (lock_wait:%.0f search:%.0f interpret:0)",
+            duration_ms, (t_lock - t0) * 1000, (t_search - t_lock) * 1000,
+        )
         return MemorySearchResponse(text="Facts: (none)\nEntities: (none)")
 
     facts_section = "Facts:\n" + ("\n".join(format_fact(f) for f in facts) if facts else "(none)")
@@ -837,10 +889,14 @@ async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     )
     facts_text = facts_section + "\n\n" + entities_section
     interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
+    t_interpret = time.monotonic()
     text = f"{facts_text}\n\nInterpretation:\n{interpretation}"
     duration_ms = (time.monotonic() - t0) * 1000
-    logger.info("[gralkor] tools.memory_search result — %d facts %d entities textChars:%d %.0fms",
-                len(facts), len(nodes), len(text), duration_ms)
+    logger.info(
+        "[gralkor] tools.memory_search result — %d facts %d entities textChars:%d %.0fms (lock_wait:%.0f search:%.0f interpret:%.0f)",
+        len(facts), len(nodes), len(text), duration_ms,
+        (t_lock - t0) * 1000, (t_search - t_lock) * 1000, (t_interpret - t_search) * 1000,
+    )
     logger.debug("[gralkor] [test] tools.memory_search text: %s", text)
     return MemorySearchResponse(text=text)
 

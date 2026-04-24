@@ -18,7 +18,7 @@ defmodule Gralkor.ClientContract do
     quote bind_quoted: [client: client] do
       @client client
 
-      describe "port contract: recall/3" do
+      describe "port contract: recall/3 with a non-blank string session_id" do
         test "returns {:ok, memory_block} when the backend has memory" do
           configure_backend(:recall, {:ok, "<gralkor-memory>facts</gralkor-memory>"})
           assert {:ok, "<gralkor-memory>facts</gralkor-memory>"} = @client.recall("g1", "s1", "q")
@@ -32,6 +32,23 @@ defmodule Gralkor.ClientContract do
         test "returns {:error, reason} when the backend fails" do
           configure_backend(:recall, {:error, :boom})
           assert {:error, _} = @client.recall("g1", "s1", "q")
+        end
+      end
+
+      describe "port contract: recall/3 with a nil session_id" do
+        test "returns {:ok, memory_block} when the backend has memory" do
+          configure_backend(:recall, {:ok, "<gralkor-memory>facts</gralkor-memory>"})
+          assert {:ok, "<gralkor-memory>facts</gralkor-memory>"} = @client.recall("g1", nil, "q")
+        end
+
+        test "returns {:ok, nil} when the backend has no memory" do
+          configure_backend(:recall, {:ok, nil})
+          assert {:ok, nil} = @client.recall("g1", nil, "q")
+        end
+
+        test "returns {:error, reason} when the backend fails" do
+          configure_backend(:recall, {:error, :boom})
+          assert {:error, _} = @client.recall("g1", nil, "q")
         end
       end
 

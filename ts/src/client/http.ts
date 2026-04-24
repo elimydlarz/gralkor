@@ -40,14 +40,14 @@ export class GralkorHttpClient implements GralkorClient {
 
   async recall(
     groupId: string,
-    sessionId: string,
+    sessionId: string | null,
     query: string,
     maxResults?: number,
   ): Promise<Result<string | null>> {
-    requireSessionId(sessionId);
-    const body: Record<string, unknown> = { group_id: groupId, session_id: sessionId, query };
+    const body: Record<string, unknown> = { group_id: groupId, query };
+    if (typeof sessionId === "string") body.session_id = sessionId;
     if (maxResults !== undefined) body.max_results = maxResults;
-    const res = await this.post("/recall", body, 5_000);
+    const res = await this.post("/recall", body, 25_000);
     if ("error" in res) return res;
     const respBody = res.ok as { memory_block?: string };
     if (respBody.memory_block === undefined) return { error: { kind: "unexpected_body", body: respBody } };
@@ -82,7 +82,7 @@ export class GralkorHttpClient implements GralkorClient {
     const body: Record<string, unknown> = { group_id: groupId, session_id: sessionId, query };
     if (maxResults !== undefined) body.max_results = maxResults;
     if (maxEntityResults !== undefined) body.max_entity_results = maxEntityResults;
-    const res = await this.post("/tools/memory_search", body, 10_000);
+    const res = await this.post("/tools/memory_search", body, 30_000);
     if ("error" in res) return res;
     const respBody = res.ok as { text?: string };
     if (respBody.text === undefined) return { error: { kind: "unexpected_body", body: respBody } };

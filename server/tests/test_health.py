@@ -1,55 +1,53 @@
-"""Tests for GET /health."""
+"""Tree: /health endpoint."""
+
+from __future__ import annotations
+
+import re
 
 import pytest
 from unittest.mock import AsyncMock
 
 
-@pytest.mark.asyncio
-async def test_health_returns_ok(client):
-    resp = await client.get("/health")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "ok"
+class TestHealthEndpoint:
+    @pytest.mark.asyncio
+    async def test_responds_in_constant_time_independent_of_graph_size(
+        self, client, mock_graphiti
+    ):
+        mock_graphiti.driver.execute_query = AsyncMock(return_value=[[{"1": 1}]])
 
-
-@pytest.mark.asyncio
-async def test_health_returns_graph_stats_when_connected(client, mock_graphiti):
-    """When graphiti is initialized and FalkorDB is connected, returns graph stats."""
-    mock_graphiti.driver.execute_query = AsyncMock(
-        side_effect=[
-            [[{"node_count": 42}]],   # node count query
-            [[{"edge_count": 100}]],  # edge count query
-        ]
-    )
-    resp = await client.get("/health")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["graph"]["connected"] is True
-    assert data["graph"]["node_count"] == 42
-    assert data["graph"]["edge_count"] == 100
-
-
-@pytest.mark.asyncio
-async def test_health_returns_graph_error_on_query_failure(client, mock_graphiti):
-    """When graphiti is initialized but query fails, returns connected false."""
-    mock_graphiti.driver.execute_query = AsyncMock(side_effect=Exception("connection refused"))
-    resp = await client.get("/health")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["graph"]["connected"] is False
-    assert "connection refused" in data["graph"]["error"]
-
-
-@pytest.mark.asyncio
-async def test_health_returns_graph_not_initialized(client):
-    """When graphiti is not initialized, returns connected false."""
-    import main as main_mod
-    original = main_mod.graphiti
-    main_mod.graphiti = None
-    try:
         resp = await client.get("/health")
+
         assert resp.status_code == 200
-        data = resp.json()
-        assert data["graph"]["connected"] is False
-    finally:
-        main_mod.graphiti = original
+        queries = [
+            call.args[0] if call.args else call.kwargs.get("query", "")
+            for call in mock_graphiti.driver.execute_query.call_args_list
+        ]
+        for q in queries:
+            assert not re.search(r"\bMATCH\b", q, re.IGNORECASE), (
+                f"/health must not scan the graph; saw query: {q!r}"
+            )
+            assert not re.search(r"\bcount\s*\(", q, re.IGNORECASE), (
+                f"/health must not aggregate graph data; saw query: {q!r}"
+            )
+
+    class TestWhenTheFalkorDbDriverAnswersACheapProbe:
+        @pytest.mark.asyncio
+        async def test_returns_200(self, client, mock_graphiti):
+            mock_graphiti.driver.execute_query = AsyncMock(return_value=[[{"1": 1}]])
+
+            resp = await client.get("/health")
+
+            assert resp.status_code == 200
+
+    class TestIfTheProbeRaisesOrTimesOut:
+        @pytest.mark.asyncio
+        async def test_returns_503_with_an_error_detail(self, client, mock_graphiti):
+            mock_graphiti.driver.execute_query = AsyncMock(
+                side_effect=Exception("connection refused")
+            )
+
+            resp = await client.get("/health")
+
+            assert resp.status_code == 503
+            body = resp.json()
+            assert "connection refused" in body["detail"]

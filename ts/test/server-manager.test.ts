@@ -1,7 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { describe, it, expect } from "vitest";
 import {
   buildConfigYaml,
   bundledServerDir,
@@ -24,40 +21,6 @@ describe("createServerManager", () => {
       version: "0.0.0-test",
     });
     expect(manager.isRunning()).toBe(false);
-  });
-
-  describe("start — adopt path (pre-flight finds a healthy server)", () => {
-    let workDir: string;
-
-    beforeEach(() => {
-      workDir = mkdtempSync(join(tmpdir(), "gralkor-mgr-"));
-    });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-      rmSync(workDir, { recursive: true, force: true });
-    });
-
-    it("adopts a running server without spawning a child process", async () => {
-      const fetchStub = vi.fn(async () => new Response("ok", { status: 200 }));
-      vi.stubGlobal("fetch", fetchStub);
-
-      const manager = createServerManager({
-        dataDir: workDir,
-        port: 4000,
-        version: "0.0.0-test",
-      });
-
-      await manager.start();
-
-      expect(manager.isRunning()).toBe(false);
-      expect(fetchStub).toHaveBeenCalledWith(
-        "http://127.0.0.1:4000/health",
-        expect.any(Object),
-      );
-
-      await manager.stop();
-    });
   });
 });
 

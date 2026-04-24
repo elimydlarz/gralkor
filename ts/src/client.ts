@@ -40,7 +40,7 @@ export interface GralkorClient {
    */
   recall(
     groupId: string,
-    sessionId: string,
+    sessionId: string | null,
     query: string,
     maxResults?: number,
   ): Promise<Result<string | null>>;
