@@ -244,65 +244,8 @@ defmodule Gralkor.Client.HTTPTest do
     end
   end
 
-  describe "when the transport fails with a connection-level error, then the call is retried exactly once, when the retry succeeds" do
-    test "the response is returned normally" do
-      parent = self()
-
-      Req.Test.expect(:gralkor_stub, fn conn ->
-        send(parent, :stub_called)
-        Req.Test.transport_error(conn, :closed)
-      end)
-
-      Req.Test.expect(:gralkor_stub, fn conn ->
-        send(parent, :stub_called)
-        Req.Test.json(conn, %{"memory_block" => ""})
-      end)
-
-      assert {:ok, nil} = HTTP.recall("g1", "s1", "q")
-
-      assert_received :stub_called
-      assert_received :stub_called
-      refute_received :stub_called
-    end
-  end
-
-  describe "when the transport fails with a connection-level error, then the call is retried exactly once, when the retry also fails" do
-    test "the failure surfaces to the caller" do
-      parent = self()
-
-      Req.Test.expect(:gralkor_stub, 2, fn conn ->
-        send(parent, :stub_called)
-        Req.Test.transport_error(conn, :timeout)
-      end)
-
-      assert {:error, %Req.TransportError{reason: :timeout}} = HTTP.recall("g1", "s1", "q")
-
-      assert_received :stub_called
-      assert_received :stub_called
-      refute_received :stub_called
-    end
-  end
-
-  describe "when the server returns a non-2xx HTTP response (including 429)" do
-    test "no retry is attempted — the response surfaces immediately" do
-      parent = self()
-
-      Req.Test.expect(:gralkor_stub, fn conn ->
-        send(parent, :stub_called)
-        Plug.Conn.send_resp(conn, 503, "")
-      end)
-
-      assert {:error, {:http_status, 503, _}} = HTTP.recall("g1", "s1", "q")
-
-      assert_received :stub_called
-      refute_received :stub_called
-    end
-
-    # The google-genai SDK owns Vertex-upstream retries (see
-    # gralkor/TEST_TREES.md > Retry ownership). A 429 that reaches this
-    # layer means the SDK has already exhausted its retries; retrying
-    # here would only amplify load. 429 surfaces like any other non-2xx.
-    test "429 surfaces without retry — the SDK at L6.5 owns Vertex-upstream retries" do
+  describe "if the server returns any non-2xx HTTP response" do
+    test "the response surfaces as {:error, {:http_status, status, body}}" do
       parent = self()
 
       Req.Test.expect(:gralkor_stub, fn conn ->
@@ -322,19 +265,21 @@ defmodule Gralkor.Client.HTTPTest do
     end
   end
 
-  describe "if the transport fails with any other error" do
-    test "no retry is attempted — the failure surfaces immediately (fail-fast default)" do
+  describe "if the transport fails with any error (including :closed, :timeout, :econnreset)" do
+    test "the failure surfaces immediately" do
       parent = self()
 
-      Req.Test.expect(:gralkor_stub, fn conn ->
-        send(parent, :stub_called)
-        Req.Test.transport_error(conn, :econnrefused)
-      end)
+      for reason <- [:closed, :timeout, :econnreset, :econnrefused] do
+        Req.Test.expect(:gralkor_stub, fn conn ->
+          send(parent, {:stub_called, reason})
+          Req.Test.transport_error(conn, reason)
+        end)
 
-      assert {:error, %Req.TransportError{reason: :econnrefused}} = HTTP.recall("g1", "s1", "q")
+        assert {:error, %Req.TransportError{reason: ^reason}} = HTTP.recall("g1", "s1", "q")
 
-      assert_received :stub_called
-      refute_received :stub_called
+        assert_received {:stub_called, ^reason}
+        refute_received {:stub_called, ^reason}
+      end
     end
   end
 

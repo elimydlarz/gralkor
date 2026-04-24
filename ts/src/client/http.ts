@@ -11,14 +11,14 @@ export interface GralkorHttpClientOptions {
  * HTTP adapter for {@link GralkorClient}.
  *
  * No auth: the server binds to loopback and expects its consumer to supervise it.
- * Retry-once on transient transport errors (ECONNRESET / ETIMEDOUT / UND_ERR_SOCKET)
- * — mirrors the Elixir adapter, which mirrors the server→Gemini `httpx.HTTPTransport(retries=1)`
- * pattern. HTTP responses and other transport errors surface immediately.
+ * No retries at this layer: non-2xx responses and transport errors surface immediately.
+ * See `gralkor/TEST_TREES.md` > Retry ownership — the google-genai SDK at L6.5 is
+ * the only retrier in the stack.
  *
  * Per-endpoint timeouts (milliseconds), calibrated to the workload:
  *
  *   - `/health`                — 2 000
- *   - `/recall`                — 5 000
+ *   - `/recall`                — 12 000 (server enforces a 10 s deadline; +2 s transport margin)
  *   - `/capture`               — 5 000
  *   - `/session_end`           — 5 000
  *   - `/tools/memory_search`   — 10 000
@@ -47,7 +47,7 @@ export class GralkorHttpClient implements GralkorClient {
     const body: Record<string, unknown> = { group_id: groupId, query };
     if (typeof sessionId === "string") body.session_id = sessionId;
     if (maxResults !== undefined) body.max_results = maxResults;
-    const res = await this.post("/recall", body, 25_000);
+    const res = await this.post("/recall", body, 12_000);
     if ("error" in res) return res;
     const respBody = res.ok as { memory_block?: string };
     if (respBody.memory_block === undefined) return { error: { kind: "unexpected_body", body: respBody } };
@@ -135,62 +135,41 @@ export class GralkorHttpClient implements GralkorClient {
     body: unknown | undefined,
     timeoutMs: number | undefined,
   ): Promise<Result<unknown>> {
-    for (let attempt = 0; attempt <= 1; attempt++) {
-      const controller = new AbortController();
-      const timer =
-        timeoutMs === undefined ? null : setTimeout(() => controller.abort(), timeoutMs);
+    const controller = new AbortController();
+    const timer =
+      timeoutMs === undefined ? null : setTimeout(() => controller.abort(), timeoutMs);
 
-      try {
-        const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-          method,
-          headers: body !== undefined ? { "content-type": "application/json" } : undefined,
-          body: body !== undefined ? JSON.stringify(body) : undefined,
-          signal: controller.signal,
-        });
+    try {
+      const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method,
+        headers: body !== undefined ? { "content-type": "application/json" } : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
 
-        if (res.status >= 200 && res.status < 300) {
-          const text = await res.text();
-          if (text === "") return { ok: null };
-          try {
-            return { ok: JSON.parse(text) };
-          } catch {
-            return { ok: text };
-          }
+      if (res.status >= 200 && res.status < 300) {
+        const text = await res.text();
+        if (text === "") return { ok: null };
+        try {
+          return { ok: JSON.parse(text) };
+        } catch {
+          return { ok: text };
         }
-
-        const errBody = await res.text().catch(() => "");
-        return { error: { kind: "http_status", status: res.status, body: errBody } };
-      } catch (err) {
-        if (attempt === 0 && isTransientTransportError(err)) continue;
-        return {
-          error: {
-            kind: "network",
-            cause: err instanceof Error ? err.message : String(err),
-          },
-        };
-      } finally {
-        if (timer !== null) clearTimeout(timer);
       }
+
+      const errBody = await res.text().catch(() => "");
+      return { error: { kind: "http_status", status: res.status, body: errBody } };
+    } catch (err) {
+      return {
+        error: {
+          kind: "network",
+          cause: err instanceof Error ? err.message : String(err),
+        },
+      };
+    } finally {
+      if (timer !== null) clearTimeout(timer);
     }
-    throw new Error("unreachable");
   }
-}
-
-function isTransientTransportError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const code = extractCode(err);
-  return code === "ECONNRESET" || code === "ETIMEDOUT" || code === "UND_ERR_SOCKET";
-}
-
-function extractCode(err: unknown): string | undefined {
-  if (!err || typeof err !== "object") return undefined;
-  const e = err as { code?: unknown; cause?: unknown };
-  if (typeof e.code === "string") return e.code;
-  if (e.cause && typeof e.cause === "object") {
-    const inner = (e.cause as { code?: unknown }).code;
-    if (typeof inner === "string") return inner;
-  }
-  return undefined;
 }
 
 function requireSessionId(id: string): void {

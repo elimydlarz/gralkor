@@ -54,7 +54,7 @@ defmodule Gralkor.Client.HTTP do
   @health_timeout_ms 2_000
   @capture_timeout_ms 5_000
   @end_session_timeout_ms 5_000
-  @recall_timeout_ms 25_000
+  @recall_timeout_ms 12_000
   @tool_search_timeout_ms 30_000
   @memory_add_timeout_ms 60_000
 
@@ -187,25 +187,12 @@ defmodule Gralkor.Client.HTTP do
     req_opts =
       [
         receive_timeout: timeout_ms,
-        retry: &retry_on_transient_transport_error/2,
-        max_retries: 1
+        retry: false
       ]
       |> maybe_put(:plug, Keyword.get(config, :plug))
 
     {url, req_opts}
   end
-
-  # Client ↔ server transport retry only. The google-genai SDK at the
-  # server owns Vertex-upstream 429/5xx retries (see
-  # gralkor/TEST_TREES.md > Retry ownership); if a 429 reaches this
-  # layer the SDK has already given up, and retrying here would just
-  # amplify load. Similarly non-2xx HTTP responses and non-transport
-  # errors surface immediately.
-  defp retry_on_transient_transport_error(_request, %Req.TransportError{reason: reason})
-       when reason in [:closed, :timeout, :econnreset],
-       do: {:delay, 1}
-
-  defp retry_on_transient_transport_error(_request, _response_or_exception), do: false
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)

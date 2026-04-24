@@ -74,6 +74,13 @@ POST /recall endpoint
     and response includes further-querying instruction ("Search memory (up to 3 times, diverse queries)...")
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
+  /recall deadline
+    the handler body is wrapped in asyncio.wait_for with a 10 s budget
+      shared across both sequential Gemini calls (embedder + interpret)
+      so the slower call cannot starve the other beyond the total ceiling
+    if the deadline expires before the handler returns
+      then the in-flight work is cancelled
+      and the response is 504 with {"error": "recall deadline expired"}
   observability
     then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
     then logs "[gralkor] recall result — <N> facts blockChars:… <ms> (lock_wait:… search:… interpret:…)" at INFO on every call
@@ -531,20 +538,19 @@ retry-ownership (stack-wide invariant — other tree nodes in this file cite thi
   then exactly one layer retries any given failure class
   then layers above the owner derive their timeout from that layer's worst case
   then no two layers retry the same class
-  failure class: Vertex-upstream (HTTP 408, 429, 500, 502, 503, 504 from Gemini/Vertex)
+  failure class: Vertex-upstream rate-limit (HTTP 429 from Gemini/Vertex)
     owner: the google-genai SDK (L6.5) — configured via HttpOptions in gralkor/server/main.py
-      then retry_options=HttpRetryOptions(attempts=2, initial_delay=1s, max_delay=3s, exp_base=2)
-      then per-attempt timeout is HttpOptions.timeout (10_000 ms) — enforced by httpx
+      then retry_options=HttpRetryOptions(attempts=2, initial_delay=1s, exp_base=1, http_status_codes=[429])
+      then per-attempt timeout is HttpOptions.timeout (3_000 ms) — enforced by httpx
     then no layer above the SDK retries this class
+  failure class: Vertex-upstream other (HTTP 408, 500, 502, 503, 504 from Gemini/Vertex)
+    no owner — the failure surfaces immediately through the server's downstream-error-handling envelope
   failure class: LLM malformed output (structured-output parse failures, dedup idx hallucinations, refusal)
     owner: graphiti's GeminiClient (L6b)
       then 2 attempts; the error text is appended to the next prompt
     then no layer above graphiti retries this class
   failure class: client ↔ server transport (TCP reset, socket closed, connect timeout between adapter and Gralkor server)
-    owner: the client adapter (Elixir Req / TS fetch, L3)
-      then exactly once, immediate (no backoff)
-      then on retry exhaustion, the failure surfaces to the plugin
-    then no layer above the adapter retries this class
+    no owner — the failure surfaces immediately to the plugin
   failure class: server-internal (graph write failure, Falkor driver error, internal distill crash)
     owner for the capture chain: the capture buffer (1 s / 2 s / 4 s exponential)
     for all other chains: no owner — the failure surfaces immediately
@@ -559,21 +565,13 @@ Cross-referenced from `MENTAL_MODEL.md › Invariants › Retry ownership` and f
 
 ```
 client-timeouts (shared adapter contract — both ex and ts enforce the same design)
-  retry once on transient client ↔ server transport errors (adapter is the owner for this class per Retry ownership)
-    when the transport fails with a connection-level error (:closed, :timeout, :econnreset)
-      then the call is retried exactly once
-        when the retry succeeds
-          then the response is returned normally
-        when the retry also fails
-          then the failure surfaces to the caller
-    when the server returns any non-2xx HTTP response (including 429 from the upstream LLM provider)
-      then no retry is attempted — the response surfaces immediately as {:error, {:http_status, status, body}}
-      and for 429 specifically, the google-genai SDK at L6.5 inside the server has already retried within its configured bounds; a retry at this layer would amplify load without a meaningful chance of success (see Retry ownership)
-    if the transport fails with any other error
-      then no retry is attempted — the failure surfaces immediately (fail-fast default)
+  if the server returns any non-2xx HTTP response
+    then the response surfaces as {:error, {:http_status, status, body}}
+  if the transport fails with any error (including :closed, :timeout, :econnreset)
+    then the failure surfaces immediately
   per-endpoint receive window (milliseconds)
     /health                 2_000   — cheap liveness check
-    /recall                25_000   — encompasses the L6.5 worst case for one logical Gemini call (embedder + interpret are sequential; see Retry ownership)
+    /recall                12_000   — 10 s server-side deadline (see Recall > /recall deadline) + 2 s transport margin
     /capture                5_000   — fire-and-forget; server returns 204 after buffering, flush owns its own retry budget
     /session_end            5_000   — fire-and-forget; server returns 204 after scheduling the flush
     /tools/memory_search   30_000   — slow search with cross-encoder reranker + interpret; a few seconds more than /recall
@@ -583,16 +581,13 @@ client-timeouts (shared adapter contract — both ex and ts enforce the same des
     ex adapter passes receive_timeout: :infinity
     ts adapter passes no AbortController timer (timeoutMs: undefined)
   coverage notes
-    ts: retry-once on transport errors + all six receive windows + both admin-no-deadline paths are
-        exercised in test/client/http.test.ts via vi.useFakeTimers and a fetch stub
-        that honours AbortSignal. 429 is NOT retried at this layer — the google-genai SDK at
-        L6.5 owns Vertex-upstream retries (see Retry ownership).
-    ex: retry-once on transport errors is exercised in test/gralkor/client/http_test.exs via
-        Req.Test (stub that counts calls and controls the response status). 429-surfaces-
-        immediately is asserted alongside the other non-2xx paths. Per-endpoint receive windows
-        and :infinity are NOT exercised at unit level — Req.Test bypasses Finch, so the
-        receive_timeout timer never fires in plug-based tests. These values are enforced by
-        code review of the module attrs in lib/gralkor/client/http.ex.
+    ts: non-2xx-surfaces, transport-error-surfaces, all six receive windows, and both
+        admin-no-deadline paths are exercised in test/client/http.test.ts via vi.useFakeTimers
+        and a fetch stub that honours AbortSignal.
+    ex: non-2xx-surfaces and transport-error-surfaces are asserted via Req.Test. Per-endpoint
+        receive windows and :infinity are NOT exercised at unit level — Req.Test bypasses Finch,
+        so the receive_timeout timer never fires in plug-based tests. These values are enforced
+        by code review of the module attrs in lib/gralkor/client/http.ex.
 ```
 
 ## Elixir Client

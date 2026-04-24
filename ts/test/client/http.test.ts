@@ -195,85 +195,49 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 
-  describe("when the transport fails with a connection-level error, then the call is retried exactly once, when the retry succeeds", () => {
-    it("the response is returned normally", async () => {
+  describe("if the server returns any non-2xx HTTP response", () => {
+    it("the response surfaces as {:error, {:http_status, status, body}}", async () => {
       let calls = 0;
       const client = new GralkorHttpClient({
         baseUrl: "http://gralkor.test",
         fetch: async () => {
           calls += 1;
-          if (calls === 1) {
-            const err = new Error("connection reset") as Error & { code?: string };
-            err.code = "ECONNRESET";
-            throw err;
-          }
-          return new Response(JSON.stringify({ memory_block: "" }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
+          return new Response(JSON.stringify({ detail: "rate limited" }), {
+            status: 429,
+            headers: { "content-type": "application/json", "retry-after": "0" },
           });
         },
       });
       const result = await client.recall("g1", "s1", "q");
-      expect(result).toEqual({ ok: null });
-      expect(calls).toBe(2);
-    });
-  });
-
-  describe("when the transport fails with a connection-level error, then the call is retried exactly once, when the retry also fails", () => {
-    it("the failure surfaces to the caller", async () => {
-      let calls = 0;
-      const client = new GralkorHttpClient({
-        baseUrl: "http://gralkor.test",
-        fetch: async () => {
-          calls += 1;
-          const err = new Error("socket timeout") as Error & { code?: string };
-          err.code = "ETIMEDOUT";
-          throw err;
-        },
-      });
-      const result = await client.recall("g1", "s1", "q");
-      expect("error" in result).toBe(true);
-      expect(calls).toBe(2);
-    });
-  });
-
-  describe("when the server returns any HTTP response (including non-2xx)", () => {
-    it("no retry is attempted — the response surfaces immediately", async () => {
-      let calls = 0;
-      const client = new GralkorHttpClient({
-        baseUrl: "http://gralkor.test",
-        fetch: async () => {
-          calls += 1;
-          return new Response("", { status: 503 });
-        },
-      });
-      const result = await client.recall("g1", "s1", "q");
       expect("error" in result).toBe(true);
       if ("error" in result) {
-        expect((result.error as { kind: string }).kind).toBe("http_status");
+        expect((result.error as { kind: string; status: number }).kind).toBe("http_status");
+        expect((result.error as { kind: string; status: number }).status).toBe(429);
       }
       expect(calls).toBe(1);
     });
   });
 
-  describe("if the transport fails with any other error", () => {
-    it("no retry is attempted — the failure surfaces immediately (fail-fast default)", async () => {
-      let calls = 0;
-      const client = new GralkorHttpClient({
-        baseUrl: "http://gralkor.test",
-        fetch: async () => {
-          calls += 1;
-          const err = new Error("dns lookup failed") as Error & { code?: string };
-          err.code = "ENOTFOUND";
-          throw err;
-        },
-      });
-      const result = await client.recall("g1", "s1", "q");
-      expect("error" in result).toBe(true);
-      if ("error" in result) {
-        expect((result.error as { kind: string }).kind).toBe("network");
+  describe("if the transport fails with any error (including :closed, :timeout, :econnreset)", () => {
+    it("the failure surfaces immediately", async () => {
+      for (const code of ["ECONNRESET", "ETIMEDOUT", "UND_ERR_SOCKET", "ENOTFOUND"]) {
+        let calls = 0;
+        const client = new GralkorHttpClient({
+          baseUrl: "http://gralkor.test",
+          fetch: async () => {
+            calls += 1;
+            const err = new Error(`transport failure: ${code}`) as Error & { code?: string };
+            err.code = code;
+            throw err;
+          },
+        });
+        const result = await client.recall("g1", "s1", "q");
+        expect("error" in result).toBe(true);
+        if ("error" in result) {
+          expect((result.error as { kind: string }).kind).toBe("network");
+        }
+        expect(calls).toBe(1);
       }
-      expect(calls).toBe(1);
     });
   });
 
@@ -346,7 +310,7 @@ describe("client-timeouts", () => {
     call: (c: GralkorHttpClient) => Promise<unknown>;
   }> = [
     { path: "/health", ms: 2_000, call: (c) => c.healthCheck() },
-    { path: "/recall", ms: 25_000, call: (c) => c.recall("g", "s", "q") },
+    { path: "/recall", ms: 12_000, call: (c) => c.recall("g", "s", "q") },
     {
       path: "/capture",
       ms: 5_000,

@@ -65,28 +65,27 @@ def _build_genai_client():
       stalling the whole cycle.
     - ``retry_options`` — tenacity retry config for the SDK's internal
       loop. Replaces the library defaults (5 attempts / 1-60 s backoff),
-      which are too generous for our consumer budgets. The 2/1/3 shape
-      gives ~23 s worst case per logical L6 call, which fits two
-      sequential calls (embedder + interpret) under the adapter's
-      25-30 s /recall and /tools/memory_search budgets.
+      which are too generous for our deadlines. Only 429 triggers a
+      retry; 408/5xx surface immediately through the server's
+      downstream-error-handling envelope. Shape is one quick retry
+      (``attempts=2, initial_delay=1 s, exp_base=1``): fast-failing 429s
+      get one chance to recover inside the /recall 10 s deadline.
 
-    No layer above the SDK retries the Vertex-upstream classes (408, 429,
-    500, 502, 503, 504). httpx itself is pure plumbing here — the SDK's
-    per-attempt timeout flows into ``httpx_client.send(..., timeout=...)``
-    and overrides client-level defaults, so there is no reason to
-    configure httpx at all.
+    No layer above the SDK retries Vertex-upstream 429s. httpx itself is
+    pure plumbing — the SDK's per-attempt timeout flows into
+    ``httpx_client.send(..., timeout=...)`` and overrides client-level
+    defaults, so there is no reason to configure httpx at all.
     """
     from google import genai
     from google.genai.types import HttpOptions, HttpRetryOptions
 
     http_options = HttpOptions(
-        timeout=10_000,
+        timeout=3_000,
         retry_options=HttpRetryOptions(
             attempts=2,
             initial_delay=1.0,
-            max_delay=3.0,
-            exp_base=2,
-            http_status_codes=[408, 429, 500, 502, 503, 504],
+            exp_base=1,
+            http_status_codes=[429],
         ),
     )
     return genai.Client(http_options=http_options)
@@ -775,8 +774,25 @@ async def build_communities(req: GroupIdRequest):
 # ── New endpoints ────────────────────────────────────────────
 
 
+RECALL_DEADLINE_SECONDS = 10.0
+
+
 @router.post("/recall", response_model=RecallResponse)
-async def recall(req: RecallRequest) -> RecallResponse:
+async def recall(req: RecallRequest) -> Response:
+    try:
+        return await asyncio.wait_for(_recall_body(req), timeout=RECALL_DEADLINE_SECONDS)
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[gralkor] recall deadline expired — session:%s group:%s",
+            req.session_id, req.group_id,
+        )
+        return JSONResponse(
+            status_code=504,
+            content={"error": "recall deadline expired"},
+        )
+
+
+async def _recall_body(req: RecallRequest) -> RecallResponse:
     sanitized = _sanitize_group_id(req.group_id)
     conversation = [] if req.session_id is None else _conversation_for_session(req.session_id)
     logger.info("[gralkor] recall — session:%s group:%s queryChars:%d max:%d",

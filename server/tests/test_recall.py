@@ -344,3 +344,32 @@ class TestObservability:
         line = result_lines[0]
         assert "0 facts" in line
         assert "(lock_wait:" in line and "search:" in line and "interpret:0" in line, line
+
+
+class TestRecallDeadline:
+    """Reifies Recall > /recall deadline.
+
+    The handler body is wrapped in asyncio.wait_for with a 10 s budget shared
+    across both sequential Gemini calls. If the deadline expires, the response
+    is 504 with {"error": "recall deadline expired"}.
+    """
+
+    async def test_returns_504_when_handler_body_exceeds_the_deadline(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        monkeypatch.setattr(main_mod, "RECALL_DEADLINE_SECONDS", 0.05)
+
+        import asyncio as _asyncio
+
+        async def slow_search(*_args, **_kwargs):
+            await _asyncio.sleep(1.0)
+            return []
+
+        mock_graphiti.search.side_effect = slow_search
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        assert resp.status_code == 504
+        assert resp.json() == {"error": "recall deadline expired"}
