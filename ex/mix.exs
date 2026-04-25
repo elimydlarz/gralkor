@@ -15,16 +15,21 @@ defmodule Gralkor.MixProject do
       compilers: Mix.compilers() ++ [:gralkor_priv],
       releases: releases(),
       aliases: aliases(),
-      preferred_cli_env: [
-        "test.unit": :test,
-        "test.integration": :test,
-        "test.functional": :test
-      ],
       test_coverage: [summary: [threshold: 0]],
       description: description(),
       package: package(),
       source_url: @source_url,
       docs: docs()
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
+        "test.unit": :test,
+        "test.integration": :test,
+        "test.functional": :test
+      ]
     ]
   end
 
