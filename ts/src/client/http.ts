@@ -12,16 +12,16 @@ export interface GralkorHttpClientOptions {
  *
  * No auth: the server binds to loopback and expects its consumer to supervise it.
  * No retries at this layer: non-2xx responses and transport errors surface immediately.
- * See `gralkor/TEST_TREES.md` > Retry ownership — the google-genai SDK at L6.5 is
- * the only retrier in the stack.
+ * See `gralkor/TEST_TREES.md` > Retry ownership — 429 retry lives inside the
+ * server's `/recall` handler; no layer above it retries this class.
  *
  * Per-endpoint timeouts (milliseconds), calibrated to the workload:
  *
  *   - `/health`                — 2 000
- *   - `/recall`                — 12 000 (server enforces a 10 s deadline; +2 s transport margin)
+ *   - `/recall`                — 12 000 (matches the server's `/recall` deadline; tight — a server 504 may race the transport, revisit if it bites)
  *   - `/capture`               — 5 000
  *   - `/session_end`           — 5 000
- *   - `/tools/memory_search`   — 10 000
+ *   - `/tools/memory_search`   — 30 000
  *   - `/tools/memory_add`      — 60 000 (Graphiti extraction is slow)
  *   - `/build-indices`         — none (admin; minutes-to-hours on large graphs)
  *   - `/build-communities`     — none (admin; minutes-to-hours on large graphs)

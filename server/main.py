@@ -52,43 +52,23 @@ DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview"
 
 
 def _build_genai_client():
-    """Build the shared google-genai client.
+    """Build the shared google-genai client as a plain transport.
 
-    The SDK owns Vertex-upstream retries (see gralkor/TEST_TREES.md › Retry
-    ownership). Two knobs flow into every generate_content / embed_content
-    call via HttpOptions:
+    No HttpOptions. In particular: HttpOptions.timeout is NEVER set here.
+    The SDK serialises that field on the wire as a Vertex-side deadline,
+    and Gemini 3.x rejects values below 10_000 ms with 400 INVALID_ARGUMENT
+    (see MENTAL_MODEL.md › Invariants › Vertex deadline floor). Local
+    per-request bounds live above the SDK — see /recall's deadline and
+    its per-call 429 retry (both in this file).
 
-    - ``timeout`` (ms) — per-attempt ceiling. The SDK passes this as the
-      per-request httpx timeout (``_api_client.py`` :1157, :1169, :1305,
-      :1358), which overrides client-level defaults. Refreshed on every
-      tenacity retry, so a hung call fails per-attempt rather than
-      stalling the whole cycle.
-    - ``retry_options`` — tenacity retry config for the SDK's internal
-      loop. Replaces the library defaults (5 attempts / 1-60 s backoff),
-      which are too generous for our deadlines. Only 429 triggers a
-      retry; 408/5xx surface immediately through the server's
-      downstream-error-handling envelope. Shape is one quick retry
-      (``attempts=2, initial_delay=1 s, exp_base=1``): fast-failing 429s
-      get one chance to recover inside the /recall 10 s deadline.
-
-    No layer above the SDK retries Vertex-upstream 429s. httpx itself is
-    pure plumbing — the SDK's per-attempt timeout flows into
-    ``httpx_client.send(..., timeout=...)`` and overrides client-level
-    defaults, so there is no reason to configure httpx at all.
+    HttpRetryOptions is also not set: retry ownership for 429 lives in
+    /recall's handler, not in the SDK (see TEST_TREES.md › Retry
+    ownership). No layer retries 429 above /recall; other endpoints
+    surface 429 immediately through rate_limit_middleware.
     """
     from google import genai
-    from google.genai.types import HttpOptions, HttpRetryOptions
 
-    http_options = HttpOptions(
-        timeout=3_000,
-        retry_options=HttpRetryOptions(
-            attempts=2,
-            initial_delay=1.0,
-            exp_base=1,
-            http_status_codes=[429],
-        ),
-    )
-    return genai.Client(http_options=http_options)
+    return genai.Client()
 
 
 def _build_llm_client(cfg: dict, genai_client=None):
@@ -774,7 +754,27 @@ async def build_communities(req: GroupIdRequest):
 # ── New endpoints ────────────────────────────────────────────
 
 
-RECALL_DEADLINE_SECONDS = 10.0
+RECALL_DEADLINE_SECONDS = 12.0
+RECALL_RETRY_DELAY_SECONDS = 1.0
+
+
+async def _recall_vertex_call(factory):
+    """Run `factory()` (zero-arg coroutine) with one 429 retry.
+
+    Reifies Retry ownership > Vertex-upstream rate-limit: /recall owns
+    retry for this class. The first 429 from an upstream Gemini call
+    during /recall is absorbed by a single retry after a fixed delay.
+    A second 429 — or any non-429 failure on either attempt — surfaces
+    immediately and is mapped to an HTTP response by the request-level
+    middleware (rate_limit_middleware / downstream_error_handling).
+    """
+    try:
+        return await factory()
+    except Exception as err:
+        if _find_rate_limit_error(err) is None:
+            raise
+        await asyncio.sleep(RECALL_RETRY_DELAY_SECONDS)
+        return await factory()
 
 
 @router.post("/recall", response_model=RecallResponse)
@@ -803,10 +803,12 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
     async with _driver_lock:
         t_lock = time.monotonic()
         _ensure_driver_graph([sanitized])
-        edges = await graphiti.search(
-            query=_sanitize_query(req.query),
-            group_ids=[sanitized],
-            num_results=req.max_results,
+        edges = await _recall_vertex_call(
+            lambda: graphiti.search(
+                query=_sanitize_query(req.query),
+                group_ids=[sanitized],
+                num_results=req.max_results,
+            )
         )
     t_search = time.monotonic()
 
@@ -820,7 +822,9 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
         return RecallResponse(memory_block="")
 
     facts_text = "\n".join(format_fact(f) for f in facts)
-    interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
+    interpretation = await _recall_vertex_call(
+        lambda: interpret_facts(conversation, facts_text, graphiti.llm_client)
+    )
     t_interpret = time.monotonic()
 
     block = (

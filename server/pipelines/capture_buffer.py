@@ -17,16 +17,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_RETRY_DELAYS: tuple[float, ...] = (1.0, 2.0, 4.0)
 
 
-# Exceptions raised by the Vertex-upstream path that have ALREADY been
-# retried inside the google-genai SDK (L6.5) up to its configured
-# attempts — see gralkor/TEST_TREES.md > Retry ownership. When one of
-# these surfaces into the capture buffer, the SDK has exhausted its
-# retries; retrying again here would amplify load on an already-
-# degraded upstream without a meaningful chance of success.
-#
-# `APIError` covers the SDK's 408/429/5xx/4xx path; graphiti's
-# `RateLimitError` is what its GeminiClient raises after exhaustion.
-_UPSTREAM_EXHAUSTED: tuple[type[BaseException], ...] = (
+# Exceptions raised by the Vertex-upstream path. These are NOT retried
+# at the buffer layer — see gralkor/TEST_TREES.md > Retry ownership:
+# 429 retry is owned by /recall only, and retrying upstream failures
+# here would amplify load on an already-struggling upstream without
+# a meaningful chance of success. `APIError` covers the SDK's
+# 408/429/5xx/4xx path; graphiti's `RateLimitError` is what its
+# GeminiClient raises on rate-limit classification.
+_UPSTREAM_ERROR: tuple[type[BaseException], ...] = (
     _GenaiAPIError,
     _GraphitiRateLimitError,
 )
@@ -108,9 +106,9 @@ class CaptureBuffer:
                     err,
                 )
                 return
-            except _UPSTREAM_EXHAUSTED as err:
+            except _UPSTREAM_ERROR as err:
                 logger.error(
-                    "capture dropped (upstream exhausted at L6.5 — see Retry ownership) "
+                    "capture dropped (upstream error — see Retry ownership) "
                     "session=%s group=%s turns=%d err=%s",
                     session_id,
                     group_id,

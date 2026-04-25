@@ -349,9 +349,9 @@ class TestObservability:
 class TestRecallDeadline:
     """Reifies Recall > /recall deadline.
 
-    The handler body is wrapped in asyncio.wait_for with a 10 s budget shared
-    across both sequential Gemini calls. If the deadline expires, the response
-    is 504 with {"error": "recall deadline expired"}.
+    /recall completes within a bounded time budget. If the budget is exhausted
+    before the handler returns, in-flight upstream work is cancelled and the
+    response is 504 with {"error": "recall deadline expired"}.
     """
 
     async def test_returns_504_when_handler_body_exceeds_the_deadline(
@@ -373,3 +373,127 @@ class TestRecallDeadline:
         )
         assert resp.status_code == 504
         assert resp.json() == {"error": "recall deadline expired"}
+
+
+class TestRecallRetriesVertexRateLimit:
+    """Reifies Retry ownership > Vertex-upstream rate-limit.
+
+    owner: /recall — the first 429 during /recall is absorbed by one retry
+    before surfacing. A second 429 in the same recall surfaces per
+    rate-limit-retry.
+    """
+
+    async def test_first_429_from_search_is_absorbed_by_one_retry(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        # Zero the retry delay so the test is fast.
+        monkeypatch.setattr(main_mod, "RECALL_RETRY_DELAY_SECONDS", 0.0)
+
+        class RateLimitError(Exception):
+            pass
+
+        call_count = {"n": 0}
+
+        async def search_raises_once(*_args, **_kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RateLimitError("rate limited")
+            return []
+
+        mock_graphiti.search.side_effect = search_raises_once
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"memory_block": ""}
+        assert call_count["n"] == 2
+
+    async def test_second_429_from_search_surfaces(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        monkeypatch.setattr(main_mod, "RECALL_RETRY_DELAY_SECONDS", 0.0)
+
+        class RateLimitError(Exception):
+            pass
+
+        mock_graphiti.search.side_effect = RateLimitError("rate limited")
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        assert resp.status_code == 429
+        assert mock_graphiti.search.await_count == 2
+
+    async def test_non_429_error_from_search_is_not_retried(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        monkeypatch.setattr(main_mod, "RECALL_RETRY_DELAY_SECONDS", 0.0)
+
+        class InternalError(Exception):
+            status_code = 500
+
+        mock_graphiti.search.side_effect = InternalError("boom")
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        # Surfaces via downstream-error-handling, not retried.
+        assert resp.status_code == 502
+        assert mock_graphiti.search.await_count == 1
+
+    async def test_first_429_from_interpret_is_absorbed_by_one_retry(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        monkeypatch.setattr(main_mod, "RECALL_RETRY_DELAY_SECONDS", 0.0)
+
+        mock_graphiti.search.return_value = [make_edge()]
+
+        class RateLimitError(Exception):
+            pass
+
+        call_count = {"n": 0}
+
+        async def generate_raises_once(*_args, **_kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise RateLimitError("rate limited")
+            return {"text": "an interpretation"}
+
+        mock_graphiti.llm_client.generate_response = generate_raises_once
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        assert resp.status_code == 200
+        assert "an interpretation" in resp.json()["memory_block"]
+        assert call_count["n"] == 2
+
+    async def test_second_429_from_interpret_surfaces(
+        self, client, mock_graphiti, monkeypatch
+    ):
+        monkeypatch.setattr(main_mod, "RECALL_RETRY_DELAY_SECONDS", 0.0)
+
+        mock_graphiti.search.return_value = [make_edge()]
+
+        class RateLimitError(Exception):
+            pass
+
+        call_count = {"n": 0}
+
+        async def generate_always_429(*_args, **_kwargs):
+            call_count["n"] += 1
+            raise RateLimitError("rate limited")
+
+        mock_graphiti.llm_client.generate_response = generate_always_429
+
+        resp = await client.post(
+            "/recall",
+            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+        )
+        assert resp.status_code == 429
+        assert call_count["n"] == 2

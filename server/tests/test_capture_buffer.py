@@ -156,9 +156,9 @@ class TestRetry:
         assert flush_callback.await_count == 1
 
     async def test_does_not_retry_on_genai_api_error(self, flush_callback, caplog):
-        """Vertex-upstream failures reaching this layer have already been
-        retried inside the google-genai SDK (L6.5). Retrying here would
-        amplify load — see gralkor/TEST_TREES.md > Retry ownership."""
+        """Vertex-upstream failures are not retried at the buffer layer —
+        retrying here would amplify load on an already-struggling upstream.
+        See gralkor/TEST_TREES.md > Retry ownership."""
         from google.genai.errors import APIError
 
         response_json = {"error": {"code": 429, "message": "rate limited"}}
@@ -174,14 +174,14 @@ class TestRetry:
         with caplog.at_level(logging.ERROR):
             await asyncio.sleep(0.1)
         assert flush_callback.await_count == 1
-        assert any("upstream exhausted" in rec.message for rec in caplog.records)
+        assert any("upstream error" in rec.message for rec in caplog.records)
 
     async def test_does_not_retry_on_graphiti_rate_limit_error(self, flush_callback, caplog):
-        """Graphiti's GeminiClient raises RateLimitError after the SDK
-        has exhausted retries; the buffer surfaces rather than piling on."""
+        """Graphiti's GeminiClient raises RateLimitError when Vertex rate-limits;
+        the buffer surfaces rather than piling on."""
         from graphiti_core.llm_client.errors import RateLimitError
 
-        flush_callback.side_effect = RateLimitError("exhausted")
+        flush_callback.side_effect = RateLimitError("rate limited")
         buffer = CaptureBuffer(
             idle_seconds=0.01,
             flush_callback=flush_callback,
@@ -193,7 +193,7 @@ class TestRetry:
         with caplog.at_level(logging.ERROR):
             await asyncio.sleep(0.1)
         assert flush_callback.await_count == 1
-        assert any("upstream exhausted" in rec.message for rec in caplog.records)
+        assert any("upstream error" in rec.message for rec in caplog.records)
 
     async def test_gives_up_after_exhausting_retries(self, flush_callback, caplog):
         flush_callback.side_effect = RuntimeError("boom")

@@ -75,11 +75,9 @@ POST /recall endpoint
   when search is called concurrently for different group_ids
     then _driver_lock serializes the calls
   /recall deadline
-    the handler body is wrapped in asyncio.wait_for with a 10 s budget
-      shared across both sequential Gemini calls (embedder + interpret)
-      so the slower call cannot starve the other beyond the total ceiling
-    if the deadline expires before the handler returns
-      then the in-flight work is cancelled
+    then /recall completes within a bounded time budget
+    if the budget is exhausted before the handler returns
+      then in-flight upstream work is cancelled
       and the response is 504 with {"error": "recall deadline expired"}
   observability
     then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at INFO on every call
@@ -194,11 +192,11 @@ capture-buffer (Python)
     when called for a session_id with no entry
       then returns without scheduling any flush
   retry schedule
-    buffer retries only for failure classes L6.5 cannot handle — see Retry ownership
+    buffer retries only for failure classes it owns — see Retry ownership
     when flush_callback raises a 4xx CaptureClientError
       then does not retry and logs "capture dropped (4xx)" (contract error — non-retryable)
-    when flush_callback raises a Vertex-upstream error (google.genai.errors.APIError or graphiti RateLimitError)
-      then does not retry and logs "capture dropped (upstream exhausted at L6.5)" — the SDK has already retried within its configured bounds; retrying at this layer would amplify load
+    when flush_callback raises a Vertex-upstream error
+      then does not retry and logs "capture dropped (upstream error)" — retrying at this layer would amplify load on an already-struggling upstream
     when flush_callback raises any other Exception (server-internal: graph write failure, Falkor driver error, internal distill crash)
       then retries at 1s, 2s, 4s (exponential)
     when flush_callback raises a server-internal error after 3 retries
@@ -539,10 +537,10 @@ retry-ownership (stack-wide invariant — other tree nodes in this file cite thi
   then layers above the owner derive their timeout from that layer's worst case
   then no two layers retry the same class
   failure class: Vertex-upstream rate-limit (HTTP 429 from Gemini/Vertex)
-    owner: the google-genai SDK (L6.5) — configured via HttpOptions in gralkor/server/main.py
-      then retry_options=HttpRetryOptions(attempts=2, initial_delay=1s, exp_base=1, http_status_codes=[429])
-      then per-attempt timeout is HttpOptions.timeout (3_000 ms) — enforced by httpx
-    then no layer above the SDK retries this class
+    owner: /recall
+      then the first 429 during /recall is absorbed by one retry before surfacing
+    then no other endpoint retries this class — 429 surfaces immediately
+    then no layer above the server retries this class
   failure class: Vertex-upstream other (HTTP 408, 500, 502, 503, 504 from Gemini/Vertex)
     no owner — the failure surfaces immediately through the server's downstream-error-handling envelope
   failure class: LLM malformed output (structured-output parse failures, dedup idx hallucinations, refusal)
@@ -571,7 +569,7 @@ client-timeouts (shared adapter contract — both ex and ts enforce the same des
     then the failure surfaces immediately
   per-endpoint receive window (milliseconds)
     /health                 2_000   — cheap liveness check
-    /recall                12_000   — 10 s server-side deadline (see Recall > /recall deadline) + 2 s transport margin
+    /recall                12_000   — matches the server's /recall deadline (see Recall > /recall deadline); tight — a server 504 may race the transport, revisit if it bites
     /capture                5_000   — fire-and-forget; server returns 204 after buffering, flush owns its own retry budget
     /session_end            5_000   — fire-and-forget; server returns 204 after scheduling the flush
     /tools/memory_search   30_000   — slow search with cross-encoder reranker + interpret; a few seconds more than /recall

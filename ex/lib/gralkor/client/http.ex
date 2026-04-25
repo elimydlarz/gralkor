@@ -13,21 +13,21 @@ defmodule Gralkor.Client.HTTP do
   supervision tree, bound to loopback. The consumer owns the trust
   boundary.
 
-  Per-endpoint `receive_timeout`s, calibrated to the workload. The two
-  endpoints that call Gemini synchronously (`/recall` and
-  `/tools/memory_search`) are sized to encompass the google-genai SDK's
-  per-attempt timeout (10 s) and its bounded retry policy (2 attempts,
-  1–3 s backoff — see `server/main.py` and `gralkor/TEST_TREES.md >
-  Retry ownership`). Under sustained Vertex throttling the SDK may still
-  exceed these windows; the consumer's `jido_gralkor` plugin then
-  degrades gracefully to a memory-less turn.
+  Per-endpoint `receive_timeout`s, calibrated to the workload. 429 retry
+  ownership for Vertex-upstream rate-limits lives inside `/recall` on
+  the server — see `gralkor/TEST_TREES.md > Retry ownership`. No layer
+  above the server retries this class. Under sustained Vertex throttling
+  `/recall` returns 429 (for exhausted retries) or 504 (for deadline);
+  the consumer's `jido_gralkor` plugin then degrades gracefully to a
+  memory-less turn.
 
     * `/health` (2 s) — cheap liveness check; tight so `Gralkor.Connection`
       doesn't flap when the server is under LLM load.
-    * `/recall` (25 s) — graph search (`graphiti.search()` — RRF, edges
-      only, calls the embedder) plus `interpret_facts` LLM call. Two
-      sequential L6 calls; each worst-case ~23 s under SDK retry. 25 s
-      covers one full L6.5 retry cycle on the slower call.
+    * `/recall` (12 s) — matches the server's `/recall` deadline. The
+      server body runs graph search (`graphiti.search()` — RRF, edges
+      only, calls the embedder) plus `interpret_facts`, with one 429
+      retry absorbed internally inside the 12 s budget. Tight — a
+      server-side 504 may race the transport; revisit if it bites.
     * `/tools/memory_search` (30 s) — *slow* graph search
       (`graphiti.search_()` with `COMBINED_HYBRID_SEARCH_CROSS_ENCODER`
       — cross-encoder reranking + BFS) plus `interpret_facts`. More
