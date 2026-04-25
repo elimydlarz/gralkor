@@ -1,7 +1,7 @@
 defmodule Gralkor.MixProject do
   use Mix.Project
 
-  @version "2.0.6"
+  @version "2.0.7"
   @source_url "https://github.com/elimydlarz/gralkor"
 
   def project do
