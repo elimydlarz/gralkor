@@ -43,7 +43,7 @@ async def test_omitted_session_id_runs_with_empty_context_without_consulting_buf
         Message(role="assistant", content="should not appear either"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["F — relevant."]}
 
     resp = await client.post(
         "/recall",
@@ -55,22 +55,28 @@ async def test_omitted_session_id_runs_with_empty_context_without_consulting_buf
     assert "should not appear" not in context
 
 
-async def test_returns_empty_block_when_no_facts(client, mock_graphiti):
+async def test_no_search_results_returns_no_relevant_memories_block(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     resp = await client.post(
         "/recall",
         json={"session_id": "sess", "group_id": "grp", "query": "q", "max_results": 10},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"memory_block": ""}
+    block = resp.json()["memory_block"]
+    assert block.startswith('<gralkor-memory trust="untrusted">')
+    assert block.endswith("</gralkor-memory>")
+    assert "No relevant memories found." in block
+    assert "Search memory (up to 3 times, diverse queries)" in block
     mock_graphiti.llm_client.generate_response.assert_not_awaited()
 
 
-async def test_interprets_and_wraps_when_facts_exist(client, mock_graphiti):
+async def test_lists_relevant_facts_when_interpret_returns_them(client, mock_graphiti):
     mock_graphiti.search.return_value = [
         make_edge(fact="Alice knows Bob", created_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
     ]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "Alice and Bob are colleagues."}
+    mock_graphiti.llm_client.generate_response.return_value = {
+        "relevantFacts": ["Alice knows Bob — names the colleague the user asked about."]
+    }
 
     resp = await client.post(
         "/recall",
@@ -85,10 +91,28 @@ async def test_interprets_and_wraps_when_facts_exist(client, mock_graphiti):
     block = resp.json()["memory_block"]
     assert block.startswith('<gralkor-memory trust="untrusted">')
     assert block.endswith("</gralkor-memory>")
-    assert "Facts:" in block
-    assert "Alice knows Bob" in block
-    assert "Interpretation:" in block
-    assert "Alice and Bob are colleagues." in block
+    assert "Alice knows Bob — names the colleague the user asked about." in block
+    assert "Facts:" not in block
+    assert "Interpretation:" not in block
+    assert "Search memory (up to 3 times, diverse queries)" in block
+
+
+async def test_returns_no_relevant_memories_block_when_interpret_returns_empty(
+    client, mock_graphiti
+):
+    mock_graphiti.search.return_value = [make_edge(fact="totally unrelated")]
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": []}
+
+    resp = await client.post(
+        "/recall",
+        json={"session_id": "sess", "group_id": "grp", "query": "who is bob", "max_results": 10},
+    )
+    assert resp.status_code == 200
+    block = resp.json()["memory_block"]
+    assert block.startswith('<gralkor-memory trust="untrusted">')
+    assert block.endswith("</gralkor-memory>")
+    assert "No relevant memories found." in block
+    assert "totally unrelated" not in block
     assert "Search memory (up to 3 times, diverse queries)" in block
 
 
@@ -137,7 +161,7 @@ async def test_conversation_context_comes_from_capture_buffer(client, mock_graph
         Message(role="assistant", content="earlier answer"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["ok — relevant."]}
 
     await client.post(
         "/recall",
@@ -162,7 +186,7 @@ async def test_behaviour_messages_appear_in_interpretation_context(client, mock_
         Message(role="assistant", content="a"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["ok — relevant."]}
 
     await client.post(
         "/recall",
@@ -179,7 +203,7 @@ async def test_behaviour_messages_appear_in_interpretation_context(client, mock_
 
 async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_graphiti):
     mock_graphiti.search.return_value = [make_edge(fact="F")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["ok — relevant."]}
 
     await client.post(
         "/recall",
@@ -208,7 +232,7 @@ async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti
         Message(role="assistant", content="beta reply"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="F")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["ok — relevant."]}
 
     await client.post(
         "/recall",
@@ -232,7 +256,7 @@ async def test_server_passes_buffered_content_unchanged_to_interpretation(client
         Message(role="assistant", content="a"),
     )
     mock_graphiti.search.return_value = [make_edge(fact="A")]
-    mock_graphiti.llm_client.generate_response.return_value = {"text": "ok"}
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["ok — relevant."]}
 
     await client.post(
         "/recall",
@@ -267,7 +291,7 @@ class TestObservability:
     async def test_logs_non_empty_result_at_info(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.INFO, logger="main")
         mock_graphiti.search.return_value = [make_edge(fact="Alice knows Bob")]
-        mock_graphiti.llm_client.generate_response.return_value = {"text": "interp"}
+        mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
             json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
@@ -281,7 +305,7 @@ class TestObservability:
     async def test_does_not_log_content_at_info(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.INFO, logger="main")
         mock_graphiti.search.return_value = [make_edge(fact="secret fact")]
-        mock_graphiti.llm_client.generate_response.return_value = {"text": "secret interp"}
+        mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["secret interp — relevant."]}
         await client.post(
             "/recall",
             json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
@@ -295,7 +319,7 @@ class TestObservability:
     async def test_logs_query_and_block_at_debug(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.DEBUG, logger="main")
         mock_graphiti.search.return_value = [make_edge(fact="Alice knows Bob")]
-        mock_graphiti.llm_client.generate_response.return_value = {"text": "interp"}
+        mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
             json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
@@ -303,11 +327,11 @@ class TestObservability:
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert any("[gralkor] [test] recall query: sensitive question" in m for m in debug_msgs), debug_msgs
         assert any(
-            "[gralkor] [test] recall block:" in m and "Alice knows Bob" in m and "interp" in m
+            "[gralkor] [test] recall block:" in m and "interp — relevant." in m
             for m in debug_msgs
         ), debug_msgs
 
-    async def test_no_block_debug_when_empty(self, client, mock_graphiti, caplog):
+    async def test_logs_no_memories_block_at_debug_when_empty(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.DEBUG, logger="main")
         mock_graphiti.search.return_value = []
         await client.post(
@@ -315,12 +339,15 @@ class TestObservability:
             json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
-        assert not any("[gralkor] [test] recall block:" in m for m in debug_msgs)
+        assert any(
+            "[gralkor] [test] recall block:" in m and "No relevant memories found." in m
+            for m in debug_msgs
+        ), debug_msgs
 
     async def test_result_line_includes_per_stage_timings(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.INFO, logger="main")
         mock_graphiti.search.return_value = [make_edge(fact="Alice knows Bob")]
-        mock_graphiti.llm_client.generate_response.return_value = {"text": "interp"}
+        mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
             json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
@@ -329,7 +356,7 @@ class TestObservability:
         result_lines = [m for m in info_msgs if "[gralkor] recall result —" in m]
         assert result_lines, info_msgs
         line = result_lines[0]
-        assert "(lock_wait:" in line and "search:" in line and "interpret:" in line, line
+        assert "search:" in line and "interpret:" in line, line
 
     async def test_result_line_includes_per_stage_timings_when_empty(self, client, mock_graphiti, caplog):
         caplog.set_level(logging.INFO, logger="main")
@@ -343,7 +370,7 @@ class TestObservability:
         assert result_lines, info_msgs
         line = result_lines[0]
         assert "0 facts" in line
-        assert "(lock_wait:" in line and "search:" in line and "interpret:0" in line, line
+        assert "search:" in line and "interpret:0" in line, line
 
 
 class TestRecallDeadline:
@@ -407,7 +434,7 @@ class TestRecallRetriesVertexRateLimit:
             json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 200
-        assert resp.json() == {"memory_block": ""}
+        assert "No relevant memories found." in resp.json()["memory_block"]
         assert call_count["n"] == 2
 
     async def test_second_429_from_search_surfaces(
@@ -461,7 +488,7 @@ class TestRecallRetriesVertexRateLimit:
             call_count["n"] += 1
             if call_count["n"] == 1:
                 raise RateLimitError("rate limited")
-            return {"text": "an interpretation"}
+            return {"relevantFacts": ["an interpretation — relevant."]}
 
         mock_graphiti.llm_client.generate_response = generate_raises_once
 

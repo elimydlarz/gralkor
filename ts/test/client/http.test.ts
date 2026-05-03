@@ -7,7 +7,6 @@ type StubKey =
   | "recall"
   | "capture"
   | "endSession"
-  | "memorySearch"
   | "memoryAdd"
   | "healthCheck"
   | "buildIndices"
@@ -36,7 +35,6 @@ function makeStubbedClient(): {
       path === "/recall" ? "recall" :
       path === "/capture" ? "capture" :
       path === "/session_end" ? "endSession" :
-      path === "/tools/memory_search" ? "memorySearch" :
       path === "/tools/memory_add" ? "memoryAdd" :
       path === "/health" ? "healthCheck" :
       path === "/build-indices" ? "buildIndices" :
@@ -60,8 +58,7 @@ function makeStubbedClient(): {
     if ("ok" in response) {
       // Translate Result<T> → HTTP 2xx with body the HTTP adapter will decode back to { ok: T }
       const body: Record<string, unknown> =
-        key === "recall" ? { memory_block: response.ok === null ? "" : response.ok } :
-        key === "memorySearch" ? { text: response.ok } :
+        key === "recall" ? { memory_block: response.ok } :
         key === "memoryAdd" ? { status: "stored" } :
         key === "buildIndices" ? (response.ok as Record<string, unknown>) :
         key === "buildCommunities" ? (response.ok as Record<string, unknown>) :
@@ -99,7 +96,7 @@ describe("GralkorHttpClient (adapter-specific)", () => {
 
   describe("every HTTP request", () => {
     it("carries no Authorization header", async () => {
-      harness.stub("recall", { ok: null });
+      harness.stub("recall", { ok: "<gralkor-memory>x</gralkor-memory>" });
       await harness.client.recall("g1", "s1", "q");
       const headers = new Headers(harness.lastRequest()?.init.headers);
       expect(headers.has("authorization")).toBe(false);
@@ -137,20 +134,6 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 
-  describe("if memorySearch is called with a blank string session_id", () => {
-    it("the call throws", async () => {
-      await expect(harness.client.memorySearch("g1", "", "q")).rejects.toThrow(/session_id/);
-    });
-  });
-
-  describe("if memorySearch is called with a null session_id", () => {
-    it("the call throws", async () => {
-      await expect(
-        harness.client.memorySearch("g1", null as unknown as string, "q"),
-      ).rejects.toThrow(/session_id/);
-    });
-  });
-
   describe("if endSession is called with a blank string session_id", () => {
     it("the call throws", async () => {
       await expect(harness.client.endSession("")).rejects.toThrow(/session_id/);
@@ -172,7 +155,7 @@ describe("GralkorHttpClient (adapter-specific)", () => {
         baseUrl: "http://gralkor.test",
         fetch: async (_url, init) => {
           capturedBody = JSON.parse(init?.body as string);
-          return new Response(JSON.stringify({ memory_block: "" }), { status: 200 });
+          return new Response(JSON.stringify({ memory_block: "<gralkor-memory>x</gralkor-memory>" }), { status: 200 });
         },
       });
       await client.recall("g1", "s1", "q");
@@ -187,7 +170,7 @@ describe("GralkorHttpClient (adapter-specific)", () => {
         baseUrl: "http://gralkor.test",
         fetch: async (_url, init) => {
           capturedBody = JSON.parse(init?.body as string);
-          return new Response(JSON.stringify({ memory_block: "" }), { status: 200 });
+          return new Response(JSON.stringify({ memory_block: "<gralkor-memory>x</gralkor-memory>" }), { status: 200 });
         },
       });
       await client.recall("g1", null, "q");
@@ -243,7 +226,7 @@ describe("GralkorHttpClient (adapter-specific)", () => {
 
   describe("when recall is called without maxResults", () => {
     it("omits max_results from the request body so the server applies its default", async () => {
-      harness.stub("recall", { ok: null });
+      harness.stub("recall", { ok: "<gralkor-memory>x</gralkor-memory>" });
       await harness.client.recall("g1", "s1", "q");
       const body = JSON.parse(String(harness.lastRequest()?.init.body));
       expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q" });
@@ -252,36 +235,13 @@ describe("GralkorHttpClient (adapter-specific)", () => {
 
   describe("when recall is called with maxResults", () => {
     it("includes max_results in the request body", async () => {
-      harness.stub("recall", { ok: null });
+      harness.stub("recall", { ok: "<gralkor-memory>x</gralkor-memory>" });
       await harness.client.recall("g1", "s1", "q", 5);
       const body = JSON.parse(String(harness.lastRequest()?.init.body));
       expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q", max_results: 5 });
     });
   });
 
-  describe("when memorySearch is called without max args", () => {
-    it("omits both max_results and max_entity_results from the request body", async () => {
-      harness.stub("memorySearch", { ok: "text" });
-      await harness.client.memorySearch("g1", "s1", "q");
-      const body = JSON.parse(String(harness.lastRequest()?.init.body));
-      expect(body).toEqual({ group_id: "g1", session_id: "s1", query: "q" });
-    });
-  });
-
-  describe("when memorySearch is called with maxResults and maxEntityResults", () => {
-    it("includes both in the request body", async () => {
-      harness.stub("memorySearch", { ok: "text" });
-      await harness.client.memorySearch("g1", "s1", "q", 7, 3);
-      const body = JSON.parse(String(harness.lastRequest()?.init.body));
-      expect(body).toEqual({
-        group_id: "g1",
-        session_id: "s1",
-        query: "q",
-        max_results: 7,
-        max_entity_results: 3,
-      });
-    });
-  });
 });
 
 describe("client-timeouts", () => {
@@ -317,11 +277,6 @@ describe("client-timeouts", () => {
       call: (c) => c.capture("s", "g", [{ role: "user", content: "q" }]),
     },
     { path: "/session_end", ms: 5_000, call: (c) => c.endSession("s") },
-    {
-      path: "/tools/memory_search",
-      ms: 30_000,
-      call: (c) => c.memorySearch("g", "s", "q"),
-    },
     {
       path: "/tools/memory_add",
       ms: 60_000,

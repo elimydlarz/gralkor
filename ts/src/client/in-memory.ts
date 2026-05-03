@@ -4,7 +4,6 @@ type Op =
   | "recall"
   | "capture"
   | "endSession"
-  | "memorySearch"
   | "memoryAdd"
   | "healthCheck"
   | "buildIndices"
@@ -14,8 +13,8 @@ type Op =
  * In-memory twin of {@link GralkorClient} for tests.
  *
  * Configure canned responses with {@link setResponse} before exercising the
- * code under test; inspect calls via the `recalls`, `captures`, `searches`,
- * `adds`, `endSessions`, `healthChecks` arrays afterwards. Operations with
+ * code under test; inspect calls via the `recalls`, `captures`, `adds`,
+ * `endSessions`, `healthChecks` arrays afterwards. Operations with
  * no configured response return `{ error: "not_configured" }` so tests
  * must be explicit about the paths they exercise.
  */
@@ -24,7 +23,6 @@ export class GralkorInMemoryClient implements GralkorClient {
 
   readonly recalls: Array<[string, string, string, number | undefined]> = [];
   readonly captures: Array<[string, string, Message[]]> = [];
-  readonly searches: Array<[string, string, string, number | undefined, number | undefined]> = [];
   readonly adds: Array<[string, string, string | null]> = [];
   readonly endSessions: Array<[string]> = [];
   readonly healthChecks: Array<[]> = [];
@@ -39,7 +37,6 @@ export class GralkorInMemoryClient implements GralkorClient {
     this.responses.clear();
     this.recalls.length = 0;
     this.captures.length = 0;
-    this.searches.length = 0;
     this.adds.length = 0;
     this.endSessions.length = 0;
     this.healthChecks.length = 0;
@@ -57,7 +54,7 @@ export class GralkorInMemoryClient implements GralkorClient {
     sessionId: string,
     query: string,
     maxResults?: number,
-  ): Promise<Result<string | null>> {
+  ): Promise<Result<string>> {
     this.recalls.push([groupId, sessionId, query, maxResults]);
     return this.respond("recall");
   }
@@ -70,17 +67,6 @@ export class GralkorInMemoryClient implements GralkorClient {
   async endSession(sessionId: string): Promise<Result<true>> {
     this.endSessions.push([sessionId]);
     return this.respond("endSession");
-  }
-
-  async memorySearch(
-    groupId: string,
-    sessionId: string,
-    query: string,
-    maxResults?: number,
-    maxEntityResults?: number,
-  ): Promise<Result<string>> {
-    this.searches.push([groupId, sessionId, query, maxResults, maxEntityResults]);
-    return this.respond("memorySearch");
   }
 
   async memoryAdd(

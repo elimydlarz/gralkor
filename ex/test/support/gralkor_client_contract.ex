@@ -1,140 +1,141 @@
 defmodule Gralkor.ClientContract do
   @moduledoc """
-  Shared port-contract assertions for `Gralkor.Client` implementations.
+  Shared port contract for `Gralkor.Client`.
 
-  Each adapter's test file does `use Gralkor.ClientContract, client: MyClient`
-  and defines a `configure_backend/2` function that makes the underlying
-  storage return a given response for a given operation. The contract then
-  exercises every op through the adapter and asserts the return shape.
+  Both `Gralkor.Client.InMemory` and `Gralkor.Client.Native` import this and
+  must pass it. Reifies the `ex-client` tree in `gralkor/TEST_TREES.md`. The
+  describe/it hierarchy mirrors the tree verbatim.
 
-  Both adapters — `InMemory` and `HTTP` — must pass this suite. Adapter-
-  specific behaviour (fixture semantics, HTTP headers, HTTP status mapping)
-  lives in the adapter's own test file alongside this shared contract.
+  Usage from a per-adapter test file:
+
+      use ExUnit.Case, async: false
+      import Gralkor.ClientContract
+
+      setup do
+        # boot the adapter under test, return any per-test setup
+      end
+
+      run_contract(fn -> :ok end)
   """
 
-  defmacro __using__(opts) do
-    client = Keyword.fetch!(opts, :client)
+  defmacro run_contract(do: setup_block) do
+    quote do
+      describe "ex-client > recall/3 with a non-blank string session_id" do
+        test "when the backend returns a memory block then {:ok, block} is returned" do
+          unquote(setup_block).()
 
-    quote bind_quoted: [client: client] do
-      @client client
+          configure_recall({:ok, "<gralkor-memory>some block</gralkor-memory>"})
 
-      describe "port contract: recall/3 with a non-blank string session_id" do
-        test "returns {:ok, memory_block} when the backend has memory" do
-          configure_backend(:recall, {:ok, "<gralkor-memory>facts</gralkor-memory>"})
-          assert {:ok, "<gralkor-memory>facts</gralkor-memory>"} = @client.recall("g1", "s1", "q")
+          assert {:ok, "<gralkor-memory>some block</gralkor-memory>"} =
+                   client().recall("group-1", "session-1", "what is X?")
         end
 
-        test "returns {:ok, nil} when the backend has no memory" do
-          configure_backend(:recall, {:ok, nil})
-          assert {:ok, nil} = @client.recall("g1", "s1", "q")
-        end
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_recall({:error, :backend_down})
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:recall, {:error, :boom})
-          assert {:error, _} = @client.recall("g1", "s1", "q")
+          assert {:error, :backend_down} = client().recall("group-1", "session-1", "what?")
         end
       end
 
-      describe "port contract: recall/3 with a nil session_id" do
-        test "returns {:ok, memory_block} when the backend has memory" do
-          configure_backend(:recall, {:ok, "<gralkor-memory>facts</gralkor-memory>"})
-          assert {:ok, "<gralkor-memory>facts</gralkor-memory>"} = @client.recall("g1", nil, "q")
+      describe "ex-client > recall/3 with a nil session_id" do
+        test "when the backend returns a memory block then {:ok, block} is returned" do
+          unquote(setup_block).()
+          configure_recall({:ok, "<gralkor-memory>x</gralkor-memory>"})
+
+          assert {:ok, "<gralkor-memory>x</gralkor-memory>"} =
+                   client().recall("group-1", nil, "anything?")
         end
 
-        test "returns {:ok, nil} when the backend has no memory" do
-          configure_backend(:recall, {:ok, nil})
-          assert {:ok, nil} = @client.recall("g1", nil, "q")
-        end
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_recall({:error, :nope})
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:recall, {:error, :boom})
-          assert {:error, _} = @client.recall("g1", nil, "q")
-        end
-      end
-
-      describe "port contract: capture/3" do
-        test "returns :ok when the backend acknowledges the capture" do
-          configure_backend(:capture, :ok)
-          messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
-          assert :ok = @client.capture("s1", "g1", messages)
-        end
-
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:capture, {:error, :boom})
-          messages = [Gralkor.Message.new("user", "q"), Gralkor.Message.new("assistant", "a")]
-          assert {:error, _} = @client.capture("s1", "g1", messages)
+          assert {:error, :nope} = client().recall("group-1", nil, "q")
         end
       end
 
-      describe "port contract: memory_search/3" do
-        test "returns {:ok, text} when the backend returns results" do
-          configure_backend(:memory_search, {:ok, "Facts:\n- ..."})
-          assert {:ok, "Facts:\n- ..."} = @client.memory_search("g1", "s1", "q")
+      describe "ex-client > capture/3" do
+        test "when the backend acknowledges the capture then :ok is returned" do
+          unquote(setup_block).()
+          configure_capture(:ok)
+
+          assert :ok =
+                   client().capture("session-1", "group-1", [
+                     Gralkor.Message.new("user", "hi")
+                   ])
         end
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:memory_search, {:error, :boom})
-          assert {:error, _} = @client.memory_search("g1", "s1", "q")
-        end
-      end
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_capture({:error, :write_failed})
 
-      describe "port contract: end_session/1" do
-        test "returns :ok when the backend acknowledges the end" do
-          configure_backend(:end_session, :ok)
-          assert :ok = @client.end_session("s1")
-        end
-
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:end_session, {:error, :boom})
-          assert {:error, _} = @client.end_session("s1")
+          assert {:error, :write_failed} =
+                   client().capture("session-1", "group-1", [Gralkor.Message.new("user", "hi")])
         end
       end
 
-      describe "port contract: memory_add/3" do
-        test "returns :ok when the backend acknowledges the add" do
-          configure_backend(:memory_add, :ok)
-          assert :ok = @client.memory_add("g1", "content", "source")
+      describe "ex-client > end_session/1" do
+        test "when the backend acknowledges the end then :ok is returned" do
+          unquote(setup_block).()
+          configure_end_session(:ok)
+
+          assert :ok = client().end_session("session-1")
         end
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:memory_add, {:error, :boom})
-          assert {:error, _} = @client.memory_add("g1", "content", nil)
-        end
-      end
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_end_session({:error, :flush_failed})
 
-      describe "port contract: health_check/0" do
-        test "returns :ok when the backend is healthy" do
-          configure_backend(:health_check, :ok)
-          assert :ok = @client.health_check()
-        end
-
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:health_check, {:error, :boom})
-          assert {:error, _} = @client.health_check()
+          assert {:error, :flush_failed} = client().end_session("session-1")
         end
       end
 
-      describe "port contract: build_indices/0" do
-        test "returns {:ok, %{status: _}} when the backend acknowledges" do
-          configure_backend(:build_indices, {:ok, %{status: "stored"}})
-          assert {:ok, %{status: "stored"}} = @client.build_indices()
+      describe "ex-client > memory_add/3" do
+        test "when the backend acknowledges the add then :ok is returned" do
+          unquote(setup_block).()
+          configure_memory_add(:ok)
+
+          assert :ok = client().memory_add("group-1", "Eli prefers concise", "manual")
         end
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:build_indices, {:error, :boom})
-          assert {:error, _} = @client.build_indices()
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_memory_add({:error, :extract_failed})
+
+          assert {:error, :extract_failed} = client().memory_add("group-1", "x", nil)
         end
       end
 
-      describe "port contract: build_communities/1" do
-        test "returns {:ok, %{communities: _, edges: _}} when the backend returns counts" do
-          configure_backend(:build_communities, {:ok, %{communities: 3, edges: 17}})
-          assert {:ok, %{communities: 3, edges: 17}} = @client.build_communities("g1")
+      describe "ex-client > build_indices/0" do
+        test "when the backend acknowledges the rebuild then {:ok, %{status: ...}} is returned" do
+          unquote(setup_block).()
+          configure_build_indices({:ok, %{status: "built"}})
+
+          assert {:ok, %{status: "built"}} = client().build_indices()
         end
 
-        test "returns {:error, reason} when the backend fails" do
-          configure_backend(:build_communities, {:error, :boom})
-          assert {:error, _} = @client.build_communities("g1")
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_build_indices({:error, :nope})
+
+          assert {:error, :nope} = client().build_indices()
+        end
+      end
+
+      describe "ex-client > build_communities/1" do
+        test "when the backend returns counts then {:ok, %{communities: …, edges: …}} is returned" do
+          unquote(setup_block).()
+          configure_build_communities({:ok, %{communities: 3, edges: 7}})
+
+          assert {:ok, %{communities: 3, edges: 7}} = client().build_communities("group-1")
+        end
+
+        test "if the backend fails then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_build_communities({:error, :upstream})
+
+          assert {:error, :upstream} = client().build_communities("group-1")
         end
       end
     end

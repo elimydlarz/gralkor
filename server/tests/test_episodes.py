@@ -292,10 +292,12 @@ async def test_add_episode_passes_ontology_when_configured(client, mock_graphiti
 
 
 @pytest.mark.asyncio
-async def test_concurrent_episodes_to_different_groups_are_serialized(client, mock_graphiti):
-    """Concurrent /episodes calls to different groups must serialize to avoid
-    races on the global driver. Without serialization, two add_episode calls
-    can interleave and clobber each other's driver state, losing data.
+async def test_concurrent_episodes_to_different_groups_run_concurrently(client, mock_graphiti):
+    """Concurrent /episodes calls to different groups proceed concurrently.
+
+    Each request gets its own Graphiti instance scoped to its group_id, so
+    there is no shared mutable state to serialise on. Callers that want
+    sequencing await in user code.
     """
     import asyncio
 
@@ -329,6 +331,6 @@ async def test_concurrent_episodes_to_different_groups_are_serialized(client, mo
         }),
     )
 
-    assert max_in_flight == 1, (
-        f"Expected add_episode calls to be serialized, but observed {max_in_flight} concurrent calls"
+    assert max_in_flight == 2, (
+        f"Expected add_episode calls to overlap, but observed max {max_in_flight} concurrent"
     )

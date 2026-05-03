@@ -1,10 +1,10 @@
 /**
  * Port for talking to a Gralkor backend from TypeScript.
  *
- * Six operations — recall, capture, endSession, memorySearch, memoryAdd,
- * healthCheck. Recoverable failures surface as `{ error: reason }` so
- * callers can decide how to fail open. Unrecoverable misuse (blank
- * session id, missing base URL, etc.) throws.
+ * Operations — recall, capture, endSession, memoryAdd, healthCheck,
+ * buildIndices, buildCommunities. Recoverable failures surface as
+ * `{ error: reason }` so callers can decide how to fail open.
+ * Unrecoverable misuse (blank session id, missing base URL, etc.) throws.
  *
  * Construct the adapter you want in your composition root:
  *
@@ -35,7 +35,7 @@ export interface Message {
 
 export interface GralkorClient {
   /**
-   * Returns the memory block for this session, or null if there is no memory.
+   * Returns the memory block for this session.
    * `maxResults` overrides the server's default (10); omit to use the server default.
    */
   recall(
@@ -43,9 +43,9 @@ export interface GralkorClient {
     sessionId: string | null,
     query: string,
     maxResults?: number,
-  ): Promise<Result<string | null>>;
+  ): Promise<Result<string>>;
 
-  /** Buffers a turn on the server; the server flushes on idle or explicit endSession. */
+  /** Buffers a turn on the server; the server flushes only on explicit endSession or lifespan shutdown. */
   capture(
     sessionId: string,
     groupId: string,
@@ -54,19 +54,6 @@ export interface GralkorClient {
 
   /** Flushes the session's buffer now; returns immediately (server handles the write async). */
   endSession(sessionId: string): Promise<Result<true>>;
-
-  /**
-   * LLM-interpreted search result text.
-   * `maxResults` (default 20) and `maxEntityResults` (default 10) override the server's defaults;
-   * omit to use the server defaults.
-   */
-  memorySearch(
-    groupId: string,
-    sessionId: string,
-    query: string,
-    maxResults?: number,
-    maxEntityResults?: number,
-  ): Promise<Result<string>>;
 
   /** Ingests a single piece of content; server does entity/edge extraction. */
   memoryAdd(

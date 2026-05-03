@@ -1,6 +1,6 @@
 """Tree: formatting (Python port of src/tools.ts formatters).
 
-Covers format_timestamp, format_fact, format_node used by /recall and /tools/memory_search.
+Covers format_timestamp, format_fact, format_node used by /recall.
 """
 
 from __future__ import annotations

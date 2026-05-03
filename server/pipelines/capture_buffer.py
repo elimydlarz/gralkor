@@ -41,18 +41,15 @@ FlushCallback = Callable[[str, list[list[Message]]], Awaitable[None]]
 class _Entry:
     group_id: str
     turns: list[list[Message]] = field(default_factory=list)
-    idle_handle: asyncio.TimerHandle | None = None
 
 
 class CaptureBuffer:
     def __init__(
         self,
-        idle_seconds: float,
         flush_callback: FlushCallback,
         retry_delays: tuple[float, ...] = DEFAULT_RETRY_DELAYS,
     ) -> None:
         self._entries: dict[str, _Entry] = {}
-        self._idle_seconds = idle_seconds
         self._flush_callback = flush_callback
         self._retry_delays = retry_delays
         self._pending_flushes: set[asyncio.Task[None]] = set()
@@ -68,26 +65,10 @@ class CaptureBuffer:
                 f"{entry.group_id!r}; refusing to rebind to {group_id!r}"
             )
         entry.turns.append(list(messages))
-        if entry.idle_handle is not None:
-            entry.idle_handle.cancel()
-        loop = asyncio.get_running_loop()
-        entry.idle_handle = loop.call_later(
-            self._idle_seconds, self._schedule_flush, session_id
-        )
 
     def turns_for(self, session_id: str) -> list[list[Message]]:
         entry = self._entries.get(session_id)
         return [list(turn) for turn in entry.turns] if entry is not None else []
-
-    def _schedule_flush(self, session_id: str) -> None:
-        entry = self._entries.pop(session_id, None)
-        if entry is None or not entry.turns:
-            return
-        task = asyncio.create_task(
-            self._flush_with_retry(session_id, entry.group_id, entry.turns)
-        )
-        self._pending_flushes.add(task)
-        task.add_done_callback(self._pending_flushes.discard)
 
     async def _flush_with_retry(
         self, session_id: str, group_id: str, turns: list[list[Message]]
@@ -140,8 +121,6 @@ class CaptureBuffer:
         entry = self._entries.pop(session_id, None)
         if entry is None:
             return
-        if entry.idle_handle is not None:
-            entry.idle_handle.cancel()
         task = asyncio.create_task(
             self._flush_with_retry(session_id, entry.group_id, entry.turns)
         )
@@ -153,8 +132,6 @@ class CaptureBuffer:
             entry = self._entries.pop(session_id, None)
             if entry is None:
                 continue
-            if entry.idle_handle is not None:
-                entry.idle_handle.cancel()
             if entry.turns:
                 task = asyncio.create_task(
                     self._flush_with_retry(session_id, entry.group_id, entry.turns)

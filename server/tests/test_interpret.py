@@ -1,8 +1,8 @@
 """Tree: interpret-facts (Python).
 
-Shared helper used by /recall and /tools/memory_search. Consumes a flat
-list of canonical Messages (role labels are applied inside
-build_interpretation_context). Fails fast when LLM is absent or empty.
+Filters recalled facts for relevance against the in-flight conversation.
+Returns a list of one-sentence entries (fact + why relevant).
+Empty list is the explicit "nothing relevant" outcome.
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ import pytest
 
 from pipelines.interpret import (
     INTERPRET_CHAR_BUDGET,
-    INTERPRET_SYSTEM_PROMPT,
     InterpretResult,
     build_interpretation_context,
     interpret_facts,
@@ -24,70 +23,63 @@ from pipelines.messages import Message
 @pytest.fixture
 def mock_llm_client():
     client = AsyncMock()
-    client.generate_response = AsyncMock(return_value={"text": "relevant interpretation"})
+    client.generate_response = AsyncMock(return_value={"relevantFacts": ["Alice knows Bob — names a colleague."]})
     return client
 
 
 class TestInterpretFacts:
-    async def test_raises_when_llm_client_is_none(self):
-        with pytest.raises(RuntimeError, match="llm_client is required"):
-            await interpret_facts(
-                [Message(role="user", content="hi")],
-                "- fact 1",
-                None,
-            )
+    class TestCallsLlmClientWithConversationAndFormattedFacts:
+        async def test_response_model_field_describes_verbatim_fact_plus_reason(self):
+            description = InterpretResult.model_fields["relevantFacts"].description
+            assert description is not None
+            assert "verbatim" in description
+            assert "(valid from" in description
+            assert "(expired" in description
+            assert "—" in description
 
-    async def test_raises_when_llm_returns_empty_text(self, mock_llm_client):
-        mock_llm_client.generate_response.return_value = {"text": ""}
-        with pytest.raises(RuntimeError, match="empty interpretation"):
-            await interpret_facts(
-                [Message(role="user", content="hi")],
-                "- fact 1",
+        async def test_returns_the_list_when_llm_returns_relevant_facts(self, mock_llm_client):
+            mock_llm_client.generate_response.return_value = {
+                "relevantFacts": [
+                    "Alice knows Bob (valid from 2024-01-01) — Bob is the user's question subject.",
+                    "Alice's email is a@x (expired 2025-06-01) — needed to answer the email question.",
+                ]
+            }
+            result = await interpret_facts(
+                [Message(role="user", content="who is bob")],
+                "- Alice knows Bob (valid from 2024-01-01)",
                 mock_llm_client,
             )
+            assert result == [
+                "Alice knows Bob (valid from 2024-01-01) — Bob is the user's question subject.",
+                "Alice's email is a@x (expired 2025-06-01) — needed to answer the email question.",
+            ]
 
-    async def test_raises_when_llm_returns_whitespace_only(self, mock_llm_client):
-        mock_llm_client.generate_response.return_value = {"text": "   \n  "}
-        with pytest.raises(RuntimeError, match="empty interpretation"):
-            await interpret_facts(
-                [Message(role="user", content="hi")],
-                "- fact 1",
+        async def test_returns_empty_list_when_llm_returns_empty_list(self, mock_llm_client):
+            mock_llm_client.generate_response.return_value = {"relevantFacts": []}
+            result = await interpret_facts(
+                [Message(role="user", content="who is bob")],
+                "- unrelated fact",
                 mock_llm_client,
             )
+            assert result == []
 
-    async def test_returns_stripped_text_on_success(self, mock_llm_client):
-        mock_llm_client.generate_response.return_value = {"text": "  the answer  "}
-        result = await interpret_facts(
-            [Message(role="user", content="hi")],
-            "- fact 1",
-            mock_llm_client,
-        )
-        assert result == "the answer"
+        async def test_raises_when_llm_response_is_malformed(self, mock_llm_client):
+            mock_llm_client.generate_response.return_value = {"text": "old shape"}
+            with pytest.raises(RuntimeError, match="malformed"):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact",
+                    mock_llm_client,
+                )
 
-    async def test_passes_system_prompt_and_context(self, mock_llm_client):
-        await interpret_facts(
-            [Message(role="user", content="what's up")],
-            "- lucky number 47",
-            mock_llm_client,
-        )
-        call = mock_llm_client.generate_response.await_args
-        messages = call.args[0]
-        assert messages[0].role == "system"
-        assert messages[0].content == INTERPRET_SYSTEM_PROMPT
-        assert messages[1].role == "user"
-        assert "Conversation context:" in messages[1].content
-        assert "User: what's up" in messages[1].content
-        assert "lucky number 47" in messages[1].content
-
-    async def test_uses_response_model(self, mock_llm_client):
-        await interpret_facts(
-            [Message(role="user", content="q")],
-            "- fact",
-            mock_llm_client,
-        )
-        call = mock_llm_client.generate_response.await_args
-        assert call.kwargs.get("response_model") is InterpretResult
-        assert call.kwargs.get("max_tokens") == 500
+    class TestWhenLlmClientIsNone:
+        async def test_raises(self):
+            with pytest.raises(RuntimeError, match="llm_client is required"):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact 1",
+                    None,
+                )
 
 
 class TestBuildInterpretationContext:

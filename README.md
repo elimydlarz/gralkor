@@ -68,7 +68,6 @@ The server does all the memory thinking; adapters are thin HTTP clients; harness
 | `POST /recall` | Pre-prompt auto-recall — fast search + LLM interpretation |
 | `POST /capture` | Turn capture — takes a list of canonical `{role, content}` messages (roles: `user`/`assistant`/`behaviour`); server buffers, distils, ingests on idle |
 | `POST /session_end` | Flush the session's buffer now (fire-and-forget; 204 before the graph write) |
-| `POST /tools/memory_search` | LLM-facing tool — slow search (cross-encoder) + interpretation |
 | `POST /tools/memory_add` | LLM-facing tool — store content as an episode |
 | `POST /build-indices` | Admin — rebuild graph indices (whole graph) |
 | `POST /build-communities` | Admin — detect entity communities (per group) |

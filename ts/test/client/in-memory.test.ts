@@ -20,7 +20,6 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
     it("records the call with its arguments for later inspection", async () => {
       client.setResponse("recall", { ok: null });
       client.setResponse("capture", { ok: true });
-      client.setResponse("memorySearch", { ok: "s" });
       client.setResponse("memoryAdd", { ok: true });
       client.setResponse("endSession", { ok: true });
       client.setResponse("healthCheck", { ok: true });
@@ -32,7 +31,6 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
         { role: "user", content: "q" },
         { role: "assistant", content: "a" },
       ]);
-      await client.memorySearch("g1", "s1", "q");
       await client.memoryAdd("g1", "content", "source");
       await client.endSession("s1");
       await client.healthCheck();
@@ -50,7 +48,6 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
           ],
         ],
       ]);
-      expect(client.searches).toEqual([["g1", "s1", "q", undefined, undefined]]);
       expect(client.adds).toEqual([["g1", "content", "source"]]);
       expect(client.endSessions).toEqual([["s1"]]);
       expect(client.healthChecks).toEqual([[]]);
@@ -65,7 +62,6 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
       expect(
         await client.capture("s1", "g1", [{ role: "user", content: "q" }]),
       ).toEqual({ error: "not_configured" });
-      expect(await client.memorySearch("g1", "s1", "q")).toEqual({ error: "not_configured" });
       expect(await client.memoryAdd("g1", "c", null)).toEqual({ error: "not_configured" });
       expect(await client.endSession("s1")).toEqual({ error: "not_configured" });
       expect(await client.healthCheck()).toEqual({ error: "not_configured" });
@@ -95,11 +91,4 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
     });
   });
 
-  describe("when memorySearch is called with maxResults and maxEntityResults", () => {
-    it("records both alongside the others", async () => {
-      client.setResponse("memorySearch", { ok: "text" });
-      await client.memorySearch("g1", "s1", "q", 7, 3);
-      expect(client.searches).toEqual([["g1", "s1", "q", 7, 3]]);
-    });
-  });
 });

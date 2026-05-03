@@ -21,7 +21,6 @@ export interface GralkorHttpClientOptions {
  *   - `/recall`                — 12 000 (matches the server's `/recall` deadline; tight — a server 504 may race the transport, revisit if it bites)
  *   - `/capture`               — 5 000
  *   - `/session_end`           — 5 000
- *   - `/tools/memory_search`   — 30 000
  *   - `/tools/memory_add`      — 60 000 (Graphiti extraction is slow)
  *   - `/build-indices`         — none (admin; minutes-to-hours on large graphs)
  *   - `/build-communities`     — none (admin; minutes-to-hours on large graphs)
@@ -43,7 +42,7 @@ export class GralkorHttpClient implements GralkorClient {
     sessionId: string | null,
     query: string,
     maxResults?: number,
-  ): Promise<Result<string | null>> {
+  ): Promise<Result<string>> {
     const body: Record<string, unknown> = { group_id: groupId, query };
     if (typeof sessionId === "string") body.session_id = sessionId;
     if (maxResults !== undefined) body.max_results = maxResults;
@@ -51,7 +50,6 @@ export class GralkorHttpClient implements GralkorClient {
     if ("error" in res) return res;
     const respBody = res.ok as { memory_block?: string };
     if (respBody.memory_block === undefined) return { error: { kind: "unexpected_body", body: respBody } };
-    if (respBody.memory_block === "") return { ok: null };
     return { ok: respBody.memory_block };
   }
 
@@ -69,24 +67,6 @@ export class GralkorHttpClient implements GralkorClient {
     requireSessionId(sessionId);
     const res = await this.post("/session_end", { session_id: sessionId }, 5_000);
     return "error" in res ? res : { ok: true };
-  }
-
-  async memorySearch(
-    groupId: string,
-    sessionId: string,
-    query: string,
-    maxResults?: number,
-    maxEntityResults?: number,
-  ): Promise<Result<string>> {
-    requireSessionId(sessionId);
-    const body: Record<string, unknown> = { group_id: groupId, session_id: sessionId, query };
-    if (maxResults !== undefined) body.max_results = maxResults;
-    if (maxEntityResults !== undefined) body.max_entity_results = maxEntityResults;
-    const res = await this.post("/tools/memory_search", body, 30_000);
-    if ("error" in res) return res;
-    const respBody = res.ok as { text?: string };
-    if (respBody.text === undefined) return { error: { kind: "unexpected_body", body: respBody } };
-    return { ok: respBody.text };
   }
 
   async memoryAdd(

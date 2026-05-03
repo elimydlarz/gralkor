@@ -6,3 +6,4 @@ erl_crash.dump
 /doc/
 gralkor-*.tar
 priv/server/
+.env

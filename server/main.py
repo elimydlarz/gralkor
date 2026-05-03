@@ -33,6 +33,8 @@ from graphiti_core.nodes import EpisodicNode, EpisodeType
 from graphiti_core.llm_client import LLMConfig
 from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_CROSS_ENCODER
 
+DEFAULT_DATABASE = "default_db"
+
 
 # ── Config ────────────────────────────────────────────────────
 
@@ -229,26 +231,42 @@ def _log_falkordblite_diagnostics(error: Exception) -> None:
         print(f"[gralkor] Diagnostic collection failed: {diag_err}", flush=True)
 
 
-# ── Graphiti singleton ────────────────────────────────────────
-
-graphiti: Graphiti | None = None
+_falkor_db = None
+_llm_client = None
+_embedder = None
+_cross_encoder = None
+_graphiti_instances: dict[str, Graphiti] = {}
 ontology_entity_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_types: dict[str, type[BaseModel]] | None = None
 ontology_edge_type_map: dict[tuple[str, str], list[str]] | None = None
 
-# Serializes any operation that depends on graphiti.driver pointing at a
-# specific FalkorDB named graph. graphiti-core's add_episode() and our
-# _ensure_driver_graph() both work by mutating the global graphiti.driver,
-# so two concurrent requests for different group_ids can interleave and
-# clobber each other's driver state — losing data on writes and returning
-# wrong results on reads. Single-user agent semantics make serialization
-# acceptable; correctness > throughput here.
-_driver_lock = asyncio.Lock()
+
+def _graphiti_for(group_id: str) -> Graphiti:
+    """Return the Graphiti instance for one FalkorDB graph.
+
+    Caller is responsible for sanitising group_id (FalkorDB rejects hyphens).
+    The same instance is returned for every call with the same group_id; a
+    new one is constructed lazily on first use. Pinning each instance to one
+    group_id keeps graphiti-core's add_episode driver-clone branch (which
+    mutates self.driver when group_id != self.driver._database) inert.
+    """
+    g = _graphiti_instances.get(group_id)
+    if g is None:
+        driver = FalkorDriver(falkor_db=_falkor_db, database=group_id)
+        g = Graphiti(
+            graph_driver=driver,
+            llm_client=_llm_client,
+            embedder=_embedder,
+            cross_encoder=_cross_encoder,
+        )
+        _graphiti_instances[group_id] = g
+    return g
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global graphiti, ontology_entity_types, ontology_edge_types, ontology_edge_type_map
+    global _falkor_db, _llm_client, _embedder, _cross_encoder
+    global ontology_entity_types, ontology_edge_types, ontology_edge_type_map
     cfg = _load_config()
 
     # Embedded FalkorDBLite (no Docker needed)
@@ -260,29 +278,15 @@ async def lifespan(_app: FastAPI):
     os.makedirs(data_dir, exist_ok=True)
     db_path = os.path.join(data_dir, "gralkor.db")
     try:
-        db = AsyncFalkorDB(db_path)
+        _falkor_db = AsyncFalkorDB(db_path)
     except Exception as e:
         _log_falkordblite_diagnostics(e)
         raise
-    driver = FalkorDriver(falkor_db=db)
 
     genai_client = _build_genai_client()
-    graphiti = Graphiti(
-        graph_driver=driver,
-        llm_client=_build_llm_client(cfg, genai_client=genai_client),
-        embedder=_build_embedder(cfg, genai_client=genai_client),
-        cross_encoder=_build_cross_encoder(cfg, genai_client=genai_client),
-    )
-    # Only build indices on first boot; skip if they already exist.
-    existing = await graphiti.driver.execute_query("CALL db.indexes()")
-    if existing and existing[0]:
-        print(f"[gralkor] indices already exist ({len(existing[0])} found), skipping build", flush=True)
-    else:
-        print("[gralkor] building indices and constraints...", flush=True)
-        t0_idx = time.monotonic()
-        await graphiti.build_indices_and_constraints()
-        idx_ms = (time.monotonic() - t0_idx) * 1000
-        print(f"[gralkor] indices ready — {idx_ms:.0f}ms", flush=True)
+    _llm_client = _build_llm_client(cfg, genai_client=genai_client)
+    _embedder = _build_embedder(cfg, genai_client=genai_client)
+    _cross_encoder = _build_cross_encoder(cfg, genai_client=genai_client)
 
     # Configure logging level: DEBUG in test mode for full data visibility
     log_level = logging.DEBUG if cfg.get("test") else logging.INFO
@@ -298,16 +302,39 @@ async def lifespan(_app: FastAPI):
         edge_names = list(ontology_edge_types or {})
         print(f"[gralkor] ontology: entities={entity_names} edges={edge_names}", flush=True)
 
-    global capture_buffer
-    idle_seconds = float(cfg.get("capture", {}).get("idle_seconds", CAPTURE_IDLE_SECONDS_DEFAULT))
-    capture_buffer = CaptureBuffer(idle_seconds=idle_seconds, flush_callback=_capture_flush)
+    # Build indices on the default graph if not already present. Per-group
+    # graphs get their own indices on first FalkorDriver instantiation
+    # (graphiti-core schedules build_indices_and_constraints from the
+    # FalkorDriver constructor; CREATE INDEX is idempotent in FalkorDB).
+    boot_g = _graphiti_for(DEFAULT_DATABASE)
+    existing = await boot_g.driver.execute_query("CALL db.indexes()")
+    if existing and existing[0]:
+        print(f"[gralkor] indices already exist ({len(existing[0])} found), skipping build", flush=True)
+    else:
+        print("[gralkor] building indices and constraints...", flush=True)
+        t0_idx = time.monotonic()
+        await boot_g.build_indices_and_constraints()
+        idx_ms = (time.monotonic() - t0_idx) * 1000
+        print(f"[gralkor] indices ready — {idx_ms:.0f}ms", flush=True)
 
-    await _warmup(graphiti)
+    global capture_buffer
+    capture_buffer = CaptureBuffer(flush_callback=_capture_flush)
+
+    await _warmup()
 
     yield
 
     await capture_buffer.flush_all()
-    await graphiti.close()
+    if _falkor_db is not None:
+        try:
+            if hasattr(_falkor_db, "aclose"):
+                await _falkor_db.aclose()
+            elif hasattr(_falkor_db.connection, "aclose"):
+                await _falkor_db.connection.aclose()
+            elif hasattr(_falkor_db.connection, "close"):
+                await _falkor_db.connection.close()
+        except Exception as e:
+            logger.warning("[gralkor] FalkorDB shutdown failed: %s", e)
 
 
 app = FastAPI(title="Gralkor Graphiti Server", lifespan=lifespan)
@@ -397,7 +424,6 @@ async def rate_limit_middleware(request, call_next):
 
 # ── Capture buffer ───────────────────────────────────────────
 
-CAPTURE_IDLE_SECONDS_DEFAULT = 300.0
 capture_buffer: CaptureBuffer | None = None
 
 
@@ -405,24 +431,19 @@ _WARMUP_GROUP_ID = "_warmup"
 _WARMUP_QUERY = "warmup"
 
 
-async def _warmup(g) -> None:
+async def _warmup() -> None:
     t0 = time.monotonic()
     try:
-        async with _driver_lock:
-            t_fast_start = time.monotonic()
-            await g.search(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], num_results=1)
-            t_fast_done = time.monotonic()
-            config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
-            config.limit = 1
-            await g.search_(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], config=config)
-        t_slow_done = time.monotonic()
+        g = _graphiti_for(_WARMUP_GROUP_ID)
+        t_search_start = time.monotonic()
+        await g.search(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], num_results=1)
+        t_search_done = time.monotonic()
         await interpret_facts([], _WARMUP_QUERY, g.llm_client)
         t_interpret_done = time.monotonic()
         logger.info(
-            "[gralkor] warmup — search:%.0f search_:%.0f interpret:%.0f %.0fms",
-            (t_fast_done - t_fast_start) * 1000,
-            (t_slow_done - t_fast_done) * 1000,
-            (t_interpret_done - t_slow_done) * 1000,
+            "[gralkor] warmup — search:%.0f interpret:%.0f %.0fms",
+            (t_search_done - t_search_start) * 1000,
+            (t_interpret_done - t_search_done) * 1000,
             (time.monotonic() - t0) * 1000,
         )
     except Exception as e:
@@ -430,25 +451,26 @@ async def _warmup(g) -> None:
 
 
 async def _capture_flush(group_id: str, turns: list[list[Message]]) -> None:
-    if graphiti is None:
+    if _llm_client is None or _falkor_db is None:
         return
     t0 = time.monotonic()
-    episode_body = await format_transcript(turns, graphiti.llm_client)
+    sanitized = _sanitize_group_id(group_id)
+    g = _graphiti_for(sanitized)
+    episode_body = await format_transcript(turns, g.llm_client)
     if not episode_body.strip():
         return
     logger.debug("[gralkor] [test] capture flush body: %s", episode_body)
-    async with _driver_lock:
-        result = await graphiti.add_episode(
-            name=f"conversation-{int(time.time() * 1000)}",
-            episode_body=episode_body,
-            source_description="auto-capture",
-            group_id=_sanitize_group_id(group_id),
-            reference_time=datetime.now(timezone.utc),
-            source=EpisodeType.message,
-            entity_types=ontology_entity_types,
-            edge_types=ontology_edge_types,
-            edge_type_map=ontology_edge_type_map,
-        )
+    result = await g.add_episode(
+        name=f"conversation-{int(time.time() * 1000)}",
+        episode_body=episode_body,
+        source_description="auto-capture",
+        group_id=sanitized,
+        reference_time=datetime.now(timezone.utc),
+        source=EpisodeType.message,
+        entity_types=ontology_entity_types,
+        edge_types=ontology_edge_types,
+        edge_type_map=ontology_edge_type_map,
+    )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info("[gralkor] capture flushed — group:%s uuid:%s bodyChars:%d %.0fms",
                 group_id, result.episode.uuid, len(episode_body), duration_ms)
@@ -523,18 +545,6 @@ class SessionEndRequest(BaseModel):
     session_id: str = Field(min_length=1)
 
 
-class MemorySearchRequest(BaseModel):
-    session_id: str = Field(min_length=1)
-    group_id: str
-    query: str
-    max_results: int = 20
-    max_entity_results: int = 10
-
-
-class MemorySearchResponse(BaseModel):
-    text: str
-
-
 class MemoryAddRequest(BaseModel):
     group_id: str
     content: str
@@ -607,11 +617,14 @@ FURTHER_QUERYING_INSTRUCTION = (
     "Search memory (up to 3 times, diverse queries) if you need more detail."
 )
 
+NO_RELEVANT_MEMORIES_BODY = "No relevant memories found."
+
 
 @router.get("/health")
 async def health():
     try:
-        await graphiti.driver.execute_query("RETURN 1")
+        g = _graphiti_for(DEFAULT_DATABASE)
+        await g.driver.execute_query("RETURN 1")
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
     return {"status": "ok"}
@@ -629,19 +642,20 @@ async def add_episode(req: AddEpisodeRequest):
         else datetime.now(timezone.utc)
     )
     episode_type = EpisodeType(req.source) if req.source else EpisodeType.message
-    async with _driver_lock:
-        result = await graphiti.add_episode(
-            name=req.name,
-            episode_body=req.episode_body,
-            source_description=req.source_description,
-            group_id=_sanitize_group_id(req.group_id),
-            reference_time=ref_time,
-            source=episode_type,
-            entity_types=ontology_entity_types,
-            edge_types=ontology_edge_types,
-            edge_type_map=ontology_edge_type_map,
-            excluded_entity_types=None,
-        )
+    sanitized = _sanitize_group_id(req.group_id)
+    g = _graphiti_for(sanitized)
+    result = await g.add_episode(
+        name=req.name,
+        episode_body=req.episode_body,
+        source_description=req.source_description,
+        group_id=sanitized,
+        reference_time=ref_time,
+        source=episode_type,
+        entity_types=ontology_entity_types,
+        edge_types=ontology_edge_types,
+        edge_type_map=ontology_edge_type_map,
+        excluded_entity_types=None,
+    )
     episode = result.episode
     serialized = _serialize_episode(episode)
     _idempotency_store_result(req.idempotency_key, serialized)
@@ -668,62 +682,37 @@ def _sanitize_group_id(group_id: str) -> str:
     return group_id.replace("-", "_")
 
 
-def _ensure_driver_graph(group_ids: list[str] | None) -> None:
-    """Route graphiti's driver to the correct FalkorDB named graph.
-
-    graphiti-core's add_episode() clones the driver when group_id differs from
-    the current database (graphiti.py:887-889), but search() does not.  On fresh
-    boot the driver targets 'default_db' — an empty graph — so searches return
-    nothing until the first add_episode switches it.  This helper applies the
-    same routing for read paths.
-    """
-    if not group_ids:
-        return
-    target = group_ids[0]
-    if target != graphiti.driver._database:
-        try:
-            graphiti.driver = graphiti.driver.clone(database=target)
-            graphiti.clients.driver = graphiti.driver
-        except Exception as e:
-            # Invalid group_id (e.g. hyphens rejected by FalkorDB).  Skip routing
-            # so the search runs against the current graph and returns empty results
-            # instead of 500ing.
-            logger.warning("[gralkor] driver graph routing failed for %s: %s", target, e)
-
-
 @router.post("/search")
 async def search(req: SearchRequest):
     # Sanitize group IDs: hyphens cause RediSearch syntax errors in graphiti-core.
     sanitized = [_sanitize_group_id(g) for g in req.group_ids]
-    # graphiti.add_episode() clones the driver to target the correct FalkorDB
-    # named graph (database=group_id), but graphiti.search() does not — it just
-    # uses whatever graph the driver currently points at. Before the first
-    # add_episode, the driver targets 'default_db' (an empty graph), so all
-    # searches return 0 results. Fix: route to the correct graph here.
+    # The Graphiti driver targets one FalkorDB graph; multi-group search
+    # currently fans into the first group's graph. Multi-graph fanout is a
+    # separate feature.
+    target = sanitized[0] if sanitized else DEFAULT_DATABASE
     t0 = time.monotonic()
     try:
-        async with _driver_lock:
-            _ensure_driver_graph(sanitized)
-            if req.mode == "slow":
-                # Cross-encoder + BFS: higher quality, also returns entity node summaries.
-                # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
-                # constant; mutating .limit directly would corrupt it across requests.
-                config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
-                config.limit = req.num_results
-                search_result = await graphiti.search_(
-                    query=_sanitize_query(req.query),
-                    group_ids=sanitized,
-                    config=config,
-                )
-                edges = search_result.edges
-                nodes = search_result.nodes
-            else:
-                edges = await graphiti.search(
-                    query=_sanitize_query(req.query),
-                    group_ids=sanitized,
-                    num_results=req.num_results,
-                )
-                nodes = []
+        g = _graphiti_for(target)
+        if req.mode == "slow":
+            # Cross-encoder + BFS: higher quality, also returns entity node summaries.
+            # deepcopy required — COMBINED_HYBRID_SEARCH_CROSS_ENCODER is a module-level
+            # constant; mutating .limit directly would corrupt it across requests.
+            config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
+            config.limit = req.num_results
+            search_result = await g.search_(
+                query=_sanitize_query(req.query),
+                group_ids=sanitized,
+                config=config,
+            )
+            edges = search_result.edges
+            nodes = search_result.nodes
+        else:
+            edges = await g.search(
+                query=_sanitize_query(req.query),
+                group_ids=sanitized,
+                num_results=req.num_results,
+            )
+            nodes = []
     except Exception as e:
         duration_ms = (time.monotonic() - t0) * 1000
         logger.error("[gralkor] search failed — mode:%s %.0fms: %s", req.mode, duration_ms, e)
@@ -736,18 +725,18 @@ async def search(req: SearchRequest):
 
 @router.post("/build-indices")
 async def build_indices():
-    await graphiti.build_indices_and_constraints()
+    g = _graphiti_for(DEFAULT_DATABASE)
+    await g.build_indices_and_constraints()
     return {"status": "ok"}
 
 
 @router.post("/build-communities")
 async def build_communities(req: GroupIdRequest):
     gid = _sanitize_group_id(req.group_id)
-    async with _driver_lock:
-        _ensure_driver_graph([gid])
-        communities, edges = await graphiti.build_communities(
-            group_ids=[gid],
-        )
+    g = _graphiti_for(gid)
+    communities, edges = await g.build_communities(
+        group_ids=[gid],
+    )
     return {"communities": len(communities), "edges": len(edges)}
 
 
@@ -800,53 +789,53 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
     logger.debug("[gralkor] [test] recall query: %s", req.query)
     t0 = time.monotonic()
 
-    async with _driver_lock:
-        t_lock = time.monotonic()
-        _ensure_driver_graph([sanitized])
-        edges = await _recall_vertex_call(
-            lambda: graphiti.search(
-                query=_sanitize_query(req.query),
-                group_ids=[sanitized],
-                num_results=req.max_results,
-            )
+    g = _graphiti_for(sanitized)
+    edges = await _recall_vertex_call(
+        lambda: g.search(
+            query=_sanitize_query(req.query),
+            group_ids=[sanitized],
+            num_results=req.max_results,
         )
+    )
     t_search = time.monotonic()
 
     facts = [_serialize_fact(e) for e in edges]
     if not facts:
-        duration_ms = (time.monotonic() - t0) * 1000
-        logger.info(
-            "[gralkor] recall result — 0 facts %.0fms (lock_wait:%.0f search:%.0f interpret:0)",
-            duration_ms, (t_lock - t0) * 1000, (t_search - t_lock) * 1000,
+        body = NO_RELEVANT_MEMORIES_BODY
+        t_interpret = t_search
+    else:
+        facts_text = "\n".join(format_fact(f) for f in facts)
+        relevant_facts = await _recall_vertex_call(
+            lambda: interpret_facts(conversation, facts_text, g.llm_client)
         )
-        return RecallResponse(memory_block="")
-
-    facts_text = "\n".join(format_fact(f) for f in facts)
-    interpretation = await _recall_vertex_call(
-        lambda: interpret_facts(conversation, facts_text, graphiti.llm_client)
-    )
-    t_interpret = time.monotonic()
+        t_interpret = time.monotonic()
+        body = "\n".join(relevant_facts) if relevant_facts else NO_RELEVANT_MEMORIES_BODY
 
     block = (
         '<gralkor-memory trust="untrusted">\n'
-        f"Facts:\n{facts_text}\n\n"
-        f"Interpretation:\n{interpretation}\n\n"
+        f"{body}\n\n"
         f"{FURTHER_QUERYING_INSTRUCTION}\n"
         "</gralkor-memory>"
     )
     duration_ms = (time.monotonic() - t0) * 1000
-    logger.info(
-        "[gralkor] recall result — %d facts blockChars:%d %.0fms (lock_wait:%.0f search:%.0f interpret:%.0f)",
-        len(facts), len(block), duration_ms,
-        (t_lock - t0) * 1000, (t_search - t_lock) * 1000, (t_interpret - t_search) * 1000,
-    )
+    if not facts:
+        logger.info(
+            "[gralkor] recall result — 0 facts blockChars:%d %.0fms (search:%.0f interpret:0)",
+            len(block), duration_ms, (t_search - t0) * 1000,
+        )
+    else:
+        logger.info(
+            "[gralkor] recall result — %d facts blockChars:%d %.0fms (search:%.0f interpret:%.0f)",
+            len(facts), len(block), duration_ms,
+            (t_search - t0) * 1000, (t_interpret - t_search) * 1000,
+        )
     logger.debug("[gralkor] [test] recall block: %s", block)
     return RecallResponse(memory_block=block)
 
 
 @router.post("/distill", response_model=DistillResponse)
 async def distill(req: DistillRequest) -> DistillResponse:
-    episode_body = await format_transcript(req.turns, graphiti.llm_client if graphiti else None)
+    episode_body = await format_transcript(req.turns, _llm_client)
     return DistillResponse(episode_body=episode_body)
 
 
@@ -871,71 +860,21 @@ async def session_end(req: SessionEndRequest) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/tools/memory_search", response_model=MemorySearchResponse)
-async def tools_memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
-    sanitized = _sanitize_group_id(req.group_id)
-    conversation = _conversation_for_session(req.session_id)
-    logger.info("[gralkor] tools.memory_search — session:%s group:%s queryChars:%d max:%d/%d",
-                req.session_id, sanitized, len(req.query), req.max_results, req.max_entity_results)
-    logger.debug("[gralkor] [test] tools.memory_search query: %s", req.query)
-    t0 = time.monotonic()
-
-    async with _driver_lock:
-        t_lock = time.monotonic()
-        _ensure_driver_graph([sanitized])
-        config = deepcopy(COMBINED_HYBRID_SEARCH_CROSS_ENCODER)
-        config.limit = req.max_results
-        search_result = await graphiti.search_(
-            query=_sanitize_query(req.query),
-            group_ids=[sanitized],
-            config=config,
-        )
-    t_search = time.monotonic()
-
-    facts = [_serialize_fact(e) for e in search_result.edges]
-    nodes = [_serialize_node(n) for n in search_result.nodes[: req.max_entity_results]]
-
-    if not facts and not nodes:
-        duration_ms = (time.monotonic() - t0) * 1000
-        logger.info(
-            "[gralkor] tools.memory_search result — 0 facts 0 entities %.0fms (lock_wait:%.0f search:%.0f interpret:0)",
-            duration_ms, (t_lock - t0) * 1000, (t_search - t_lock) * 1000,
-        )
-        return MemorySearchResponse(text="Facts: (none)\nEntities: (none)")
-
-    facts_section = "Facts:\n" + ("\n".join(format_fact(f) for f in facts) if facts else "(none)")
-    entities_section = "Entities:\n" + (
-        "\n".join(format_node(n) for n in nodes) if nodes else "(none)"
-    )
-    facts_text = facts_section + "\n\n" + entities_section
-    interpretation = await interpret_facts(conversation, facts_text, graphiti.llm_client)
-    t_interpret = time.monotonic()
-    text = f"{facts_text}\n\nInterpretation:\n{interpretation}"
-    duration_ms = (time.monotonic() - t0) * 1000
-    logger.info(
-        "[gralkor] tools.memory_search result — %d facts %d entities textChars:%d %.0fms (lock_wait:%.0f search:%.0f interpret:%.0f)",
-        len(facts), len(nodes), len(text), duration_ms,
-        (t_lock - t0) * 1000, (t_search - t_lock) * 1000, (t_interpret - t_search) * 1000,
-    )
-    logger.debug("[gralkor] [test] tools.memory_search text: %s", text)
-    return MemorySearchResponse(text=text)
-
-
 @router.post("/tools/memory_add", response_model=MemoryAddResponse)
 async def tools_memory_add(req: MemoryAddRequest) -> MemoryAddResponse:
     sanitized = _sanitize_group_id(req.group_id)
-    async with _driver_lock:
-        await graphiti.add_episode(
-            name=f"manual-add-{int(time.time() * 1000)}",
-            episode_body=req.content,
-            source_description=req.source_description,
-            group_id=sanitized,
-            reference_time=datetime.now(timezone.utc),
-            source=EpisodeType.text,
-            entity_types=ontology_entity_types,
-            edge_types=ontology_edge_types,
-            edge_type_map=ontology_edge_type_map,
-        )
+    g = _graphiti_for(sanitized)
+    await g.add_episode(
+        name=f"manual-add-{int(time.time() * 1000)}",
+        episode_body=req.content,
+        source_description=req.source_description,
+        group_id=sanitized,
+        reference_time=datetime.now(timezone.utc),
+        source=EpisodeType.text,
+        entity_types=ontology_entity_types,
+        edge_types=ontology_edge_types,
+        edge_type_map=ontology_edge_type_map,
+    )
     return MemoryAddResponse(status="stored")
 
 

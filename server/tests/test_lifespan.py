@@ -26,7 +26,7 @@ def _make_graphiti_mock(*, has_indices=True):
         mock.driver.execute_query.return_value = ([], [], [])
     mock.search.return_value = []
     mock.search_.return_value = _empty_search_result()
-    mock.llm_client.generate_response.return_value = {"text": "warm"}
+    mock.llm_client.generate_response.return_value = {"relevantFacts": []}
     return mock
 
 
@@ -55,8 +55,11 @@ async def test_embedded_mode(tmp_path, monkeypatch):
         async with main_mod.lifespan(app):
             pass
 
-        mock_driver_cls.assert_called_once()
-        assert mock_driver_cls.call_args.kwargs["falkor_db"] is mock_async_db
+        # _graphiti_for instantiates a FalkorDriver per call (boot index check
+        # + warmup); both share the same AsyncFalkorDB.
+        assert mock_driver_cls.call_count >= 1
+        for call in mock_driver_cls.call_args_list:
+            assert call.kwargs["falkor_db"] is mock_async_db
 
 
 @pytest.mark.asyncio
@@ -112,8 +115,8 @@ async def test_builds_indices_on_fresh_db(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_warms_search_paths_before_yield(tmp_path, monkeypatch, caplog):
-    """Lifespan exercises search, search_, and interpret once before yielding,
+async def test_warms_search_path_before_yield(tmp_path, monkeypatch, caplog):
+    """Lifespan exercises search and interpret once before yielding,
     so the first real /recall doesn't eat the cold-path cost."""
     monkeypatch.setenv("FALKORDB_DATA_DIR", str(tmp_path / "db"))
     caplog.set_level(logging.INFO, logger="main")
@@ -136,11 +139,10 @@ async def test_warms_search_paths_before_yield(tmp_path, monkeypatch, caplog):
             pass
 
     mock_graphiti_instance.search.assert_awaited_once()
-    mock_graphiti_instance.search_.assert_awaited_once()
     mock_graphiti_instance.llm_client.generate_response.assert_awaited()
     info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
     assert any(
-        "[gralkor] warmup —" in m and "search:" in m and "search_:" in m and "interpret:" in m
+        "[gralkor] warmup —" in m and "search:" in m and "interpret:" in m
         for m in info_msgs
     ), info_msgs
 

@@ -1,8 +1,7 @@
 """Tree: POST /session_end endpoint (in TEST_TREES.md).
 
-Cancels the idle timer for a session and flushes its buffered turns via the
-same retry machinery as idle flush. Returns 204 without awaiting flush
-completion.
+Flushes a session's buffered turns via the registered callback and retry
+machinery. Returns 204 without awaiting flush completion.
 """
 
 from __future__ import annotations

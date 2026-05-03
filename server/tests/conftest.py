@@ -128,17 +128,17 @@ async def client(mock_graphiti):
     import main as main_mod
     from pipelines.capture_buffer import CaptureBuffer
 
-    original_graphiti = main_mod.graphiti
+    original_factory = main_mod._graphiti_for
+    original_llm = main_mod._llm_client
     original_buffer = main_mod.capture_buffer
-    main_mod.graphiti = mock_graphiti
+    main_mod._graphiti_for = lambda group_id: mock_graphiti
+    main_mod._llm_client = mock_graphiti.llm_client
     main_mod._idempotency_store.clear()
-    main_mod.capture_buffer = CaptureBuffer(
-        idle_seconds=3600.0,
-        flush_callback=main_mod._capture_flush,
-    )
+    main_mod.capture_buffer = CaptureBuffer(flush_callback=main_mod._capture_flush)
     transport = ASGITransport(app=main_mod.app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     await main_mod.capture_buffer.flush_all()
     main_mod.capture_buffer = original_buffer
-    main_mod.graphiti = original_graphiti
+    main_mod._llm_client = original_llm
+    main_mod._graphiti_for = original_factory

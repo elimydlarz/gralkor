@@ -11,8 +11,13 @@ const execFileAsync = promisify(execFile);
 
 const HEALTH_POLL_INTERVAL_MS = 500;
 const HEALTH_TIMEOUT_MS = 120_000;
-const MONITOR_INTERVAL_MS = 60_000;
 const STOP_GRACE_MS = 5_000;
+
+// OTP default — 3 restarts in 5s; the 4th unexpected exit inside the window
+// escalates by exiting the Node process so the next-level supervisor (Docker
+// restart: unless-stopped in agents/) takes over.
+const RESTART_INTENSITY_LIMIT = 3;
+const RESTART_INTENSITY_WINDOW_MS = 5_000;
 
 /**
  * Path to the Python server source bundled with this package. Resolves at
@@ -58,7 +63,10 @@ export interface ServerManager {
 export function createServerManager(opts: ServerManagerOptions): ServerManager {
   const serverDir = opts.serverDir ?? bundledServerDir();
   let proc: ChildProcess | null = null;
-  let monitorTimer: ReturnType<typeof setInterval> | undefined;
+  let stopping = false;
+  const recentUnexpectedExits: number[] = [];
+  let spawnEnv: Record<string, string> | null = null;
+  let venvPython: string | null = null;
 
   async function start(): Promise<void> {
     const bootStart = Date.now();
@@ -68,7 +76,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     console.log("[gralkor] boot: starting...");
 
     const venvDir = join(opts.dataDir, "venv");
-    const venvPython = join(venvDir, "bin", "python");
+    venvPython = join(venvDir, "bin", "python");
 
     // Ensure uv is available
     try {
@@ -119,84 +127,99 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     const configPath = join(opts.dataDir, "config.yaml");
     await writeFile(configPath, buildConfigYaml(opts), "utf-8");
 
-    const env = buildSpawnEnv({
+    spawnEnv = buildSpawnEnv({
       extra: opts.env,
       secretEnv: opts.secretEnv,
       falkordbDataDir: join(opts.dataDir, "falkordb"),
       configPath,
     });
 
-    // Kill whatever holds the port — we reserve it. No discrimination; if a
-    // process is on our port, it doesn't belong there. This covers: our prior
-    // incarnation after module re-eval, an orphan from a crashed host, or any
-    // other collision.
+    await spawnAndAwaitHealth();
+
+    const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
+    console.log(`[gralkor] boot: ready (${bootDuration}s)`);
+  }
+
+  async function spawnAndAwaitHealth(): Promise<void> {
+    if (venvPython === null || spawnEnv === null) {
+      throw new Error("[gralkor] spawnAndAwaitHealth called before start() prepared the env");
+    }
+
+    // Reap prior-run orphans before claiming the port. Two paths:
+    // (1) anything listening on the bind port — our previous uvicorn after a
+    //     module re-eval, or a crashed sibling
+    // (2) any redislite/bin/redis-server grandchild reparented to PID 1 when
+    //     a previous uvicorn died — the path is unique to falkordblite, so
+    //     pre-spawn matches are by definition not ours-yet
     await killHoldersOfPort(opts.port);
+    await killOrphanRedisServers();
 
     console.log("[gralkor] Starting Graphiti server on port", opts.port);
 
-    proc = spawn(
+    const child = spawn(
       venvPython,
       ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", String(opts.port), "--no-access-log"],
       {
         cwd: serverDir,
-        env,
+        env: spawnEnv,
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
+    proc = child;
 
     // Forward stdout/stderr
-    proc.stdout?.on("data", (data: Buffer) => {
+    child.stdout?.on("data", (data: Buffer) => {
       for (const line of data.toString().split("\n").filter(Boolean)) {
         console.log("[gralkor] [server]", line);
       }
     });
-    proc.stderr?.on("data", (data: Buffer) => {
+    child.stderr?.on("data", (data: Buffer) => {
       for (const line of data.toString().split("\n").filter(Boolean)) {
         console.log("[gralkor] [server]", line);
       }
     });
 
-    proc.on("error", (err) => {
+    child.on("error", (err) => {
       console.error("[gralkor] Server process error:", err.message);
     });
 
-    proc.on("exit", (code, signal) => {
+    child.on("exit", (code, signal) => {
       console.log("[gralkor] Server process exited — code:", code, "signal:", signal);
-      proc = null;
-    });
+      if (proc === child) proc = null;
+      if (stopping) return;
 
-    console.log("[gralkor] boot: server process spawned (pid:", proc.pid, "), polling health...");
+      const now = Date.now();
+      while (recentUnexpectedExits.length > 0 && now - recentUnexpectedExits[0] > RESTART_INTENSITY_WINDOW_MS) {
+        recentUnexpectedExits.shift();
+      }
+      recentUnexpectedExits.push(now);
 
-    // Wait for server to become healthy
-    await waitForHealth(opts.port);
-    console.log("[gralkor] boot: server healthy");
+      if (recentUnexpectedExits.length > RESTART_INTENSITY_LIMIT) {
+        console.error(
+          `[gralkor] restart intensity exceeded (${recentUnexpectedExits.length} unexpected exits within ${RESTART_INTENSITY_WINDOW_MS}ms) — escalating via process.exit(1)`,
+        );
+        process.exit(1);
+      }
 
-    const bootDuration = ((Date.now() - bootStart) / 1000).toFixed(1);
-    console.log(`[gralkor] boot: ready (${bootDuration}s)`);
-
-    // Start health monitor
-    monitorTimer = setInterval(async () => {
-      try {
-        const res = await fetch(`http://127.0.0.1:${opts.port}/health`);
-        await res.text(); // Drain response body to prevent memory leak
-        if (!res.ok) {
-          console.warn("[gralkor] Server health check returned", res.status);
-        }
-      } catch (err) {
-        console.warn(
-          "[gralkor] Server health check failed:",
+      console.warn(
+        `[gralkor] respawning after unexpected exit (attempt ${recentUnexpectedExits.length} in current ${RESTART_INTENSITY_WINDOW_MS}ms window)`,
+      );
+      void spawnAndAwaitHealth().catch((err) => {
+        console.error(
+          "[gralkor] respawn failed:",
           err instanceof Error ? err.message : err,
         );
-      }
-    }, MONITOR_INTERVAL_MS);
+      });
+    });
+
+    console.log("[gralkor] boot: server process spawned (pid:", child.pid, "), polling health...");
+
+    await waitForHealth(opts.port);
+    console.log("[gralkor] boot: server healthy");
   }
 
   async function stop(): Promise<void> {
-    if (monitorTimer) {
-      clearInterval(monitorTimer);
-      monitorTimer = undefined;
-    }
-
+    stopping = true;
     if (!proc) return;
 
     const child = proc;
@@ -343,6 +366,36 @@ async function resolveBundledWheels(serverDir: string, dataDir: string, version:
     await writeFile(dest, Buffer.from(await res.arrayBuffer()));
   }
   return [dest];
+}
+
+/**
+ * Kill any redislite redis-server process left behind by a prior uvicorn
+ * incarnation. falkordblite spawns redis-server as a grandchild; when uvicorn
+ * dies, the grandchild reparents to PID 1 and keeps holding the data dir,
+ * unix socket, and ~80 MB RSS — and would conflict with the next boot.
+ *
+ * Mirrors :gralkor_ex's `Gralkor.OrphanReaper`. Identification keys on argv
+ * substring (`redislite/bin/redis-server`) — the path is unique to falkordblite
+ * with no other plausible owner. Safe to nuke unconditionally because this
+ * runs before our own spawn, so anything matching is by definition not
+ * ours-yet.
+ */
+async function killOrphanRedisServers(): Promise<void> {
+  let stdout: string;
+  try {
+    const result = await execFileAsync("pgrep", ["-f", "redislite/bin/redis-server"]);
+    stdout = result.stdout;
+  } catch {
+    // pgrep exits non-zero when nothing matches — treat as empty
+    return;
+  }
+  const pids = stdout.split("\n").map(s => Number(s.trim())).filter(n => Number.isInteger(n) && n > 0);
+  if (pids.length === 0) return;
+
+  console.log(`[gralkor] boot: orphan redislite redis-server pid(s) ${pids.join(",")} — killing`);
+  for (const pid of pids) {
+    try { process.kill(pid, "SIGKILL"); } catch { /* already gone */ }
+  }
 }
 
 async function killHoldersOfPort(port: number): Promise<void> {

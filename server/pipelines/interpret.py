@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .messages import Message, label_for
 
@@ -12,10 +12,22 @@ if TYPE_CHECKING:
 
 INTERPRET_SYSTEM_PROMPT = (
     "You are reviewing recalled memory facts for an agent mid-conversation. "
-    "Given the conversation so far and the facts retrieved from memory, identify "
-    "which facts are relevant to the current task and explain concisely how each "
-    "one helps. Skip facts with no bearing on the current task. "
-    "Be direct — one sentence per fact. Output only the interpretation, nothing else."
+    "Each input fact is one line beginning with '- ' and may carry one or more "
+    "timestamp parentheticals such as '(created …)', '(valid from …)', "
+    "'(invalid since …)', '(expired …)'.\n\n"
+    "Return only the facts that bear on the current task. For each one, produce "
+    "a single string built from two parts joined by ' — ':\n"
+    "  1. The original fact copied verbatim WITHOUT the leading '- '. Preserve "
+    "every timestamp parenthetical exactly as given. Do not paraphrase, "
+    "summarise, merge facts, drop timestamps, or reformat them.\n"
+    "  2. One short sentence explaining why this fact is relevant to the "
+    "current task.\n\n"
+    "Example output entry: "
+    "'Alice works at Acme (valid from 2024-01-01) (expired 2025-06-01) — "
+    "confirms her former employer, which the user just asked about.'\n\n"
+    "Skip facts with no bearing on the current task. If no facts are relevant, "
+    "return an empty list. Do not return prose, prefixes, bullets, numbering, "
+    "or any wrapping object — only the list of strings in the schema."
 )
 
 INTERPRET_TOKEN_BUDGET = 250_000
@@ -24,7 +36,17 @@ INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * _CHARS_PER_TOKEN
 
 
 class InterpretResult(BaseModel):
-    text: str
+    relevantFacts: list[str] = Field(
+        description=(
+            "List of relevant facts. Each entry is the original fact line "
+            "copied verbatim (without the leading '- ', preserving every "
+            "timestamp parenthetical such as '(valid from …)', '(invalid "
+            "since …)', '(expired …)', '(created …)'), followed by ' — ' "
+            "and one short sentence explaining why this fact is relevant. "
+            "Empty list if nothing is relevant. No prose, no bullets, no "
+            "numbering."
+        )
+    )
 
 
 def build_interpretation_context(
@@ -59,7 +81,7 @@ async def interpret_facts(
     messages: list[Message],
     facts_text: str,
     llm_client: "LLMClient",
-) -> str:
+) -> list[str]:
     if llm_client is None:
         raise RuntimeError(
             "interpret_facts: llm_client is required (configure an LLM provider API key)"
@@ -78,7 +100,9 @@ async def interpret_facts(
         response_model=InterpretResult,
         max_tokens=500,
     )
-    text = (response.get("text") or "").strip() if isinstance(response, dict) else ""
-    if not text:
-        raise RuntimeError("interpret_facts: llm_client returned empty interpretation")
-    return text
+    if not isinstance(response, dict):
+        raise RuntimeError("interpret_facts: malformed response (not a dict)")
+    raw = response.get("relevantFacts")
+    if not isinstance(raw, list):
+        raise RuntimeError("interpret_facts: malformed response (relevantFacts missing or not a list)")
+    return [str(item).strip() for item in raw if str(item).strip()]

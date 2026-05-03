@@ -2,13 +2,17 @@ defmodule Gralkor.Client do
   @moduledoc """
   Port for talking to a Gralkor backend from Elixir.
 
-  Six operations — recall, capture, end_session, memory_search, memory_add,
-  health_check. Every failure is reported as `{:error, reason}` so callers
+  Operations — recall, capture, end_session, memory_add, build_indices,
+  build_communities. Every failure is reported as `{:error, reason}` so callers
   can decide how to fail open. Group IDs are sanitised at the edge
-  (`sanitize_group_id/1`) to satisfy Gralkor's RediSearch constraint.
+  (`sanitize_group_id/1`) to satisfy FalkorDB's RediSearch constraint.
 
   The concrete adapter is resolved from `Application.get_env(:gralkor_ex, :client)`;
-  defaults to `Gralkor.Client.HTTP`. Tests swap in `Gralkor.Client.InMemory`.
+  defaults to `Gralkor.Client.Native` (in-process via Pythonx). Tests swap in
+  `Gralkor.Client.InMemory`.
+
+  No `health_check/0` — the embedded runtime is ready by the time
+  `Application.start/2` returns; runtime failures surface from the next call.
   """
 
   @type group_id :: String.t()
@@ -16,21 +20,18 @@ defmodule Gralkor.Client do
   @type messages :: [Gralkor.Message.t()]
 
   @callback recall(group_id(), session_id() | nil, query :: String.t()) ::
-              {:ok, String.t() | nil} | {:error, term()}
-  @callback capture(session_id(), group_id(), messages()) :: :ok | {:error, term()}
-  @callback memory_search(group_id(), session_id(), query :: String.t()) ::
               {:ok, String.t()} | {:error, term()}
+  @callback capture(session_id(), group_id(), messages()) :: :ok | {:error, term()}
   @callback memory_add(group_id(), content :: String.t(), source_description :: String.t() | nil) ::
               :ok | {:error, term()}
   @callback end_session(session_id()) :: :ok | {:error, term()}
-  @callback health_check() :: :ok | {:error, term()}
   @callback build_indices() :: {:ok, %{status: String.t()}} | {:error, term()}
   @callback build_communities(group_id()) ::
               {:ok, %{communities: non_neg_integer(), edges: non_neg_integer()}}
               | {:error, term()}
 
   @spec impl() :: module()
-  def impl, do: Application.get_env(:gralkor_ex, :client, Gralkor.Client.HTTP)
+  def impl, do: Application.get_env(:gralkor_ex, :client, Gralkor.Client.Native)
 
   @spec sanitize_group_id(String.t()) :: String.t()
   def sanitize_group_id(id) when is_binary(id), do: String.replace(id, "-", "_")

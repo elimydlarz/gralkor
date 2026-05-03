@@ -26,17 +26,11 @@ defmodule Gralkor.Client.InMemory do
   @doc "Set the response for the next (and all subsequent) `capture/3` calls."
   def set_capture(response), do: GenServer.call(__MODULE__, {:set, :capture, response})
 
-  @doc "Set the response for the next (and all subsequent) `memory_search/3` calls."
-  def set_memory_search(response), do: GenServer.call(__MODULE__, {:set, :memory_search, response})
-
   @doc "Set the response for the next (and all subsequent) `memory_add/3` calls."
   def set_memory_add(response), do: GenServer.call(__MODULE__, {:set, :memory_add, response})
 
   @doc "Set the response for the next (and all subsequent) `end_session/1` calls."
   def set_end_session(response), do: GenServer.call(__MODULE__, {:set, :end_session, response})
-
-  @doc "Set the response for the next (and all subsequent) `health_check/0` calls."
-  def set_health(response), do: GenServer.call(__MODULE__, {:set, :health_check, response})
 
   @doc "Set the response for the next (and all subsequent) `build_indices/0` calls."
   def set_build_indices(response),
@@ -48,10 +42,8 @@ defmodule Gralkor.Client.InMemory do
 
   def recalls, do: GenServer.call(__MODULE__, {:calls, :recall})
   def captures, do: GenServer.call(__MODULE__, {:calls, :capture})
-  def searches, do: GenServer.call(__MODULE__, {:calls, :memory_search})
   def adds, do: GenServer.call(__MODULE__, {:calls, :memory_add})
   def end_sessions, do: GenServer.call(__MODULE__, {:calls, :end_session})
-  def health_checks, do: GenServer.call(__MODULE__, {:calls, :health_check})
   def indices_builds, do: GenServer.call(__MODULE__, {:calls, :build_indices})
   def communities_builds, do: GenServer.call(__MODULE__, {:calls, :build_communities})
 
@@ -66,20 +58,12 @@ defmodule Gralkor.Client.InMemory do
     do: GenServer.call(__MODULE__, {:call, :capture, [session_id, group_id, turn]})
 
   @impl Gralkor.Client
-  def memory_search(group_id, session_id, query),
-    do: GenServer.call(__MODULE__, {:call, :memory_search, [group_id, session_id, query]})
-
-  @impl Gralkor.Client
   def memory_add(group_id, content, source),
     do: GenServer.call(__MODULE__, {:call, :memory_add, [group_id, content, source]})
 
   @impl Gralkor.Client
   def end_session(session_id),
     do: GenServer.call(__MODULE__, {:call, :end_session, [session_id]})
-
-  @impl Gralkor.Client
-  def health_check,
-    do: GenServer.call(__MODULE__, {:call, :health_check, []})
 
   @impl Gralkor.Client
   def build_indices,

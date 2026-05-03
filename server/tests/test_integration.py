@@ -95,8 +95,7 @@ async def test_lifespan_creates_real_embedded_db(tmp_path, monkeypatch):
 
     app = MagicMock()
     async with main_mod.lifespan(app):
-        graphiti = main_mod.graphiti
-        assert graphiti is not None
+        graphiti = main_mod._graphiti_for(main_mod.DEFAULT_DATABASE)
         assert graphiti.driver is not None
 
         # Write data through the real Graphiti driver → real FalkorDBLite
@@ -148,8 +147,10 @@ async def test_ingest_episode_body_passes_through():
         "Assistant: Fixed the null check in auth.ts"
     )
 
-    original = main_mod.graphiti
-    main_mod.graphiti = mock_graphiti
+    original_factory = main_mod._graphiti_for
+    original_llm = main_mod._llm_client
+    main_mod._graphiti_for = lambda group_id: mock_graphiti
+    main_mod._llm_client = mock_graphiti.llm_client
     try:
         transport = ASGITransport(app=main_mod.app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -169,4 +170,5 @@ async def test_ingest_episode_body_passes_through():
             # LLM client is NOT called — distillation is plugin-side
             mock_graphiti.llm_client.generate_response.assert_not_called()
     finally:
-        main_mod.graphiti = original
+        main_mod._llm_client = original_llm
+        main_mod._graphiti_for = original_factory
