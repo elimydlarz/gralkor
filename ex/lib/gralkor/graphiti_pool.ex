@@ -205,9 +205,16 @@ defmodule Gralkor.GraphitiPool do
 
     construct_instance = Keyword.get(opts, :construct_instance, &default_construct_instance/3)
     warmup? = Keyword.get(opts, :warmup, true)
+    install_loop? = Keyword.get(opts, :install_async_runtime, true)
 
     :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
     register_table(self(), table)
+
+    # Idempotent — installs the shared asyncio loop if Gralkor.Python hasn't.
+    # Lets GraphitiPool be used standalone (production + integration tests).
+    # Unit tests with stubbed construction pass `install_async_runtime: false`
+    # to avoid spinning up Pythonx.
+    if install_loop?, do: :ok = Gralkor.Python.install_async_runtime()
 
     falkor_db = construct_falkor_db.(data_dir)
     shared = construct_shared_clients.(llm_model, embedder_model)
@@ -340,6 +347,9 @@ defmodule Gralkor.GraphitiPool do
     # input becomes its own request. gemini-embedding-001 batches fine but
     # we set batch_size=1 uniformly so the call shape is identical regardless
     # of model choice.
+    #
+    # Filed upstream as getzep/graphiti#1467 — remove this workaround once the
+    # fix lands and we've bumped past the affected version.
     {embedder, _} =
       Pythonx.eval(
         setup <>

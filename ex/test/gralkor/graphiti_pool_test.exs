@@ -15,7 +15,8 @@ defmodule Gralkor.GraphitiPoolTest do
         %{llm_client: nil, embedder: nil, cross_encoder: nil}
       end,
       construct_instance: fn _db, _shared, group_id -> {:stub_graphiti, group_id} end,
-      warmup: false
+      warmup: false,
+      install_async_runtime: false
     ]
 
     {:ok, pid} = GraphitiPool.start_link(Keyword.merge(defaults, opts))
@@ -152,7 +153,7 @@ defmodule Gralkor.GraphitiPoolTest do
         Pythonx.eval(
           """
           import asyncio
-          asyncio.run(g.driver.execute_query("RETURN 1 AS x"))
+          asyncio._gralkor_run(g.driver.execute_query("RETURN 1 AS x"))
           """,
           %{"g" => instance}
         )

@@ -467,6 +467,9 @@ ex-python-runtime (src: ex/lib/gralkor/python.ex; unit: ex/test/gralkor/python_t
       (graphiti-core + falkordblite + provider deps installed; idempotent — subsequent boots noop)
     then PythonX is initialised pointing at that venv
     then a smoke import of graphiti_core succeeds
+    then a shared asyncio event loop is installed on a daemon thread, exposed as `asyncio._gralkor_loop` plus a helper `asyncio._gralkor_run(coro)` that submits onto it via `run_coroutine_threadsafe(...).result()`
+      (every Pythonx.eval block that drives graphiti uses `asyncio._gralkor_run(...)` instead of `asyncio.run(...)`. Without this, each Pythonx.eval would create a fresh event loop, and `AsyncFalkorDB` connections — which bind to the loop they're created on — would surface "Future attached to a different loop" on the second call. The spike's Step 6 measured ~56µs/call vs ~112µs for asyncio.run, but the determining factor is correctness, not perf.)
+      (idempotent — `Gralkor.Python.install_async_runtime/0` checks `hasattr(asyncio, '_gralkor_loop')` before installing, so callers downstream can re-invoke it as a defence-in-depth measure.)
     if any step fails
       then init/1 returns {:stop, {:boot_failed, reason}} so the supervisor restarts (and the BEAM eventually exits if the failure is permanent)
   liveness
@@ -476,7 +479,10 @@ ex-graphiti-pool (src: ex/lib/gralkor/graphiti_pool.ex; unit: ex/test/gralkor/gr
     Distill and Interpret (Elixir-side pre/post-processing) call the LLM via req_llm — see ex-format-transcript and ex-interpret
     Graphiti-internal LLM and embedding (entity/edge extraction during add_episode; embedder during search; reranker) go through graphiti-core's bundled Python clients — never req_llm — because graphiti owns those call sites and routing them through a Python↔Elixir↔HTTP shim adds two hops for no win
   Gralkor.GraphitiPool's init/1 runs synchronously
+    then `Gralkor.Python.install_async_runtime/0` is invoked (idempotent) so the pool can be booted standalone — under normal supervision Gralkor.Python has already installed the loop and this is a no-op; in tests / one-off scripts that start GraphitiPool directly, this is what makes the loop available
     then the FalkorDB driver (AsyncFalkorDB → FalkorDriver), the graphiti-core LLM client, the embedder, and the cross-encoder are constructed once via Pythonx and shared across all Graphiti instances in the pool
+      where the embedder is constructed with `batch_size=1` regardless of provider
+        (graphiti's batched embedder path expects N vectors back for N inputs; gemini-embedding-2-preview returns ONE vector for any number of inputs in a single call, so batch_size=1 forces one-input-per-request and lets graphiti's per-item bookkeeping line up)
     then warmup runs: search is invoked once with a throwaway query and group_id, then Gralkor.Interpret.interpret_facts is invoked once with an empty conversation and a throwaway facts_text, paying graphiti-core's cold-start cost before consumers can call recall
     then logs "[gralkor] warmup — search:… interpret:… <total>ms" at :info
     if any warmup call raises or returns {:error, _}

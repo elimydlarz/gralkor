@@ -22,11 +22,19 @@ defmodule Gralkor.Client.Native do
 
   @impl Gralkor.Client
   def recall(group_id, session_id, query) do
-    Recall.recall(group_id, session_id, query,
+    opts = [
       search_fn: search_fn(),
       interpret_fn: interpret_fn(),
       turns_fn: turns_fn()
-    )
+    ]
+
+    opts =
+      case Application.get_env(:gralkor_ex, :recall_deadline_ms) do
+        nil -> opts
+        ms when is_integer(ms) -> Keyword.put(opts, :deadline_ms, ms)
+      end
+
+    Recall.recall(group_id, session_id, query, opts)
   end
 
   @impl Gralkor.Client

@@ -24,6 +24,12 @@ defmodule Gralkor.JidoMemoryJourneyTest do
     if System.get_env("GOOGLE_API_KEY") in [nil, ""] do
       {:skip, "GOOGLE_API_KEY not set; copy .env.example to .env"}
     else
+      # Real Gemini calls + interpret can run 10-15s; production keeps the
+      # 12s deadline because that's the consumer's tolerance, but functional
+      # tests assert semantic correctness, not latency.
+      Application.put_env(:gralkor_ex, :recall_deadline_ms, 60_000)
+      on_exit(fn -> Application.delete_env(:gralkor_ex, :recall_deadline_ms) end)
+
       data_dir =
         Path.join(System.tmp_dir!(), "gralkor_journey_#{System.unique_integer([:positive])}")
 
