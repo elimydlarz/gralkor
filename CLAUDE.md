@@ -73,7 +73,7 @@ The two adapters now have **fundamentally different shapes**. ts/ retains the HT
 
 **Server location — ts/ only.** The Python server lives in-tree at `ts/server/` and ships directly in the npm tarball (no copy step). The ex/ adapter has no Python server (Pythonx materialises its own venv via uv on first boot — graphiti-core and falkordblite install from PyPI into a cache under `~/Library/Caches/pythonx/...`).
 
-## Python server (`server/`)
+## Python server (`ts/server/`)
 
 FastAPI app in `main.py`. Pipelines live under `server/pipelines/`.
 
