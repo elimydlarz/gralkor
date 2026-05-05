@@ -321,24 +321,17 @@ defmodule Gralkor.GraphitiPool do
             "Gralkor.GraphitiPool currently only supports Google models; got llm=#{llm_model}, embedder=#{embedder_model}"
     end
 
-    setup = """
-    from google import genai
-    from graphiti_core.llm_client.config import LLMConfig
-    from graphiti_core.llm_client.gemini_client import GeminiClient
-    from graphiti_core.embedder.gemini import GeminiEmbedder, GeminiEmbedderConfig
-    from graphiti_core.cross_encoder.gemini_reranker_client import GeminiRerankerClient
-
-    ln = llm_name.decode('utf-8') if isinstance(llm_name, (bytes, bytearray)) else llm_name
-    en = embedder_name.decode('utf-8') if isinstance(embedder_name, (bytes, bytearray)) else embedder_name
-    client = genai.Client()
-    """
-
-    args = %{"llm_name" => llm_name, "embedder_name" => embedder_name}
+    {client, _} = Pythonx.eval("from google import genai\ngenai.Client()\n", %{})
 
     {llm, _} =
       Pythonx.eval(
-        setup <> "GeminiClient(config=LLMConfig(model=ln), client=client)\n",
-        args
+        """
+        from graphiti_core.llm_client.config import LLMConfig
+        from graphiti_core.llm_client.gemini_client import GeminiClient
+        ln = llm_name.decode('utf-8') if isinstance(llm_name, (bytes, bytearray)) else llm_name
+        GeminiClient(config=LLMConfig(model=ln), client=client)
+        """,
+        %{"llm_name" => llm_name, "client" => client}
       )
 
     # gemini-embedding-2-preview returns ONE embedding for N inputs in a single
@@ -352,13 +345,22 @@ defmodule Gralkor.GraphitiPool do
     # fix lands and we've bumped past the affected version.
     {embedder, _} =
       Pythonx.eval(
-        setup <>
-          "GeminiEmbedder(GeminiEmbedderConfig(embedding_model=en), client=client, batch_size=1)\n",
-        args
+        """
+        from graphiti_core.embedder.gemini import GeminiEmbedder, GeminiEmbedderConfig
+        en = embedder_name.decode('utf-8') if isinstance(embedder_name, (bytes, bytearray)) else embedder_name
+        GeminiEmbedder(GeminiEmbedderConfig(embedding_model=en), client=client, batch_size=1)
+        """,
+        %{"embedder_name" => embedder_name, "client" => client}
       )
 
     {cross_encoder, _} =
-      Pythonx.eval(setup <> "GeminiRerankerClient(client=client)\n", args)
+      Pythonx.eval(
+        """
+        from graphiti_core.cross_encoder.gemini_reranker_client import GeminiRerankerClient
+        GeminiRerankerClient(client=client)
+        """,
+        %{"client" => client}
+      )
 
     %{llm_client: llm, embedder: embedder, cross_encoder: cross_encoder}
   end
