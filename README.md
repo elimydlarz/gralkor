@@ -86,7 +86,7 @@ pnpm run publish:ex -- patch|minor|major|current   # :gralkor_ex on Hex, tag gra
 pnpm run publish:ts -- patch|minor|major|current   # @susu-eng/gralkor-ts on npm, tag gralkor-ts-v${v}
 ```
 
-Each cadence is independent. Each sub-package embeds `server/` into its tarball at build time (Elixir via a custom `Mix.Tasks.Compile.GralkorPriv` compiler, TS via `scripts/bundle-server.mjs` pre-build), so consumers get a working Python runtime without a separate download.
+Each cadence is independent. The TS package owns the Python server in-tree at `ts/server/` and ships it directly in its tarball, so npm consumers get a working Python runtime without a separate download. The Elixir package has no Python server child — it embeds CPython in the BEAM via Pythonx and reimplements the server's pipelines in Elixir.
 
 ## Contributing
 
