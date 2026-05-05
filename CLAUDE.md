@@ -6,10 +6,9 @@ Gralkor is a persistent, temporally-aware memory service for AI agents, built on
 
 | Path | Ships as | Consumer |
 |---|---|---|
-| `server/` | Python FastAPI server (Graphiti + embedded FalkorDB via `falkordblite`) | Spawned by adapter libraries as a managed child process, or run as a standalone service via `external/` |
-| `ex/` | [`:gralkor_ex` on Hex](https://hex.pm/packages/gralkor_ex) | Elixir / OTP apps (`:jido_gralkor` and anything else that wants a `Gralkor.Client` port) |
-| `ts/` | [`@susu-eng/gralkor-ts` on npm](https://www.npmjs.com/package/@susu-eng/gralkor-ts) | Node/TS harnesses (`@susu-eng/openclaw-gralkor` and anything else that wants a `GralkorClient` port) |
-| `external/` | Foreground deployable (`serve.sh` + `Makefile` + `.env`) wrapping `server/` for thin-client mode | Operators running gralkor as a standalone service; consumers point at it via `EXTERNAL_GRALKOR_URL` |
+| `ts/` | [`@susu-eng/gralkor-ts` on npm](https://www.npmjs.com/package/@susu-eng/gralkor-ts) — owns `ts/server/`, the Python FastAPI server (Graphiti + embedded FalkorDB via `falkordblite`) | Node/TS harnesses (`@susu-eng/openclaw-gralkor` and anything else that wants a `GralkorClient` port). The TS adapter spawns `ts/server/` as a managed child, or talks to a standalone one via `external/` |
+| `ex/` | [`:gralkor_ex` on Hex](https://hex.pm/packages/gralkor_ex) — no Python server child; pipelines reimplemented in Elixir for parity with `ts/server/` | Elixir / OTP apps (`:jido_gralkor` and anything else that wants a `Gralkor.Client` port) |
+| `external/` | Foreground deployable (`serve.sh` + `Makefile` + `.env`) wrapping `ts/server/` for thin-client mode | Operators running gralkor as a standalone service; consumers point at it via `EXTERNAL_GRALKOR_URL` |
 
 **Downstream harnesses live in sibling repos** and depend on the adapters above:
 
