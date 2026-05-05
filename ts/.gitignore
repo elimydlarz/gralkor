@@ -1,4 +1,9 @@
 node_modules
 dist
-server
 *.tgz
+server/__pycache__/
+server/.pytest_cache/
+server/.venv/
+server/wheels/
+server/mutants/
+server/tests/distillation_results/
