@@ -9,6 +9,7 @@ Intended for local development now; same `serve.sh` is what a future GCE systemd
 | File | Role |
 |---|---|
 | `serve.sh` | Foreground entrypoint. Loads `.env`, sets `FALKORDB_DATA_DIR`, `cd`s to `../ts/server`, `exec uv run uvicorn main:app --host 0.0.0.0 --port $HOST_PORT`. |
+
 | `Makefile` | Command DX: `make up`, `make health`, `make clean`, `make help`. |
 | `.env.example` | Template for the env file you create as `.env`. |
 | `data/` | Persistent FalkorDB graph data (gitignored). |
