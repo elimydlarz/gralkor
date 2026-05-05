@@ -1,13 +1,13 @@
 {
   "name": "gralkor-monorepo",
   "private": true,
-  "description": "Gralkor monorepo — Python server (server/) + Elixir adapter (ex/) + TypeScript adapter (ts/). This root is not published; only the sub-packages are.",
+  "description": "Gralkor monorepo — Elixir adapter (ex/) + TypeScript adapter (ts/, which internalises the Python server under ts/server/). This root is not published; only the sub-packages are.",
   "type": "module",
   "scripts": {
     "publish:ex": "bash scripts/publish-ex.sh",
     "publish:ts": "bash scripts/publish-ts.sh",
-    "test:unit": "(cd server && uv run pytest --ignore=tests/test_integration.py) && (cd ex && mix test.unit) && (cd ts && pnpm test)",
-    "test:int": "(cd server && uv run pytest tests/test_integration.py) && (cd ex && mix test.integration)",
+    "test:unit": "(cd ts/server && uv run pytest --ignore=tests/test_integration.py) && (cd ex && mix test.unit) && (cd ts && pnpm test)",
+    "test:int": "(cd ts/server && uv run pytest tests/test_integration.py) && (cd ex && mix test.integration)",
     "test:fun": "(cd ex && mix test.functional)",
     "test:all": "pnpm run test:unit && pnpm run test:int && pnpm run test:fun"
   },
