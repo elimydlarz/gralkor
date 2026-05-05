@@ -8,12 +8,12 @@ Intended for local development now; same `serve.sh` is what a future GCE systemd
 
 | File | Role |
 |---|---|
-| `serve.sh` | Foreground entrypoint. Loads `.env`, sets `FALKORDB_DATA_DIR`, `cd`s to `../server`, `exec uv run uvicorn main:app --host 0.0.0.0 --port $HOST_PORT`. |
+| `serve.sh` | Foreground entrypoint. Loads `.env`, sets `FALKORDB_DATA_DIR`, `cd`s to `../ts/server`, `exec uv run uvicorn main:app --host 0.0.0.0 --port $HOST_PORT`. |
 | `Makefile` | Command DX: `make up`, `make health`, `make clean`, `make help`. |
 | `.env.example` | Template for the env file you create as `.env`. |
 | `data/` | Persistent FalkorDB graph data (gitignored). |
 
-The Python server itself lives next door at `../server/`. This directory does not duplicate it.
+The Python server itself lives next door at `../ts/server/`. This directory does not duplicate it.
 
 ## First run
 
@@ -29,7 +29,7 @@ In another terminal:
 make health             # → {"status":"ok"} once boot warmup completes (~10–60s on first run)
 ```
 
-The first run pulls Python deps via `uv sync` (the lock file at `../server/uv.lock` pins them). Subsequent runs skip that step.
+The first run pulls Python deps via `uv sync` (the lock file at `../ts/server/uv.lock` pins them). Subsequent runs skip that step.
 
 ## Pointing a consumer at it
 
