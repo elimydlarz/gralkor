@@ -16,7 +16,7 @@ fi
 : "${FALKORDB_DATA_DIR:=$EXTERNAL_DIR/data/falkordb}"
 export HOST_PORT FALKORDB_DATA_DIR
 
-cd "$EXTERNAL_DIR/../server"
+cd "$EXTERNAL_DIR/../ts/server"
 exec uv run uvicorn main:app \
   --host 0.0.0.0 --port "$HOST_PORT" \
   --no-access-log --timeout-graceful-shutdown 30
