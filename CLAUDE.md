@@ -75,7 +75,7 @@ The two adapters now have **fundamentally different shapes**. ts/ retains the HT
 
 ## Python server (`ts/server/`)
 
-FastAPI app in `main.py`. Pipelines live under `server/pipelines/`.
+FastAPI app in `main.py`. Pipelines live under `ts/server/pipelines/`.
 
 - `pipelines/formatting.py` — `format_fact`, `format_node`, `format_timestamp`.
 - `pipelines/messages.py` — canonical `Message` Pydantic model (role ∈ `{"user", "assistant", "behaviour"}`, `content: str`). Single shape crossing the port; roles `user` / `assistant` are transcript text, `behaviour` is whatever harness-internal activity the adapter rolled up (thinking, tool calls, tool results) rendered as a string.
