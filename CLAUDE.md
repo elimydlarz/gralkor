@@ -110,7 +110,7 @@ Endpoints:
 
 **Per-group Graphiti.** A `Graphiti` instance owns a driver pointed at one FalkorDB graph. `add_episode()` mutates `self.driver` in place when its `group_id` differs from the driver's current database (graphiti.py:887-889), which would race across concurrent requests for different groups if one `Graphiti` were shared. `main.py` keeps one `Graphiti` per group_id in `_graphiti_instances` (via `_graphiti_for(group_id)`, lazy on first use, no eviction): pinning each instance to one group_id keeps the clone branch inert, so concurrent calls for the same or different groups proceed independently with no driver lock. The underlying `AsyncFalkorDB` connection, LLM client, embedder, and cross-encoder are module-level shared resources.
 
-**Model defaults — single source of truth.** `server/main.py` holds `DEFAULT_LLM_PROVIDER="gemini"`, `DEFAULT_LLM_MODEL="gemini-3.1-flash-lite-preview"`, `DEFAULT_EMBEDDER_PROVIDER="gemini"`, `DEFAULT_EMBEDDER_MODEL="gemini-embedding-2-preview"`. Any adapter writes `config.yaml` with provider/model omitted and lets the server fill in.
+**Model defaults — single source of truth.** `ts/server/main.py` holds `DEFAULT_LLM_PROVIDER="gemini"`, `DEFAULT_LLM_MODEL="gemini-3.1-flash-lite-preview"`, `DEFAULT_EMBEDDER_PROVIDER="gemini"`, `DEFAULT_EMBEDDER_MODEL="gemini-embedding-2-preview"`. Any adapter writes `config.yaml` with provider/model omitted and lets the server fill in.
 
 ## Elixir adapter (`ex/`)
 
