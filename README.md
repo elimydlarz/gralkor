@@ -91,9 +91,9 @@ Each cadence is independent. The TS package owns the Python server in-tree at `t
 ## Contributing
 
 - Test trees (the contract) live in [TEST_TREES.md](./TEST_TREES.md).
-- Server tests under `server/tests/`; Elixir tests under `ex/test/`; TS tests under `ts/test/`.
+- Server tests under `ts/server/tests/`; Elixir tests under `ex/test/`; TS tests under `ts/test/`.
 - From the repo root: `pnpm run test:unit`, `pnpm run test:int`, `pnpm run test:fun`, `pnpm run test:all`.
-- Per component: `cd ex && mix test.unit|test.integration|test.functional` · `cd server && uv run pytest` · `cd ts && pnpm test`.
+- Per component: `cd ex && mix test.unit|test.integration|test.functional` · `cd ts/server && uv run pytest` · `cd ts && pnpm test`.
 
 ## Licence
 
