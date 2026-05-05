@@ -16,8 +16,7 @@
     }
   },
   "scripts": {
-    "bundle-server": "node scripts/bundle-server.mjs",
-    "build": "pnpm run bundle-server && tsc",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
