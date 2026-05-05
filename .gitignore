@@ -4,10 +4,7 @@ dist/
 .env
 __pycache__
 .venv/
-server/wheels/
 .claude/worktrees
 .stryker-tmp/
 .stryker-incremental.json
-server/mutants/
-server/tests/distillation_results/
 .trunk-sync
