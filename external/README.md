@@ -1,6 +1,6 @@
 # gralkor/external
 
-The externally-managed deployment of `gralkor/server/`. Runs the same FastAPI process consumers normally spawn as a child, but as a standalone foreground service that any consumer can point at via `EXTERNAL_GRALKOR_URL`.
+The externally-managed deployment of `gralkor/ts/server/`. Runs the same FastAPI process consumers normally spawn as a child, but as a standalone foreground service that any consumer can point at via `EXTERNAL_GRALKOR_URL`.
 
 Intended for local development now; same `serve.sh` is what a future GCE systemd unit will invoke.
 
