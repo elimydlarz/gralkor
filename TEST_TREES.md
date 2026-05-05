@@ -515,7 +515,7 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
     then the returned manager starts with isRunning() === false
   buildConfigYaml (helper written into config.yaml at start time)
     when neither llmConfig nor embedderConfig nor ontologyConfig nor test is supplied
-      then returns the empty string — no llm/embedder section is written and the server applies its own defaults (single source of truth in server/main.py)
+      then returns the empty string — no llm/embedder section is written and the server applies its own defaults (single source of truth in ts/server/main.py)
     when llmConfig is supplied
       then emits an "llm:" block with the passed provider + model
     when llmConfig is omitted
