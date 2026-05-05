@@ -449,7 +449,7 @@ ex-application (src: ex/lib/gralkor/application.ex; unit: ex/test/gralkor/applic
   start/2 child specs
     consumers opt into the embedded runtime by setting GRALKOR_DATA_DIR; opting in is the only path
       (no thin-client / external-URL alternative — those were dropped with the HTTP server)
-    when GRALKOR_DATA_DIR is set
+    when GRALKOR_DATA_DIR is set and `:gralkor_ex, :client` is unset or `Gralkor.Client.Native`
       then the supervisor includes (in order):
         Gralkor.Python (synchronous boot — see ex-python-runtime; reaps redislite orphans, smoke-imports graphiti_core)
         Gralkor.GraphitiPool (per-group Graphiti instances; runs warmup before init returns)
@@ -459,6 +459,9 @@ ex-application (src: ex/lib/gralkor/application.ex; unit: ex/test/gralkor/applic
     when GRALKOR_DATA_DIR is unset
       then the supervisor includes no children
         (consumer / library has not opted in; tests start specific children via start_supervised; production sets the env var)
+    when `:gralkor_ex, :client` is configured to `Gralkor.Client.InMemory`
+      then the supervisor includes no children regardless of GRALKOR_DATA_DIR
+        (consumer has explicitly opted out of the native runtime; this matters because dotenv-loaders shipped by sibling deps — e.g. `:req_llm` — populate GRALKOR_DATA_DIR from `.env` before `:gralkor_ex` boots, so test configs that pin the InMemory client must not also be forced into the native boot path)
 ex-python-runtime (src: ex/lib/gralkor/python.ex; unit: ex/test/gralkor/python_test.exs)
   Gralkor.Python's init/1 runs the boot sequence synchronously and returns only when ready
     then any process whose argv contains "redislite/bin/redis-server" is SIGKILLed

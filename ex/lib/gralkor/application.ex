@@ -16,11 +16,14 @@ defmodule Gralkor.Application do
 
   @doc false
   def children do
-    case System.get_env("GRALKOR_DATA_DIR") do
-      nil ->
+    cond do
+      Application.get_env(:gralkor_ex, :client) == Gralkor.Client.InMemory ->
         []
 
-      _ ->
+      System.get_env("GRALKOR_DATA_DIR") == nil ->
+        []
+
+      true ->
         config = Config.from_env()
 
         [
