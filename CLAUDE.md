@@ -163,7 +163,7 @@ Full contract in [TEST_TREES.md](./TEST_TREES.md). Sections:
 - **Recall** — server-side `/recall` endpoint + `interpret-facts` pipeline.
 - **Capture** — server-side `/distill`, `/capture`, `/session_end`, `capture-buffer`, `turns_to_conversation`, `format-transcript`.
 - **Tools** — server-side `/tools/memory_add`, `/build-indices`, `/build-communities`.
-- **Startup** — `ex-application`, `ex-server-lifecycle`, `ex-config-writing`, `ts-server-manager`, `ts-bundle-server`.
+- **Startup** — `ex-application`, `ex-server-lifecycle`, `ex-config-writing`, `ts-server-manager`.
 - **Configuration** — `validateOntologyConfig` (ts/), `server-config-defaults`, `cross-encoder-selection`.
 - **Operations** — `/health`, `rate-limit-retry`, `downstream-error-handling`.
 - **Timeouts** — `client-timeouts` (shared adapter contract: non-2xx and transport errors surface immediately with no L3 retry, per-endpoint receive windows, admin-no-deadline).
