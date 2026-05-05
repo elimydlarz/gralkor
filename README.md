@@ -42,13 +42,16 @@ The adapters take care of spawning the Python server, gating your app's boot on 
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Adapters (this repo — ex/ and ts/)                                  │
 │                                                                      │
-│    HTTP adapter · in-memory twin · boot-readiness gate · spawner     │
-│    Both bundle server/ at publish time.                              │
+│    ts/: HTTP adapter · in-memory twin · boot-readiness gate ·        │
+│         spawner. Owns the Python server at ts/server/.               │
+│    ex/: in-process via Pythonx (no HTTP, no server child); pipelines │
+│         reimplemented in Elixir for parity with ts/server/.          │
 └────────────────────────────────┬─────────────────────────────────────┘
                                  │   loopback HTTP (127.0.0.1:4000)
+                                 │   — ts/ only —
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Python server (this repo — server/)                                 │
+│  Python server (this repo — ts/server/)                              │
 │                                                                      │
 │    FastAPI / uvicorn                                                 │
 │    Graphiti + embedded FalkorDB (falkordblite)                       │
