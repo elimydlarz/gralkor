@@ -71,7 +71,7 @@ The two adapters now have **fundamentally different shapes**. ts/ retains the HT
 
 `:gralkor_ex` has only one mode — embedded in-process via Pythonx. Consumers opt in by setting `GRALKOR_DATA_DIR`; if unset, `:gralkor_ex` starts no children and `Gralkor.Client.*` will crash on use.
 
-**Server bundling — ts/ only.** `ts/scripts/bundle-server.mjs` copies `server/` into `ts/server/` before `tsc`. The ex/ adapter no longer bundles `server/` (Pythonx materialises its own venv via uv on first boot — graphiti-core and falkordblite install from PyPI into a cache under `~/Library/Caches/pythonx/...`).
+**Server location — ts/ only.** The Python server lives in-tree at `ts/server/` and ships directly in the npm tarball (no copy step). The ex/ adapter has no Python server (Pythonx materialises its own venv via uv on first boot — graphiti-core and falkordblite install from PyPI into a cache under `~/Library/Caches/pythonx/...`).
 
 ## Python server (`server/`)
 
