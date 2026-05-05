@@ -1,6 +1,6 @@
 # Test Trees — Gralkor
 
-These trees are the contract between intent and implementation. Each top-level name is a behaviour; nested `when`/`then` clauses are the spec. Tests in `ex/test/`, `ts/test/`, and `server/tests/` mirror these one-to-one.
+These trees are the contract between intent and implementation. Each top-level name is a behaviour; nested `when`/`then` clauses are the spec. Tests in `ex/test/`, `ts/test/`, and `ts/server/tests/` mirror these one-to-one.
 
 Never modify silently. If implementation has drifted, decide explicitly: update the trees (and tests) to match, or pare the implementation back.
 
