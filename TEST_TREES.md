@@ -510,7 +510,7 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
   bundledServerDir
     then resolves to the "server" sibling of the compiled module's directory (i.e. <pkg>/server/)
   construction
-    then serverDir defaults to bundledServerDir() (the copy shipped inside @susu-eng/gralkor-ts)
+    then serverDir defaults to bundledServerDir() (the in-tree server shipped inside @susu-eng/gralkor-ts)
     then consumers may override serverDir to point at a development checkout
     then the returned manager starts with isRunning() === false
   buildConfigYaml (helper written into config.yaml at start time)
