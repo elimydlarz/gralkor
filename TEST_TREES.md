@@ -567,17 +567,6 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
         then process.exit(1) is called so the next-level supervisor (Docker restart: unless-stopped in agents/) escalates rather than livelocking on an unrecoverable child
     when the spawned process emits "exit" while the stopping flag is true
       then no respawn is attempted
-ts-bundle-server (ts stack; src: ts/scripts/bundle-server.mjs; unit: ts/test/bundle-server.test.ts)
-  then runs as the pre-build step (package.json's "build": "pnpm run bundle-server && tsc")
-  when gralkor/server/ exists at ../server relative to ts/
-    then its contents are copied into ts/server/
-    and destination is wiped before copy (no stale files)
-    and these paths are skipped: .venv, .pytest_cache, __pycache__, wheels, tests, mutants, tmp
-    and these extensions are skipped: *.pyc
-  when ../server does not exist
-    then the script exits non-zero (caller must fix the path)
-  then ts/server/ is gitignored (build artifact, regenerated from canonical source on every publish)
-  then package.json's files: includes "server" so the bundle ships in the npm tarball
 ```
 
 ## Configuration
