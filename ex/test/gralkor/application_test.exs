@@ -1,6 +1,8 @@
 defmodule Gralkor.ApplicationTest do
   use ExUnit.Case, async: false
 
+  require Logger
+
   alias Gralkor.Application, as: App
 
   setup do
@@ -78,6 +80,101 @@ defmodule Gralkor.ApplicationTest do
       Application.put_env(:gralkor_ex, :client, Gralkor.Client.InMemory)
 
       assert [] = App.children()
+    end
+  end
+
+  describe "ex-capture > flush > when the distilled episode body is empty" do
+    @tag :capture_log
+    test "no episode is added and nothing is logged" do
+      add_episode_fn = fn _g, _b, _s -> flunk("add_episode should not be called") end
+
+      cb =
+        App.build_flush_callback(nil,
+          distill_fn: fn _ -> {:ok, ""} end,
+          add_episode_fn: add_episode_fn
+        )
+
+      logs =
+        ExUnit.CaptureLog.capture_log([level: :debug], fn ->
+          assert :ok = cb.("g", [])
+        end)
+
+      refute logs =~ "[gralkor] capture flushed"
+      refute logs =~ "[gralkor] [test] capture flush body"
+    end
+  end
+
+  describe "ex-capture > flush > when the episode is added" do
+    @tag :capture_log
+    test "logs the group, body size, and how long the add took" do
+      add_episode_fn = fn _g, _b, _s -> :ok end
+
+      cb =
+        App.build_flush_callback(nil,
+          distill_fn: fn _ -> {:ok, "behaviour summary"} end,
+          add_episode_fn: add_episode_fn
+        )
+
+      turns = [[Gralkor.Message.new("user", "hi"), Gralkor.Message.new("assistant", "hello")]]
+
+      logs =
+        ExUnit.CaptureLog.capture_log([level: :info], fn ->
+          assert :ok = cb.("g1", turns)
+        end)
+
+      assert logs =~ "[gralkor] capture flushed"
+      assert logs =~ "group:g1"
+      assert logs =~ ~r/bodyChars:\d+/
+      assert logs =~ ~r/\d+ms/
+    end
+  end
+
+  describe "ex-capture > flush > when test mode is enabled" do
+    setup do
+      Application.put_env(:gralkor_ex, :test, true)
+      on_exit(fn -> Application.delete_env(:gralkor_ex, :test) end)
+      :ok
+    end
+
+    @tag :capture_log
+    test "also logs the distilled episode body" do
+      add_episode_fn = fn _g, _b, _s -> :ok end
+
+      cb =
+        App.build_flush_callback(nil,
+          distill_fn: fn _ -> {:ok, "behaviour summary"} end,
+          add_episode_fn: add_episode_fn
+        )
+
+      turns = [[Gralkor.Message.new("user", "hi"), Gralkor.Message.new("assistant", "hello")]]
+
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert :ok = cb.("g1", turns)
+        end)
+
+      assert logs =~ "[gralkor] [test] capture flush body:"
+      assert logs =~ "User: hi"
+    end
+  end
+
+  describe "ex-capture > flush > when test mode is disabled" do
+    @tag :capture_log
+    test "does not log the distilled episode body" do
+      cb =
+        App.build_flush_callback(nil,
+          distill_fn: fn _ -> {:ok, "behaviour summary"} end,
+          add_episode_fn: fn _g, _b, _s -> :ok end
+        )
+
+      turns = [[Gralkor.Message.new("user", "hi")]]
+
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert :ok = cb.("g1", turns)
+        end)
+
+      refute logs =~ "[gralkor] [test]"
     end
   end
 end

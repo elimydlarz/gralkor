@@ -9,6 +9,8 @@ defmodule Gralkor.Client.Native do
 
   @behaviour Gralkor.Client
 
+  require Logger
+
   alias Gralkor.CaptureBuffer
   alias Gralkor.Client
   alias Gralkor.Config
@@ -40,7 +42,18 @@ defmodule Gralkor.Client.Native do
   @impl Gralkor.Client
   def capture(session_id, group_id, msgs) do
     raise_if_blank!(:capture, session_id)
+
+    if Application.get_env(:gralkor_ex, :test, false),
+      do: Logger.info("[gralkor] [test] capture messages: #{format_test_messages(msgs)}")
+
     CaptureBuffer.append(session_id, group_id, msgs)
+  end
+
+  defp format_test_messages(msgs) do
+    msgs
+    |> Enum.map(fn %Gralkor.Message{role: r, content: c} -> "(#{r}, #{inspect(c)})" end)
+    |> Enum.join(", ")
+    |> then(&("[" <> &1 <> "]"))
   end
 
   @impl Gralkor.Client

@@ -145,9 +145,19 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
       then in-flight upstream work is cancelled
       and {:error, :recall_deadline_expired} is returned
   observability
-    then logs "[gralkor] recall — session:… group:… queryChars:… max:…" at :info on every call
-    then logs "[gralkor] recall result — <N> facts blockChars:… <ms> (search:… interpret:…)" at :info on every call
-      and interpret:… is 0 when interpret_facts was not called (empty facts)
+    then logs the session
+    and the group
+    and the query length
+    and the search result limit
+    when the call completes
+      then logs how many facts were found
+      and the resulting block size
+      and how long the search took
+      and how long interpretation took
+    when test mode is enabled
+      then also logs the raw query
+      when facts are returned
+        then also logs the resulting memory block
   (rate-limit / transient upstream errors: req_llm owns the retry. ex layer adds nothing.)
 ex-interpret (ex stack; src: ex/lib/gralkor/interpret.ex; unit: ex/test/gralkor/interpret_test.exs)
   interpret_facts/2 calls the configured LLM (via req_llm) with conversation messages (within char budget) and formatted facts
@@ -318,9 +328,16 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       and the call returns without awaiting the scheduled flush
       and the entry is removed from the buffer
       and subsequent turns_for/1 calls return []
+      and a "[gralkor] flush scheduled — session:<id> turns:<n>" line is emitted at :info
+        (visible in production, not gated on test mode — successful flushes must be observable
+         from logs alone, otherwise idle-driven session-end regressions go undetected)
     when called for a session_id with no entry
       then returns without scheduling any flush
+      and a "[gralkor] flush — session:<id> empty" line is emitted at :info
+        (an empty flush is a real outcome — distinguishable in logs from "no flush attempted")
   retry schedule (owns the server-internal failure class — see Retry ownership)
+    when the flush callback succeeds (first attempt or after retries)
+      then logs "[gralkor] capture flushed — turns:<n> elapsed:<ms>" at :info
     when the flush callback returns {:error, :capture_client_4xx}
       then does not retry and logs "capture dropped (4xx)" at :warning
     when the flush callback returns {:error, {:upstream_llm, _}}
@@ -338,7 +355,7 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       then the successful flush still completes
   application shutdown
     when the supervision tree is stopping
-      then Gralkor.CaptureBuffer.terminate/2 awaits flush_all/0 before exit
+      then Gralkor.CaptureBuffer.terminate/2 drains every pending entry via the flush callback before returning
 ex-format-transcript (ex stack; src: ex/lib/gralkor/distill.ex; unit: ex/test/gralkor/distill_test.exs)
   format_transcript/1 takes [[Gralkor.Message.t()]] — each turn is a list of canonical Messages
   per turn
@@ -368,15 +385,18 @@ ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/3; unit: ex/t
     then raises ArgumentError
   then returns :ok immediately (does not call distill synchronously)
   observability
-    when test mode is enabled (logger level :debug)
-      then logs "[gralkor] [test] capture messages: [(role, content), …]" at :debug
-  flush (Gralkor.CaptureBuffer's flush callback — fires from end_session/1 and shutdown only)
-    when the distilled episode body is empty
-      then does not call GraphitiPool.add_episode (no log)
-    when the episode is added
-      then logs "[gralkor] capture flushed — group:… uuid:… bodyChars:… <ms>" at :info
     when test mode is enabled
-      then also logs "[gralkor] [test] capture flush body: <episode_body>" at :debug
+      then logs the captured messages
+  flush (fires from end_session/1 and shutdown only)
+    when the distilled episode body is empty
+      then no episode is added
+      and nothing is logged
+    when the episode is added
+      then logs the group
+      and the body size
+      and how long the add took
+    when test mode is enabled
+      then also logs the distilled episode body
 ex-end-session (ex stack; src: ex/lib/gralkor/client/native.ex#end_session/1; unit: ex/test/gralkor/client/native_test.exs)
   when called with a session_id with buffered turns
     then Gralkor.CaptureBuffer.flush/1 is invoked

@@ -97,9 +97,11 @@ defmodule Gralkor.CaptureBuffer do
   def handle_call({:flush, session_id}, _from, state) do
     case Map.pop(state.entries, session_id) do
       {nil, _entries} ->
+        Logger.info("[gralkor] flush — session:#{session_id} empty")
         {:reply, :ok, state}
 
       {{group, turns}, entries} ->
+        Logger.info("[gralkor] flush scheduled — session:#{session_id} turns:#{length(turns)}")
         Task.start(fn -> do_flush(group, turns, state.flush_callback, state.retries) end)
         {:reply, :ok, %{state | entries: entries}}
     end
@@ -127,8 +129,14 @@ defmodule Gralkor.CaptureBuffer do
   # ── Flush worker ────────────────────────────────────────────
 
   defp do_flush(group, turns, cb, retries) do
+    do_flush(group, turns, cb, retries, System.monotonic_time(:millisecond))
+  end
+
+  defp do_flush(group, turns, cb, retries, t0) do
     case safe_invoke(cb, group, turns) do
       :ok ->
+        elapsed = System.monotonic_time(:millisecond) - t0
+        Logger.info("[gralkor] capture flushed — turns:#{length(turns)} elapsed:#{elapsed}ms")
         :ok
 
       {:error, :capture_client_4xx} ->
@@ -140,7 +148,7 @@ defmodule Gralkor.CaptureBuffer do
         :dropped
 
       {:error, _reason} ->
-        retry(group, turns, cb, retries)
+        retry(group, turns, cb, retries, t0)
 
       {:exception, exception, stacktrace} ->
         Logger.warning(
@@ -148,7 +156,7 @@ defmodule Gralkor.CaptureBuffer do
             Exception.format(:error, exception, stacktrace)
         )
 
-        retry(group, turns, cb, retries)
+        retry(group, turns, cb, retries, t0)
     end
   end
 
@@ -158,13 +166,13 @@ defmodule Gralkor.CaptureBuffer do
     e -> {:exception, e, __STACKTRACE__}
   end
 
-  defp retry(_group, _turns, _cb, []) do
+  defp retry(_group, _turns, _cb, [], _t0) do
     Logger.error("[gralkor] capture exhausted")
     :exhausted
   end
 
-  defp retry(group, turns, cb, [delay | rest]) do
+  defp retry(group, turns, cb, [delay | rest], t0) do
     Process.sleep(delay)
-    do_flush(group, turns, cb, rest)
+    do_flush(group, turns, cb, rest, t0)
   end
 end

@@ -3,6 +3,8 @@ defmodule Gralkor.Application do
 
   use Application
 
+  require Logger
+
   alias Gralkor.CaptureBuffer
   alias Gralkor.Client.Native
   alias Gralkor.Config
@@ -40,8 +42,10 @@ defmodule Gralkor.Application do
     end
   end
 
-  defp build_flush_callback(_config) do
-    distill_fn = Native.distill_callback()
+  @doc false
+  def build_flush_callback(_config, deps \\ []) do
+    distill_fn = Keyword.get_lazy(deps, :distill_fn, &Native.distill_callback/0)
+    add_episode_fn = Keyword.get(deps, :add_episode_fn, &GraphitiPool.add_episode/3)
 
     fn group_id, turns ->
       body = Distill.format_transcript(turns, distill_fn)
@@ -51,7 +55,18 @@ defmodule Gralkor.Application do
           :ok
 
         true ->
-          GraphitiPool.add_episode(group_id, body, "captured")
+          t0 = System.monotonic_time(:millisecond)
+          result = add_episode_fn.(group_id, body, "captured")
+          ms = System.monotonic_time(:millisecond) - t0
+
+          Logger.info(
+            "[gralkor] capture flushed — group:#{group_id} bodyChars:#{String.length(body)} #{ms}ms"
+          )
+
+          if Application.get_env(:gralkor_ex, :test, false),
+            do: Logger.info("[gralkor] [test] capture flush body: #{body}")
+
+          result
       end
     end
   end

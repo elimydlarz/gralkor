@@ -1,6 +1,8 @@
 defmodule Gralkor.CaptureBufferTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Gralkor.CaptureBuffer
   alias Gralkor.Message
 
@@ -92,6 +94,20 @@ defmodule Gralkor.CaptureBufferTest do
 
       assert [] = CaptureBuffer.turns_for("s")
     end
+
+    test "a [gralkor] flush scheduled — session:<id> turns:<n> line is emitted at :info" do
+      :ok = CaptureBuffer.append("sess-x", "g", [Message.new("user", "a")])
+      :ok = CaptureBuffer.append("sess-x", "g", [Message.new("user", "b")])
+
+      log =
+        capture_log([level: :info], fn ->
+          :ok = CaptureBuffer.flush("sess-x")
+          assert_receive {:flushed, _, _}, 1_000
+        end)
+
+      assert log =~ "[info]"
+      assert log =~ "[gralkor] flush scheduled — session:sess-x turns:2"
+    end
   end
 
   describe "ex-capture-buffer > flush/1 when called for a session_id with no entry" do
@@ -99,6 +115,16 @@ defmodule Gralkor.CaptureBufferTest do
       :ok = CaptureBuffer.flush("never-existed")
 
       refute_receive {:flushed, _, _}, 100
+    end
+
+    test "a [gralkor] flush — session:<id> empty line is emitted at :info" do
+      log =
+        capture_log([level: :info], fn ->
+          :ok = CaptureBuffer.flush("ghost")
+        end)
+
+      assert log =~ "[info]"
+      assert log =~ "[gralkor] flush — session:ghost empty"
     end
   end
 
@@ -155,6 +181,30 @@ defmodule Gralkor.CaptureBufferTest do
     end
   end
 
+  describe "ex-capture-buffer > retry schedule when the flush callback succeeds (first attempt or after retries)" do
+    setup do
+      flush_callback = fn _g, _t -> :ok end
+      :ok = stop_supervised(CaptureBuffer)
+      {:ok, _} = start_supervised({CaptureBuffer, flush_callback: flush_callback, retries: []})
+      :ok
+    end
+
+    test "logs [gralkor] capture flushed — turns:<n> elapsed:<ms> at :info" do
+      :ok = CaptureBuffer.append("s", "g", [Message.new("user", "a")])
+      :ok = CaptureBuffer.append("s", "g", [Message.new("user", "b")])
+      :ok = CaptureBuffer.append("s", "g", [Message.new("user", "c")])
+
+      log =
+        capture_log([level: :info], fn ->
+          :ok = CaptureBuffer.flush("s")
+          Process.sleep(50)
+        end)
+
+      assert log =~ "[info]"
+      assert log =~ ~r/\[gralkor\] capture flushed — turns:3 elapsed:\d+ms/
+    end
+  end
+
   describe "ex-capture-buffer > retry schedule when 4xx is returned" do
     setup do
       test_pid = self()
@@ -208,6 +258,55 @@ defmodule Gralkor.CaptureBufferTest do
 
       assert_receive {:attempt, 1}, 200
       refute_receive {:attempt, 2}, 100
+    end
+  end
+
+  describe "ex-capture-buffer > retry schedule when the flush callback fails after 3 retries" do
+    setup do
+      flush_callback = fn _g, _t -> raise "still broken" end
+      :ok = stop_supervised(CaptureBuffer)
+
+      {:ok, _} =
+        start_supervised({CaptureBuffer, flush_callback: flush_callback, retries: [5, 5, 5]})
+
+      :ok
+    end
+
+    test "logs [gralkor] capture exhausted at :error and drops" do
+      :ok = CaptureBuffer.append("s", "g", [Message.new("user", "x")])
+
+      log =
+        capture_log(fn ->
+          :ok = CaptureBuffer.flush("s")
+          Process.sleep(80)
+        end)
+
+      assert log =~ "[error]"
+      assert log =~ "[gralkor] capture exhausted"
+    end
+  end
+
+  describe "ex-capture-buffer > application shutdown when the supervision tree is stopping" do
+    test "Gralkor.CaptureBuffer.terminate/2 drains every pending entry via the flush callback before returning" do
+      test_pid = self()
+      flush_callback = fn group, turns ->
+        send(test_pid, {:flushed, group, turns})
+        :ok
+      end
+
+      :ok = stop_supervised(CaptureBuffer)
+
+      {:ok, pid} =
+        start_supervised({CaptureBuffer, flush_callback: flush_callback, retries: []})
+
+      :ok = CaptureBuffer.append("s1", "g", [Message.new("user", "1")])
+      :ok = CaptureBuffer.append("s2", "g", [Message.new("user", "2")])
+
+      :ok = stop_supervised(CaptureBuffer)
+      refute Process.alive?(pid)
+
+      assert_received {:flushed, "g", [[%Message{content: "1"}]]}
+      assert_received {:flushed, "g", [[%Message{content: "2"}]]}
     end
   end
 end

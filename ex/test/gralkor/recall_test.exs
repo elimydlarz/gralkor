@@ -1,6 +1,8 @@
 defmodule Gralkor.RecallTest do
   use ExUnit.Case, async: true
 
+  require Logger
+
   alias Gralkor.Message
   alias Gralkor.Recall
 
@@ -273,6 +275,82 @@ defmodule Gralkor.RecallTest do
         end)
 
       assert logs =~ "interpret:0"
+    end
+  end
+
+  describe "ex-recall > observability > when test mode is enabled" do
+    setup do
+      Application.put_env(:gralkor_ex, :test, true)
+      on_exit(fn -> Application.delete_env(:gralkor_ex, :test) end)
+      :ok
+    end
+
+    @tag :capture_log
+    test "also logs the raw query" do
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, _} =
+            Recall.recall(
+              "g",
+              "s1",
+              "what is X?",
+              default_opts(search_fn: ok_search([]))
+            )
+        end)
+
+      assert logs =~ "[gralkor] [test] recall query: what is X?"
+    end
+
+    @tag :capture_log
+    test "when facts are returned, also logs the resulting memory block" do
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, _} =
+            Recall.recall(
+              "g",
+              "s1",
+              "q",
+              default_opts(
+                search_fn: ok_search(["- f"]),
+                interpret_fn: ok_interpret(["f — r"])
+              )
+            )
+        end)
+
+      assert logs =~ "[gralkor] [test] recall block:"
+      assert logs =~ "<gralkor-memory"
+    end
+
+    @tag :capture_log
+    test "when no facts are returned, does not log the memory block" do
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, _} =
+            Recall.recall("g", "s1", "q", default_opts(search_fn: ok_search([])))
+        end)
+
+      refute logs =~ "[gralkor] [test] recall block:"
+    end
+  end
+
+  describe "ex-recall > observability > when test mode is disabled" do
+    @tag :capture_log
+    test "does not log the raw query or the memory block" do
+      logs =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, _} =
+            Recall.recall(
+              "g",
+              "s1",
+              "q",
+              default_opts(
+                search_fn: ok_search(["- f"]),
+                interpret_fn: ok_interpret(["f — r"])
+              )
+            )
+        end)
+
+      refute logs =~ "[gralkor] [test]"
     end
   end
 end

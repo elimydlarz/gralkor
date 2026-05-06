@@ -74,6 +74,14 @@ The supervision tree starts in order:
 
 `Application.start/2` returns only after all three have initialised — there is no separate `Gralkor.Connection` readiness gate.
 
+## Test mode
+
+```elixir
+config :gralkor_ex, test: true
+```
+
+Surfaces the raw data crossing the recall and capture boundaries — query, returned memory block, captured messages, and the distilled episode body — at `:info` so it appears in normal logs without flipping the global `Logger` level. The `[gralkor] [test]` prefix on each line keeps it greppable. Useful when debugging what an agent is actually seeing or storing; off by default.
+
 ## License
 
 MIT.

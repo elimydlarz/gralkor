@@ -48,6 +48,7 @@ defmodule Gralkor.Recall do
     deadline_ms = Keyword.get(opts, :deadline_ms, @default_deadline_ms)
 
     log_call(session_id, sanitized, query, max_results)
+    if test_mode?(), do: Logger.info("[gralkor] [test] recall query: #{query}")
 
     task =
       Task.async(fn ->
@@ -57,6 +58,10 @@ defmodule Gralkor.Recall do
     case Task.yield(task, deadline_ms) || Task.shutdown(task, :brutal_kill) do
       {:ok, result} ->
         log_result(result)
+
+        if test_mode?() and result.n_facts > 0,
+          do: Logger.info("[gralkor] [test] recall block: #{result.block}")
+
         {:ok, result.block}
 
       nil ->
@@ -154,4 +159,6 @@ defmodule Gralkor.Recall do
       "[gralkor] recall result — #{result.n_facts} facts blockChars:#{String.length(result.block)} #{result.total_ms}ms (search:#{result.search_ms} interpret:#{result.interpret_ms})"
     )
   end
+
+  defp test_mode?, do: Application.get_env(:gralkor_ex, :test, false)
 end
