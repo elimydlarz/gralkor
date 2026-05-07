@@ -48,6 +48,7 @@ class TestInterpretFacts:
                 [Message(role="user", content="who is bob")],
                 "- Alice knows Bob (valid from 2024-01-01)",
                 mock_llm_client,
+                "TestAgent",
             )
             assert result == [
                 "Alice knows Bob (valid from 2024-01-01) — Bob is the user's question subject.",
@@ -60,6 +61,7 @@ class TestInterpretFacts:
                 [Message(role="user", content="who is bob")],
                 "- unrelated fact",
                 mock_llm_client,
+                "TestAgent",
             )
             assert result == []
 
@@ -70,6 +72,7 @@ class TestInterpretFacts:
                     [Message(role="user", content="hi")],
                     "- fact",
                     mock_llm_client,
+                    "TestAgent",
                 )
 
     class TestWhenLlmClientIsNone:
@@ -79,6 +82,7 @@ class TestInterpretFacts:
                     [Message(role="user", content="hi")],
                     "- fact 1",
                     None,
+                    "TestAgent",
                 )
 
 
@@ -91,15 +95,16 @@ class TestBuildInterpretationContext:
                 Message(role="assistant", content="hello"),
             ],
             "- fact",
+            "TestAgent",
         )
         assert "User: hi" in ctx
-        assert "Agent did: thought: x" in ctx
-        assert "Assistant: hello" in ctx
+        assert "TestAgent: (behaviour: thought: x)" in ctx
+        assert "TestAgent: hello" in ctx
         assert "Memory facts to interpret:\n- fact" in ctx
 
     def test_drops_oldest_when_budget_exceeded(self):
         msgs = [Message(role="user", content=f"msg-{i} " + "x" * 100) for i in range(200)]
-        ctx = build_interpretation_context(msgs, "- fact", char_budget=500)
+        ctx = build_interpretation_context(msgs, "- fact", "TestAgent", char_budget=500)
         assert "msg-199" in ctx
         assert "msg-0" not in ctx
 
@@ -110,9 +115,38 @@ class TestBuildInterpretationContext:
                 Message(role="assistant", content="hello"),
             ],
             "- fact",
+            "TestAgent",
         )
         assert "User:" not in ctx
-        assert "Assistant: hello" in ctx
+        assert "TestAgent: hello" in ctx
 
     def test_default_char_budget_is_exposed(self):
         assert INTERPRET_CHAR_BUDGET > 0
+
+
+class TestAgentNameValidation:
+    async def test_interpret_facts_blank_agent_name_raises(self, mock_llm_client):
+        with pytest.raises(ValueError, match="agent_name"):
+            await interpret_facts(
+                [Message(role="user", content="hi")],
+                "- fact",
+                mock_llm_client,
+                "",
+            )
+
+    async def test_interpret_facts_whitespace_agent_name_raises(self, mock_llm_client):
+        with pytest.raises(ValueError, match="agent_name"):
+            await interpret_facts(
+                [Message(role="user", content="hi")],
+                "- fact",
+                mock_llm_client,
+                "  ",
+            )
+
+    def test_build_context_blank_agent_name_raises(self):
+        with pytest.raises(ValueError, match="agent_name"):
+            build_interpretation_context(
+                [Message(role="user", content="hi")],
+                "- fact",
+                "",
+            )

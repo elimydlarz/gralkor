@@ -39,9 +39,9 @@ recall-interpretation (ts stack; functional: server/tests/test_recall.py)
 POST /recall endpoint (ts stack; src: server/main.py; unit: server/tests/test_recall.py)
   request shape
     when the request body includes a non-blank session_id
-      then body is {session_id, group_id, query, …}
+      then body is {session_id, group_id, agent_name, query, …}
     when the request body omits session_id
-      then body is {group_id, query, …}
+      then body is {group_id, agent_name, query, …}
     when the request body includes max_results
       then at most that many facts are returned
     when the request body omits max_results
@@ -49,6 +49,8 @@ POST /recall endpoint (ts stack; src: server/main.py; unit: server/tests/test_re
     then group_id is sanitized (hyphens → underscores) before use
   if the request body includes a blank session_id
     then 422 is returned (Gralkor requires session_id to be a non-blank string or absent)
+  if agent_name is missing or blank
+    then 422 is returned
   conversation context
     when the request body includes a non-blank session_id and capture_buffer has an entry for it
       then messages are sourced from capture_buffer.turns_for(session_id), flat-walked
@@ -86,7 +88,10 @@ POST /recall endpoint (ts stack; src: server/main.py; unit: server/tests/test_re
       then also logs "[gralkor] [test] recall query: <raw query>" at DEBUG
       and when facts are returned also logs "[gralkor] [test] recall block: <memory block>" at DEBUG
 interpret-facts (ts stack; src: server/pipelines/interpret.py; unit: server/tests/test_interpret.py)
-  calls llm_client with conversation messages (within char budget) and formatted facts
+  takes conversation messages, formatted facts, an llm_client, and an agent_name
+    if agent_name is missing or blank
+      then raises
+  calls llm_client with the interpretation context (built via build_interpretation_context with the agent_name) and the response_model
     and the response_model (InterpretResult.relevantFacts) carries a Field
       description instructing the LLM to copy each fact line verbatim
       (preserving every timestamp parenthetical, dropping the leading '- ')
@@ -101,7 +106,12 @@ interpret-facts (ts stack; src: server/pipelines/interpret.py; unit: server/test
   when llm_client is None
     then raises
 build_interpretation_context (ts stack; src: server/pipelines/interpret.py; unit: server/tests/test_interpret.py)
-  then labels each message by role: "User", "Assistant", "Agent did" (for behaviour)
+  then takes messages, facts_text, and an agent_name
+  if agent_name is missing or blank
+    then raises (no fallback — every caller knows the agent's name)
+  then renders user messages as "User: {content}"
+  then renders assistant messages as "{agent_name}: {content}"
+  then renders behaviour messages as "{agent_name}: (behaviour: {content})"
   then drops messages with empty cleaned content
   then assembles context as "Conversation context:\n{messages}\n\nMemory facts to interpret:\n{facts}"
   when total char length exceeds budget
@@ -117,7 +127,7 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
     then memory_block body is "No relevant memories found."
   request shape (Gralkor.Recall.recall/1 args)
     when called with a non-blank session_id
-      then conversation context is sourced from Gralkor.CaptureBuffer.turns_for(session_id), flat-walked in order with role labels
+      then conversation context is sourced from Gralkor.CaptureBuffer.turns_for(session_id), flat-walked in order with role labels rendered using agent_name
     when called with a nil session_id
       then conversation context is empty
       and Gralkor.CaptureBuffer is not consulted
@@ -126,13 +136,15 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
     when called without max_results
       then the default (10) is applied
     then group_id is sanitized (hyphens → underscores) before use
+    if agent_name is missing or blank
+      then raises ArgumentError
   orchestration
     when called
       then Gralkor.GraphitiPool runs search against the sanitized group_id
         when search returns no facts
           then memory_block body is "No relevant memories found."
         when search returns facts
-          then Gralkor.Interpret.interpret_facts is called with the conversation and the formatted facts
+          then Gralkor.Interpret.interpret_facts is called with the conversation, the formatted facts, and the agent_name
             when interpret_facts returns relevant facts
               then memory_block body is the list of relevant facts
             when interpret_facts returns []
@@ -160,7 +172,10 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
         then also logs the resulting memory block
   (rate-limit / transient upstream errors: req_llm owns the retry. ex layer adds nothing.)
 ex-interpret (ex stack; src: ex/lib/gralkor/interpret.ex; unit: ex/test/gralkor/interpret_test.exs)
-  interpret_facts/2 calls the configured LLM (via req_llm) with conversation messages (within char budget) and formatted facts
+  interpret_facts/4 takes conversation messages, formatted facts, an LLM client, and an agent_name
+    if agent_name is missing or blank
+      then raises ArgumentError
+    calls the configured LLM (via req_llm) with the interpretation context (built via build_interpretation_context/3 with the agent_name) and the structured-output schema
     and the structured-output schema instructs the LLM to copy each fact line verbatim
       (preserving every timestamp parenthetical, dropping the leading '- ')
       then ' — ' then a one-sentence relevance reason
@@ -183,8 +198,12 @@ ex-format-fact (ex stack; src: ex/lib/gralkor/format.ex; unit: ex/test/gralkor/f
     when the list has facts
       then joins format_fact/1 results with newlines (no leading "Facts:" header — Recall composes the surrounding context)
 ex-interpret-context (ex stack; src: ex/lib/gralkor/interpret.ex; unit: ex/test/gralkor/interpret_test.exs)
-  build_interpretation_context/2
-    then labels each message by role: "User", "Assistant", "Agent did" (for behaviour)
+  build_interpretation_context/3 takes messages, facts_text, and an agent_name
+    if agent_name is missing or blank
+      then raises ArgumentError
+    then renders user messages as "User: {content}"
+    then renders assistant messages as "{agent_name}: {content}"
+    then renders behaviour messages as "{agent_name}: (behaviour: {content})"
     then drops messages with empty cleaned content
     then assembles context as "Conversation context:\n{messages}\n\nMemory facts to interpret:\n{facts}"
     when total char length exceeds budget
@@ -209,12 +228,14 @@ POST /distill endpoint (ts stack; src: server/main.py; unit: server/tests/test_d
     then rendered as "User: …\nAssistant: …" with no behaviour line, no LLM call
 POST /capture endpoint (ts stack; src: server/main.py; unit: server/tests/test_capture_endpoint.py; integration: server/tests/test_capture_flush_integration.py)
   request shape
-    then body is {session_id, group_id, messages: [{role, content}, …]}
+    then body is {session_id, group_id, agent_name, messages: [{role, content}, …]}
     then role ∈ {"user", "assistant", "behaviour"}; content is a string the adapter produced
   if session_id is missing or blank
     then 422 is returned (Gralkor requires a non-blank session_id)
+  if agent_name is missing or blank
+    then 422 is returned
   then appends the message list to capture_buffer keyed by session_id (group_id is sanitized
-    and bound to the entry on first append)
+    and bound to the entry on first append; agent_name is bound on first append)
   then returns 204 No Content (no body)
   then returns immediately (does not call distill synchronously)
   observability
@@ -244,13 +265,17 @@ capture-buffer (ts stack; src: server/pipelines/capture_buffer.py; unit: server/
   (see susu-2's ChatAgent terminate hook); the server has no idle-flush policy
   append
     when called for a new session_id
-      then an entry is created bound to the supplied group_id and the turn (list of Messages)
+      then an entry is created bound to the supplied group_id, the supplied agent_name, and the turn (list of Messages)
     when called again for the same session_id
       then the new turn is appended to the existing entry and prior turns remain buffered
     when called for multiple session_ids
       then each session_id has an independent entry
     when called for an existing session_id with a different group_id
       then raises (sessions are not re-bindable across groups)
+    when called for an existing session_id with a different agent_name
+      then raises (same invariant as group_id — sessions are not re-bindable across agent names)
+    if agent_name is missing or blank
+      then raises
   turns_for(session_id)
     when the session has buffered turns
       then returns list[list[Message]] in append order — each turn is a list of Messages
@@ -258,7 +283,7 @@ capture-buffer (ts stack; src: server/pipelines/capture_buffer.py; unit: server/
       then returns an empty list
   flush(session_id)
     when called for a session_id with buffered turns
-      then flush_callback is scheduled with (group_id, list[list[Message]]) derived from the entry
+      then flush_callback is scheduled with (group_id, agent_name, list[list[Message]]) derived from the entry
       and the call returns without awaiting the scheduled flush
       and the entry is removed from the buffer
       and subsequent turns_for(session_id) calls return []
@@ -286,37 +311,44 @@ capture-buffer (ts stack; src: server/pipelines/capture_buffer.py; unit: server/
       then capture_buffer.flush_all is awaited
 format-transcript (ts stack; src: server/pipelines/distill.py; unit: server/tests/test_distill.py)
   inputs
-    then takes list[list[Message]] — each turn is a list of canonical Messages
+    then takes list[list[Message]] (each turn a list of canonical Messages), an llm_client, and an agent_name
+    if agent_name is missing or blank
+      then raises
   distill input per turn
     when a turn contains a message with role="behaviour"
-      then all messages in the turn are rendered with role labels ("User: …", "Agent did: …",
-        "Assistant: …") and passed to the distill LLM as the "thinking" prompt
+      then all messages in the turn are rendered with role labels ("User: {content}",
+        "{agent_name}: (behaviour: {content})", "{agent_name}: {content}") and passed to
+        the distill LLM as the "thinking" prompt
     when a turn has no behaviour messages
       then distillation is skipped for that turn (no LLM call)
   transcript rendering
     when a turn has behaviour and llm_client is available
       then distilled via llm_client into first-person past-tense summary
-      and rendered as "Assistant: (behaviour: {summary})" before the assistant text for that turn
+      and rendered as "{agent_name}: (behaviour: {summary})" before the assistant text for that turn
     when distillation fails for a turn (safe_distill)
       then behaviour line silently dropped, user/assistant text preserved
     when llm_client is None
       then behaviour lines are silently omitted, user/assistant text preserved
     when a turn has no behaviour
-      then rendered as "User: …\nAssistant: …" with no behaviour line, no LLM call
+      then rendered as "User: {content}\n{agent_name}: {content}" with no behaviour line, no LLM call
   then passes response_model with a single "behaviour" field to generate_response
   then parallel distillation across turns with behaviour via asyncio.gather
 ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/test/gralkor/capture_buffer_test.exs)
   the buffer holds turns until an explicit flush — session lifetime is owned by the consumer;
   there is no idle-flush policy
-  append/3 (session_id, group_id, messages)
+  append/4 (session_id, group_id, agent_name, messages)
     when called for a new session_id
-      then an entry is created bound to the sanitized group_id and the turn (list of Messages)
+      then an entry is created bound to the sanitized group_id, the agent_name, and the turn (list of Messages)
     when called again for the same session_id
       then the new turn is appended to the existing entry and prior turns remain buffered
     when called for multiple session_ids
       then each session_id has an independent entry
     when called for an existing session_id with a different group_id
       then raises (sessions are not re-bindable across groups)
+    when called for an existing session_id with a different agent_name
+      then raises ArgumentError (same invariant as group_id)
+    if agent_name is missing or blank
+      then raises ArgumentError
   turns_for/1
     when the session has buffered turns
       then returns [[Gralkor.Message.t()]] in append order
@@ -324,7 +356,7 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       then returns []
   flush/1 (session_id)
     when called for a session_id with buffered turns
-      then the flush callback is scheduled with (group_id, [[Message]]) derived from the entry
+      then the flush callback is scheduled with (group_id, agent_name, [[Message]]) derived from the entry
       and the call returns without awaiting the scheduled flush
       and the entry is removed from the buffer
       and subsequent turns_for/1 calls return []
@@ -357,31 +389,36 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
     when the supervision tree is stopping
       then Gralkor.CaptureBuffer.terminate/2 drains every pending entry via the flush callback before returning
 ex-format-transcript (ex stack; src: ex/lib/gralkor/distill.ex; unit: ex/test/gralkor/distill_test.exs)
-  format_transcript/1 takes [[Gralkor.Message.t()]] — each turn is a list of canonical Messages
+  format_transcript/3 takes [[Gralkor.Message.t()]], a distill_fn, and an agent_name
+  if agent_name is missing or blank
+    then raises ArgumentError
   per turn
     when a turn contains a message with role="behaviour"
-      then all messages in the turn are rendered with role labels ("User: …", "Agent did: …",
-        "Assistant: …") and passed to the configured LLM (via req_llm) as the "thinking" prompt
+      then all messages in the turn are rendered with role labels ("User: {content}",
+        "{agent_name}: (behaviour: {content})", "{agent_name}: {content}") and passed to
+        the configured LLM (via req_llm) as the "thinking" prompt
     when a turn has no behaviour messages
       then distillation is skipped for that turn (no LLM call)
   transcript rendering
     when a turn has behaviour and the LLM call succeeds
       then it is distilled into a first-person past-tense summary
-      and rendered as "Assistant: (behaviour: {summary})" before the assistant text for that turn
-    when distillation fails for a turn (safe_distill/1)
+      and rendered as "{agent_name}: (behaviour: {summary})" before the assistant text for that turn
+    when distillation fails for a turn (safe_distill)
       then the behaviour line is silently dropped, user/assistant text preserved
     when no LLM is configured
       then behaviour lines are silently omitted, user/assistant text preserved
     when a turn has no behaviour
-      then rendered as "User: …\nAssistant: …" with no behaviour line, no LLM call
+      then rendered as "User: {content}\n{agent_name}: {content}" with no behaviour line, no LLM call
   then the LLM call uses a structured-output schema with a single "behaviour" field
   then turns with behaviour are distilled in parallel via Task.async_stream
-ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/3; unit: ex/test/gralkor/client/native_test.exs)
+ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/4; unit: ex/test/gralkor/client/native_test.exs)
   request shape
-    when called with session_id, group_id, messages (a list of Gralkor.Message structs)
+    when called with session_id, group_id, agent_name, messages (a list of Gralkor.Message structs)
       then group_id is sanitized
-      and Gralkor.CaptureBuffer.append/3 is invoked with the sanitized group_id and the messages
+      and Gralkor.CaptureBuffer.append/4 is invoked with the sanitized group_id, the agent_name, and the messages
   if session_id is missing or blank
+    then raises ArgumentError
+  if agent_name is missing or blank
     then raises ArgumentError
   then returns :ok immediately (does not call distill synchronously)
   observability
@@ -773,22 +810,24 @@ ex-timeouts (ex stack; integration: ex/test/gralkor/client/native_test.exs)
 
 ```
 ex-client (src: ex/lib/gralkor/client.ex; unit: ex/test/support/gralkor_client_contract.ex; integration: ex/test/gralkor/client/native_test.exs and ex/test/gralkor/client/in_memory_test.exs)
-  when recall/3 is called with a non-blank string session_id
+  when recall/4 is called with a non-blank string session_id and an agent_name
     when the backend returns a memory block
       then {:ok, block} is returned
     if the backend fails
       then {:error, reason} is returned
-  when recall/3 is called with a nil session_id
+  when recall/4 is called with a nil session_id and an agent_name
     when the backend returns a memory block
       then {:ok, block} is returned
     if the backend fails
       then {:error, reason} is returned
-  when capture/3 is called with session_id, group_id, and messages
+  when capture/4 is called with session_id, group_id, agent_name, and messages
     messages is a list of canonical Gralkor.Message structs (role ∈ {"user", "assistant", "behaviour"}, content: String.t())
     when the backend acknowledges the capture
       then :ok is returned
     if the backend fails
       then {:error, reason} is returned
+    if agent_name is missing or blank
+      then raises ArgumentError
   when end_session/1 is called with a session_id
     when the backend acknowledges the end
       then :ok is returned
@@ -809,6 +848,9 @@ ex-client (src: ex/lib/gralkor/client.ex; unit: ex/test/support/gralkor_client_c
       then {:ok, %{communities: non_neg_integer(), edges: non_neg_integer()}} is returned
     if the backend fails
       then {:error, reason} is returned
+  agent_name validation
+    if recall/4 or capture/4 is called with a missing or blank agent_name
+      then ArgumentError is raised at the port boundary (no backend call is made)
 ex-sanitize-group-id (src: ex/lib/gralkor/client.ex; unit: ex/test/gralkor/client_test.exs)
   when the id contains hyphens
     then hyphens are replaced with underscores
@@ -853,7 +895,7 @@ ex-client-in-memory (src: ex/lib/gralkor/client/in_memory.ex; unit: ex/test/gral
 
 ```
 ts-client (src: ts/src/client.ts; unit: ts/test/contract/gralkor-client.contract.ts; integration: ts/test/client/http.test.ts and ts/test/client/in-memory.test.ts)
-  when recall is called with a non-blank string session_id
+  when recall is called with a non-blank string session_id and an agent_name
     when max_results is provided
       then it is forwarded to the backend (HTTP body includes max_results; in-memory recorder captures it)
     when max_results is omitted
@@ -862,7 +904,7 @@ ts-client (src: ts/src/client.ts; unit: ts/test/contract/gralkor-client.contract
       then { ok: block } is returned
     if the backend fails
       then { error: reason } is returned
-  when recall is called with a null session_id
+  when recall is called with a null session_id and an agent_name
     when max_results is provided
       then it is forwarded to the backend (HTTP body includes max_results; in-memory recorder captures it)
     when max_results is omitted
@@ -871,12 +913,14 @@ ts-client (src: ts/src/client.ts; unit: ts/test/contract/gralkor-client.contract
       then { ok: block } is returned
     if the backend fails
       then { error: reason } is returned
-  when capture(session_id, group_id, messages) is called
+  when capture(session_id, group_id, agent_name, messages) is called
     messages is an array of canonical {role, content} objects (role ∈ "user" | "assistant" | "behaviour")
     when the backend acknowledges the capture
       then { ok: true } is returned
     if the backend fails
       then { error: reason } is returned
+    if agent_name is missing or blank
+      then the call throws (port-boundary validation; no backend call is made)
   when endSession(session_id) is called
     when the backend acknowledges the end
       then { ok: true } is returned
@@ -902,6 +946,9 @@ ts-client (src: ts/src/client.ts; unit: ts/test/contract/gralkor-client.contract
       then { ok: { communities, edges } } is returned
     if the backend fails
       then { error: reason } is returned
+  agent_name validation
+    if recall or capture is called with a missing or blank agent_name
+      then the call throws at the port boundary (no backend call is made)
 ts-sanitize-group-id (src: ts/src/client.ts; unit: ts/test/client.test.ts)
   when the id contains hyphens
     then hyphens are replaced with underscores

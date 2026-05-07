@@ -24,7 +24,7 @@ defmodule Gralkor.RecallTest do
   describe "ex-recall > when no relevant facts are found" do
     test "memory_block body is 'No relevant memories found.' (search returned empty)" do
       assert {:ok, block} =
-               Recall.recall("g", nil, "q", default_opts(search_fn: ok_search([])))
+               Recall.recall("g", "TestAgent", nil, "q", default_opts(search_fn: ok_search([])))
 
       assert block =~ "No relevant memories found."
       assert block =~ ~r/<gralkor-memory trust="untrusted">/
@@ -35,6 +35,7 @@ defmodule Gralkor.RecallTest do
       assert {:ok, block} =
                Recall.recall(
                  "g",
+                 "TestAgent",
                  nil,
                  "q",
                  default_opts(
@@ -57,6 +58,7 @@ defmodule Gralkor.RecallTest do
       assert {:ok, block} =
                Recall.recall(
                  "g",
+                 "TestAgent",
                  nil,
                  "q",
                  default_opts(
@@ -71,7 +73,7 @@ defmodule Gralkor.RecallTest do
   end
 
   describe "ex-recall > request shape > when called with a non-blank session_id" do
-    test "conversation context is sourced from CaptureBuffer.turns_for(session_id), flat-walked in order" do
+    test "conversation context is sourced from CaptureBuffer.turns_for(session_id), flat-walked in order with role labels rendered using agent_name" do
       ref = make_ref()
       test_pid = self()
 
@@ -90,6 +92,7 @@ defmodule Gralkor.RecallTest do
       _ =
         Recall.recall(
           "g",
+          "Susu",
           "session-1",
           "q",
           default_opts(
@@ -101,8 +104,9 @@ defmodule Gralkor.RecallTest do
 
       assert_receive {^ref, prompt}
       assert prompt =~ "User: old user msg"
-      assert prompt =~ "Assistant: old asst msg"
+      assert prompt =~ "Susu: old asst msg"
       assert prompt =~ "User: new user msg"
+      refute prompt =~ "Assistant:"
     end
   end
 
@@ -126,6 +130,7 @@ defmodule Gralkor.RecallTest do
       _ =
         Recall.recall(
           "g",
+          "TestAgent",
           nil,
           "q",
           default_opts(
@@ -154,6 +159,7 @@ defmodule Gralkor.RecallTest do
       _ =
         Recall.recall(
           "g",
+          "TestAgent",
           nil,
           "q",
           default_opts(search_fn: search_fn, max_results: 5)
@@ -171,7 +177,7 @@ defmodule Gralkor.RecallTest do
         {:ok, []}
       end
 
-      _ = Recall.recall("g", nil, "q", default_opts(search_fn: search_fn))
+      _ = Recall.recall("g", "TestAgent", nil, "q", default_opts(search_fn: search_fn))
 
       assert_receive {^ref, 10}
     end
@@ -190,6 +196,7 @@ defmodule Gralkor.RecallTest do
       _ =
         Recall.recall(
           "with-some-hyphens",
+          "TestAgent",
           nil,
           "q",
           default_opts(search_fn: search_fn)
@@ -199,11 +206,26 @@ defmodule Gralkor.RecallTest do
     end
   end
 
+  describe "ex-recall > request shape > if agent_name is missing or blank" do
+    test "raises ArgumentError on blank agent_name" do
+      assert_raise ArgumentError, ~r/agent_name/, fn ->
+        Recall.recall("g", "", nil, "q", default_opts())
+      end
+    end
+
+    test "raises ArgumentError on nil agent_name" do
+      assert_raise ArgumentError, ~r/agent_name/, fn ->
+        Recall.recall("g", nil, nil, "q", default_opts())
+      end
+    end
+  end
+
   describe "ex-recall > orchestration > memory_block envelope" do
     test "wraps body in <gralkor-memory trust='untrusted'> and includes the further-querying instruction" do
       assert {:ok, block} =
                Recall.recall(
                  "g",
+                 "TestAgent",
                  nil,
                  "q",
                  default_opts(
@@ -228,6 +250,7 @@ defmodule Gralkor.RecallTest do
       assert {:error, :recall_deadline_expired} =
                Recall.recall(
                  "g",
+                 "TestAgent",
                  nil,
                  "q",
                  default_opts(search_fn: slow_search, deadline_ms: 50)
@@ -238,6 +261,7 @@ defmodule Gralkor.RecallTest do
       assert {:ok, _} =
                Recall.recall(
                  "g",
+                 "TestAgent",
                  nil,
                  "q",
                  default_opts(search_fn: ok_search([]), deadline_ms: 1_000)
@@ -253,6 +277,7 @@ defmodule Gralkor.RecallTest do
           {:ok, _} =
             Recall.recall(
               "g",
+              "TestAgent",
               "session-1",
               "what is X?",
               default_opts(
@@ -271,7 +296,8 @@ defmodule Gralkor.RecallTest do
     test "interpret:0 is reported when interpret_facts was not called (empty search)" do
       logs =
         ExUnit.CaptureLog.capture_log([level: :info], fn ->
-          {:ok, _} = Recall.recall("g", nil, "q", default_opts(search_fn: ok_search([])))
+          {:ok, _} =
+            Recall.recall("g", "TestAgent", nil, "q", default_opts(search_fn: ok_search([])))
         end)
 
       assert logs =~ "interpret:0"
@@ -292,6 +318,7 @@ defmodule Gralkor.RecallTest do
           {:ok, _} =
             Recall.recall(
               "g",
+              "TestAgent",
               "s1",
               "what is X?",
               default_opts(search_fn: ok_search([]))
@@ -308,6 +335,7 @@ defmodule Gralkor.RecallTest do
           {:ok, _} =
             Recall.recall(
               "g",
+              "TestAgent",
               "s1",
               "q",
               default_opts(
@@ -326,7 +354,7 @@ defmodule Gralkor.RecallTest do
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
           {:ok, _} =
-            Recall.recall("g", "s1", "q", default_opts(search_fn: ok_search([])))
+            Recall.recall("g", "TestAgent", "s1", "q", default_opts(search_fn: ok_search([])))
         end)
 
       refute logs =~ "[gralkor] [test] recall block:"
@@ -341,6 +369,7 @@ defmodule Gralkor.RecallTest do
           {:ok, _} =
             Recall.recall(
               "g",
+              "TestAgent",
               "s1",
               "q",
               default_opts(

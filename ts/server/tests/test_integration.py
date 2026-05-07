@@ -158,6 +158,7 @@ async def test_ingest_episode_body_passes_through():
                 "name": "test-conversation",
                 "source_description": "functional-test",
                 "group_id": "test-group",
+                "agent_name": "TestAgent",
                 "episode_body": pre_formatted,
                 "source": "message",
                 "idempotency_key": "integration-episode-test",

@@ -41,9 +41,11 @@ export class GralkorHttpClient implements GralkorClient {
     groupId: string,
     sessionId: string | null,
     query: string,
+    agentName: string,
     maxResults?: number,
   ): Promise<Result<string>> {
-    const body: Record<string, unknown> = { group_id: groupId, query };
+    requireAgentName(agentName);
+    const body: Record<string, unknown> = { group_id: groupId, query, agent_name: agentName };
     if (typeof sessionId === "string") body.session_id = sessionId;
     if (maxResults !== undefined) body.max_results = maxResults;
     const res = await this.post("/recall", body, 12_000);
@@ -53,11 +55,17 @@ export class GralkorHttpClient implements GralkorClient {
     return { ok: respBody.memory_block };
   }
 
-  async capture(sessionId: string, groupId: string, messages: Message[]): Promise<Result<true>> {
+  async capture(
+    sessionId: string,
+    groupId: string,
+    agentName: string,
+    messages: Message[],
+  ): Promise<Result<true>> {
     requireSessionId(sessionId);
+    requireAgentName(agentName);
     const res = await this.post(
       "/capture",
-      { session_id: sessionId, group_id: groupId, messages },
+      { session_id: sessionId, group_id: groupId, agent_name: agentName, messages },
       5_000,
     );
     return "error" in res ? res : { ok: true };
@@ -155,5 +163,11 @@ export class GralkorHttpClient implements GralkorClient {
 function requireSessionId(id: string): void {
   if (typeof id !== "string" || id === "") {
     throw new Error("session_id must be a non-blank string");
+  }
+}
+
+function requireAgentName(name: string): void {
+  if (typeof name !== "string" || name.trim() === "") {
+    throw new Error("agent_name must be a non-blank string");
   }
 }

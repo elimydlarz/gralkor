@@ -20,48 +20,78 @@ defmodule Gralkor.ClientContract do
 
   defmacro run_contract(do: setup_block) do
     quote do
-      describe "ex-client > recall/3 with a non-blank string session_id" do
+      describe "ex-client > recall/4 with a non-blank string session_id" do
         test "when the backend returns a memory block then {:ok, block} is returned" do
           unquote(setup_block).()
 
           configure_recall({:ok, "<gralkor-memory>some block</gralkor-memory>"})
 
           assert {:ok, "<gralkor-memory>some block</gralkor-memory>"} =
-                   client().recall("group-1", "session-1", "what is X?")
+                   client().recall("group-1", "TestAgent", "session-1", "what is X?")
         end
 
         test "if the backend fails then {:error, reason} is returned" do
           unquote(setup_block).()
           configure_recall({:error, :backend_down})
 
-          assert {:error, :backend_down} = client().recall("group-1", "session-1", "what?")
+          assert {:error, :backend_down} =
+                   client().recall("group-1", "TestAgent", "session-1", "what?")
         end
       end
 
-      describe "ex-client > recall/3 with a nil session_id" do
+      describe "ex-client > recall/4 with a nil session_id" do
         test "when the backend returns a memory block then {:ok, block} is returned" do
           unquote(setup_block).()
           configure_recall({:ok, "<gralkor-memory>x</gralkor-memory>"})
 
           assert {:ok, "<gralkor-memory>x</gralkor-memory>"} =
-                   client().recall("group-1", nil, "anything?")
+                   client().recall("group-1", "TestAgent", nil, "anything?")
         end
 
         test "if the backend fails then {:error, reason} is returned" do
           unquote(setup_block).()
           configure_recall({:error, :nope})
 
-          assert {:error, :nope} = client().recall("group-1", nil, "q")
+          assert {:error, :nope} = client().recall("group-1", "TestAgent", nil, "q")
         end
       end
 
-      describe "ex-client > capture/3" do
+      describe "ex-client > recall/4 if agent_name is missing or blank" do
+        test "raises ArgumentError when agent_name is blank" do
+          unquote(setup_block).()
+          configure_recall({:ok, "should-not-be-returned"})
+
+          assert_raise ArgumentError, ~r/agent_name/, fn ->
+            client().recall("group-1", "", "session-1", "q")
+          end
+        end
+
+        test "raises ArgumentError when agent_name is whitespace-only" do
+          unquote(setup_block).()
+          configure_recall({:ok, "should-not-be-returned"})
+
+          assert_raise ArgumentError, ~r/agent_name/, fn ->
+            client().recall("group-1", "   ", "session-1", "q")
+          end
+        end
+
+        test "raises ArgumentError when agent_name is nil" do
+          unquote(setup_block).()
+          configure_recall({:ok, "should-not-be-returned"})
+
+          assert_raise ArgumentError, ~r/agent_name/, fn ->
+            client().recall("group-1", nil, "session-1", "q")
+          end
+        end
+      end
+
+      describe "ex-client > capture/4" do
         test "when the backend acknowledges the capture then :ok is returned" do
           unquote(setup_block).()
           configure_capture(:ok)
 
           assert :ok =
-                   client().capture("session-1", "group-1", [
+                   client().capture("session-1", "group-1", "TestAgent", [
                      Gralkor.Message.new("user", "hi")
                    ])
         end
@@ -71,7 +101,29 @@ defmodule Gralkor.ClientContract do
           configure_capture({:error, :write_failed})
 
           assert {:error, :write_failed} =
-                   client().capture("session-1", "group-1", [Gralkor.Message.new("user", "hi")])
+                   client().capture("session-1", "group-1", "TestAgent", [
+                     Gralkor.Message.new("user", "hi")
+                   ])
+        end
+      end
+
+      describe "ex-client > capture/4 if agent_name is missing or blank" do
+        test "raises ArgumentError when agent_name is blank" do
+          unquote(setup_block).()
+          configure_capture(:ok)
+
+          assert_raise ArgumentError, ~r/agent_name/, fn ->
+            client().capture("session-1", "group-1", "", [Gralkor.Message.new("user", "hi")])
+          end
+        end
+
+        test "raises ArgumentError when agent_name is nil" do
+          unquote(setup_block).()
+          configure_capture(:ok)
+
+          assert_raise ArgumentError, ~r/agent_name/, fn ->
+            client().capture("session-1", "group-1", nil, [Gralkor.Message.new("user", "hi")])
+          end
         end
       end
 

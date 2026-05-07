@@ -325,6 +325,7 @@ async def lifespan(_app: FastAPI):
     yield
 
     await capture_buffer.flush_all()
+    _graphiti_instances.clear()
     if _falkor_db is not None:
         try:
             if hasattr(_falkor_db, "aclose"):
@@ -438,7 +439,7 @@ async def _warmup() -> None:
         t_search_start = time.monotonic()
         await g.search(query=_WARMUP_QUERY, group_ids=[_WARMUP_GROUP_ID], num_results=1)
         t_search_done = time.monotonic()
-        await interpret_facts([], _WARMUP_QUERY, g.llm_client)
+        await interpret_facts([], _WARMUP_QUERY, g.llm_client, "Warmup")
         t_interpret_done = time.monotonic()
         logger.info(
             "[gralkor] warmup — search:%.0f interpret:%.0f %.0fms",
@@ -450,13 +451,13 @@ async def _warmup() -> None:
         logger.warning("[gralkor] warmup failed (non-fatal): %s", e)
 
 
-async def _capture_flush(group_id: str, turns: list[list[Message]]) -> None:
+async def _capture_flush(group_id: str, agent_name: str, turns: list[list[Message]]) -> None:
     if _llm_client is None or _falkor_db is None:
         return
     t0 = time.monotonic()
     sanitized = _sanitize_group_id(group_id)
     g = _graphiti_for(sanitized)
-    episode_body = await format_transcript(turns, g.llm_client)
+    episode_body = await format_transcript(turns, g.llm_client, agent_name)
     if not episode_body.strip():
         return
     logger.debug("[gralkor] [test] capture flush body: %s", episode_body)
@@ -519,6 +520,7 @@ class GroupIdRequest(BaseModel):
 class RecallRequest(BaseModel):
     session_id: str | None = Field(default=None, min_length=1)
     group_id: str
+    agent_name: str = Field(min_length=1)
     query: str
     max_results: int = 10
 
@@ -528,6 +530,7 @@ class RecallResponse(BaseModel):
 
 
 class DistillRequest(BaseModel):
+    agent_name: str = Field(min_length=1)
     turns: list[list[Message]]
 
 
@@ -538,6 +541,7 @@ class DistillResponse(BaseModel):
 class CaptureRequest(BaseModel):
     session_id: str = Field(min_length=1)
     group_id: str
+    agent_name: str = Field(min_length=1)
     messages: list[Message]
 
 
@@ -806,7 +810,7 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
     else:
         facts_text = "\n".join(format_fact(f) for f in facts)
         relevant_facts = await _recall_vertex_call(
-            lambda: interpret_facts(conversation, facts_text, g.llm_client)
+            lambda: interpret_facts(conversation, facts_text, g.llm_client, req.agent_name)
         )
         t_interpret = time.monotonic()
         body = "\n".join(relevant_facts) if relevant_facts else NO_RELEVANT_MEMORIES_BODY
@@ -835,7 +839,7 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
 
 @router.post("/distill", response_model=DistillResponse)
 async def distill(req: DistillRequest) -> DistillResponse:
-    episode_body = await format_transcript(req.turns, _llm_client)
+    episode_body = await format_transcript(req.turns, _llm_client, req.agent_name)
     return DistillResponse(episode_body=episode_body)
 
 
@@ -844,7 +848,7 @@ async def capture(req: CaptureRequest) -> Response:
     if capture_buffer is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "capture buffer not initialized")
     sanitized = _sanitize_group_id(req.group_id)
-    capture_buffer.append(req.session_id, sanitized, req.messages)
+    capture_buffer.append(req.session_id, sanitized, req.agent_name, req.messages)
     logger.debug("[gralkor] [test] capture messages: %s",
                  [(m.role, m.content) for m in req.messages])
     return Response(status_code=status.HTTP_204_NO_CONTENT)

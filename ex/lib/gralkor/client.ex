@@ -17,11 +17,13 @@ defmodule Gralkor.Client do
 
   @type group_id :: String.t()
   @type session_id :: String.t()
+  @type agent_name :: String.t()
   @type messages :: [Gralkor.Message.t()]
 
-  @callback recall(group_id(), session_id() | nil, query :: String.t()) ::
+  @callback recall(group_id(), agent_name(), session_id() | nil, query :: String.t()) ::
               {:ok, String.t()} | {:error, term()}
-  @callback capture(session_id(), group_id(), messages()) :: :ok | {:error, term()}
+  @callback capture(session_id(), group_id(), agent_name(), messages()) ::
+              :ok | {:error, term()}
   @callback memory_add(group_id(), content :: String.t(), source_description :: String.t() | nil) ::
               :ok | {:error, term()}
   @callback end_session(session_id()) :: :ok | {:error, term()}

@@ -23,7 +23,9 @@ defmodule Gralkor.Client.Native do
   # ── Client behaviour ────────────────────────────────────────
 
   @impl Gralkor.Client
-  def recall(group_id, session_id, query) do
+  def recall(group_id, agent_name, session_id, query) do
+    raise_if_blank!(:agent_name, agent_name)
+
     opts = [
       search_fn: search_fn(),
       interpret_fn: interpret_fn(),
@@ -36,17 +38,18 @@ defmodule Gralkor.Client.Native do
         ms when is_integer(ms) -> Keyword.put(opts, :deadline_ms, ms)
       end
 
-    Recall.recall(group_id, session_id, query, opts)
+    Recall.recall(group_id, agent_name, session_id, query, opts)
   end
 
   @impl Gralkor.Client
-  def capture(session_id, group_id, msgs) do
-    raise_if_blank!(:capture, session_id)
+  def capture(session_id, group_id, agent_name, msgs) do
+    raise_if_blank!(:session_id, session_id)
+    raise_if_blank!(:agent_name, agent_name)
 
     if Application.get_env(:gralkor_ex, :test, false),
       do: Logger.info("[gralkor] [test] capture messages: #{format_test_messages(msgs)}")
 
-    CaptureBuffer.append(session_id, group_id, msgs)
+    CaptureBuffer.append(session_id, group_id, agent_name, msgs)
   end
 
   defp format_test_messages(msgs) do
@@ -58,7 +61,7 @@ defmodule Gralkor.Client.Native do
 
   @impl Gralkor.Client
   def end_session(session_id) do
-    raise_if_blank!(:end_session, session_id)
+    raise_if_blank!(:session_id, session_id)
     CaptureBuffer.flush(session_id)
   end
 
@@ -139,10 +142,17 @@ defmodule Gralkor.Client.Native do
     end
   end
 
-  defp raise_if_blank!(_op, sid) when is_binary(sid) and byte_size(sid) > 0, do: :ok
+  defp raise_if_blank!(field, value) when is_binary(value) do
+    if String.trim(value) == "" do
+      raise ArgumentError,
+            "Gralkor.Client.Native: #{field} must be a non-blank string, got #{inspect(value)}"
+    end
 
-  defp raise_if_blank!(op, sid) do
+    :ok
+  end
+
+  defp raise_if_blank!(field, value) do
     raise ArgumentError,
-          "Gralkor.Client.Native.#{op}: session_id must be a non-blank string, got #{inspect(sid)}"
+          "Gralkor.Client.Native: #{field} must be a non-blank string, got #{inspect(value)}"
   end
 end

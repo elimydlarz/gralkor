@@ -48,6 +48,7 @@ async def test_session_end_triggers_add_episode(mock_graphiti):
                 json={
                     "session_id": "smoke-sess",
                     "group_id": "smoke-grp",
+                    "agent_name": "TestAgent",
                     "messages": [
                         {"role": "user", "content": "remember this"},
                         {"role": "behaviour", "content": "thought: processing"},
@@ -66,7 +67,7 @@ async def test_session_end_triggers_add_episode(mock_graphiti):
         assert kwargs["group_id"] == "smoke_grp"
         assert kwargs["source_description"] == "auto-capture"
         assert "User: remember this" in kwargs["episode_body"]
-        assert "Assistant: stored" in kwargs["episode_body"]
+        assert "TestAgent: stored" in kwargs["episode_body"]
 
 
 async def test_flush_logs_entry_and_success_at_info(mock_graphiti, caplog):
@@ -83,6 +84,7 @@ async def test_flush_logs_entry_and_success_at_info(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-flush",
                     "group_id": "flush-grp",
+                    "agent_name": "TestAgent",
                     "messages": [
                         {"role": "user", "content": "q"},
                         {"role": "behaviour", "content": "thought: considering"},
@@ -112,6 +114,7 @@ async def test_flush_skips_on_empty_body(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-empty",
                     "group_id": "grp",
+                    "agent_name": "TestAgent",
                     "messages": [],
                 },
             )
@@ -135,6 +138,7 @@ async def test_flush_logs_body_at_debug(mock_graphiti, caplog):
                 json={
                     "session_id": "sess-dbg",
                     "group_id": "grp",
+                    "agent_name": "TestAgent",
                     "messages": [
                         {"role": "user", "content": "sensitive"},
                         {"role": "behaviour", "content": "thought: x"},
@@ -166,6 +170,7 @@ async def test_lifespan_flush_all_drains_buffer(mock_graphiti):
                 json={
                     "session_id": "sess-drain",
                     "group_id": "grp",
+                    "agent_name": "TestAgent",
                     "messages": [
                         {"role": "user", "content": "q"},
                         {"role": "assistant", "content": "a"},

@@ -22,12 +22,12 @@ defmodule Gralkor.DistillTest do
         ]
       ]
 
-      _ = Distill.format_transcript(turns, distill_fn)
+      _ = Distill.format_transcript(turns, distill_fn, "TestAgent")
 
       assert_receive {^ref, prompt}
       assert prompt =~ "User: hi"
-      assert prompt =~ "Agent did: thinking out loud"
-      assert prompt =~ "Assistant: hello"
+      assert prompt =~ "TestAgent: (behaviour: thinking out loud)"
+      assert prompt =~ "TestAgent: hello"
     end
   end
 
@@ -43,7 +43,8 @@ defmodule Gralkor.DistillTest do
       _ =
         Distill.format_transcript(
           [[Message.new("user", "hi"), Message.new("assistant", "hello")]],
-          distill_fn
+          distill_fn,
+          "TestAgent"
         )
 
       assert :counters.get(counter, 1) == 0
@@ -51,7 +52,7 @@ defmodule Gralkor.DistillTest do
   end
 
   describe "ex-format-transcript > transcript rendering > when a turn has behaviour and the LLM call succeeds" do
-    test "rendered as \"Assistant: (behaviour: {summary})\" before the assistant text for that turn" do
+    test "rendered as \"{agent_name}: (behaviour: {summary})\" before the assistant text for that turn" do
       distill_fn = fn _ -> {:ok, "thought through the problem"} end
 
       result =
@@ -63,11 +64,12 @@ defmodule Gralkor.DistillTest do
               Message.new("assistant", "A")
             ]
           ],
-          distill_fn
+          distill_fn,
+          "Susu"
         )
 
       assert result ==
-               "User: Q?\nAssistant: (behaviour: thought through the problem)\nAssistant: A"
+               "User: Q?\nSusu: (behaviour: thought through the problem)\nSusu: A"
     end
   end
 
@@ -84,10 +86,11 @@ defmodule Gralkor.DistillTest do
               Message.new("assistant", "A")
             ]
           ],
-          distill_fn
+          distill_fn,
+          "Susu"
         )
 
-      assert result == "User: Q\nAssistant: A"
+      assert result == "User: Q\nSusu: A"
     end
 
     test "exceptions raised by the distill_fn are also caught (safe_distill semantics)" do
@@ -102,10 +105,11 @@ defmodule Gralkor.DistillTest do
               Message.new("assistant", "A")
             ]
           ],
-          distill_fn
+          distill_fn,
+          "Susu"
         )
 
-      assert result == "User: Q\nAssistant: A"
+      assert result == "User: Q\nSusu: A"
     end
   end
 
@@ -120,15 +124,16 @@ defmodule Gralkor.DistillTest do
               Message.new("assistant", "A")
             ]
           ],
-          nil
+          nil,
+          "Susu"
         )
 
-      assert result == "User: Q\nAssistant: A"
+      assert result == "User: Q\nSusu: A"
     end
   end
 
   describe "ex-format-transcript > transcript rendering > when a turn has no behaviour" do
-    test "rendered as \"User: …\\nAssistant: …\" with no behaviour line, no LLM call" do
+    test "rendered as \"User: …\\n{agent_name}: …\" with no behaviour line, no LLM call" do
       counter = :counters.new(1, [])
 
       distill_fn = fn _ ->
@@ -139,10 +144,11 @@ defmodule Gralkor.DistillTest do
       result =
         Distill.format_transcript(
           [[Message.new("user", "Q"), Message.new("assistant", "A")]],
-          distill_fn
+          distill_fn,
+          "Susu"
         )
 
-      assert result == "User: Q\nAssistant: A"
+      assert result == "User: Q\nSusu: A"
       assert :counters.get(counter, 1) == 0
     end
   end
@@ -164,10 +170,42 @@ defmodule Gralkor.DistillTest do
         end
 
       {us, _result} =
-        :timer.tc(fn -> Distill.format_transcript(turns, distill_fn) end)
+        :timer.tc(fn -> Distill.format_transcript(turns, distill_fn, "TestAgent") end)
 
       ms = div(us, 1000)
       assert ms < 250, "expected parallel (~100ms + overhead), got #{ms}ms"
+    end
+  end
+
+  describe "ex-format-transcript > if agent_name is missing or blank" do
+    test "raises ArgumentError on blank agent_name" do
+      assert_raise ArgumentError, ~r/agent_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          ""
+        )
+      end
+    end
+
+    test "raises ArgumentError on whitespace-only agent_name" do
+      assert_raise ArgumentError, ~r/agent_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          "   "
+        )
+      end
+    end
+
+    test "raises ArgumentError on nil agent_name" do
+      assert_raise ArgumentError, ~r/agent_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          nil
+        )
+      end
     end
   end
 

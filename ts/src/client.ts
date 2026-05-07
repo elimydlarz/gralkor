@@ -42,6 +42,7 @@ export interface GralkorClient {
     groupId: string,
     sessionId: string | null,
     query: string,
+    agentName: string,
     maxResults?: number,
   ): Promise<Result<string>>;
 
@@ -49,6 +50,7 @@ export interface GralkorClient {
   capture(
     sessionId: string,
     groupId: string,
+    agentName: string,
     messages: Message[],
   ): Promise<Result<true>>;
 

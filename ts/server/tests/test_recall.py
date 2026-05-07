@@ -22,13 +22,13 @@ from .conftest import make_edge
 
 
 def append_turn(session_id: str, group_id: str, *messages: Message) -> None:
-    main_mod.capture_buffer.append(session_id, group_id, list(messages))
+    main_mod.capture_buffer.append(session_id, group_id, "TestAgent", list(messages))
 
 
 async def test_rejects_blank_session_id(client, mock_graphiti):
     resp = await client.post(
         "/recall",
-        json={"session_id": "", "group_id": "grp", "query": "q", "max_results": 10},
+        json={"session_id": "", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
     )
     assert resp.status_code == 422
 
@@ -47,7 +47,7 @@ async def test_omitted_session_id_runs_with_empty_context_without_consulting_buf
 
     resp = await client.post(
         "/recall",
-        json={"group_id": "grp", "query": "q", "max_results": 10},
+        json={"group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
     )
     assert resp.status_code == 200
     context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
@@ -59,7 +59,7 @@ async def test_no_search_results_returns_no_relevant_memories_block(client, mock
     mock_graphiti.search.return_value = []
     resp = await client.post(
         "/recall",
-        json={"session_id": "sess", "group_id": "grp", "query": "q", "max_results": 10},
+        json={"session_id": "sess", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
     )
     assert resp.status_code == 200
     block = resp.json()["memory_block"]
@@ -82,7 +82,7 @@ async def test_lists_relevant_facts_when_interpret_returns_them(client, mock_gra
         "/recall",
         json={
             "session_id": "sess",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "who is bob",
             "max_results": 10,
         },
@@ -105,7 +105,7 @@ async def test_returns_no_relevant_memories_block_when_interpret_returns_empty(
 
     resp = await client.post(
         "/recall",
-        json={"session_id": "sess", "group_id": "grp", "query": "who is bob", "max_results": 10},
+        json={"session_id": "sess", "group_id": "grp", "agent_name": "TestAgent", "query": "who is bob", "max_results": 10},
     )
     assert resp.status_code == 200
     block = resp.json()["memory_block"]
@@ -120,7 +120,7 @@ async def test_uses_fast_mode(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     await client.post(
         "/recall",
-        json={"session_id": "sess", "group_id": "grp", "query": "q", "max_results": 5},
+        json={"session_id": "sess", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 5},
     )
     mock_graphiti.search.assert_awaited_once()
     call_kwargs = mock_graphiti.search.await_args.kwargs
@@ -131,7 +131,7 @@ async def test_applies_default_max_results_when_omitted(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     await client.post(
         "/recall",
-        json={"session_id": "sess", "group_id": "grp", "query": "q"},
+        json={"session_id": "sess", "group_id": "grp", "agent_name": "TestAgent", "query": "q"},
     )
     mock_graphiti.search.assert_awaited_once()
     call_kwargs = mock_graphiti.search.await_args.kwargs
@@ -144,7 +144,7 @@ async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
         "/recall",
         json={
             "session_id": "sess",
-            "group_id": "my-agent-id",
+            "group_id": "my-agent-id", "agent_name": "TestAgent",
             "query": "q",
             "max_results": 10,
         },
@@ -167,7 +167,7 @@ async def test_conversation_context_comes_from_capture_buffer(client, mock_graph
         "/recall",
         json={
             "session_id": "sess-with-history",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "current question",
             "max_results": 10,
         },
@@ -192,13 +192,13 @@ async def test_behaviour_messages_appear_in_interpretation_context(client, mock_
         "/recall",
         json={
             "session_id": "sess-with-behaviour",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "q",
             "max_results": 10,
         },
     )
     interpret_context = mock_graphiti.llm_client.generate_response.await_args.args[0][1].content
-    assert "Agent did: thought: I should check memory" in interpret_context
+    assert "TestAgent: (behaviour: thought: I should check memory)" in interpret_context
 
 
 async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_graphiti):
@@ -209,7 +209,7 @@ async def test_empty_buffer_runs_interpretation_with_empty_context(client, mock_
         "/recall",
         json={
             "session_id": "brand-new-session",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "q",
             "max_results": 10,
         },
@@ -238,7 +238,7 @@ async def test_different_sessions_do_not_cross_contaminate(client, mock_graphiti
         "/recall",
         json={
             "session_id": "sess-alpha",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "q",
             "max_results": 10,
         },
@@ -262,7 +262,7 @@ async def test_server_passes_buffered_content_unchanged_to_interpretation(client
         "/recall",
         json={
             "session_id": "sess-passthrough",
-            "group_id": "grp",
+            "group_id": "grp", "agent_name": "TestAgent",
             "query": "q",
             "max_results": 10,
         },
@@ -278,7 +278,7 @@ class TestObservability:
         mock_graphiti.search.return_value = []
         await client.post(
             "/recall",
-            json={"session_id": "sess", "group_id": "grp", "query": "who", "max_results": 10},
+            json={"session_id": "sess", "group_id": "grp", "agent_name": "TestAgent", "query": "who", "max_results": 10},
         )
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         assert any(
@@ -294,7 +294,7 @@ class TestObservability:
         mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "q", "max_results": 5},
         )
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         assert any(
@@ -308,7 +308,7 @@ class TestObservability:
         mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["secret interp — relevant."]}
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "sensitive question", "max_results": 5},
         )
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         joined = "\n".join(info_msgs)
@@ -322,7 +322,7 @@ class TestObservability:
         mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "sensitive question", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "sensitive question", "max_results": 5},
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert any("[gralkor] [test] recall query: sensitive question" in m for m in debug_msgs), debug_msgs
@@ -336,7 +336,7 @@ class TestObservability:
         mock_graphiti.search.return_value = []
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "q", "max_results": 5},
         )
         debug_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
         assert any(
@@ -350,7 +350,7 @@ class TestObservability:
         mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["interp — relevant."]}
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "q", "max_results": 5},
         )
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         result_lines = [m for m in info_msgs if "[gralkor] recall result —" in m]
@@ -363,7 +363,7 @@ class TestObservability:
         mock_graphiti.search.return_value = []
         await client.post(
             "/recall",
-            json={"session_id": "s", "group_id": "g", "query": "q", "max_results": 5},
+            json={"session_id": "s", "group_id": "g", "agent_name": "TestAgent", "query": "q", "max_results": 5},
         )
         info_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.INFO]
         result_lines = [m for m in info_msgs if "[gralkor] recall result —" in m]
@@ -396,7 +396,7 @@ class TestRecallDeadline:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 504
         assert resp.json() == {"error": "recall deadline expired"}
@@ -431,7 +431,7 @@ class TestRecallRetriesVertexRateLimit:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 200
         assert "No relevant memories found." in resp.json()["memory_block"]
@@ -449,7 +449,7 @@ class TestRecallRetriesVertexRateLimit:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 429
         assert mock_graphiti.search.await_count == 2
@@ -466,7 +466,7 @@ class TestRecallRetriesVertexRateLimit:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         # Surfaces via downstream-error-handling, not retried.
         assert resp.status_code == 502
@@ -494,7 +494,7 @@ class TestRecallRetriesVertexRateLimit:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 200
         assert "an interpretation" in resp.json()["memory_block"]
@@ -520,7 +520,23 @@ class TestRecallRetriesVertexRateLimit:
 
         resp = await client.post(
             "/recall",
-            json={"session_id": "s1", "group_id": "grp", "query": "q", "max_results": 10},
+            json={"session_id": "s1", "group_id": "grp", "agent_name": "TestAgent", "query": "q", "max_results": 10},
         )
         assert resp.status_code == 429
         assert call_count["n"] == 2
+
+
+async def test_rejects_missing_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/recall",
+        json={"session_id": "sess", "group_id": "grp", "query": "q", "max_results": 10},
+    )
+    assert resp.status_code == 422
+
+
+async def test_rejects_blank_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/recall",
+        json={"session_id": "sess", "group_id": "grp", "agent_name": "", "query": "q", "max_results": 10},
+    )
+    assert resp.status_code == 422

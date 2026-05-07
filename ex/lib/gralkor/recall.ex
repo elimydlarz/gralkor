@@ -39,10 +39,11 @@ defmodule Gralkor.Recall do
           deadline_ms: pos_integer()
         ]
 
-  @spec recall(group_id(), session_id(), String.t(), opts()) ::
+  @spec recall(group_id(), String.t(), session_id(), String.t(), opts()) ::
           {:ok, String.t()} | {:error, :recall_deadline_expired | term()}
-  def recall(group_id, session_id, query, opts)
+  def recall(group_id, agent_name, session_id, query, opts)
       when is_binary(group_id) and is_binary(query) and is_list(opts) do
+    raise_if_blank_agent!(agent_name)
     sanitized = Client.sanitize_group_id(group_id)
     max_results = Keyword.get(opts, :max_results, @default_max_results)
     deadline_ms = Keyword.get(opts, :deadline_ms, @default_deadline_ms)
@@ -52,7 +53,7 @@ defmodule Gralkor.Recall do
 
     task =
       Task.async(fn ->
-        do_recall(sanitized, session_id, query, max_results, opts)
+        do_recall(sanitized, agent_name, session_id, query, max_results, opts)
       end)
 
     case Task.yield(task, deadline_ms) || Task.shutdown(task, :brutal_kill) do
@@ -71,7 +72,7 @@ defmodule Gralkor.Recall do
 
   # ── internal ────────────────────────────────────────────────
 
-  defp do_recall(sanitized_group, session_id, query, max_results, opts) do
+  defp do_recall(sanitized_group, agent_name, session_id, query, max_results, opts) do
     search_fn = Keyword.fetch!(opts, :search_fn)
     interpret_fn = Keyword.fetch!(opts, :interpret_fn)
     turns_fn = Keyword.fetch!(opts, :turns_fn)
@@ -91,7 +92,7 @@ defmodule Gralkor.Recall do
 
           {relevant, ms} =
             time(fn ->
-              Interpret.interpret_facts(conversation, facts_text, interpret_fn)
+              Interpret.interpret_facts(conversation, facts_text, interpret_fn, agent_name)
             end)
 
           case relevant do
@@ -161,4 +162,16 @@ defmodule Gralkor.Recall do
   end
 
   defp test_mode?, do: Application.get_env(:gralkor_ex, :test, false)
+
+  defp raise_if_blank_agent!(name) when is_binary(name) do
+    if String.trim(name) == "" do
+      raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(name)}"
+    end
+
+    :ok
+  end
+
+  defp raise_if_blank_agent!(other) do
+    raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(other)}"
+  end
 end

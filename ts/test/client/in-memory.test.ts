@@ -26,8 +26,8 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
       client.setResponse("buildIndices", { ok: { status: "stored" } });
       client.setResponse("buildCommunities", { ok: { communities: 2, edges: 5 } });
 
-      await client.recall("g1", "s1", "q");
-      await client.capture("s1", "g1", [
+      await client.recall("g1", "s1", "q", "TestAgent");
+      await client.capture("s1", "g1", "TestAgent", [
         { role: "user", content: "q" },
         { role: "assistant", content: "a" },
       ]);
@@ -37,11 +37,12 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
       await client.buildIndices();
       await client.buildCommunities("g1");
 
-      expect(client.recalls).toEqual([["g1", "s1", "q", undefined]]);
+      expect(client.recalls).toEqual([["g1", "s1", "q", "TestAgent", undefined]]);
       expect(client.captures).toEqual([
         [
           "s1",
           "g1",
+          "TestAgent",
           [
             { role: "user", content: "q" },
             { role: "assistant", content: "a" },
@@ -58,9 +59,9 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
 
   describe("if no response is configured for an operation", () => {
     it("returns { error: 'not_configured' }", async () => {
-      expect(await client.recall("g1", "s1", "q")).toEqual({ error: "not_configured" });
+      expect(await client.recall("g1", "s1", "q", "TestAgent")).toEqual({ error: "not_configured" });
       expect(
-        await client.capture("s1", "g1", [{ role: "user", content: "q" }]),
+        await client.capture("s1", "g1", "TestAgent", [{ role: "user", content: "q" }]),
       ).toEqual({ error: "not_configured" });
       expect(await client.memoryAdd("g1", "c", null)).toEqual({ error: "not_configured" });
       expect(await client.endSession("s1")).toEqual({ error: "not_configured" });
@@ -73,21 +74,21 @@ describe("GralkorInMemoryClient (twin-specific)", () => {
   describe("when reset() is called", () => {
     it("clears configured responses and recorded calls", async () => {
       client.setResponse("recall", { ok: "block" });
-      await client.recall("g1", "s1", "q");
-      expect(client.recalls).toEqual([["g1", "s1", "q", undefined]]);
+      await client.recall("g1", "s1", "q", "TestAgent");
+      expect(client.recalls).toEqual([["g1", "s1", "q", "TestAgent", undefined]]);
 
       client.reset();
 
       expect(client.recalls).toEqual([]);
-      expect(await client.recall("g1", "s1", "q")).toEqual({ error: "not_configured" });
+      expect(await client.recall("g1", "s1", "q", "TestAgent")).toEqual({ error: "not_configured" });
     });
   });
 
   describe("when recall is called with maxResults", () => {
     it("records the maxResults arg alongside the others", async () => {
       client.setResponse("recall", { ok: "block" });
-      await client.recall("g1", "s1", "q", 5);
-      expect(client.recalls).toEqual([["g1", "s1", "q", 5]]);
+      await client.recall("g1", "s1", "q", "TestAgent", 5);
+      expect(client.recalls).toEqual([["g1", "s1", "q", "TestAgent", 5]]);
     });
   });
 

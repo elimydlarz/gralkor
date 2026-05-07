@@ -13,6 +13,7 @@ async def test_returns_episode_body(client, mock_graphiti):
     resp = await client.post(
         "/distill",
         json={
+            "agent_name": "TestAgent",
             "turns": [
                 [
                     {"role": "user", "content": "what is the weather?"},
@@ -26,14 +27,15 @@ async def test_returns_episode_body(client, mock_graphiti):
     assert resp.status_code == 200
     body = resp.json()["episode_body"]
     assert "User: what is the weather?" in body
-    assert "Assistant: (behaviour: investigated)" in body
-    assert "Assistant: sunny" in body
+    assert "TestAgent: (behaviour: investigated)" in body
+    assert "TestAgent: sunny" in body
 
 
 async def test_handles_text_only_turn(client, mock_graphiti):
     resp = await client.post(
         "/distill",
         json={
+            "agent_name": "TestAgent",
             "turns": [
                 [
                     {"role": "user", "content": "hi"},
@@ -43,7 +45,7 @@ async def test_handles_text_only_turn(client, mock_graphiti):
         },
     )
     assert resp.status_code == 200
-    assert resp.json()["episode_body"] == "User: hi\nAssistant: hello"
+    assert resp.json()["episode_body"] == "User: hi\nTestAgent: hello"
 
 
 async def test_silently_drops_distill_failures(client, mock_graphiti):
@@ -52,6 +54,7 @@ async def test_silently_drops_distill_failures(client, mock_graphiti):
     resp = await client.post(
         "/distill",
         json={
+            "agent_name": "TestAgent",
             "turns": [
                 [
                     {"role": "user", "content": "q"},
@@ -65,4 +68,20 @@ async def test_silently_drops_distill_failures(client, mock_graphiti):
     body = resp.json()["episode_body"]
     assert "(behaviour:" not in body
     assert "User: q" in body
-    assert "Assistant: a" in body
+    assert "TestAgent: a" in body
+
+
+async def test_rejects_missing_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/distill",
+        json={"turns": [[{"role": "user", "content": "q"}]]},
+    )
+    assert resp.status_code == 422
+
+
+async def test_rejects_blank_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/distill",
+        json={"agent_name": "", "turns": [[{"role": "user", "content": "q"}]]},
+    )
+    assert resp.status_code == 422

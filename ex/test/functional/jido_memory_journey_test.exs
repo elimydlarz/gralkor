@@ -52,8 +52,8 @@ defmodule Gralkor.JidoMemoryJourneyTest do
            ]}
         )
 
-      flush_callback = fn group_id, turns ->
-        body = Distill.format_transcript(turns, Native.distill_callback())
+      flush_callback = fn group_id, agent_name, turns ->
+        body = Distill.format_transcript(turns, Native.distill_callback(), agent_name)
 
         if body == "" do
           :ok
@@ -84,7 +84,7 @@ defmodule Gralkor.JidoMemoryJourneyTest do
       session_id = "session_#{System.unique_integer([:positive])}"
 
       assert {:ok, block} =
-               Client.impl().recall(group_id, session_id, "Where does Eli work?")
+               Client.impl().recall(group_id, "TestAgent", session_id, "Where does Eli work?")
 
       assert block =~ ~r/<gralkor-memory trust="untrusted">/
       assert block =~ "</gralkor-memory>"
@@ -103,7 +103,7 @@ defmodule Gralkor.JidoMemoryJourneyTest do
       session_id = "session_#{System.unique_integer([:positive])}"
 
       :ok =
-        Client.impl().capture(session_id, group_id, [
+        Client.impl().capture(session_id, group_id, "TestAgent", [
           Message.new(
             "user",
             "Important context: Eli's favourite colour is teal, and Eli drives a blue Subaru Outback."
@@ -119,7 +119,7 @@ defmodule Gralkor.JidoMemoryJourneyTest do
       lookup_session = "lookup_#{System.unique_integer([:positive])}"
 
       assert {:ok, block} =
-               Client.impl().recall(group_id, lookup_session, "What car does Eli drive?")
+               Client.impl().recall(group_id, "TestAgent", lookup_session, "What car does Eli drive?")
 
       lower = String.downcase(block)
 

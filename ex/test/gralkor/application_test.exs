@@ -70,7 +70,7 @@ defmodule Gralkor.ApplicationTest do
 
       [_python, _pool, {Gralkor.CaptureBuffer, opts}] = App.children()
 
-      assert is_function(Keyword.fetch!(opts, :flush_callback), 2)
+      assert is_function(Keyword.fetch!(opts, :flush_callback), 3)
     end
   end
 
@@ -96,7 +96,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log([level: :debug], fn ->
-          assert :ok = cb.("g", [])
+          assert :ok = cb.("g", "TestAgent", [])
         end)
 
       refute logs =~ "[gralkor] capture flushed"
@@ -119,7 +119,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log([level: :info], fn ->
-          assert :ok = cb.("g1", turns)
+          assert :ok = cb.("g1", "TestAgent", turns)
         end)
 
       assert logs =~ "[gralkor] capture flushed"
@@ -150,7 +150,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
-          assert :ok = cb.("g1", turns)
+          assert :ok = cb.("g1", "TestAgent", turns)
         end)
 
       assert logs =~ "[gralkor] [test] capture flush body:"
@@ -171,7 +171,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
-          assert :ok = cb.("g1", turns)
+          assert :ok = cb.("g1", "TestAgent", turns)
         end)
 
       refute logs =~ "[gralkor] [test]"

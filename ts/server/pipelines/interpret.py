@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from .messages import Message, label_for
+from .messages import Message
 
 if TYPE_CHECKING:
     from graphiti_core.llm_client import LLMClient
@@ -49,17 +49,37 @@ class InterpretResult(BaseModel):
     )
 
 
+def _require_agent_name(agent_name: str) -> None:
+    if agent_name is None or not str(agent_name).strip():
+        raise ValueError("agent_name is required and must be non-blank")
+
+
+def _render_label(role: str, agent_name: str) -> str:
+    if role == "user":
+        return "User"
+    if role == "assistant":
+        return agent_name
+    if role == "behaviour":
+        return agent_name
+    return role.capitalize()
+
+
 def build_interpretation_context(
     messages: list[Message],
     facts_text: str,
+    agent_name: str,
     char_budget: int = INTERPRET_CHAR_BUDGET,
 ) -> str:
+    _require_agent_name(agent_name)
     lines: list[str] = []
     for msg in messages:
         text = msg.content.strip()
         if not text:
             continue
-        lines.append(f"{label_for(msg.role)}: {text}")
+        if msg.role == "behaviour":
+            lines.append(f"{agent_name}: (behaviour: {text})")
+        else:
+            lines.append(f"{_render_label(msg.role, agent_name)}: {text}")
 
     budget = char_budget
     trimmed: list[str] = []
@@ -81,7 +101,9 @@ async def interpret_facts(
     messages: list[Message],
     facts_text: str,
     llm_client: "LLMClient",
+    agent_name: str,
 ) -> list[str]:
+    _require_agent_name(agent_name)
     if llm_client is None:
         raise RuntimeError(
             "interpret_facts: llm_client is required (configure an LLM provider API key)"
@@ -89,7 +111,7 @@ async def interpret_facts(
 
     from graphiti_core.prompts.models import Message as LLMMessage
 
-    context = build_interpretation_context(messages, facts_text)
+    context = build_interpretation_context(messages, facts_text, agent_name)
     prompt = [
         LLMMessage(role="system", content=INTERPRET_SYSTEM_PROMPT),
         LLMMessage(role="user", content=context),

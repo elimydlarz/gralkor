@@ -42,10 +42,10 @@ class TestFormatTranscript:
                 ("assistant", "hello"),
             )
         ]
-        result = await format_transcript(turns, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
         assert "User: hi" in result
-        assert "Assistant: (behaviour: distilled summary)" in result
-        assert "Assistant: hello" in result
+        assert "TestAgent: (behaviour: distilled summary)" in result
+        assert "TestAgent: hello" in result
 
     async def test_passes_all_messages_to_distill_llm(self, mock_llm_client):
         turns = [
@@ -56,13 +56,13 @@ class TestFormatTranscript:
                 ("assistant", "a"),
             )
         ]
-        await format_transcript(turns, mock_llm_client)
+        await format_transcript(turns, mock_llm_client, "TestAgent")
         call = mock_llm_client.generate_response.await_args
         user_content = call.args[0][1].content
         assert "User: q" in user_content
-        assert "Agent did: thought: considering" in user_content
-        assert 'Agent did: tool search(q="x") → found' in user_content
-        assert "Assistant: a" in user_content
+        assert "TestAgent: thought: considering" in user_content
+        assert 'TestAgent: tool search(q="x") → found' in user_content
+        assert "TestAgent: a" in user_content
 
     async def test_orders_behaviour_before_assistant_text(self, mock_llm_client):
         turns = [
@@ -72,8 +72,8 @@ class TestFormatTranscript:
                 ("assistant", "a"),
             )
         ]
-        result = await format_transcript(turns, mock_llm_client)
-        assert result.index("(behaviour:") < result.index("Assistant: a")
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
+        assert result.index("(behaviour:") < result.index("TestAgent: a")
 
     async def test_omits_behaviour_when_llm_client_is_none(self):
         turns = [
@@ -83,11 +83,11 @@ class TestFormatTranscript:
                 ("assistant", "hello"),
             )
         ]
-        result = await format_transcript(turns, None)
+        result = await format_transcript(turns, None, "TestAgent")
         assert "(behaviour:" not in result
         assert "secret" not in result
         assert "User: hi" in result
-        assert "Assistant: hello" in result
+        assert "TestAgent: hello" in result
 
     async def test_silently_drops_on_distill_failure(self, mock_llm_client):
         mock_llm_client.generate_response.side_effect = RuntimeError("boom")
@@ -98,15 +98,15 @@ class TestFormatTranscript:
                 ("assistant", "hello"),
             )
         ]
-        result = await format_transcript(turns, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
         assert "(behaviour:" not in result
         assert "User: hi" in result
-        assert "Assistant: hello" in result
+        assert "TestAgent: hello" in result
 
     async def test_skips_turns_with_no_behaviour(self, mock_llm_client):
         turns = [turn(("user", "q"), ("assistant", "a"))]
-        result = await format_transcript(turns, mock_llm_client)
-        assert result == "User: q\nAssistant: a"
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
+        assert result == "User: q\nTestAgent: a"
         mock_llm_client.generate_response.assert_not_awaited()
 
     async def test_distills_turns_in_parallel(self, mock_llm_client):
@@ -117,14 +117,14 @@ class TestFormatTranscript:
             turn(("user", "q1"), ("behaviour", "thought: 1"), ("assistant", "a1")),
             turn(("user", "q2"), ("behaviour", "thought: 2"), ("assistant", "a2")),
         ]
-        result = await format_transcript(turns, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
         assert "(behaviour: first)" in result
         assert "(behaviour: second)" in result
         assert mock_llm_client.generate_response.await_count == 2
 
     async def test_renders_user_only_when_no_behaviour_and_no_answer(self, mock_llm_client):
         turns = [turn(("user", "hello"))]
-        result = await format_transcript(turns, mock_llm_client)
+        result = await format_transcript(turns, mock_llm_client, "TestAgent")
         assert result == "User: hello"
 
 
@@ -148,3 +148,17 @@ class TestSafeDistill:
         prompt = call.args[0]
         assert prompt[0].role == "system"
         assert prompt[0].content == DISTILL_SYSTEM_PROMPT
+
+
+class TestAgentNameValidation:
+    async def test_blank_agent_name_raises(self, mock_llm_client):
+        with pytest.raises(ValueError, match="agent_name"):
+            await format_transcript([], mock_llm_client, "")
+
+    async def test_whitespace_agent_name_raises(self, mock_llm_client):
+        with pytest.raises(ValueError, match="agent_name"):
+            await format_transcript([], mock_llm_client, "   ")
+
+    async def test_none_agent_name_raises(self, mock_llm_client):
+        with pytest.raises(ValueError, match="agent_name"):
+            await format_transcript([], mock_llm_client, None)  # type: ignore[arg-type]

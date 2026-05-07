@@ -36,36 +36,36 @@ def flush_callback():
 class TestAppend:
     async def test_creates_entry_on_first_append(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         assert buffer.has("sess-1")
         assert buffer.pending_count == 1
 
     async def test_accumulates_turns_for_same_session(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn("q1"))
-        buffer.append("sess-1", "grp", make_turn("q2"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q1"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q2"))
         assert buffer.pending_count == 2
 
     async def test_separate_entries_per_session_within_same_group(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-a", "grp", make_turn("a1"))
-        buffer.append("sess-b", "grp", make_turn("b1"))
+        buffer.append("sess-a", "grp", "TestAgent", make_turn("a1"))
+        buffer.append("sess-b", "grp", "TestAgent", make_turn("b1"))
         assert buffer.has("sess-a")
         assert buffer.has("sess-b")
         assert buffer.pending_count == 2
 
     async def test_rebinding_session_to_different_group_raises(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp-a", make_turn())
+        buffer.append("sess-1", "grp-a", "TestAgent", make_turn())
         with pytest.raises(ValueError, match="session_id"):
-            buffer.append("sess-1", "grp-b", make_turn())
+            buffer.append("sess-1", "grp-b", "TestAgent", make_turn())
 
 
 class TestTurnsFor:
     async def test_returns_buffered_turns_in_order(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn("first"))
-        buffer.append("sess-1", "grp", make_turn("second"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("first"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("second"))
         turns = buffer.turns_for("sess-1")
         user_texts = [
             m.content for turn in turns for m in turn if m.role == "user"
@@ -74,8 +74,8 @@ class TestTurnsFor:
 
     async def test_each_turn_is_its_own_list_of_messages(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn("q1", "a1"))
-        buffer.append("sess-1", "grp", make_turn("q2", "a2"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q1", "a1"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q2", "a2"))
         turns = buffer.turns_for("sess-1")
         assert len(turns) == 2
         assert all(isinstance(turn, list) for turn in turns)
@@ -87,7 +87,7 @@ class TestTurnsFor:
 
     async def test_returns_empty_after_flush(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         await buffer.flush_all()
         assert buffer.turns_for("sess-1") == []
 
@@ -99,7 +99,7 @@ class TestRetry:
             flush_callback=flush_callback,
             retry_delays=(0.01, 0.01, 0.01),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         buffer.flush("sess-1")
         await asyncio.sleep(0.1)
         assert flush_callback.await_count == 2
@@ -110,7 +110,7 @@ class TestRetry:
             flush_callback=flush_callback,
             retry_delays=(0.01, 0.01, 0.01),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         buffer.flush("sess-1")
         await asyncio.sleep(0.1)
         assert flush_callback.await_count == 1
@@ -127,7 +127,7 @@ class TestRetry:
             flush_callback=flush_callback,
             retry_delays=(0.01, 0.01, 0.01),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         import logging
 
         with caplog.at_level(logging.ERROR):
@@ -146,7 +146,7 @@ class TestRetry:
             flush_callback=flush_callback,
             retry_delays=(0.01, 0.01, 0.01),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         import logging
 
         with caplog.at_level(logging.ERROR):
@@ -161,7 +161,7 @@ class TestRetry:
             flush_callback=flush_callback,
             retry_delays=(0.01, 0.01, 0.01),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         import logging
 
         with caplog.at_level(logging.ERROR):
@@ -173,7 +173,7 @@ class TestRetry:
     async def test_uses_exponential_delays(self):
         call_times: list[float] = []
 
-        async def record(_group, _turns):
+        async def record(_group, _agent, _turns):
             call_times.append(asyncio.get_event_loop().time())
             raise RuntimeError("boom")
 
@@ -181,7 +181,7 @@ class TestRetry:
             flush_callback=record,
             retry_delays=(0.05, 0.1, 0.2),
         )
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         buffer.flush("sess-1")
         await asyncio.sleep(0.5)
         gap1 = call_times[1] - call_times[0]
@@ -195,19 +195,20 @@ class TestRetry:
 class TestFlushSession:
     async def test_flushes_turns_via_callback(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn("q1"))
-        buffer.append("sess-1", "grp", make_turn("q2"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q1"))
+        buffer.append("sess-1", "grp", "TestAgent", make_turn("q2"))
         buffer.flush("sess-1")
         await asyncio.sleep(0.01)
         flush_callback.assert_awaited_once()
         args = flush_callback.await_args.args
         assert args[0] == "grp"
-        user_texts = [m.content for turn in args[1] for m in turn if m.role == "user"]
+        assert args[1] == "TestAgent"
+        user_texts = [m.content for turn in args[2] for m in turn if m.role == "user"]
         assert user_texts == ["q1", "q2"]
 
     async def test_removes_entry_immediately(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         buffer.flush("sess-1")
         assert not buffer.has("sess-1")
         assert buffer.turns_for("sess-1") == []
@@ -215,11 +216,11 @@ class TestFlushSession:
     async def test_returns_without_awaiting_callback(self, flush_callback):
         slow_event = asyncio.Event()
 
-        async def slow_callback(_group, _turns):
+        async def slow_callback(_group, _agent, _turns):
             await slow_event.wait()
 
         buffer = CaptureBuffer(flush_callback=slow_callback)
-        buffer.append("sess-1", "grp", make_turn())
+        buffer.append("sess-1", "grp", "TestAgent", make_turn())
         buffer.flush("sess-1")
         slow_event.set()
 
@@ -233,14 +234,14 @@ class TestFlushSession:
 class TestFlushAll:
     async def test_flushes_all_pending_sessions_immediately(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-a", "grp-a", make_turn())
-        buffer.append("sess-b", "grp-b", make_turn())
+        buffer.append("sess-a", "grp-a", "TestAgent", make_turn())
+        buffer.append("sess-b", "grp-b", "TestAgent", make_turn())
         await buffer.flush_all()
         assert flush_callback.await_count == 2
 
     async def test_clears_entries_after_flush_all(self, flush_callback):
         buffer = CaptureBuffer(flush_callback=flush_callback)
-        buffer.append("sess-a", "grp", make_turn())
+        buffer.append("sess-a", "grp", "TestAgent", make_turn())
         await buffer.flush_all()
         assert not buffer.has("sess-a")
 
@@ -255,7 +256,30 @@ class TestFlushAll:
             flush_callback=flush_callback,
             retry_delays=(),
         )
-        buffer.append("sess-a", "grp-a", make_turn())
-        buffer.append("sess-b", "grp-b", make_turn())
+        buffer.append("sess-a", "grp-a", "TestAgent", make_turn())
+        buffer.append("sess-b", "grp-b", "TestAgent", make_turn())
         await buffer.flush_all()
         assert flush_callback.await_count == 2
+
+
+class TestAgentNameValidation:
+    async def test_blank_agent_name_raises(self, flush_callback):
+        buffer = CaptureBuffer(flush_callback=flush_callback)
+        with pytest.raises(ValueError, match="agent_name"):
+            buffer.append("sess-1", "grp", "", make_turn())
+
+    async def test_whitespace_agent_name_raises(self, flush_callback):
+        buffer = CaptureBuffer(flush_callback=flush_callback)
+        with pytest.raises(ValueError, match="agent_name"):
+            buffer.append("sess-1", "grp", "   ", make_turn())
+
+    async def test_none_agent_name_raises(self, flush_callback):
+        buffer = CaptureBuffer(flush_callback=flush_callback)
+        with pytest.raises(ValueError, match="agent_name"):
+            buffer.append("sess-1", "grp", None, make_turn())  # type: ignore[arg-type]
+
+    async def test_rebind_to_different_agent_name_raises(self, flush_callback):
+        buffer = CaptureBuffer(flush_callback=flush_callback)
+        buffer.append("sess-1", "grp", "AgentA", make_turn())
+        with pytest.raises(ValueError, match="agent_name"):
+            buffer.append("sess-1", "grp", "AgentB", make_turn())

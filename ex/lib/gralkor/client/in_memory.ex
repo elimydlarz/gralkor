@@ -50,12 +50,16 @@ defmodule Gralkor.Client.InMemory do
   # ── Client behaviour ────────────────────────────────────────
 
   @impl Gralkor.Client
-  def recall(group_id, session_id, query),
-    do: GenServer.call(__MODULE__, {:call, :recall, [group_id, session_id, query]})
+  def recall(group_id, agent_name, session_id, query) do
+    raise_if_blank!(:agent_name, agent_name)
+    GenServer.call(__MODULE__, {:call, :recall, [group_id, agent_name, session_id, query]})
+  end
 
   @impl Gralkor.Client
-  def capture(session_id, group_id, turn),
-    do: GenServer.call(__MODULE__, {:call, :capture, [session_id, group_id, turn]})
+  def capture(session_id, group_id, agent_name, turn) do
+    raise_if_blank!(:agent_name, agent_name)
+    GenServer.call(__MODULE__, {:call, :capture, [session_id, group_id, agent_name, turn]})
+  end
 
   @impl Gralkor.Client
   def memory_add(group_id, content, source),
@@ -94,4 +98,18 @@ defmodule Gralkor.Client.InMemory do
   end
 
   defp empty_state, do: %{responses: %{}, calls: %{}}
+
+  defp raise_if_blank!(field, value) when is_binary(value) do
+    if String.trim(value) == "" do
+      raise ArgumentError,
+            "Gralkor.Client.InMemory: #{field} must be a non-blank string, got #{inspect(value)}"
+    end
+
+    :ok
+  end
+
+  defp raise_if_blank!(field, value) do
+    raise ArgumentError,
+          "Gralkor.Client.InMemory: #{field} must be a non-blank string, got #{inspect(value)}"
+  end
 end

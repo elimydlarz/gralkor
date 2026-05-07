@@ -46,13 +46,13 @@ export function gralkorClientContract(setup: ContractSetup): void {
   describe("port contract: recall with a non-blank string session_id", () => {
     it("returns { ok: block } when the backend returns a memory block", async () => {
       await setup.configureBackend(client, "recall", { ok: "<gralkor-memory>facts</gralkor-memory>" });
-      const r = await client.recall("g1", "s1", "q");
+      const r = await client.recall("g1", "s1", "q", "TestAgent");
       expect(r).toEqual({ ok: "<gralkor-memory>facts</gralkor-memory>" });
     });
 
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "recall", { error: "boom" });
-      const r = await client.recall("g1", "s1", "q");
+      const r = await client.recall("g1", "s1", "q", "TestAgent");
       expect("error" in r).toBe(true);
     });
   });
@@ -60,13 +60,13 @@ export function gralkorClientContract(setup: ContractSetup): void {
   describe("port contract: recall with a null session_id", () => {
     it("returns { ok: block } when the backend returns a memory block", async () => {
       await setup.configureBackend(client, "recall", { ok: "<gralkor-memory>facts</gralkor-memory>" });
-      const r = await client.recall("g1", null, "q");
+      const r = await client.recall("g1", null, "q", "TestAgent");
       expect(r).toEqual({ ok: "<gralkor-memory>facts</gralkor-memory>" });
     });
 
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "recall", { error: "boom" });
-      const r = await client.recall("g1", null, "q");
+      const r = await client.recall("g1", null, "q", "TestAgent");
       expect("error" in r).toBe(true);
     });
   });
@@ -79,14 +79,44 @@ export function gralkorClientContract(setup: ContractSetup): void {
 
     it("returns { ok: true } when the backend acknowledges the capture", async () => {
       await setup.configureBackend(client, "capture", { ok: true });
-      const r = await client.capture("s1", "g1", messages);
+      const r = await client.capture("s1", "g1", "TestAgent", messages);
       expect(r).toEqual({ ok: true });
     });
 
     it("returns { error: reason } when the backend fails", async () => {
       await setup.configureBackend(client, "capture", { error: "boom" });
-      const r = await client.capture("s1", "g1", messages);
+      const r = await client.capture("s1", "g1", "TestAgent", messages);
       expect("error" in r).toBe(true);
+    });
+  });
+
+  describe("port contract: agentName validation", () => {
+    const messages: Message[] = [{ role: "user", content: "q" }];
+
+    it("recall throws at the port boundary when agentName is missing (no backend call)", async () => {
+      await setup.configureBackend(client, "recall", { ok: "should-not-be-returned" });
+      await expect(
+        client.recall("g1", "s1", "q", undefined as unknown as string),
+      ).rejects.toThrow(/agent_name/);
+    });
+
+    it("recall throws at the port boundary when agentName is blank (no backend call)", async () => {
+      await setup.configureBackend(client, "recall", { ok: "should-not-be-returned" });
+      await expect(client.recall("g1", "s1", "q", "")).rejects.toThrow(/agent_name/);
+      await expect(client.recall("g1", "s1", "q", "   ")).rejects.toThrow(/agent_name/);
+    });
+
+    it("capture throws at the port boundary when agentName is missing (no backend call)", async () => {
+      await setup.configureBackend(client, "capture", { ok: true });
+      await expect(
+        client.capture("s1", "g1", undefined as unknown as string, messages),
+      ).rejects.toThrow(/agent_name/);
+    });
+
+    it("capture throws at the port boundary when agentName is blank (no backend call)", async () => {
+      await setup.configureBackend(client, "capture", { ok: true });
+      await expect(client.capture("s1", "g1", "", messages)).rejects.toThrow(/agent_name/);
+      await expect(client.capture("s1", "g1", "   ", messages)).rejects.toThrow(/agent_name/);
     });
   });
 

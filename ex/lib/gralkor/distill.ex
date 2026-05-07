@@ -5,7 +5,7 @@ defmodule Gralkor.Distill do
 
   Each turn that contains a `"behaviour"` message gets distilled by the
   configured LLM into a first-person past-tense summary and rendered as
-  `Assistant: (behaviour: {summary})` before the assistant text. Turns
+  `{agent_name}: (behaviour: {summary})` before the assistant text. Turns
   without behaviour skip the LLM entirely.
 
   Distillation per turn is best-effort: any failure (LLM error, exception)
@@ -30,24 +30,23 @@ defmodule Gralkor.Distill do
 
   `distill_fn` is the LLM caller used to summarise behaviour messages. Pass
   `nil` to skip distillation entirely (behaviour lines are silently omitted).
+
+  `agent_name` is required and non-blank — used to label assistant and
+  behaviour lines (e.g. `"Susu: hello"`, `"Susu: (behaviour: thought)"`).
   """
-  @spec format_transcript([turn()], distill_fn()) :: String.t()
-  def format_transcript(turns, distill_fn) when is_list(turns) do
+  @spec format_transcript([turn()], distill_fn(), String.t()) :: String.t()
+  def format_transcript(turns, distill_fn, agent_name) when is_list(turns) do
+    raise_if_blank!(agent_name)
+
     turns
-    |> distill_in_parallel(distill_fn)
-    |> Enum.map(&render_turn/1)
+    |> distill_in_parallel(distill_fn, agent_name)
+    |> Enum.map(&render_turn(&1, agent_name))
     |> Enum.join("\n")
   end
 
   @doc """
   Schema for the structured-output response the LLM returns when distilling
   a behaviour-containing turn.
-
-  Used by callers that wire `format_transcript/2` up to req_llm:
-
-      schema = Gralkor.Distill.distill_schema()
-      {:ok, response} = ReqLLM.generate_object(model, prompt, schema)
-      ReqLLM.Response.object(response).behaviour
   """
   @spec distill_schema() :: keyword()
   def distill_schema do
@@ -63,13 +62,25 @@ defmodule Gralkor.Distill do
 
   # ── internal ────────────────────────────────────────────────
 
-  defp distill_in_parallel(turns, distill_fn) do
+  defp raise_if_blank!(name) when is_binary(name) do
+    if String.trim(name) == "" do
+      raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(name)}"
+    end
+
+    :ok
+  end
+
+  defp raise_if_blank!(other) do
+    raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(other)}"
+  end
+
+  defp distill_in_parallel(turns, distill_fn, agent_name) do
     turns
     |> Enum.map(fn turn -> {turn, has_behaviour?(turn)} end)
     |> Task.async_stream(
       fn
         {turn, false} -> {turn, nil}
-        {turn, true} -> {turn, safe_distill(distill_fn, turn)}
+        {turn, true} -> {turn, safe_distill(distill_fn, turn, agent_name)}
       end,
       ordered: true,
       timeout: @parallel_timeout
@@ -79,10 +90,10 @@ defmodule Gralkor.Distill do
 
   defp has_behaviour?(turn), do: Enum.any?(turn, &(&1.role == "behaviour"))
 
-  defp safe_distill(nil, _turn), do: nil
+  defp safe_distill(nil, _turn, _agent_name), do: nil
 
-  defp safe_distill(distill_fn, turn) do
-    distill_fn.(thinking_prompt(turn))
+  defp safe_distill(distill_fn, turn, agent_name) do
+    distill_fn.(thinking_prompt(turn, agent_name))
   rescue
     _ -> {:error, :raised}
   catch
@@ -93,40 +104,50 @@ defmodule Gralkor.Distill do
     other -> {:error, {:unexpected_distill_response, other}}
   end
 
-  defp thinking_prompt(turn) do
+  defp thinking_prompt(turn, agent_name) do
     turn
-    |> Enum.map(&("#{role_label(&1.role)}: #{&1.content}"))
+    |> Enum.map(fn m ->
+      case m.role do
+        "user" -> "User: #{m.content}"
+        "assistant" -> "#{agent_name}: #{m.content}"
+        "behaviour" -> "#{agent_name}: (behaviour: #{m.content})"
+      end
+    end)
     |> Enum.join("\n")
   end
 
-  defp role_label("user"), do: "User"
-  defp role_label("assistant"), do: "Assistant"
-  defp role_label("behaviour"), do: "Agent did"
+  defp render_turn({turn, distill_result}, agent_name) do
+    lines =
+      turn
+      |> Enum.reject(&(&1.role == "behaviour"))
+      |> Enum.flat_map(fn m ->
+        case m.role do
+          "user" ->
+            ["User: #{m.content}"]
 
-  defp render_turn({turn, distill_result}) do
-    user_assistant = render_user_assistant(turn)
-    behaviour_line = render_behaviour_line(distill_result)
+          "assistant" ->
+            assistant_lines(distill_result, agent_name) ++ ["#{agent_name}: #{m.content}"]
+        end
+      end)
+      |> ensure_behaviour_present(distill_result, agent_name)
 
-    case behaviour_line do
-      nil -> user_assistant
-      line -> insert_behaviour_before_assistant(user_assistant, line)
+    Enum.join(lines, "\n")
+  end
+
+  defp assistant_lines({:ok, summary}, agent_name),
+    do: ["#{agent_name}: (behaviour: #{summary})"]
+
+  defp assistant_lines(_, _), do: []
+
+  # If a turn has behaviour but no assistant message, still emit the behaviour
+  # line so the summary isn't dropped on the floor.
+  defp ensure_behaviour_present(lines, {:ok, summary}, agent_name) do
+    if Enum.any?(lines, &String.starts_with?(&1, "#{agent_name}: ")) do
+      lines
+    else
+      lines ++ ["#{agent_name}: (behaviour: #{summary})"]
     end
   end
 
-  defp render_user_assistant(turn) do
-    turn
-    |> Enum.reject(&(&1.role == "behaviour"))
-    |> Enum.map(&("#{role_label(&1.role)}: #{&1.content}"))
-    |> Enum.join("\n")
-  end
-
-  defp render_behaviour_line({:ok, summary}), do: "Assistant: (behaviour: #{summary})"
-  defp render_behaviour_line(_), do: nil
-
-  defp insert_behaviour_before_assistant(user_assistant, behaviour_line) do
-    case String.split(user_assistant, "\nAssistant:", parts: 2) do
-      [before, rest] -> "#{before}\n#{behaviour_line}\nAssistant:#{rest}"
-      [only] -> "#{behaviour_line}\n#{only}"
-    end
-  end
+  defp ensure_behaviour_present(lines, _, _), do: lines
 end

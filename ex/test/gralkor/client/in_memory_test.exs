@@ -26,28 +26,28 @@ defmodule Gralkor.Client.InMemoryTest do
   run_contract do: fn -> :ok end
 
   describe "ex-client-in-memory > when an operation is called" do
-    test "the call is recorded with its arguments for later inspection" do
+    test "the call is recorded with its arguments (including agent_name) for later inspection" do
       InMemory.set_recall({:ok, "block"})
-      InMemory.recall("g-1", "s-1", "q?")
+      InMemory.recall("g-1", "TestAgent", "s-1", "q?")
 
-      assert [["g-1", "s-1", "q?"]] = InMemory.recalls()
+      assert [["g-1", "TestAgent", "s-1", "q?"]] = InMemory.recalls()
     end
   end
 
   describe "ex-client-in-memory > if no response is configured for an operation" do
     test "{:error, :not_configured} is returned" do
-      assert {:error, :not_configured} = InMemory.recall("g", "s", "q")
+      assert {:error, :not_configured} = InMemory.recall("g", "TestAgent", "s", "q")
     end
   end
 
   describe "ex-client-in-memory > when reset/0 is called" do
     test "configured responses and recorded calls are cleared" do
       InMemory.set_recall({:ok, "x"})
-      InMemory.recall("g", "s", "q")
+      InMemory.recall("g", "TestAgent", "s", "q")
       InMemory.reset()
 
       assert [] = InMemory.recalls()
-      assert {:error, :not_configured} = InMemory.recall("g", "s", "q")
+      assert {:error, :not_configured} = InMemory.recall("g", "TestAgent", "s", "q")
     end
   end
 end

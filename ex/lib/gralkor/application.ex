@@ -47,8 +47,8 @@ defmodule Gralkor.Application do
     distill_fn = Keyword.get_lazy(deps, :distill_fn, &Native.distill_callback/0)
     add_episode_fn = Keyword.get(deps, :add_episode_fn, &GraphitiPool.add_episode/3)
 
-    fn group_id, turns ->
-      body = Distill.format_transcript(turns, distill_fn)
+    fn group_id, agent_name, turns ->
+      body = Distill.format_transcript(turns, distill_fn, agent_name)
 
       cond do
         body == "" ->

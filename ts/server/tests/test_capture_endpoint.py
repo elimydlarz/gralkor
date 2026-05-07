@@ -18,6 +18,7 @@ async def test_rejects_blank_session_id(client, mock_graphiti):
         json={
             "session_id": "",
             "group_id": "grp",
+            "agent_name": "TestAgent",
             "messages": [{"role": "user", "content": "q"}],
         },
     )
@@ -29,6 +30,7 @@ async def test_rejects_missing_session_id(client, mock_graphiti):
         "/capture",
         json={
             "group_id": "grp",
+            "agent_name": "TestAgent",
             "messages": [{"role": "user", "content": "q"}],
         },
     )
@@ -41,6 +43,7 @@ async def test_returns_204(client, mock_graphiti):
         json={
             "session_id": "sess-1",
             "group_id": "grp",
+            "agent_name": "TestAgent",
             "messages": [
                 {"role": "user", "content": "q"},
                 {"role": "assistant", "content": "a"},
@@ -57,6 +60,7 @@ async def test_appends_to_buffer_by_session_id(client, mock_graphiti):
         json={
             "session_id": "sess-1",
             "group_id": "grp",
+            "agent_name": "TestAgent",
             "messages": [
                 {"role": "user", "content": "q"},
                 {"role": "assistant", "content": "a"},
@@ -72,6 +76,7 @@ async def test_sanitizes_group_id(client, mock_graphiti):
         json={
             "session_id": "sess-2",
             "group_id": "my-agent",
+            "agent_name": "TestAgent",
             "messages": [
                 {"role": "user", "content": "q"},
                 {"role": "assistant", "content": "a"},
@@ -89,6 +94,7 @@ async def test_does_not_call_distill_synchronously(client, mock_graphiti):
         json={
             "session_id": "sess-3",
             "group_id": "grp",
+            "agent_name": "TestAgent",
             "messages": [
                 {"role": "user", "content": "q"},
                 {"role": "assistant", "content": "a"},
@@ -106,6 +112,7 @@ class TestObservability:
             json={
                 "session_id": "s",
                 "group_id": "g",
+                "agent_name": "TestAgent",
                 "messages": [
                     {"role": "user", "content": "sensitive question"},
                     {"role": "assistant", "content": "secret answer"},
@@ -123,6 +130,7 @@ class TestObservability:
             json={
                 "session_id": "s",
                 "group_id": "g",
+                "agent_name": "TestAgent",
                 "messages": [
                     {"role": "user", "content": "sensitive question"},
                     {"role": "behaviour", "content": "thought: considering"},
@@ -138,3 +146,28 @@ class TestObservability:
             and "secret answer" in m
             for m in debug_msgs
         ), debug_msgs
+
+
+async def test_rejects_missing_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/capture",
+        json={
+            "session_id": "sess-1",
+            "group_id": "grp",
+            "messages": [{"role": "user", "content": "q"}],
+        },
+    )
+    assert resp.status_code == 422
+
+
+async def test_rejects_blank_agent_name(client, mock_graphiti):
+    resp = await client.post(
+        "/capture",
+        json={
+            "session_id": "sess-1",
+            "group_id": "grp",
+            "agent_name": "",
+            "messages": [{"role": "user", "content": "q"}],
+        },
+    )
+    assert resp.status_code == 422

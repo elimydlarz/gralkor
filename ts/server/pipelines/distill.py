@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from .messages import Message, label_for
+from .messages import Message
 
 if TYPE_CHECKING:
     from graphiti_core.llm_client import LLMClient
@@ -29,7 +29,22 @@ class DistillResult(BaseModel):
     behaviour: str
 
 
-def _build_distill_input(messages: list[Message]) -> str:
+def _require_agent_name(agent_name: str) -> None:
+    if agent_name is None or not str(agent_name).strip():
+        raise ValueError("agent_name is required and must be non-blank")
+
+
+def _render_label(role: str, agent_name: str) -> str:
+    if role == "user":
+        return "User"
+    if role == "assistant":
+        return agent_name
+    if role == "behaviour":
+        return agent_name
+    return role.capitalize()
+
+
+def _build_distill_input(messages: list[Message], agent_name: str) -> str:
     has_behaviour = any(m.role == "behaviour" and m.content.strip() for m in messages)
     if not has_behaviour:
         return ""
@@ -39,7 +54,7 @@ def _build_distill_input(messages: list[Message]) -> str:
         text = msg.content.strip()
         if not text:
             continue
-        lines.append(f"{label_for(msg.role)}: {text}")
+        lines.append(f"{_render_label(msg.role, agent_name)}: {text}")
     return "\n".join(lines)
 
 
@@ -73,8 +88,11 @@ async def safe_distill(llm_client: "LLMClient", thinking: str) -> str:
 async def format_transcript(
     turns: list[list[Message]],
     llm_client: "LLMClient | None",
+    agent_name: str,
 ) -> str:
-    distill_inputs = [(i, _build_distill_input(turn)) for i, turn in enumerate(turns)]
+    _require_agent_name(agent_name)
+
+    distill_inputs = [(i, _build_distill_input(turn, agent_name)) for i, turn in enumerate(turns)]
     distill_inputs = [(i, text) for i, text in distill_inputs if text]
 
     summaries: dict[int, str] = {}
@@ -94,11 +112,11 @@ async def format_transcript(
 
         summary = summaries.get(i)
         if summary:
-            lines.append(f"Assistant: (behaviour: {summary})")
+            lines.append(f"{agent_name}: (behaviour: {summary})")
 
         answer_texts = [
             m.content.strip() for m in turn if m.role == "assistant" and m.content.strip()
         ]
         for text in answer_texts:
-            lines.append(f"Assistant: {text}")
+            lines.append(f"{agent_name}: {text}")
     return "\n".join(lines)

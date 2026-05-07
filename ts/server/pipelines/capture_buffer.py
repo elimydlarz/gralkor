@@ -34,12 +34,13 @@ class CaptureClientError(Exception):
     """Raised when a downstream client returned a non-retryable 4xx response."""
 
 
-FlushCallback = Callable[[str, list[list[Message]]], Awaitable[None]]
+FlushCallback = Callable[[str, str, list[list[Message]]], Awaitable[None]]
 
 
 @dataclass
 class _Entry:
     group_id: str
+    agent_name: str
     turns: list[list[Message]] = field(default_factory=list)
 
 
@@ -54,16 +55,30 @@ class CaptureBuffer:
         self._retry_delays = retry_delays
         self._pending_flushes: set[asyncio.Task[None]] = set()
 
-    def append(self, session_id: str, group_id: str, messages: list[Message]) -> None:
+    def append(
+        self,
+        session_id: str,
+        group_id: str,
+        agent_name: str,
+        messages: list[Message],
+    ) -> None:
+        if agent_name is None or not str(agent_name).strip():
+            raise ValueError("agent_name is required and must be non-blank")
         entry = self._entries.get(session_id)
         if entry is None:
-            entry = _Entry(group_id=group_id)
+            entry = _Entry(group_id=group_id, agent_name=agent_name)
             self._entries[session_id] = entry
-        elif entry.group_id != group_id:
-            raise ValueError(
-                f"session_id {session_id!r} already bound to group_id "
-                f"{entry.group_id!r}; refusing to rebind to {group_id!r}"
-            )
+        else:
+            if entry.group_id != group_id:
+                raise ValueError(
+                    f"session_id {session_id!r} already bound to group_id "
+                    f"{entry.group_id!r}; refusing to rebind to {group_id!r}"
+                )
+            if entry.agent_name != agent_name:
+                raise ValueError(
+                    f"session_id {session_id!r} already bound to agent_name "
+                    f"{entry.agent_name!r}; refusing to rebind to {agent_name!r}"
+                )
         entry.turns.append(list(messages))
 
     def turns_for(self, session_id: str) -> list[list[Message]]:
@@ -71,12 +86,16 @@ class CaptureBuffer:
         return [list(turn) for turn in entry.turns] if entry is not None else []
 
     async def _flush_with_retry(
-        self, session_id: str, group_id: str, turns: list[list[Message]]
+        self,
+        session_id: str,
+        group_id: str,
+        agent_name: str,
+        turns: list[list[Message]],
     ) -> None:
         attempt = 0
         while True:
             try:
-                await self._flush_callback(group_id, turns)
+                await self._flush_callback(group_id, agent_name, turns)
                 return
             except CaptureClientError as err:
                 logger.error(
@@ -122,7 +141,7 @@ class CaptureBuffer:
         if entry is None:
             return
         task = asyncio.create_task(
-            self._flush_with_retry(session_id, entry.group_id, entry.turns)
+            self._flush_with_retry(session_id, entry.group_id, entry.agent_name, entry.turns)
         )
         self._pending_flushes.add(task)
         task.add_done_callback(self._pending_flushes.discard)
@@ -134,7 +153,9 @@ class CaptureBuffer:
                 continue
             if entry.turns:
                 task = asyncio.create_task(
-                    self._flush_with_retry(session_id, entry.group_id, entry.turns)
+                    self._flush_with_retry(
+                        session_id, entry.group_id, entry.agent_name, entry.turns
+                    )
                 )
                 self._pending_flushes.add(task)
                 task.add_done_callback(self._pending_flushes.discard)

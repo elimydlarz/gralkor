@@ -7,8 +7,9 @@ defmodule Gralkor.Interpret do
 
     * `build_interpretation_context/3` — pure: assemble the LLM prompt from
       conversation messages and a formatted facts string, dropping oldest
-      messages until the prompt fits the configured char budget.
-    * `interpret_facts/3` — call the LLM with that prompt and a structured-
+      messages until the prompt fits the configured char budget. Renders
+      role labels using `agent_name`.
+    * `interpret_facts/4` — call the LLM with that prompt and a structured-
       output schema; return the list of relevant facts the LLM selected.
 
   See `ex-interpret` and `ex-interpret-context` in `gralkor/TEST_TREES.md`.
@@ -25,11 +26,14 @@ defmodule Gralkor.Interpret do
   filtered list of relevant facts.
 
   Raises if the LLM call returns `{:error, _}` or a non-list response.
+  Raises if `agent_name` is missing or blank.
   """
-  @spec interpret_facts([Message.t()], String.t(), interpret_fn(), keyword()) :: [String.t()]
-  def interpret_facts(messages, facts_text, interpret_fn, opts \\ [])
+  @spec interpret_facts([Message.t()], String.t(), interpret_fn(), String.t(), keyword()) ::
+          [String.t()]
+  def interpret_facts(messages, facts_text, interpret_fn, agent_name, opts \\ [])
       when is_list(messages) and is_binary(facts_text) and is_function(interpret_fn, 1) do
-    prompt = build_interpretation_context(messages, facts_text, opts)
+    raise_if_blank!(agent_name)
+    prompt = build_interpretation_context(messages, facts_text, agent_name, opts)
 
     case interpret_fn.(prompt) do
       {:ok, list} when is_list(list) ->
@@ -45,12 +49,6 @@ defmodule Gralkor.Interpret do
 
   @doc """
   Schema for the structured-output response the LLM returns.
-
-  Wired up by callers that drive `interpret_facts/3` via req_llm:
-
-      schema = Gralkor.Interpret.interpret_schema()
-      {:ok, response} = ReqLLM.generate_object(model, prompt, schema)
-      ReqLLM.Response.object(response).relevantFacts
   """
   @spec interpret_schema() :: keyword()
   def interpret_schema do
@@ -71,27 +69,45 @@ defmodule Gralkor.Interpret do
   Assemble the LLM prompt from conversation messages and the formatted facts.
 
   Drops oldest messages until the assembled prompt fits the char budget
-  (`opts[:budget]`, default #{@default_budget}).
+  (`opts[:budget]`, default #{@default_budget}). Raises on blank agent_name.
   """
-  @spec build_interpretation_context([Message.t()], String.t(), keyword()) :: String.t()
-  def build_interpretation_context(messages, facts_text, opts \\ [])
+  @spec build_interpretation_context([Message.t()], String.t(), String.t(), keyword()) ::
+          String.t()
+  def build_interpretation_context(messages, facts_text, agent_name, opts \\ [])
       when is_list(messages) and is_binary(facts_text) do
+    raise_if_blank!(agent_name)
     budget = Keyword.get(opts, :budget, @default_budget)
 
     messages
-    |> labelled_lines()
+    |> labelled_lines(agent_name)
     |> fit_to_budget(facts_text, budget)
     |> assemble(facts_text)
   end
 
   # ── internal ────────────────────────────────────────────────
 
-  defp labelled_lines(messages) do
-    messages
-    |> Enum.map(fn m -> {role_label(m.role), String.trim(m.content)} end)
-    |> Enum.reject(fn {_, c} -> c == "" end)
-    |> Enum.map(fn {label, content} -> "#{label}: #{content}" end)
+  defp raise_if_blank!(name) when is_binary(name) do
+    if String.trim(name) == "" do
+      raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(name)}"
+    end
+
+    :ok
   end
+
+  defp raise_if_blank!(other) do
+    raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(other)}"
+  end
+
+  defp labelled_lines(messages, agent_name) do
+    messages
+    |> Enum.map(fn m -> {m.role, String.trim(m.content)} end)
+    |> Enum.reject(fn {_, c} -> c == "" end)
+    |> Enum.map(fn {role, content} -> render_line(role, content, agent_name) end)
+  end
+
+  defp render_line("user", content, _agent), do: "User: #{content}"
+  defp render_line("assistant", content, agent), do: "#{agent}: #{content}"
+  defp render_line("behaviour", content, agent), do: "#{agent}: (behaviour: #{content})"
 
   defp fit_to_budget([], _facts, _budget), do: []
 
@@ -110,8 +126,4 @@ defmodule Gralkor.Interpret do
       "\n\nMemory facts to interpret:\n" <>
       facts_text
   end
-
-  defp role_label("user"), do: "User"
-  defp role_label("assistant"), do: "Assistant"
-  defp role_label("behaviour"), do: "Agent did"
 end

@@ -21,8 +21,8 @@ type Op =
 export class GralkorInMemoryClient implements GralkorClient {
   private responses = new Map<Op, Result<unknown>>();
 
-  readonly recalls: Array<[string, string, string, number | undefined]> = [];
-  readonly captures: Array<[string, string, Message[]]> = [];
+  readonly recalls: Array<[string, string | null, string, string, number | undefined]> = [];
+  readonly captures: Array<[string, string, string, Message[]]> = [];
   readonly adds: Array<[string, string, string | null]> = [];
   readonly endSessions: Array<[string]> = [];
   readonly healthChecks: Array<[]> = [];
@@ -51,16 +51,24 @@ export class GralkorInMemoryClient implements GralkorClient {
 
   async recall(
     groupId: string,
-    sessionId: string,
+    sessionId: string | null,
     query: string,
+    agentName: string,
     maxResults?: number,
   ): Promise<Result<string>> {
-    this.recalls.push([groupId, sessionId, query, maxResults]);
+    requireAgentName(agentName);
+    this.recalls.push([groupId, sessionId, query, agentName, maxResults]);
     return this.respond("recall");
   }
 
-  async capture(sessionId: string, groupId: string, messages: Message[]): Promise<Result<true>> {
-    this.captures.push([sessionId, groupId, messages]);
+  async capture(
+    sessionId: string,
+    groupId: string,
+    agentName: string,
+    messages: Message[],
+  ): Promise<Result<true>> {
+    requireAgentName(agentName);
+    this.captures.push([sessionId, groupId, agentName, messages]);
     return this.respond("capture");
   }
 
@@ -93,5 +101,11 @@ export class GralkorInMemoryClient implements GralkorClient {
   ): Promise<Result<{ communities: number; edges: number }>> {
     this.communitiesBuilds.push([groupId]);
     return this.respond("buildCommunities");
+  }
+}
+
+function requireAgentName(name: string): void {
+  if (typeof name !== "string" || name.trim() === "") {
+    throw new Error("agent_name must be a non-blank string");
   }
 }
