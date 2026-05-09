@@ -9,8 +9,8 @@ defmodule Gralkor.GraphitiPoolTest do
     defaults = [
       name: nil,
       table: table,
-      data_dir: "/tmp/never_used",
-      construct_falkor_db: fn _data_dir -> :stub_falkor_db end,
+      falkordb_spec: {:embedded, "/tmp/never_used"},
+      construct_falkor_db: fn _spec -> :stub_falkor_db end,
       construct_shared_clients: fn _llm, _embedder ->
         %{llm_client: nil, embedder: nil, cross_encoder: nil}
       end,
@@ -133,7 +133,7 @@ defmodule Gralkor.GraphitiPoolTest do
       data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
       File.mkdir_p!(data_dir)
 
-      {:ok, pid} = GraphitiPool.start_link(name: nil, data_dir: data_dir, warmup: false)
+      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
 
       assert Process.alive?(pid)
 
@@ -145,7 +145,7 @@ defmodule Gralkor.GraphitiPoolTest do
       data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
       File.mkdir_p!(data_dir)
 
-      {:ok, pid} = GraphitiPool.start_link(name: nil, data_dir: data_dir, warmup: false)
+      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
       instance = GraphitiPool.for(pid, "test_group")
 
       # Verify it's a Pythonx.Object by running a no-op Cypher through the driver.

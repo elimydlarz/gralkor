@@ -22,10 +22,10 @@ defmodule Gralkor.DistillTest do
         ]
       ]
 
-      _ = Distill.format_transcript(turns, distill_fn, "TestAgent")
+      _ = Distill.format_transcript(turns, distill_fn, "TestAgent", "Eli")
 
       assert_receive {^ref, prompt}
-      assert prompt =~ "User: hi"
+      assert prompt =~ "Eli: hi"
       assert prompt =~ "TestAgent: (behaviour: thinking out loud)"
       assert prompt =~ "TestAgent: hello"
     end
@@ -44,7 +44,8 @@ defmodule Gralkor.DistillTest do
         Distill.format_transcript(
           [[Message.new("user", "hi"), Message.new("assistant", "hello")]],
           distill_fn,
-          "TestAgent"
+          "TestAgent",
+          "Eli"
         )
 
       assert :counters.get(counter, 1) == 0
@@ -65,11 +66,12 @@ defmodule Gralkor.DistillTest do
             ]
           ],
           distill_fn,
-          "Susu"
+          "Susu",
+          "Eli"
         )
 
       assert result ==
-               "User: Q?\nSusu: (behaviour: thought through the problem)\nSusu: A"
+               "Eli: Q?\nSusu: (behaviour: thought through the problem)\nSusu: A"
     end
   end
 
@@ -87,10 +89,11 @@ defmodule Gralkor.DistillTest do
             ]
           ],
           distill_fn,
-          "Susu"
+          "Susu",
+          "Eli"
         )
 
-      assert result == "User: Q\nSusu: A"
+      assert result == "Eli: Q\nSusu: A"
     end
 
     test "exceptions raised by the distill_fn are also caught (safe_distill semantics)" do
@@ -106,10 +109,11 @@ defmodule Gralkor.DistillTest do
             ]
           ],
           distill_fn,
-          "Susu"
+          "Susu",
+          "Eli"
         )
 
-      assert result == "User: Q\nSusu: A"
+      assert result == "Eli: Q\nSusu: A"
     end
   end
 
@@ -125,10 +129,11 @@ defmodule Gralkor.DistillTest do
             ]
           ],
           nil,
-          "Susu"
+          "Susu",
+          "Eli"
         )
 
-      assert result == "User: Q\nSusu: A"
+      assert result == "Eli: Q\nSusu: A"
     end
   end
 
@@ -145,10 +150,11 @@ defmodule Gralkor.DistillTest do
         Distill.format_transcript(
           [[Message.new("user", "Q"), Message.new("assistant", "A")]],
           distill_fn,
-          "Susu"
+          "Susu",
+          "Eli"
         )
 
-      assert result == "User: Q\nSusu: A"
+      assert result == "Eli: Q\nSusu: A"
       assert :counters.get(counter, 1) == 0
     end
   end
@@ -170,7 +176,7 @@ defmodule Gralkor.DistillTest do
         end
 
       {us, _result} =
-        :timer.tc(fn -> Distill.format_transcript(turns, distill_fn, "TestAgent") end)
+        :timer.tc(fn -> Distill.format_transcript(turns, distill_fn, "TestAgent", "Eli") end)
 
       ms = div(us, 1000)
       assert ms < 250, "expected parallel (~100ms + overhead), got #{ms}ms"
@@ -183,7 +189,8 @@ defmodule Gralkor.DistillTest do
         Distill.format_transcript(
           [[Message.new("user", "Q"), Message.new("assistant", "A")]],
           nil,
-          ""
+          "",
+          "Eli"
         )
       end
     end
@@ -193,7 +200,8 @@ defmodule Gralkor.DistillTest do
         Distill.format_transcript(
           [[Message.new("user", "Q"), Message.new("assistant", "A")]],
           nil,
-          "   "
+          "   ",
+          "Eli"
         )
       end
     end
@@ -203,6 +211,42 @@ defmodule Gralkor.DistillTest do
         Distill.format_transcript(
           [[Message.new("user", "Q"), Message.new("assistant", "A")]],
           nil,
+          nil,
+          "Eli"
+        )
+      end
+    end
+  end
+
+  describe "ex-format-transcript > if user_name is missing or blank" do
+    test "raises ArgumentError on blank user_name" do
+      assert_raise ArgumentError, ~r/user_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          "Susu",
+          ""
+        )
+      end
+    end
+
+    test "raises ArgumentError on whitespace-only user_name" do
+      assert_raise ArgumentError, ~r/user_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          "Susu",
+          "   "
+        )
+      end
+    end
+
+    test "raises ArgumentError on nil user_name" do
+      assert_raise ArgumentError, ~r/user_name/, fn ->
+        Distill.format_transcript(
+          [[Message.new("user", "Q"), Message.new("assistant", "A")]],
+          nil,
+          "Susu",
           nil
         )
       end

@@ -6,11 +6,11 @@ Never modify silently. If implementation has drifted, decide explicitly: update 
 
 ## ts/ vs ex/ split
 
-`gralkor/ts/server/` is the Python FastAPI server, owned in-tree by the TS adapter and shipped directly in its npm tarball. It is consumed only by `@susu-eng/gralkor-ts`, which spawns it as a managed child (or talks to an external one via `EXTERNAL_GRALKOR_URL`). Server-side trees in this file (`POST /…`, `capture-buffer`, `format-transcript`, `interpret-facts`, `_graphiti_for`, `server-warmup-on-boot`, `cross-encoder-selection`, `server-config-defaults`, `rate-limit-retry`, `downstream-error-handling`, `/health endpoint`, `upstream-idle-survival`) describe that server. `ts-…` trees describe the TS adapter.
+`gralkor/ts/server/` is the Python FastAPI server, owned in-tree by the TS adapter and shipped directly in its npm tarball. It is consumed only by `@susulabs/gralkor`, which spawns it as a managed child. Server-side trees in this file (`POST /…`, `capture-buffer`, `format-transcript`, `interpret-facts`, `_graphiti_for`, `server-warmup-on-boot`, `cross-encoder-selection`, `server-config-defaults`, `rate-limit-retry`, `downstream-error-handling`, `/health endpoint`, `upstream-idle-survival`) describe that server. `ts-…` trees describe the TS adapter.
 
 `:gralkor_ex` does not use the Python server. It embeds CPython in the BEAM via [PythonX](https://github.com/livebook-dev/pythonx) and drives `graphiti-core` directly. Logic that lives in the server's pipelines (capture buffer, distill, interpret, recall composition, tools) is duplicated in Elixir under `ex/lib/gralkor/`. LLM calls go through [`req_llm`](https://github.com/agentjido/req_llm), which abstracts providers; trees say "the configured LLM" rather than naming providers. `ex-…` trees describe the Elixir adapter.
 
-The two stacks satisfy the same consumer-visible contract (`Gralkor.Client` / `GralkorClient`), enforced by their respective shared port-contract suites — *modulo* surface area that only made sense over HTTP. The ex stack has no `health_check`, no readiness gate, no `EXTERNAL_…_URL` mode, no transport-error class, no per-endpoint receive windows: by the time `Application.start/2` returns, the embedded runtime is ready, and runtime failures surface as supervisor restarts.
+The two stacks satisfy the same consumer-visible contract (`Gralkor.Client` / `GralkorClient`), enforced by their respective shared port-contract suites — *modulo* surface area that only made sense over HTTP. The ex stack has no `health_check`, no readiness gate, no transport-error class, no per-endpoint receive windows: by the time `Application.start/2` returns, the embedded runtime is ready, and runtime failures surface as supervisor restarts.
 
 ## Canonical turn shape
 
@@ -336,9 +336,9 @@ format-transcript (ts stack; src: server/pipelines/distill.py; unit: server/test
 ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/test/gralkor/capture_buffer_test.exs)
   the buffer holds turns until an explicit flush — session lifetime is owned by the consumer;
   there is no idle-flush policy
-  append/4 (session_id, group_id, agent_name, messages)
+  append/5 (session_id, group_id, agent_name, user_name, messages)
     when called for a new session_id
-      then an entry is created bound to the sanitized group_id, the agent_name, and the turn (list of Messages)
+      then an entry is created bound to the sanitized group_id, the agent_name, the user_name, and the turn (list of Messages)
     when called again for the same session_id
       then the new turn is appended to the existing entry and prior turns remain buffered
     when called for multiple session_ids
@@ -347,7 +347,11 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       then raises (sessions are not re-bindable across groups)
     when called for an existing session_id with a different agent_name
       then raises ArgumentError (same invariant as group_id)
+    when called for an existing session_id with a different user_name
+      then raises ArgumentError (same invariant as agent_name — the user identity for a session is fixed at first append; a session that started as Eli cannot mid-stream become Alice without a graph-quality contradiction)
     if agent_name is missing or blank
+      then raises ArgumentError
+    if user_name is missing or blank
       then raises ArgumentError
   turns_for/1
     when the session has buffered turns
@@ -356,7 +360,7 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       then returns []
   flush/1 (session_id)
     when called for a session_id with buffered turns
-      then the flush callback is scheduled with (group_id, agent_name, [[Message]]) derived from the entry
+      then the flush callback is scheduled with (group_id, agent_name, user_name, [[Message]]) derived from the entry
       and the call returns without awaiting the scheduled flush
       and the entry is removed from the buffer
       and subsequent turns_for/1 calls return []
@@ -389,12 +393,14 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
     when the supervision tree is stopping
       then Gralkor.CaptureBuffer.terminate/2 drains every pending entry via the flush callback before returning
 ex-format-transcript (ex stack; src: ex/lib/gralkor/distill.ex; unit: ex/test/gralkor/distill_test.exs)
-  format_transcript/3 takes [[Gralkor.Message.t()]], a distill_fn, and an agent_name
+  format_transcript/4 takes [[Gralkor.Message.t()]], a distill_fn, an agent_name, and a user_name
   if agent_name is missing or blank
     then raises ArgumentError
+  if user_name is missing or blank
+    then raises ArgumentError (the rendered transcript is fed to graphiti's entity extraction; a generic "User:" label collapses every user across the deployment into one node, destroying graph quality — every consumer must name the human)
   per turn
     when a turn contains a message with role="behaviour"
-      then all messages in the turn are rendered with role labels ("User: {content}",
+      then all messages in the turn are rendered with role labels ("{user_name}: {content}",
         "{agent_name}: (behaviour: {content})", "{agent_name}: {content}") and passed to
         the configured LLM (via req_llm) as the "thinking" prompt
     when a turn has no behaviour messages
@@ -408,17 +414,19 @@ ex-format-transcript (ex stack; src: ex/lib/gralkor/distill.ex; unit: ex/test/gr
     when no LLM is configured
       then behaviour lines are silently omitted, user/assistant text preserved
     when a turn has no behaviour
-      then rendered as "User: {content}\n{agent_name}: {content}" with no behaviour line, no LLM call
+      then rendered as "{user_name}: {content}\n{agent_name}: {content}" with no behaviour line, no LLM call
   then the LLM call uses a structured-output schema with a single "behaviour" field
   then turns with behaviour are distilled in parallel via Task.async_stream
-ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/4; unit: ex/test/gralkor/client/native_test.exs)
+ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/5; unit: ex/test/gralkor/client/native_test.exs)
   request shape
-    when called with session_id, group_id, agent_name, messages (a list of Gralkor.Message structs)
+    when called with session_id, group_id, agent_name, user_name, messages (a list of Gralkor.Message structs)
       then group_id is sanitized
-      and Gralkor.CaptureBuffer.append/4 is invoked with the sanitized group_id, the agent_name, and the messages
+      and Gralkor.CaptureBuffer.append/5 is invoked with the sanitized group_id, the agent_name, the user_name, and the messages
   if session_id is missing or blank
     then raises ArgumentError
   if agent_name is missing or blank
+    then raises ArgumentError
+  if user_name is missing or blank
     then raises ArgumentError
   then returns :ok immediately (does not call distill synchronously)
   observability
@@ -504,25 +512,35 @@ ex-build-communities (ex stack; src: ex/lib/gralkor/client/native.ex#build_commu
 ```
 ex-application (src: ex/lib/gralkor/application.ex; unit: ex/test/gralkor/application_test.exs)
   start/2 child specs
-    consumers opt into the embedded runtime by setting GRALKOR_DATA_DIR; opting in is the only path
-      (no thin-client / external-URL alternative — those were dropped with the HTTP server)
-    when GRALKOR_DATA_DIR is set and `:gralkor_ex, :client` is unset or `Gralkor.Client.Native`
+    consumers opt in by setting either `:gralkor_ex, :falkordb` (remote FalkorDB) or `GRALKOR_DATA_DIR` (embedded falkordblite)
+    when `:gralkor_ex, :falkordb` is set as a keyword list with `:host` and `:port`
+      then the supervisor includes (in order):
+        Gralkor.Python (synchronous boot — see ex-python-runtime; smoke-imports graphiti_core; does NOT import or reap redislite in remote mode)
+        Gralkor.GraphitiPool (constructed with the remote spec — connects via host/port/credentials, no embedded redis-server is spawned)
+        Gralkor.CaptureBuffer
+      then `GRALKOR_DATA_DIR` is ignored even if also set (remote wins)
+    when `:gralkor_ex, :falkordb` is unset and GRALKOR_DATA_DIR is set, with `:gralkor_ex, :client` unset or `Gralkor.Client.Native`
       then the supervisor includes (in order):
         Gralkor.Python (synchronous boot — see ex-python-runtime; reaps redislite orphans, smoke-imports graphiti_core)
-        Gralkor.GraphitiPool (per-group Graphiti instances; runs warmup before init returns)
-        Gralkor.CaptureBuffer (in-flight turns; flush callback distills via req_llm and ingests via GraphitiPool.add_episode)
+        Gralkor.GraphitiPool (constructed with the embedded spec — falkordblite spawns redis-server child)
+        Gralkor.CaptureBuffer
       then Application.start/2 returns only after all three have initialised
         (consumers do not need a separate readiness gate — there is no Gralkor.Connection)
-    when GRALKOR_DATA_DIR is unset
+    when neither `:gralkor_ex, :falkordb` nor GRALKOR_DATA_DIR is set
       then the supervisor includes no children
-        (consumer / library has not opted in; tests start specific children via start_supervised; production sets the env var)
+        (consumer / library has not opted in; tests start specific children via start_supervised; production sets one of the two)
     when `:gralkor_ex, :client` is configured to `Gralkor.Client.InMemory`
-      then the supervisor includes no children regardless of GRALKOR_DATA_DIR
+      then the supervisor includes no children regardless of GRALKOR_DATA_DIR or `:falkordb`
         (consumer has explicitly opted out of the native runtime; this matters because dotenv-loaders shipped by sibling deps — e.g. `:req_llm` — populate GRALKOR_DATA_DIR from `.env` before `:gralkor_ex` boots, so test configs that pin the InMemory client must not also be forced into the native boot path)
+    when `:gralkor_ex, :falkordb` is set to a value that is not a keyword list, or is missing `:host` or `:port`
+      then Application.start/2 raises ArgumentError before any child starts (fail-fast on operator misconfig)
 ex-python-runtime (src: ex/lib/gralkor/python.ex; unit: ex/test/gralkor/python_test.exs)
   Gralkor.Python's init/1 runs the boot sequence synchronously and returns only when ready
-    then any process whose argv contains "redislite/bin/redis-server" is SIGKILLed
-      (boot-time backstop: falkordblite — loaded into PythonX in this BEAM — spawns a redis-server grandchild that a hard BEAM SIGKILL leaves orphaned. Safe to nuke unconditionally because this runs before our own PythonX init, so anything matching is by definition not ours-yet, and `redislite/bin/redis-server` is unique-to-falkordblite with no other plausible owner.)
+    when running in embedded mode (GRALKOR_DATA_DIR is set, no `:falkordb` config)
+      then any process whose argv contains "redislite/bin/redis-server" is SIGKILLed
+        (boot-time backstop: falkordblite — loaded into PythonX in this BEAM — spawns a redis-server grandchild that a hard BEAM SIGKILL leaves orphaned. Safe to nuke unconditionally because this runs before our own PythonX init, so anything matching is by definition not ours-yet, and `redislite/bin/redis-server` is unique-to-falkordblite with no other plausible owner.)
+    when running in remote mode (`:falkordb` is set)
+      then no redislite reaping runs and `redislite` is not imported (remote FalkorDB owns its own storage; spawning local redis-servers would be wasted work and a confusing footgun if remote and embedded both ran concurrently in the same BEAM)
     then the priv/python/ uv-managed venv is materialised if absent
       (graphiti-core + falkordblite + provider deps installed; idempotent — subsequent boots noop)
     then PythonX is initialised pointing at that venv
@@ -540,7 +558,11 @@ ex-graphiti-pool (src: ex/lib/gralkor/graphiti_pool.ex; unit: ex/test/gralkor/gr
     Graphiti-internal LLM and embedding (entity/edge extraction during add_episode; embedder during search; reranker) go through graphiti-core's bundled Python clients — never req_llm — because graphiti owns those call sites and routing them through a Python↔Elixir↔HTTP shim adds two hops for no win
   Gralkor.GraphitiPool's init/1 runs synchronously
     then `Gralkor.Python.install_async_runtime/0` is invoked (idempotent) so the pool can be booted standalone — under normal supervision Gralkor.Python has already installed the loop and this is a no-op; in tests / one-off scripts that start GraphitiPool directly, this is what makes the loop available
-    then the FalkorDB driver (AsyncFalkorDB → FalkorDriver), the graphiti-core LLM client, the embedder, and the cross-encoder are constructed once via Pythonx and shared across all Graphiti instances in the pool
+    when started with an embedded spec (`{:embedded, data_dir: dir}`)
+      then the AsyncFalkorDB is constructed via `redislite.async_falkordb_client.AsyncFalkorDB(<data_dir>/gralkor.db)` (falkordblite spawns the redis-server child)
+    when started with a remote spec (`{:remote, host:, port:, username:, password:, ssl:}`)
+      then the AsyncFalkorDB is constructed via `falkordb.asyncio.FalkorDB(host:, port:, username:, password:, ssl:)` and `redislite` is not imported (no local redis-server is spawned)
+    then a FalkorDriver wrapping that AsyncFalkorDB, the graphiti-core LLM client, the embedder, and the cross-encoder are constructed once via Pythonx and shared across all Graphiti instances in the pool
       where the embedder is constructed with `batch_size=1` regardless of provider
         (graphiti's batched embedder path expects N vectors back for N inputs; gemini-embedding-2-preview returns ONE vector for any number of inputs in a single call, so batch_size=1 forces one-input-per-request and lets graphiti's per-item bookkeeping line up)
     then warmup runs: search is invoked once with a throwaway query and group_id, then Gralkor.Interpret.interpret_facts is invoked once with an empty conversation and a throwaway facts_text, paying graphiti-core's cold-start cost before consumers can call recall
@@ -567,7 +589,7 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
   bundledServerDir
     then resolves to the "server" sibling of the compiled module's directory (i.e. <pkg>/server/)
   construction
-    then serverDir defaults to bundledServerDir() (the in-tree server shipped inside @susu-eng/gralkor-ts)
+    then serverDir defaults to bundledServerDir() (the in-tree server shipped inside @susulabs/gralkor)
     then consumers may override serverDir to point at a development checkout
     then the returned manager starts with isRunning() === false
   buildConfigYaml (helper written into config.yaml at start time)
@@ -687,7 +709,7 @@ rate-limit-retry (ts stack; src: server/main.py; unit: server/tests/test_recall.
   server side
     when upstream LLM returns a rate-limit error
       then 429 response includes Retry-After header
-    (client-side retry handling is not part of @susu-eng/gralkor-ts — the adapter surfaces the 429 as an error and lets consumers decide; see consumer-owned retry logic in @susu-eng/openclaw-gralkor if needed)
+    (client-side retry handling is not part of @susulabs/gralkor — the adapter surfaces the 429 as an error and lets consumers decide; see consumer-owned retry logic in @susulabs/gralkor if needed)
 _graphiti_for (ts stack; src: server/main.py; unit: server/tests/test_graphiti_for.py)
   when called with a group_id
     then returns a Graphiti scoped to that group_id
@@ -820,13 +842,15 @@ ex-client (src: ex/lib/gralkor/client.ex; unit: ex/test/support/gralkor_client_c
       then {:ok, block} is returned
     if the backend fails
       then {:error, reason} is returned
-  when capture/4 is called with session_id, group_id, agent_name, and messages
+  when capture/5 is called with session_id, group_id, agent_name, user_name, and messages
     messages is a list of canonical Gralkor.Message structs (role ∈ {"user", "assistant", "behaviour"}, content: String.t())
     when the backend acknowledges the capture
       then :ok is returned
     if the backend fails
       then {:error, reason} is returned
     if agent_name is missing or blank
+      then raises ArgumentError
+    if user_name is missing or blank
       then raises ArgumentError
   when end_session/1 is called with a session_id
     when the backend acknowledges the end
@@ -849,7 +873,10 @@ ex-client (src: ex/lib/gralkor/client.ex; unit: ex/test/support/gralkor_client_c
     if the backend fails
       then {:error, reason} is returned
   agent_name validation
-    if recall/4 or capture/4 is called with a missing or blank agent_name
+    if recall/4 or capture/5 is called with a missing or blank agent_name
+      then ArgumentError is raised at the port boundary (no backend call is made)
+  user_name validation
+    if capture/5 is called with a missing or blank user_name
       then ArgumentError is raised at the port boundary (no backend call is made)
 ex-sanitize-group-id (src: ex/lib/gralkor/client.ex; unit: ex/test/gralkor/client_test.exs)
   when the id contains hyphens
@@ -872,6 +899,8 @@ ex-client-native (src: ex/lib/gralkor/client/native.ex; integration: ex/test/gra
   if capture is called with a blank string session_id
     then the call raises with ArgumentError
   if capture is called with a nil session_id
+    then the call raises with ArgumentError
+  if capture is called with a missing or blank user_name
     then the call raises with ArgumentError
   if end_session is called with a blank string session_id
     then the call raises with ArgumentError
@@ -1024,6 +1053,36 @@ jido-memory-journey (ex stack; functional: ex/test/functional/end_to_end_test.ex
       and the next Gralkor.Client.recall/3 call returns {:ok, _} within the boot window
 ```
 
+```
+ex-remote-falkordb-journey (ex stack; functional: ex/test/functional/remote_falkordb_journey_test.exs)
+  same consumer-visible round-trip as jido-memory-journey, but against a real network FalkorDB instead of the embedded falkordblite — proves the {:remote, kw} branch of Gralkor.GraphitiPool.default_construct_falkor_db actually drives graphiti against a remote graph
+  prerequisites
+    given a real FalkorDB is reachable at FALKORDB_TEST_HOST:FALKORDB_TEST_PORT (e.g. `docker run -p 6379:6379 falkordb/falkordb`)
+      and `:gralkor_ex, :falkordb` is set to that host/port (with optional :username/:password)
+      and GRALKOR_DATA_DIR is unset so the embedded path is not also armed
+      and a real LLM API key is configured for the chosen provider
+    when FALKORDB_TEST_HOST is unset
+      then the suite is skipped (the unit tests in falkordb-connection cover the spec-loading shape)
+  boot
+    when the application boots
+      then Gralkor.Python initialises with reap_orphans: false (no redislite reaping runs)
+      and Gralkor.GraphitiPool constructs falkordb.asyncio.FalkorDB(host:, port:, username:, password:, ssl:) — no `redislite/bin/redis-server` grandchild appears in the BEAM's process tree at any point
+  round-trip
+    given Gralkor.Client.memory_add/3 stores a fact under a fresh group_id
+      when Gralkor.Client.recall/3 is called with a fresh session_id and a related query
+        then {:ok, block} is returned
+        and the block references the stored content semantically
+  session_end flush
+    given a pending turn in Gralkor.CaptureBuffer
+      when Gralkor.Client.end_session/1 is called with the session_id
+        then the episode lands in the remote FalkorDB
+        and a follow-up Gralkor.Client.recall/3 surfaces the turn content via search
+  shutdown
+    when the application stops
+      then Gralkor.CaptureBuffer.terminate/2 awaits flush_all/0 and the AsyncFalkorDB driver closes cleanly
+      and no orphan processes are left on the BEAM host (the redis-server in this test is owned by the FalkorDB container, not us)
+```
+
 ## Distribution
 
 ```
@@ -1052,14 +1111,3 @@ publish-ex-version-integrity (src: scripts/publish-ex.sh; unit: none)
     and ex/mix.exs remains unchanged
 ```
 
-## External deployment
-
-`external/` is a fixture for the **ts stack only**. The ex stack has no thin-client mode (no HTTP transport at all), so `EXTERNAL_GRALKOR_URL` is unused on the ex side and there is no `external-thin-client-journey` for ex anymore. The verified behaviour for `external/` is the consumer-visible round-trip exercised by an `external-thin-client-journey` under the ts stack (when/if added there).
-
-```
-external-local-runnable (ts stack; src: external/serve.sh + external/Makefile)
-  when serve.sh is started (directly or via `make up`)
-    then a recall+capture round-trip succeeds against the running process from a ts-stack consumer with EXTERNAL_GRALKOR_URL set to http://localhost:${HOST_PORT}
-    when SIGTERM is sent to the foreground process
-      then uvicorn's graceful-shutdown handler flushes in-flight capture buffers within 30s before exit
-```

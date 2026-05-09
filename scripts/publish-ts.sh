@@ -39,7 +39,7 @@ else
 fi
 
 if [[ -z "${DRY_RUN:-}" ]]; then
-  build_cmd="${PUBLISH_TS_BUILD_CMD:-pnpm --filter @susu-eng/gralkor-ts run build}"
+  build_cmd="${PUBLISH_TS_BUILD_CMD:-pnpm --filter @susulabs/gralkor-ts run build}"
   publish_cmd="${PUBLISH_TS_PUBLISH_CMD:-pnpm publish --access public --no-git-checks}"
 
   [[ "$level" != "current" ]] && trap rollback ERR

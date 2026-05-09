@@ -193,9 +193,9 @@ defmodule Gralkor.GraphitiPool do
   @impl true
   def init(opts) do
     table = Keyword.get(opts, :table, @default_table)
-    data_dir = Keyword.fetch!(opts, :data_dir)
-    llm_model = Keyword.get(opts, :llm_model, Config.llm_model(%Config{data_dir: data_dir}))
-    embedder_model = Keyword.get(opts, :embedder_model, Config.embedder_model(%Config{data_dir: data_dir}))
+    falkordb_spec = Keyword.fetch!(opts, :falkordb_spec)
+    llm_model = Keyword.get(opts, :llm_model, Config.llm_model())
+    embedder_model = Keyword.get(opts, :embedder_model, Config.embedder_model())
     interpret_fn = Keyword.get(opts, :interpret_fn)
 
     construct_falkor_db = Keyword.get(opts, :construct_falkor_db, &default_construct_falkor_db/1)
@@ -216,7 +216,7 @@ defmodule Gralkor.GraphitiPool do
     # to avoid spinning up Pythonx.
     if install_loop?, do: :ok = Gralkor.Python.install_async_runtime()
 
-    falkor_db = construct_falkor_db.(data_dir)
+    falkor_db = construct_falkor_db.(falkordb_spec)
     shared = construct_shared_clients.(llm_model, embedder_model)
 
     state = %{
@@ -257,7 +257,7 @@ defmodule Gralkor.GraphitiPool do
 
   # ── Defaults: real Pythonx-backed construction ──────────────
 
-  defp default_construct_falkor_db(data_dir) do
+  defp default_construct_falkor_db({:embedded, data_dir}) do
     File.mkdir_p!(data_dir)
     db_path = Path.join(data_dir, "gralkor.db")
 
@@ -265,10 +265,37 @@ defmodule Gralkor.GraphitiPool do
       Pythonx.eval(
         """
         from redislite.async_falkordb_client import AsyncFalkorDB
-        # Pythonx encodes Elixir binaries as Python bytes; redislite needs str.
         AsyncFalkorDB(db_path.decode('utf-8') if isinstance(db_path, (bytes, bytearray)) else db_path)
         """,
         %{"db_path" => db_path}
+      )
+
+    db
+  end
+
+  defp default_construct_falkor_db({:remote, kw}) do
+    host = Keyword.fetch!(kw, :host)
+    port = Keyword.fetch!(kw, :port)
+    username = Keyword.get(kw, :username)
+    password = Keyword.get(kw, :password)
+    ssl = Keyword.get(kw, :ssl, false)
+
+    {db, _} =
+      Pythonx.eval(
+        """
+        from falkordb.asyncio import FalkorDB
+        h = host.decode('utf-8') if isinstance(host, (bytes, bytearray)) else host
+        u = username.decode('utf-8') if isinstance(username, (bytes, bytearray)) else username
+        p = password.decode('utf-8') if isinstance(password, (bytes, bytearray)) else password
+        FalkorDB(host=h, port=port, username=u, password=p, ssl=ssl)
+        """,
+        %{
+          "host" => host,
+          "port" => port,
+          "username" => username,
+          "password" => password,
+          "ssl" => ssl
+        }
       )
 
     db

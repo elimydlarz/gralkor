@@ -10,7 +10,7 @@ defmodule Gralkor.Client.NativeTest do
   describe "ex-client-native > if capture is called with a blank string session_id" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/session_id/, fn ->
-        Native.capture("", "g", "TestAgent", [Message.new("user", "x")])
+        Native.capture("", "g", "TestAgent", "Eli", [Message.new("user", "x")])
       end
     end
   end
@@ -18,7 +18,7 @@ defmodule Gralkor.Client.NativeTest do
   describe "ex-client-native > if capture is called with a nil session_id" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/session_id/, fn ->
-        Native.capture(nil, "g", "TestAgent", [Message.new("user", "x")])
+        Native.capture(nil, "g", "TestAgent", "Eli", [Message.new("user", "x")])
       end
     end
   end
@@ -26,7 +26,7 @@ defmodule Gralkor.Client.NativeTest do
   describe "ex-client-native > if capture is called with a blank agent_name" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/agent_name/, fn ->
-        Native.capture("s1", "g", "", [Message.new("user", "x")])
+        Native.capture("s1", "g", "", "Eli", [Message.new("user", "x")])
       end
     end
   end
@@ -34,7 +34,23 @@ defmodule Gralkor.Client.NativeTest do
   describe "ex-client-native > if capture is called with a nil agent_name" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/agent_name/, fn ->
-        Native.capture("s1", "g", nil, [Message.new("user", "x")])
+        Native.capture("s1", "g", nil, "Eli", [Message.new("user", "x")])
+      end
+    end
+  end
+
+  describe "ex-client-native > if capture is called with a blank user_name" do
+    test "raises ArgumentError" do
+      assert_raise ArgumentError, ~r/user_name/, fn ->
+        Native.capture("s1", "g", "TestAgent", "", [Message.new("user", "x")])
+      end
+    end
+  end
+
+  describe "ex-client-native > if capture is called with a nil user_name" do
+    test "raises ArgumentError" do
+      assert_raise ArgumentError, ~r/user_name/, fn ->
+        Native.capture("s1", "g", "TestAgent", nil, [Message.new("user", "x")])
       end
     end
   end
@@ -74,7 +90,7 @@ defmodule Gralkor.Client.NativeTest do
   describe "ex-capture > observability > when test mode is enabled" do
     setup do
       Application.put_env(:gralkor_ex, :test, true)
-      pid = start_supervised!({CaptureBuffer, [flush_callback: fn _g, _a, _t -> :ok end]})
+      pid = start_supervised!({CaptureBuffer, [flush_callback: fn _g, _a, _u, _t -> :ok end]})
       on_exit(fn -> Application.delete_env(:gralkor_ex, :test) end)
       {:ok, buffer: pid}
     end
@@ -84,7 +100,7 @@ defmodule Gralkor.Client.NativeTest do
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
           :ok =
-            Native.capture("s1", "g", "TestAgent", [
+            Native.capture("s1", "g", "TestAgent", "Eli", [
               Message.new("user", "hello"),
               Message.new("assistant", "hi there")
             ])
@@ -98,7 +114,7 @@ defmodule Gralkor.Client.NativeTest do
 
   describe "ex-capture > observability > when test mode is disabled" do
     setup do
-      pid = start_supervised!({CaptureBuffer, [flush_callback: fn _g, _a, _t -> :ok end]})
+      pid = start_supervised!({CaptureBuffer, [flush_callback: fn _g, _a, _u, _t -> :ok end]})
       {:ok, buffer: pid}
     end
 
@@ -106,7 +122,7 @@ defmodule Gralkor.Client.NativeTest do
     test "does not log the captured messages" do
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
-          :ok = Native.capture("s1", "g", "TestAgent", [Message.new("user", "hello")])
+          :ok = Native.capture("s1", "g", "TestAgent", "Eli", [Message.new("user", "hello")])
         end)
 
       refute logs =~ "[gralkor] [test]"

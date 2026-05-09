@@ -21,9 +21,9 @@ This monorepo publishes three things: the Python server and two adapter librarie
 
 | You're building on… | Use this package | Lives at |
 |---|---|---|
-| **OpenClaw** agents | [`@susu-eng/openclaw-gralkor`](https://www.npmjs.com/package/@susu-eng/openclaw-gralkor) | [`elimydlarz/openclaw_gralkor`](https://github.com/elimydlarz/openclaw_gralkor) |
+| **OpenClaw** agents | [`@susulabs/gralkor`](https://www.npmjs.com/package/@susulabs/gralkor) | [`elimydlarz/openclaw_gralkor`](https://github.com/elimydlarz/openclaw_gralkor) |
 | **Jido** agents (Elixir) | [`:jido_gralkor` on Hex](https://hex.pm/packages/jido_gralkor) | [`elimydlarz/jido_gralkor`](https://github.com/elimydlarz/jido_gralkor) |
-| Your own TS/Node app | [`@susu-eng/gralkor-ts`](https://www.npmjs.com/package/@susu-eng/gralkor-ts) + your own harness | `ts/` here |
+| Your own TS/Node app | [`@susulabs/gralkor`](https://www.npmjs.com/package/@susulabs/gralkor) + your own harness | `ts/` here |
 | Your own Elixir app | [`:gralkor_ex` on Hex](https://hex.pm/packages/gralkor_ex) + your own harness | `ex/` here |
 
 The adapters take care of spawning the Python server, gating your app's boot on it being healthy, and exposing a small port (`GralkorClient` / `Gralkor.Client`) that every consumer calls through. They also ship in-memory twins for tests.
@@ -34,7 +34,7 @@ The adapters take care of spawning the Python server, gating your app's boot on 
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Harness packages (other repos)                                      │
 │                                                                      │
-│    openclaw_gralkor → @susu-eng/gralkor-ts                           │
+│    openclaw_gralkor → @susulabs/gralkor                           │
 │    jido_gralkor    → :gralkor_ex                                     │
 └────────────────────────────────┬─────────────────────────────────────┘
                                  │   Gralkor.Client / GralkorClient
@@ -83,7 +83,7 @@ Auth: none. The server binds to loopback only and is spawned by the consumer's o
 
 ```bash
 pnpm run publish:ex -- patch|minor|major|current   # :gralkor_ex on Hex, tag gralkor-ex-v${v}
-pnpm run publish:ts -- patch|minor|major|current   # @susu-eng/gralkor-ts on npm, tag gralkor-ts-v${v}
+pnpm run publish:ts -- patch|minor|major|current   # @susulabs/gralkor on npm, tag gralkor-ts-v${v}
 ```
 
 Each cadence is independent. The TS package owns the Python server in-tree at `ts/server/` and ships it directly in its tarball, so npm consumers get a working Python runtime without a separate download. The Elixir package has no Python server child — it embeds CPython in the BEAM via Pythonx and reimplements the server's pipelines in Elixir.

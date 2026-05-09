@@ -37,8 +37,9 @@ defmodule Gralkor.Python do
     kill_pid = Keyword.get(opts, :kill_pid, &sigkill/1)
     smoke_import = Keyword.get(opts, :smoke_import, &smoke_import_graphiti/0)
     install_loop? = Keyword.get(opts, :install_loop, true)
+    reap_orphans? = Keyword.get(opts, :reap_orphans, true)
 
-    with :ok <- reap_redislite_orphans(list_orphans, kill_pid),
+    with :ok <- maybe_reap(reap_orphans?, list_orphans, kill_pid),
          :ok <- smoke_import.(),
          :ok <- maybe_install_loop(install_loop?) do
       {:ok, %{}}
@@ -46,6 +47,9 @@ defmodule Gralkor.Python do
       {:error, reason} -> {:stop, {:boot_failed, reason}}
     end
   end
+
+  defp maybe_reap(false, _list, _kill), do: :ok
+  defp maybe_reap(true, list, kill), do: reap_redislite_orphans(list, kill)
 
   defp maybe_install_loop(false), do: :ok
   defp maybe_install_loop(true), do: install_async_runtime()

@@ -9,11 +9,11 @@
  * Construct the adapter you want in your composition root:
  *
  * ```ts
- * import { GralkorHttpClient } from "@susu-eng/gralkor-ts";
+ * import { GralkorHttpClient } from "@susulabs/gralkor";
  * const client = new GralkorHttpClient({ baseUrl: "http://127.0.0.1:4000" });
  * ```
  *
- * In tests, swap for the in-memory twin from "@susu-eng/gralkor-ts/testing".
+ * In tests, swap for the in-memory twin from "@susulabs/gralkor/testing".
  */
 
 export type Result<T, E = unknown> = { ok: T } | { error: E };

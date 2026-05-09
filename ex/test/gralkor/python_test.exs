@@ -30,6 +30,33 @@ defmodule Gralkor.PythonTest do
     end
   end
 
+  describe "ex-python-runtime > orphan reap > when running in remote mode (reap_orphans: false)" do
+    test "the listing function is never called and no kills are attempted" do
+      called = :counters.new(1, [])
+
+      list_orphans = fn ->
+        :counters.add(called, 1, 1)
+        []
+      end
+
+      kill_pid = fn _pid ->
+        :counters.add(called, 1, 1)
+        :ok
+      end
+
+      assert {:ok, _} =
+               Python.init(
+                 reap_orphans: false,
+                 list_orphans: list_orphans,
+                 kill_pid: kill_pid,
+                 smoke_import: fn -> :ok end,
+                 install_loop: false
+               )
+
+      assert :counters.get(called, 1) == 0
+    end
+  end
+
   describe "ex-python-runtime > integration > Pythonx is reachable from inside the BEAM" do
     @describetag :integration
 

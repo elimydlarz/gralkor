@@ -8,6 +8,7 @@ defmodule Gralkor.ApplicationTest do
   setup do
     original_env = System.get_env("GRALKOR_DATA_DIR")
     original_client = Application.get_env(:gralkor_ex, :client)
+    original_falkordb = Application.get_env(:gralkor_ex, :falkordb)
 
     on_exit(fn ->
       case original_env do
@@ -19,13 +20,19 @@ defmodule Gralkor.ApplicationTest do
         nil -> Application.delete_env(:gralkor_ex, :client)
         v -> Application.put_env(:gralkor_ex, :client, v)
       end
+
+      case original_falkordb do
+        nil -> Application.delete_env(:gralkor_ex, :falkordb)
+        v -> Application.put_env(:gralkor_ex, :falkordb, v)
+      end
     end)
 
     Application.delete_env(:gralkor_ex, :client)
+    Application.delete_env(:gralkor_ex, :falkordb)
     :ok
   end
 
-  describe "ex-application > start/2 child specs > when GRALKOR_DATA_DIR is unset" do
+  describe "ex-application > start/2 child specs > when neither :falkordb nor GRALKOR_DATA_DIR is set" do
     test "the supervisor includes no children" do
       System.delete_env("GRALKOR_DATA_DIR")
 
@@ -33,7 +40,7 @@ defmodule Gralkor.ApplicationTest do
     end
   end
 
-  describe "ex-application > start/2 child specs > when GRALKOR_DATA_DIR is set and `:gralkor_ex, :client` is unset or Gralkor.Client.Native" do
+  describe "ex-application > start/2 child specs > when GRALKOR_DATA_DIR is set and :falkordb is unset (embedded)" do
     test "the supervisor includes Gralkor.Python, Gralkor.GraphitiPool, Gralkor.CaptureBuffer in order" do
       System.put_env("GRALKOR_DATA_DIR", System.tmp_dir!())
 
@@ -43,7 +50,7 @@ defmodule Gralkor.ApplicationTest do
 
       [first, second, third] = children
 
-      assert first == Gralkor.Python
+      assert {Gralkor.Python, [reap_orphans: true]} = first
       assert {Gralkor.GraphitiPool, _} = second
       assert {Gralkor.CaptureBuffer, _} = third
     end
@@ -52,17 +59,20 @@ defmodule Gralkor.ApplicationTest do
       System.put_env("GRALKOR_DATA_DIR", System.tmp_dir!())
       Application.put_env(:gralkor_ex, :client, Gralkor.Client.Native)
 
-      assert [Gralkor.Python, {Gralkor.GraphitiPool, _}, {Gralkor.CaptureBuffer, _}] =
-               App.children()
+      assert [
+               {Gralkor.Python, [reap_orphans: true]},
+               {Gralkor.GraphitiPool, _},
+               {Gralkor.CaptureBuffer, _}
+             ] = App.children()
     end
 
-    test "GraphitiPool is configured with the data_dir from Gralkor.Config" do
+    test "GraphitiPool is configured with an :embedded falkordb_spec carrying the expanded data_dir" do
       data_dir = Path.join(System.tmp_dir!(), "ex_app_test_#{System.unique_integer([:positive])}")
       System.put_env("GRALKOR_DATA_DIR", data_dir)
 
       [_python, {Gralkor.GraphitiPool, opts}, _buffer] = App.children()
 
-      assert Keyword.fetch!(opts, :data_dir) == Path.expand(data_dir)
+      assert Keyword.fetch!(opts, :falkordb_spec) == {:embedded, Path.expand(data_dir)}
     end
 
     test "CaptureBuffer is configured with a flush_callback function" do
@@ -70,13 +80,68 @@ defmodule Gralkor.ApplicationTest do
 
       [_python, _pool, {Gralkor.CaptureBuffer, opts}] = App.children()
 
-      assert is_function(Keyword.fetch!(opts, :flush_callback), 3)
+      assert is_function(Keyword.fetch!(opts, :flush_callback), 4)
+    end
+  end
+
+  describe "ex-application > start/2 child specs > when :falkordb is set (remote)" do
+    test "the supervisor includes Gralkor.Python with reap_orphans: false, GraphitiPool with the remote spec, and CaptureBuffer" do
+      Application.put_env(:gralkor_ex, :falkordb, host: "falkor.example", port: 6379)
+
+      [{Gralkor.Python, [reap_orphans: false]}, {Gralkor.GraphitiPool, opts}, {Gralkor.CaptureBuffer, _}] =
+        App.children()
+
+      assert Keyword.fetch!(opts, :falkordb_spec) ==
+               {:remote, [host: "falkor.example", port: 6379]}
+    end
+
+    test "remote wins over GRALKOR_DATA_DIR when both are set" do
+      System.put_env("GRALKOR_DATA_DIR", System.tmp_dir!())
+      Application.put_env(:gralkor_ex, :falkordb, host: "falkor.example", port: 6379)
+
+      [{Gralkor.Python, [reap_orphans: false]}, {Gralkor.GraphitiPool, opts}, _] = App.children()
+
+      assert {:remote, _} = Keyword.fetch!(opts, :falkordb_spec)
+    end
+
+    test "username and password are carried through to the remote spec" do
+      Application.put_env(:gralkor_ex, :falkordb,
+        host: "falkor.example",
+        port: 6379,
+        username: "alice",
+        password: "secret"
+      )
+
+      [_python, {Gralkor.GraphitiPool, opts}, _] = App.children()
+
+      {:remote, kw} = Keyword.fetch!(opts, :falkordb_spec)
+      assert Keyword.fetch!(kw, :username) == "alice"
+      assert Keyword.fetch!(kw, :password) == "secret"
+    end
+
+    test "raises ArgumentError when :falkordb is missing :host" do
+      Application.put_env(:gralkor_ex, :falkordb, port: 6379)
+
+      assert_raise ArgumentError, ~r/:host/, fn -> App.children() end
+    end
+
+    test "raises ArgumentError when :falkordb is missing :port" do
+      Application.put_env(:gralkor_ex, :falkordb, host: "falkor.example")
+
+      assert_raise ArgumentError, ~r/:port/, fn -> App.children() end
+    end
+
+    test "raises ArgumentError when :falkordb is not a keyword list" do
+      Application.put_env(:gralkor_ex, :falkordb, "falkor://host:6379")
+
+      assert_raise ArgumentError, ~r/keyword list/, fn -> App.children() end
     end
   end
 
   describe "ex-application > start/2 child specs > when `:gralkor_ex, :client` is configured to Gralkor.Client.InMemory" do
-    test "the supervisor includes no children regardless of GRALKOR_DATA_DIR" do
+    test "the supervisor includes no children regardless of GRALKOR_DATA_DIR or :falkordb" do
       System.put_env("GRALKOR_DATA_DIR", System.tmp_dir!())
+      Application.put_env(:gralkor_ex, :falkordb, host: "falkor.example", port: 6379)
       Application.put_env(:gralkor_ex, :client, Gralkor.Client.InMemory)
 
       assert [] = App.children()
@@ -96,7 +161,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log([level: :debug], fn ->
-          assert :ok = cb.("g", "TestAgent", [])
+          assert :ok = cb.("g", "TestAgent", "Eli", [])
         end)
 
       refute logs =~ "[gralkor] capture flushed"
@@ -119,7 +184,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log([level: :info], fn ->
-          assert :ok = cb.("g1", "TestAgent", turns)
+          assert :ok = cb.("g1", "TestAgent", "Eli", turns)
         end)
 
       assert logs =~ "[gralkor] capture flushed"
@@ -150,11 +215,11 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
-          assert :ok = cb.("g1", "TestAgent", turns)
+          assert :ok = cb.("g1", "TestAgent", "Eli", turns)
         end)
 
       assert logs =~ "[gralkor] [test] capture flush body:"
-      assert logs =~ "User: hi"
+      assert logs =~ "Eli: hi"
     end
   end
 
@@ -171,7 +236,7 @@ defmodule Gralkor.ApplicationTest do
 
       logs =
         ExUnit.CaptureLog.capture_log(fn ->
-          assert :ok = cb.("g1", "TestAgent", turns)
+          assert :ok = cb.("g1", "TestAgent", "Eli", turns)
         end)
 
       refute logs =~ "[gralkor] [test]"

@@ -30,14 +30,20 @@ defmodule Gralkor.CaptureBuffer do
   Append one turn (a list of `Gralkor.Message`) to the session's buffer.
 
   `agent_name` is required and non-blank — it is bound on first append for
-  the session and any later append with a different `agent_name` (or
-  `group_id`) raises `ArgumentError`.
-  """
-  def append(session_id, group_id, agent_name, msgs)
-      when is_binary(session_id) and is_binary(group_id) and is_list(msgs) do
-    raise_if_blank_agent!(agent_name)
+  the session and any later append with a different `agent_name`,
+  `user_name`, or `group_id` raises `ArgumentError`.
 
-    case GenServer.call(__MODULE__, {:append, session_id, group_id, agent_name, msgs}) do
+  `user_name` is required and non-blank — used at flush time to label
+  user lines in the rendered transcript so graphiti's entity extraction
+  produces a named user node rather than collapsing every user into a
+  generic "User" entity.
+  """
+  def append(session_id, group_id, agent_name, user_name, msgs)
+      when is_binary(session_id) and is_binary(group_id) and is_list(msgs) do
+    raise_if_blank!(:agent_name, agent_name)
+    raise_if_blank!(:user_name, user_name)
+
+    case GenServer.call(__MODULE__, {:append, session_id, group_id, agent_name, user_name, msgs}) do
       :ok ->
         :ok
 
@@ -50,6 +56,11 @@ defmodule Gralkor.CaptureBuffer do
         raise ArgumentError,
               "session #{inspect(session_id)} is bound to agent #{inspect(bound_agent)}; " <>
                 "refusing to append under agent #{inspect(new_agent)}"
+
+      {:user_mismatch, new_user, bound_user} ->
+        raise ArgumentError,
+              "session #{inspect(session_id)} is bound to user #{inspect(bound_user)}; " <>
+                "refusing to append under user #{inspect(new_user)}"
     end
   end
 
@@ -83,34 +94,37 @@ defmodule Gralkor.CaptureBuffer do
   end
 
   @impl true
-  def handle_call({:append, session_id, group_id, agent_name, msgs}, _from, state) do
+  def handle_call({:append, session_id, group_id, agent_name, user_name, msgs}, _from, state) do
     sanitized = Client.sanitize_group_id(group_id)
 
     case Map.get(state.entries, session_id) do
       nil ->
         entries =
-          Map.put(state.entries, session_id, {sanitized, agent_name, [msgs]})
+          Map.put(state.entries, session_id, {sanitized, agent_name, user_name, [msgs]})
 
         {:reply, :ok, %{state | entries: entries}}
 
-      {^sanitized, ^agent_name, turns} ->
+      {^sanitized, ^agent_name, ^user_name, turns} ->
         entries =
-          Map.put(state.entries, session_id, {sanitized, agent_name, turns ++ [msgs]})
+          Map.put(state.entries, session_id, {sanitized, agent_name, user_name, turns ++ [msgs]})
 
         {:reply, :ok, %{state | entries: entries}}
 
-      {other_group, _bound_agent, _turns} when other_group != sanitized ->
+      {other_group, _bound_agent, _bound_user, _turns} when other_group != sanitized ->
         {:reply, {:group_mismatch, sanitized, other_group}, state}
 
-      {^sanitized, bound_agent, _turns} ->
+      {^sanitized, bound_agent, _bound_user, _turns} when bound_agent != agent_name ->
         {:reply, {:agent_mismatch, agent_name, bound_agent}, state}
+
+      {^sanitized, ^agent_name, bound_user, _turns} ->
+        {:reply, {:user_mismatch, user_name, bound_user}, state}
     end
   end
 
   def handle_call({:turns_for, session_id}, _from, state) do
     case Map.get(state.entries, session_id) do
       nil -> {:reply, [], state}
-      {_group, _agent, turns} -> {:reply, turns, state}
+      {_group, _agent, _user, turns} -> {:reply, turns, state}
     end
   end
 
@@ -120,17 +134,23 @@ defmodule Gralkor.CaptureBuffer do
         Logger.info("[gralkor] flush — session:#{session_id} empty")
         {:reply, :ok, state}
 
-      {{group, agent, turns}, entries} ->
+      {{group, agent, user, turns}, entries} ->
         Logger.info("[gralkor] flush scheduled — session:#{session_id} turns:#{length(turns)}")
-        Task.start(fn -> do_flush(group, agent, turns, state.flush_callback, state.retries) end)
+
+        Task.start(fn ->
+          do_flush(group, agent, user, turns, state.flush_callback, state.retries)
+        end)
+
         {:reply, :ok, %{state | entries: entries}}
     end
   end
 
   def handle_call(:flush_all, _from, state) do
     tasks =
-      for {_session_id, {group, agent, turns}} <- state.entries do
-        Task.async(fn -> do_flush(group, agent, turns, state.flush_callback, state.retries) end)
+      for {_session_id, {group, agent, user, turns}} <- state.entries do
+        Task.async(fn ->
+          do_flush(group, agent, user, turns, state.flush_callback, state.retries)
+        end)
       end
 
     Task.await_many(tasks, :infinity)
@@ -139,8 +159,8 @@ defmodule Gralkor.CaptureBuffer do
 
   @impl true
   def terminate(_reason, state) do
-    for {_session_id, {group, agent, turns}} <- state.entries do
-      do_flush(group, agent, turns, state.flush_callback, state.retries)
+    for {_session_id, {group, agent, user, turns}} <- state.entries do
+      do_flush(group, agent, user, turns, state.flush_callback, state.retries)
     end
 
     :ok
@@ -148,12 +168,12 @@ defmodule Gralkor.CaptureBuffer do
 
   # ── Flush worker ────────────────────────────────────────────
 
-  defp do_flush(group, agent, turns, cb, retries) do
-    do_flush(group, agent, turns, cb, retries, System.monotonic_time(:millisecond))
+  defp do_flush(group, agent, user, turns, cb, retries) do
+    do_flush(group, agent, user, turns, cb, retries, System.monotonic_time(:millisecond))
   end
 
-  defp do_flush(group, agent, turns, cb, retries, t0) do
-    case safe_invoke(cb, group, agent, turns) do
+  defp do_flush(group, agent, user, turns, cb, retries, t0) do
+    case safe_invoke(cb, group, agent, user, turns) do
       :ok ->
         elapsed = System.monotonic_time(:millisecond) - t0
         Logger.info("[gralkor] capture flushed — turns:#{length(turns)} elapsed:#{elapsed}ms")
@@ -168,7 +188,7 @@ defmodule Gralkor.CaptureBuffer do
         :dropped
 
       {:error, _reason} ->
-        retry(group, agent, turns, cb, retries, t0)
+        retry(group, agent, user, turns, cb, retries, t0)
 
       {:exception, exception, stacktrace} ->
         Logger.warning(
@@ -176,35 +196,35 @@ defmodule Gralkor.CaptureBuffer do
             Exception.format(:error, exception, stacktrace)
         )
 
-        retry(group, agent, turns, cb, retries, t0)
+        retry(group, agent, user, turns, cb, retries, t0)
     end
   end
 
-  defp safe_invoke(cb, group, agent, turns) do
-    cb.(group, agent, turns)
+  defp safe_invoke(cb, group, agent, user, turns) do
+    cb.(group, agent, user, turns)
   rescue
     e -> {:exception, e, __STACKTRACE__}
   end
 
-  defp retry(_group, _agent, _turns, _cb, [], _t0) do
+  defp retry(_group, _agent, _user, _turns, _cb, [], _t0) do
     Logger.error("[gralkor] capture exhausted")
     :exhausted
   end
 
-  defp retry(group, agent, turns, cb, [delay | rest], t0) do
+  defp retry(group, agent, user, turns, cb, [delay | rest], t0) do
     Process.sleep(delay)
-    do_flush(group, agent, turns, cb, rest, t0)
+    do_flush(group, agent, user, turns, cb, rest, t0)
   end
 
-  defp raise_if_blank_agent!(name) when is_binary(name) do
+  defp raise_if_blank!(field, name) when is_binary(name) do
     if String.trim(name) == "" do
-      raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(name)}"
+      raise ArgumentError, "#{field} must be a non-blank string, got #{inspect(name)}"
     end
 
     :ok
   end
 
-  defp raise_if_blank_agent!(other) do
-    raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(other)}"
+  defp raise_if_blank!(field, other) do
+    raise ArgumentError, "#{field} must be a non-blank string, got #{inspect(other)}"
   end
 end

@@ -36,24 +36,22 @@ defmodule Gralkor.JidoMemoryJourneyTest do
       File.mkdir_p!(data_dir)
       System.put_env("GRALKOR_DATA_DIR", data_dir)
 
-      config = Config.from_env()
-
       {:ok, _python} = start_supervised(Gralkor.Python)
 
       {:ok, _pool} =
         start_supervised(
           {GraphitiPool,
            [
-             data_dir: config.data_dir,
-             llm_model: Config.llm_model(config),
-             embedder_model: Config.embedder_model(config),
+             falkordb_spec: {:embedded, data_dir},
+             llm_model: Config.llm_model(),
+             embedder_model: Config.embedder_model(),
              interpret_fn: Native.interpret_callback(),
              warmup: false
            ]}
         )
 
-      flush_callback = fn group_id, agent_name, turns ->
-        body = Distill.format_transcript(turns, Native.distill_callback(), agent_name)
+      flush_callback = fn group_id, agent_name, user_name, turns ->
+        body = Distill.format_transcript(turns, Native.distill_callback(), agent_name, user_name)
 
         if body == "" do
           :ok

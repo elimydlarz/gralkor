@@ -22,24 +22,28 @@ defmodule Gralkor.Application do
       Application.get_env(:gralkor_ex, :client) == Gralkor.Client.InMemory ->
         []
 
-      System.get_env("GRALKOR_DATA_DIR") == nil ->
-        []
-
       true ->
-        config = Config.from_env()
-
-        [
-          Gralkor.Python,
-          {GraphitiPool,
-           [
-             data_dir: config.data_dir,
-             llm_model: Config.llm_model(config),
-             embedder_model: Config.embedder_model(config),
-             interpret_fn: Native.interpret_callback()
-           ]},
-          {CaptureBuffer, [flush_callback: build_flush_callback(config)]}
-        ]
+        case Config.falkordb_spec() do
+          nil -> []
+          spec -> build_children(spec)
+        end
     end
+  end
+
+  defp build_children(spec) do
+    remote? = match?({:remote, _}, spec)
+
+    [
+      {Gralkor.Python, [reap_orphans: not remote?]},
+      {GraphitiPool,
+       [
+         falkordb_spec: spec,
+         llm_model: Config.llm_model(),
+         embedder_model: Config.embedder_model(),
+         interpret_fn: Native.interpret_callback()
+       ]},
+      {CaptureBuffer, [flush_callback: build_flush_callback(spec)]}
+    ]
   end
 
   @doc false
@@ -47,8 +51,8 @@ defmodule Gralkor.Application do
     distill_fn = Keyword.get_lazy(deps, :distill_fn, &Native.distill_callback/0)
     add_episode_fn = Keyword.get(deps, :add_episode_fn, &GraphitiPool.add_episode/3)
 
-    fn group_id, agent_name, turns ->
-      body = Distill.format_transcript(turns, distill_fn, agent_name)
+    fn group_id, agent_name, user_name, turns ->
+      body = Distill.format_transcript(turns, distill_fn, agent_name, user_name)
 
       cond do
         body == "" ->

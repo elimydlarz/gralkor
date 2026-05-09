@@ -33,14 +33,21 @@ defmodule Gralkor.Distill do
 
   `agent_name` is required and non-blank — used to label assistant and
   behaviour lines (e.g. `"Susu: hello"`, `"Susu: (behaviour: thought)"`).
+
+  `user_name` is required and non-blank — used to label user lines
+  (e.g. `"Eli: hi"`). The rendered transcript is fed to graphiti's entity
+  extraction; a generic "User:" label collapses every user across the
+  deployment into a single graph node, destroying graph quality. Every
+  consumer must name the human.
   """
-  @spec format_transcript([turn()], distill_fn(), String.t()) :: String.t()
-  def format_transcript(turns, distill_fn, agent_name) when is_list(turns) do
-    raise_if_blank!(agent_name)
+  @spec format_transcript([turn()], distill_fn(), String.t(), String.t()) :: String.t()
+  def format_transcript(turns, distill_fn, agent_name, user_name) when is_list(turns) do
+    raise_if_blank!(:agent_name, agent_name)
+    raise_if_blank!(:user_name, user_name)
 
     turns
-    |> distill_in_parallel(distill_fn, agent_name)
-    |> Enum.map(&render_turn(&1, agent_name))
+    |> distill_in_parallel(distill_fn, agent_name, user_name)
+    |> Enum.map(&render_turn(&1, agent_name, user_name))
     |> Enum.join("\n")
   end
 
@@ -62,25 +69,25 @@ defmodule Gralkor.Distill do
 
   # ── internal ────────────────────────────────────────────────
 
-  defp raise_if_blank!(name) when is_binary(name) do
+  defp raise_if_blank!(field, name) when is_binary(name) do
     if String.trim(name) == "" do
-      raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(name)}"
+      raise ArgumentError, "#{field} must be a non-blank string, got #{inspect(name)}"
     end
 
     :ok
   end
 
-  defp raise_if_blank!(other) do
-    raise ArgumentError, "agent_name must be a non-blank string, got #{inspect(other)}"
+  defp raise_if_blank!(field, other) do
+    raise ArgumentError, "#{field} must be a non-blank string, got #{inspect(other)}"
   end
 
-  defp distill_in_parallel(turns, distill_fn, agent_name) do
+  defp distill_in_parallel(turns, distill_fn, agent_name, user_name) do
     turns
     |> Enum.map(fn turn -> {turn, has_behaviour?(turn)} end)
     |> Task.async_stream(
       fn
         {turn, false} -> {turn, nil}
-        {turn, true} -> {turn, safe_distill(distill_fn, turn, agent_name)}
+        {turn, true} -> {turn, safe_distill(distill_fn, turn, agent_name, user_name)}
       end,
       ordered: true,
       timeout: @parallel_timeout
@@ -90,10 +97,10 @@ defmodule Gralkor.Distill do
 
   defp has_behaviour?(turn), do: Enum.any?(turn, &(&1.role == "behaviour"))
 
-  defp safe_distill(nil, _turn, _agent_name), do: nil
+  defp safe_distill(nil, _turn, _agent_name, _user_name), do: nil
 
-  defp safe_distill(distill_fn, turn, agent_name) do
-    distill_fn.(thinking_prompt(turn, agent_name))
+  defp safe_distill(distill_fn, turn, agent_name, user_name) do
+    distill_fn.(thinking_prompt(turn, agent_name, user_name))
   rescue
     _ -> {:error, :raised}
   catch
@@ -104,11 +111,11 @@ defmodule Gralkor.Distill do
     other -> {:error, {:unexpected_distill_response, other}}
   end
 
-  defp thinking_prompt(turn, agent_name) do
+  defp thinking_prompt(turn, agent_name, user_name) do
     turn
     |> Enum.map(fn m ->
       case m.role do
-        "user" -> "User: #{m.content}"
+        "user" -> "#{user_name}: #{m.content}"
         "assistant" -> "#{agent_name}: #{m.content}"
         "behaviour" -> "#{agent_name}: (behaviour: #{m.content})"
       end
@@ -116,14 +123,14 @@ defmodule Gralkor.Distill do
     |> Enum.join("\n")
   end
 
-  defp render_turn({turn, distill_result}, agent_name) do
+  defp render_turn({turn, distill_result}, agent_name, user_name) do
     lines =
       turn
       |> Enum.reject(&(&1.role == "behaviour"))
       |> Enum.flat_map(fn m ->
         case m.role do
           "user" ->
-            ["User: #{m.content}"]
+            ["#{user_name}: #{m.content}"]
 
           "assistant" ->
             assistant_lines(distill_result, agent_name) ++ ["#{agent_name}: #{m.content}"]

@@ -1,7 +1,7 @@
 /**
  * Shared config types the server manager writes into `config.yaml` for the
  * Python server. OpenClaw-side plugin config (autoCapture, autoRecall,
- * search flags) lives in `@susu-eng/gralkor` (openclaw_gralkor) — this
+ * search flags) lives in `@susulabs/gralkor` (openclaw_gralkor) — this
  * package only holds types the Python server needs at boot.
  */
 

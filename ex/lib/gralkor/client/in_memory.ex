@@ -56,9 +56,14 @@ defmodule Gralkor.Client.InMemory do
   end
 
   @impl Gralkor.Client
-  def capture(session_id, group_id, agent_name, turn) do
+  def capture(session_id, group_id, agent_name, user_name, turn) do
     raise_if_blank!(:agent_name, agent_name)
-    GenServer.call(__MODULE__, {:call, :capture, [session_id, group_id, agent_name, turn]})
+    raise_if_blank!(:user_name, user_name)
+
+    GenServer.call(
+      __MODULE__,
+      {:call, :capture, [session_id, group_id, agent_name, user_name, turn]}
+    )
   end
 
   @impl Gralkor.Client

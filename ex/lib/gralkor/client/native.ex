@@ -42,14 +42,15 @@ defmodule Gralkor.Client.Native do
   end
 
   @impl Gralkor.Client
-  def capture(session_id, group_id, agent_name, msgs) do
+  def capture(session_id, group_id, agent_name, user_name, msgs) do
     raise_if_blank!(:session_id, session_id)
     raise_if_blank!(:agent_name, agent_name)
+    raise_if_blank!(:user_name, user_name)
 
     if Application.get_env(:gralkor_ex, :test, false),
       do: Logger.info("[gralkor] [test] capture messages: #{format_test_messages(msgs)}")
 
-    CaptureBuffer.append(session_id, group_id, agent_name, msgs)
+    CaptureBuffer.append(session_id, group_id, agent_name, user_name, msgs)
   end
 
   defp format_test_messages(msgs) do
@@ -96,7 +97,7 @@ defmodule Gralkor.Client.Native do
   end
 
   defp interpret_fn do
-    model = config() |> Config.llm_model()
+    model = Config.llm_model()
     schema = Interpret.interpret_schema()
 
     fn prompt ->
@@ -112,7 +113,7 @@ defmodule Gralkor.Client.Native do
   end
 
   defp distill_fn do
-    model = config() |> Config.llm_model()
+    model = Config.llm_model()
     schema = Distill.distill_schema()
 
     fn prompt ->
@@ -134,13 +135,6 @@ defmodule Gralkor.Client.Native do
   def interpret_callback, do: interpret_fn()
 
   defp turns_fn, do: &CaptureBuffer.turns_for/1
-
-  defp config do
-    case Application.get_env(:gralkor_ex, :config) do
-      %Config{} = c -> c
-      nil -> Config.from_env()
-    end
-  end
 
   defp raise_if_blank!(field, value) when is_binary(value) do
     if String.trim(value) == "" do
