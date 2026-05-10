@@ -141,6 +141,41 @@ defmodule Gralkor.GraphitiPoolTest do
       File.rm_rf!(data_dir)
     end
 
+    test "boots cleanly when a stale gralkor.db.settings from a prior run pins a dead socket" do
+      # Reifies `ex-graphiti-pool > embedded` (TEST_TREES.md). Contract for
+      # the underlying library trap: see the ts side at
+      # gralkor/ts/server/tests/test_redislite_resume_trap.py.
+      data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(data_dir)
+      stale_tmp = Path.join(System.tmp_dir!(), "gralkor_stale_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(stale_tmp)
+      File.write!(Path.join(stale_tmp, "redis.socket"), "")
+      File.write!(Path.join(stale_tmp, "redis.pid"), Integer.to_string(System.pid() |> String.to_integer()))
+
+      File.write!(
+        Path.join(data_dir, "gralkor.db.settings"),
+        Jason.encode!(%{
+          "pidfile" => Path.join(stale_tmp, "redis.pid"),
+          "unixsocket" => Path.join(stale_tmp, "redis.socket"),
+          "dbdir" => data_dir,
+          "dbfilename" => "gralkor.db"
+        })
+      )
+
+      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
+      assert Process.alive?(pid)
+
+      # Settings file has been rewritten by redislite to point at a fresh
+      # tmpdir owned by the redis-server child of THIS pool — proving the
+      # stale entry was unlinked and a new server forked.
+      rewritten = data_dir |> Path.join("gralkor.db.settings") |> File.read!() |> Jason.decode!()
+      refute rewritten["unixsocket"] == Path.join(stale_tmp, "redis.socket")
+
+      GenServer.stop(pid)
+      File.rm_rf!(data_dir)
+      File.rm_rf!(stale_tmp)
+    end
+
     test "for/1 returns a real Graphiti Pythonx.Object that can be queried" do
       data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
       File.mkdir_p!(data_dir)

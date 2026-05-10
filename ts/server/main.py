@@ -277,6 +277,13 @@ async def lifespan(_app: FastAPI):
     data_dir = os.getenv("FALKORDB_DATA_DIR", "./data/falkordb")
     os.makedirs(data_dir, exist_ok=True)
     db_path = os.path.join(data_dir, "gralkor.db")
+    # See `server-falkordb-bootstrap` in TEST_TREES.md and the contract at
+    # tests/test_redislite_resume_trap.py.
+    settings_path = os.path.join(data_dir, "gralkor.db.settings")
+    try:
+        os.unlink(settings_path)
+    except FileNotFoundError:
+        pass
     try:
         _falkor_db = AsyncFalkorDB(db_path)
     except Exception as e:

@@ -559,6 +559,8 @@ ex-graphiti-pool (src: ex/lib/gralkor/graphiti_pool.ex; unit: ex/test/gralkor/gr
   Gralkor.GraphitiPool's init/1 runs synchronously
     then `Gralkor.Python.install_async_runtime/0` is invoked (idempotent) so the pool can be booted standalone — under normal supervision Gralkor.Python has already installed the loop and this is a no-op; in tests / one-off scripts that start GraphitiPool directly, this is what makes the loop available
     when started with an embedded spec (`{:embedded, data_dir: dir}`)
+      then `<data_dir>/gralkor.db.settings` is removed if present, immediately before constructing AsyncFalkorDB
+        (redislite writes this resume-cache file alongside the db on every successful boot, pinning the unix-socket and pidfile of the redis-server it spawned. On the next boot it reads the file and decides "is the previous server still running?" by checking `kill -0 <pidfile_PID>` — a check that returns true for zombies and for any unrelated process the OS recycled the PID to. When that check returns true, redislite skips spawning fresh and blindly reconnects to the cached socket; the connection raises `ConnectionError` and the call fails with no fallback. See contract: `ts/server/tests/test_redislite_resume_trap.py`. We always want our own redis-server child for this BEAM's lifecycle, so the unlink runs unconditionally — the cost is one ~1s redis-server fork per boot.)
       then the AsyncFalkorDB is constructed via `redislite.async_falkordb_client.AsyncFalkorDB(<data_dir>/gralkor.db)` (falkordblite spawns the redis-server child)
     when started with a remote spec (`{:remote, host:, port:, username:, password:, ssl:}`)
       then the AsyncFalkorDB is constructed via `falkordb.asyncio.FalkorDB(host:, port:, username:, password:, ssl:)` and `redislite` is not imported (no local redis-server is spawned)
@@ -681,6 +683,11 @@ server-config-defaults (ts stack; src: server/main.py; unit: server/tests/test_l
     then _build_embedder uses DEFAULT_EMBEDDER_MODEL ("gemini-embedding-2-preview")
   when config sets llm.provider / llm.model explicitly
     then those values take precedence over the defaults
+server-falkordb-bootstrap (ts stack; src: server/main.py; contract: server/tests/test_redislite_resume_trap.py; unit: server/tests/test_lifespan.py)
+  when the FastAPI lifespan enters startup in embedded mode
+    then `${FALKORDB_DATA_DIR}/gralkor.db.settings` is removed if present, immediately before constructing AsyncFalkorDB
+      (same redislite resume-cache trap as `ex-graphiti-pool > embedded`; under uvicorn-respawn-without-container-restart the previous server's PID becomes a zombie that PID 1 doesn't reap, `kill -0` keeps returning true, and reconnecting to the dead socket raises `ConnectionError` on every retry. Contract: `tests/test_redislite_resume_trap.py`. The orphan-reaper at the manager layer (`ts-server-manager > start`) also kills the redislite redis-server process pre-spawn, but that's not load-bearing for this trap — the file is.)
+    then AsyncFalkorDB(`${FALKORDB_DATA_DIR}/gralkor.db`) is called, forking a fresh redis-server child for this lifespan
 cross-encoder-selection (ts stack; src: server/main.py; unit: server/tests/test_cross_encoder.py)
   when llm provider is gemini
     then uses GeminiRerankerClient

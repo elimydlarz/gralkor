@@ -27,6 +27,7 @@ _(empty)_
 ## Decision Rationale
 
 - **Per-request Graphiti.** graphiti-core binds a `Graphiti` to one FalkorDB graph and mutates `self.driver` in-place on cross-group `add_episode` (graphiti.py:887). Gralkor's server instantiates a fresh `Graphiti` per request via `_graphiti_for(group_id)` rather than locking a shared instance — a lock would hide the misuse and serialise unrelated calls.
+- **Discard redislite's resume cache before AsyncFalkorDB.** `redislite` writes `${dbfile}.settings` after every boot and on the next call decides "is the previous server still running?" via `kill -0 <pidfile_PID>`. That check returns true for zombies (container PID 1 doesn't reap them) and recycled PIDs, so the cached `unixsocket` gets blindly reconnected and raises `ConnectionError` with no fallback. Both adapters delete the file at the AsyncFalkorDB call site to force a fresh fork; orphan-reapers still kill the redis-server process for memory/port reasons but are not load-bearing for this trap. Contract: `gralkor/ts/server/tests/test_redislite_resume_trap.py`.
 
 ## Temporal View
 

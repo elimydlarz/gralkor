@@ -173,3 +173,44 @@ async def test_warmup_failure_does_not_block_boot(tmp_path, monkeypatch, caplog)
 
     warn_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert any("[gralkor] warmup failed" in m and "boom" in m for m in warn_msgs), warn_msgs
+
+
+@pytest.mark.asyncio
+async def test_removes_stale_redislite_resume_cache_before_falkordb(tmp_path, monkeypatch):
+    """Reifies `server-falkordb-bootstrap` (TEST_TREES.md). Lifespan must
+    unlink any existing `gralkor.db.settings` immediately before constructing
+    AsyncFalkorDB, so a stale cache from a prior boot can't trap redislite
+    into reconnecting to a dead socket. Contract: see
+    `tests/test_redislite_resume_trap.py`."""
+    data_dir = tmp_path / "db"
+    data_dir.mkdir()
+    settings_path = data_dir / "gralkor.db.settings"
+    settings_path.write_text('{"pidfile": "stale", "unixsocket": "stale"}')
+    monkeypatch.setenv("FALKORDB_DATA_DIR", str(data_dir))
+
+    observed_settings_existed: list[bool] = []
+
+    def _record_and_return(_db_path):
+        observed_settings_existed.append(settings_path.exists())
+        return MagicMock()
+
+    mock_graphiti_instance = _make_graphiti_mock()
+    with (
+        patch("main._load_config", return_value={}),
+        patch("main._build_llm_client", return_value=MagicMock()),
+        patch("main._build_embedder", return_value=MagicMock()),
+        patch("main.FalkorDriver", MagicMock()),
+        patch("main.Graphiti", MagicMock(return_value=mock_graphiti_instance)),
+        patch("redislite.async_falkordb_client.AsyncFalkorDB", side_effect=_record_and_return),
+    ):
+        import main as main_mod
+        app = MagicMock()
+
+        async with main_mod.lifespan(app):
+            pass
+
+    assert observed_settings_existed == [False], (
+        "AsyncFalkorDB was called while a stale gralkor.db.settings still "
+        "existed — redislite would reconnect to the cached dead socket "
+        "and fail. Lifespan must unlink the file first."
+    )
