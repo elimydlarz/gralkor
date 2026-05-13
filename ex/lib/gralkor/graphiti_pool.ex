@@ -111,14 +111,20 @@ defmodule Gralkor.GraphitiPool do
         s = source.decode('utf-8') if isinstance(source, (bytes, bytearray)) else source
         n = name.decode('utf-8') if isinstance(name, (bytes, bytearray)) else name
         gid = group.decode('utf-8') if isinstance(group, (bytes, bytearray)) else group
-        asyncio._gralkor_run(g.add_episode(
-          name=n,
-          episode_body=c,
-          source=EpisodeType.text,
-          source_description=s,
-          group_id=gid,
-          reference_time=datetime.now(timezone.utc),
-        ))
+        import traceback, sys
+        try:
+            asyncio._gralkor_run(g.add_episode(
+              name=n,
+              episode_body=c,
+              source=EpisodeType.text,
+              source_description=s,
+              group_id=gid,
+              reference_time=datetime.now(timezone.utc),
+            ))
+        except BaseException:
+            print("[gralkor-debug] add_episode raised:", file=sys.stderr)
+            traceback.print_exc()
+            raise
         None
         """,
         %{
@@ -322,12 +328,15 @@ defmodule Gralkor.GraphitiPool do
         # Build indices on this database so the first search can find anything.
         # FalkorDB indices are per-database; CREATE INDEX is idempotent so running
         # this every time we construct a fresh instance is cheap.
+        import traceback, sys
         try:
             asyncio._gralkor_run(g.build_indices_and_constraints())
-        except Exception as e:
+        except BaseException as e:
             # Best-effort — surface as a warning via the return value rather than
             # crashing instance construction.
-            print(f"[gralkor] build_indices_and_constraints failed (non-fatal): {e}")
+            print(f"[gralkor] build_indices_and_constraints failed (non-fatal): {e}", file=sys.stderr)
+            print("[gralkor-debug] traceback:", file=sys.stderr)
+            traceback.print_exc()
         g
         """,
         %{

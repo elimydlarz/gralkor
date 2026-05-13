@@ -4,6 +4,7 @@ import {
   bundledServerDir,
   createServerManager,
   serializeOntologyYaml,
+  wheelDownloadUrl,
 } from "../src/server-manager.js";
 
 describe("bundledServerDir", () => {
@@ -13,14 +14,42 @@ describe("bundledServerDir", () => {
   });
 });
 
+describe("wheelDownloadUrl", () => {
+  it("builds a GH Release asset URL from wheelRepo + version", () => {
+    expect(wheelDownloadUrl("elimydlarz/openclaw_gralkor", "2.1.11")).toBe(
+      "https://github.com/elimydlarz/openclaw_gralkor/releases/download/v2.1.11/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl",
+    );
+  });
+});
+
 describe("createServerManager", () => {
   it("returns a manager that starts not running", () => {
     const manager = createServerManager({
       dataDir: "/tmp/fake-data-dir",
       port: 4000,
       version: "0.0.0-test",
+      wheelRepo: "test-owner/test-repo",
     });
     expect(manager.isRunning()).toBe(false);
+  });
+
+  it("start() is idempotent — repeated calls share the same Promise", () => {
+    const manager = createServerManager({
+      dataDir: "/tmp/fake-data-dir-idempotence",
+      port: 4000,
+      version: "0.0.0-test",
+      wheelRepo: "test-owner/test-repo",
+    });
+    const a = manager.start();
+    const b = manager.start();
+    const c = manager.start();
+    expect(a).toBe(b);
+    expect(a).toBe(c);
+    // Swallow the eventual rejection — uv / spawn on a throwaway dataDir is
+    // not what this test exercises. The invariant under test is that all
+    // start() calls return the same Promise reference, before any boot work
+    // completes.
+    a.catch(() => {});
   });
 });
 

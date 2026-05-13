@@ -594,6 +594,18 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
     then serverDir defaults to bundledServerDir() (the in-tree server shipped inside @susulabs/gralkor)
     then consumers may override serverDir to point at a development checkout
     then the returned manager starts with isRunning() === false
+  wheelDownloadUrl(wheelRepo, version)
+    then returns `https://github.com/${wheelRepo}/releases/download/v${version}/falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl`
+    (the URL is purely a function of the two consumer-supplied inputs — there is no default repo. The consumer of gralkor-ts is the wheel publisher, so it must declare wheelRepo. Removing the default forces publish-time/runtime symmetry: the publish script `gh release uploads` to the same repo the runtime downloads from, both derived from one source.)
+  wheel resolution (on linux/arm64 only — other platforms install falkordblite from PyPI)
+    when serverDir/wheels/*.whl exists
+      then the bundled wheel(s) are used directly (npm-tarball path; today's npm doesn't ship them, but the path is retained for future-bundled tarballs)
+    when serverDir/wheels is absent and dataDir/wheels/<wheel> already exists from a prior boot
+      then that cached wheel is used (no re-download)
+    when no wheel is cached
+      then wheelDownloadUrl(opts.wheelRepo, opts.version) is fetched and written under dataDir/wheels/
+      if the response is not ok
+        then start rejects with `bundled wheel download failed: HTTP ${status} ${url}` (the URL is in the error so the publish-site/version mismatch is diagnosable from one line)
   buildConfigYaml (helper written into config.yaml at start time)
     when neither llmConfig nor embedderConfig nor ontologyConfig nor test is supplied
       then returns the empty string — no llm/embedder section is written and the server applies its own defaults (single source of truth in ts/server/main.py)
@@ -618,6 +630,11 @@ ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server
       then emits an "edgeMap:" block with "EntityA,EntityB" keys and their edge lists
     when the ontology is empty (no entities, edges, or edgeMap)
       then emits just "ontology:\n"
+  start idempotence
+    when start() is called twice on the same manager
+      then the second call returns the same Promise as the first (no second boot, no second spawn) — defence against hosts that double-fire lifecycle (e.g. an OpenClaw host that calls service.start while the consumer also self-starts; one consumer-side incident is captured in `openclaw_gralkor/CLAUDE.md` plugin-lifecycle)
+    when the first start() rejects
+      then subsequent start() calls return the same rejected Promise — the manager is single-shot per construction; consumers retry by recreating it (the in-process auto-respawn path handles in-flight crashes separately)
   start (NOT covered by unit tests; exercised only by consumers in production)
     then before spawning, prior-run orphans are reaped
       when lsof reports any pid listening on the configured port

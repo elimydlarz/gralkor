@@ -42,6 +42,13 @@ export interface ServerManagerOptions {
   port: number;
   /** Plugin version — used to fetch the arm64 wheel from GitHub Releases when not bundled. */
   version: string;
+  /**
+   * GitHub repo (`owner/name`) that hosts the prebuilt `falkordblite` wheel as a release asset.
+   * Used on linux/arm64 only; the URL is `https://github.com/${wheelRepo}/releases/download/v${version}/<wheel>`.
+   * The consumer is the publisher (the one whose CI uploads the wheel via `gh release upload`),
+   * so the consumer must tell us where it published — there is no defensible default here.
+   */
+  wheelRepo: string;
   env?: Record<string, string>;
   secretEnv?: Record<string, string>;
   llmConfig?: ModelConfig;
@@ -50,9 +57,13 @@ export interface ServerManagerOptions {
   test?: boolean;
 }
 
-// Bundled wheel filename — must match scripts/build-arm64-wheel.sh output.
+// Bundled wheel filename — must match the wheel produced by consumer publish scripts
+// (e.g. openclaw_gralkor's scripts/build-arm64-wheel.sh).
 const WHEEL_FILENAME = "falkordblite-0.9.0-py3-none-manylinux_2_36_aarch64.whl";
-const WHEEL_REPO = "elimydlarz/gralkor";
+
+export function wheelDownloadUrl(wheelRepo: string, version: string): string {
+  return `https://github.com/${wheelRepo}/releases/download/v${version}/${WHEEL_FILENAME}`;
+}
 
 export interface ServerManager {
   start(): Promise<void>;
@@ -67,8 +78,13 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
   const recentUnexpectedExits: number[] = [];
   let spawnEnv: Record<string, string> | null = null;
   let venvPython: string | null = null;
+  let startPromise: Promise<void> | null = null;
 
-  async function start(): Promise<void> {
+  function start(): Promise<void> {
+    return (startPromise ??= doStart());
+  }
+
+  async function doStart(): Promise<void> {
     const bootStart = Date.now();
 
     await mkdir(opts.dataDir, { recursive: true });
@@ -99,7 +115,7 @@ export function createServerManager(opts: ServerManagerOptions): ServerManager {
     // GitHub Releases (ClawHub path — wheel exceeds ClawHub's 20 MB limit).
     const useBundledWheels = process.platform === "linux" && process.arch === "arm64";
     const bundledWheels = useBundledWheels
-      ? await resolveBundledWheels(serverDir, opts.dataDir, opts.version)
+      ? await resolveBundledWheels(serverDir, opts.dataDir, opts.wheelRepo, opts.version)
       : [];
 
     const syncEnv = buildSyncEnv(venvDir);
@@ -350,7 +366,7 @@ export function serializeOntologyYaml(ontology: OntologyConfig): string {
   return lines.join("\n") + "\n";
 }
 
-async function resolveBundledWheels(serverDir: string, dataDir: string, version: string): Promise<string[]> {
+async function resolveBundledWheels(serverDir: string, dataDir: string, wheelRepo: string, version: string): Promise<string[]> {
   const installed = join(serverDir, "wheels");
   if (existsSync(installed)) {
     const files = readdirSync(installed).filter((f) => f.endsWith(".whl"));
@@ -359,7 +375,7 @@ async function resolveBundledWheels(serverDir: string, dataDir: string, version:
   const dest = join(dataDir, "wheels", WHEEL_FILENAME);
   if (!existsSync(dest)) {
     await mkdir(join(dataDir, "wheels"), { recursive: true });
-    const url = `https://github.com/${WHEEL_REPO}/releases/download/v${version}/${WHEEL_FILENAME}`;
+    const url = wheelDownloadUrl(wheelRepo, version);
     console.log(`[gralkor] boot: downloading wheel ${url}`);
     const res = await fetch(url, { redirect: "follow" });
     if (!res.ok) throw new Error(`bundled wheel download failed: HTTP ${res.status} ${url}`);
