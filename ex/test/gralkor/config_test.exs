@@ -105,7 +105,7 @@ defmodule Gralkor.ConfigTest do
 
   describe "falkordb-connection > llm_model and embedder_model" do
     test "default to the canonical google models when env is unset" do
-      assert Config.llm_model() == "google:gemini-3.1-flash-lite-preview"
+      assert Config.llm_model() == "google:gemini-3.1-flash-lite"
       assert Config.embedder_model() == "google:gemini-embedding-2-preview"
     end
 
@@ -121,7 +121,7 @@ defmodule Gralkor.ConfigTest do
 
     test "blank env values fall back to defaults" do
       System.put_env("GRALKOR_LLM_MODEL", "")
-      assert Config.llm_model() == "google:gemini-3.1-flash-lite-preview"
+      assert Config.llm_model() == "google:gemini-3.1-flash-lite"
     end
   end
 end

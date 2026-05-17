@@ -691,7 +691,7 @@ server-config-defaults (ts stack; src: server/main.py; unit: server/tests/test_l
   when config omits llm.provider
     then _build_llm_client uses DEFAULT_LLM_PROVIDER ("gemini")
   when config omits llm.model and provider is gemini
-    then _build_llm_client uses DEFAULT_LLM_MODEL ("gemini-3.1-flash-lite-preview")
+    then _build_llm_client uses DEFAULT_LLM_MODEL ("gemini-3.1-flash-lite")
   when config omits llm.model and provider is not gemini
     then no model is forced (delegates to graphiti-core provider defaults)
   when config omits embedder.provider

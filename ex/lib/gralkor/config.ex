@@ -18,7 +18,7 @@ defmodule Gralkor.Config do
 
   # Defaults match server-side gralkor/server/main.py — both stacks pick the
   # same model so consumers see identical output.
-  @default_llm_model "google:gemini-3.1-flash-lite-preview"
+  @default_llm_model "google:gemini-3.1-flash-lite"
   @default_embedder_model "google:gemini-embedding-2-preview"
 
   @typedoc """

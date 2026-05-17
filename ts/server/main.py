@@ -48,7 +48,7 @@ def _load_config() -> dict:
 
 
 DEFAULT_LLM_PROVIDER = "gemini"
-DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite-preview"
+DEFAULT_LLM_MODEL = "gemini-3.1-flash-lite"
 DEFAULT_EMBEDDER_PROVIDER = "gemini"
 DEFAULT_EMBEDDER_MODEL = "gemini-embedding-2-preview"
 
