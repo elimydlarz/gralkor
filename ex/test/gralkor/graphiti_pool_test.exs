@@ -140,6 +140,85 @@ defmodule Gralkor.GraphitiPoolTest do
     end
   end
 
+  describe "init/1 runs synchronously" do
+    test "then the graphiti-core LLM client, embedder, and cross-encoder are constructed once via Pythonx and shared across every Graphiti instance for the lifetime of the GenServer" do
+      shared_count = :counters.new(1, [])
+      instance_shareds = :ets.new(:shareds, [:public, :duplicate_bag])
+
+      shared = %{llm_client: :the_llm, embedder: :the_embedder, cross_encoder: :the_xenc}
+
+      construct_shared_clients = fn _llm, _embedder ->
+        :counters.add(shared_count, 1, 1)
+        shared
+      end
+
+      construct_instance = fn _db, received_shared, group ->
+        :ets.insert(instance_shareds, {group, received_shared})
+        {:stub_graphiti, group}
+      end
+
+      %{pid: pid} =
+        start_pool(
+          construct_shared_clients: construct_shared_clients,
+          construct_instance: construct_instance
+        )
+
+      _ = GraphitiPool.for(pid, "g1")
+      _ = GraphitiPool.for(pid, "g2")
+      _ = GraphitiPool.for(pid, "g3")
+
+      assert :counters.get(shared_count, 1) == 1
+
+      shareds = instance_shareds |> :ets.tab2list() |> Enum.map(fn {_, s} -> s end)
+      assert length(shareds) == 3
+      assert Enum.uniq(shareds) == [shared]
+    end
+
+    test "then warmup runs: search is invoked once with a throwaway query and group_id, then Gralkor.Interpret.interpret_facts is invoked once" do
+      interpret_count = :counters.new(1, [])
+
+      interpret_fn = fn _text ->
+        :counters.add(interpret_count, 1, 1)
+        :ok
+      end
+
+      log =
+        capture_log(fn ->
+          %{pid: pid} = start_pool(interpret_fn: interpret_fn, warmup: true)
+          assert Process.alive?(pid)
+          GenServer.stop(pid)
+        end)
+
+      assert :counters.get(interpret_count, 1) == 1
+
+      assert log =~ "[gralkor] warmup failed (non-fatal) — search",
+             "search is invoked once (with stubs it fails the rescued Pythonx eval; the warning line proves the invocation)"
+    end
+
+    test "then logs \"[gralkor] warmup — search:… interpret:… <total>ms\" at :info" do
+      log =
+        capture_log(fn ->
+          %{pid: pid} = start_pool(interpret_fn: fn _ -> :ok end, warmup: true)
+          GenServer.stop(pid)
+        end)
+
+      assert log =~ ~r/\[gralkor\] warmup — search:\d+ interpret:\d+ \d+ms/
+    end
+  end
+
+  describe "init/1 runs synchronously, if any warmup call raises or returns {:error, _}" do
+    test "then it is caught and logged at :warning as \"[gralkor] warmup failed (non-fatal): <reason>\" and boot proceeds" do
+      log =
+        capture_log(fn ->
+          %{pid: pid} = start_pool(interpret_fn: fn _ -> :ok end, warmup: true)
+          assert Process.alive?(pid), "boot proceeded after warmup failure"
+          GenServer.stop(pid)
+        end)
+
+      assert log =~ "[gralkor] warmup failed (non-fatal)"
+    end
+  end
+
   describe "init/1 runs synchronously, when started with an embedded spec" do
     @describetag :integration
 
