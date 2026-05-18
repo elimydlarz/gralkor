@@ -71,18 +71,54 @@ defmodule Gralkor.Client.NativeTest do
     end
   end
 
-  describe "ex-client-native > if end_session is called with a blank string session_id" do
+  describe "ex-client-native > if flush is called with a blank string session_id" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/session_id/, fn ->
-        Native.end_session("")
+        Native.flush("")
       end
     end
   end
 
-  describe "ex-client-native > if end_session is called with a nil session_id" do
+  describe "ex-client-native > if flush is called with a nil session_id" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/session_id/, fn ->
-        Native.end_session(nil)
+        Native.flush(nil)
+      end
+    end
+  end
+
+  describe "ex-client-native > if flush_and_await is called with a blank string session_id" do
+    test "raises ArgumentError" do
+      assert_raise ArgumentError, ~r/session_id/, fn ->
+        Native.flush_and_await("", 1_000)
+      end
+    end
+  end
+
+  describe "ex-client-native > if flush_and_await is called with a nil session_id" do
+    test "raises ArgumentError" do
+      assert_raise ArgumentError, ~r/session_id/, fn ->
+        Native.flush_and_await(nil, 1_000)
+      end
+    end
+  end
+
+  describe "ex-client-native > if flush_and_await is called with a non-positive timeout_ms" do
+    test "raises ArgumentError when timeout_ms is zero" do
+      assert_raise ArgumentError, ~r/timeout_ms/, fn ->
+        Native.flush_and_await("s1", 0)
+      end
+    end
+
+    test "raises ArgumentError when timeout_ms is negative" do
+      assert_raise ArgumentError, ~r/timeout_ms/, fn ->
+        Native.flush_and_await("s1", -1)
+      end
+    end
+
+    test "raises ArgumentError when timeout_ms is missing" do
+      assert_raise ArgumentError, ~r/timeout_ms/, fn ->
+        Native.flush_and_await("s1", nil)
       end
     end
   end

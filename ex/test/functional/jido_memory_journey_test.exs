@@ -94,14 +94,14 @@ defmodule Gralkor.JidoMemoryJourneyTest do
     end
   end
 
-  describe "jido-memory-journey > session_end flush" do
-    test "captured turns are flushed and become recallable after end_session", %{
+  describe "jido-memory-journey > flush" do
+    test "captured turns are flushed and become recallable after flush", %{
       group_id: group_id
     } do
       session_id = "session_#{System.unique_integer([:positive])}"
 
       :ok =
-        Client.impl().capture(session_id, group_id, "TestAgent", [
+        Client.impl().capture(session_id, group_id, "TestAgent", "Eli", [
           Message.new(
             "user",
             "Important context: Eli's favourite colour is teal, and Eli drives a blue Subaru Outback."
@@ -109,7 +109,7 @@ defmodule Gralkor.JidoMemoryJourneyTest do
           Message.new("assistant", "Noted — Eli's favourite colour is teal and Eli drives a blue Subaru Outback.")
         ])
 
-      :ok = Client.impl().end_session(session_id)
+      :ok = Client.impl().flush(session_id)
 
       # Give the buffer flush + distill + graphiti add_episode some time to land.
       Process.sleep(45_000)

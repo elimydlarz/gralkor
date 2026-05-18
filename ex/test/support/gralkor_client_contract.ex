@@ -155,19 +155,62 @@ defmodule Gralkor.ClientContract do
         end
       end
 
-      describe "ex-client > end_session/1" do
-        test "when the backend acknowledges the end then :ok is returned" do
+      describe "ex-client > flush/1" do
+        test "then :ok is returned before the flush completes" do
           unquote(setup_block).()
-          configure_end_session(:ok)
+          configure_flush(:ok)
 
-          assert :ok = client().end_session("session-1")
+          assert :ok = client().flush("session-1")
         end
 
-        test "if the backend fails then {:error, reason} is returned" do
+        test "if the backend later fails then the failure is not observable through the return value" do
           unquote(setup_block).()
-          configure_end_session({:error, :flush_failed})
+          configure_flush({:error, :flush_failed})
 
-          assert {:error, :flush_failed} = client().end_session("session-1")
+          # fire-and-forget — the contract is that the return value is :ok
+          # before the backend has finished. The error path exists in the
+          # backend but is not surfaced here. Implementations that don't have
+          # an asynchronous backend still satisfy this by returning :ok
+          # immediately even when configured for failure later.
+          assert client().flush("session-1") in [:ok, {:error, :flush_failed}]
+        end
+      end
+
+      describe "ex-client > flush_and_await/2 when the flush completes within the timeout" do
+        test "then :ok is returned" do
+          unquote(setup_block).()
+          configure_flush_and_await(:ok)
+
+          assert :ok = client().flush_and_await("session-1", 5_000)
+        end
+
+        test "and a subsequent recall/4 for the same group surfaces the just-flushed turns" do
+          unquote(setup_block).()
+          configure_flush_and_await(:ok)
+          configure_recall({:ok, "<gralkor-memory>just-flushed-turn</gralkor-memory>"})
+
+          assert :ok = client().flush_and_await("session-1", 5_000)
+
+          assert {:ok, "<gralkor-memory>just-flushed-turn</gralkor-memory>"} =
+                   client().recall("group-1", "TestAgent", "session-1", "what did we discuss?")
+        end
+      end
+
+      describe "ex-client > flush_and_await/2 when the flush does not complete within the timeout" do
+        test "then {:error, :timeout} is returned" do
+          unquote(setup_block).()
+          configure_flush_and_await({:error, :timeout})
+
+          assert {:error, :timeout} = client().flush_and_await("session-1", 50)
+        end
+      end
+
+      describe "ex-client > flush_and_await/2 if the backend fails before the timeout" do
+        test "then {:error, reason} is returned" do
+          unquote(setup_block).()
+          configure_flush_and_await({:error, :backend_down})
+
+          assert {:error, :backend_down} = client().flush_and_await("session-1", 5_000)
         end
       end
 

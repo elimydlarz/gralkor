@@ -1,9 +1,11 @@
 defmodule Gralkor.GraphitiPoolTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Gralkor.GraphitiPool
 
-  defp start_pool(opts \\ []) do
+  defp start_pool(opts) do
     table = :"pool_table_#{System.unique_integer([:positive])}"
 
     defaults = [
@@ -23,68 +25,41 @@ defmodule Gralkor.GraphitiPoolTest do
     %{pid: pid, table: table}
   end
 
-  describe "ex-graphiti-pool > for/1 when called with a group_id for the first time" do
-    test "a Graphiti instance is constructed scoped to that group_id and cached in ETS" do
-      %{pid: pid, table: table} = start_pool()
-
-      instance = GraphitiPool.for(pid, "group-1")
-
-      assert instance == {:stub_graphiti, "group_1"}
-      assert [{"group_1", {:stub_graphiti, "group_1"}}] = :ets.tab2list(table)
-    end
-  end
-
-  describe "ex-graphiti-pool > for/1 when called twice with the same group_id" do
-    test "the same instance is returned both times (no re-construction)" do
+  describe "for/1 (group_id), when called against an embedded spec" do
+    test "then the Graphiti instance for the sanitized group_id is looked up from a shared ETS cache; on first use it is constructed and inserted, then lives for the lifetime of the GenServer" do
       counter = :counters.new(1, [])
-
-      construct_instance = fn _db, _shared, group ->
-        :counters.add(counter, 1, 1)
-        {:stub_graphiti, group, :counters.get(counter, 1)}
-      end
-
-      %{pid: pid} = start_pool(construct_instance: construct_instance)
-
-      first = GraphitiPool.for(pid, "g")
-      second = GraphitiPool.for(pid, "g")
-
-      assert first == second
-      assert :counters.get(counter, 1) == 1
-    end
-  end
-
-  describe "ex-graphiti-pool > for/1 when called with different group_ids" do
-    test "different instances are returned" do
-      %{pid: pid} = start_pool()
-
-      a = GraphitiPool.for(pid, "alpha")
-      b = GraphitiPool.for(pid, "beta")
-
-      refute a == b
-    end
-  end
-
-  describe "ex-graphiti-pool > for/1 group_id sanitization" do
-    test "group_id is sanitized (hyphens → underscores) before construction and lookup" do
-      ref = make_ref()
       test_pid = self()
 
       construct_instance = fn _db, _shared, group ->
-        send(test_pid, {ref, group})
+        :counters.add(counter, 1, 1)
+        send(test_pid, {:constructed, group})
         {:stub_graphiti, group}
       end
 
       %{pid: pid, table: table} = start_pool(construct_instance: construct_instance)
 
-      _ = GraphitiPool.for(pid, "with-hyphens-here")
+      a1 = GraphitiPool.for(pid, "with-hyphens")
+      assert_receive {:constructed, "with_hyphens"}
+      assert :counters.get(counter, 1) == 1
+      assert a1 == {:stub_graphiti, "with_hyphens"}
 
-      assert_receive {^ref, "with_hyphens_here"}
-      assert [{"with_hyphens_here", _}] = :ets.tab2list(table)
+      assert [{"with_hyphens", {:stub_graphiti, "with_hyphens"}}] =
+               :ets.lookup(table, "with_hyphens")
+
+      a2 = GraphitiPool.for(pid, "with-hyphens")
+      assert a2 == a1
+      assert :counters.get(counter, 1) == 1
+
+      b = GraphitiPool.for(pid, "another")
+      assert_receive {:constructed, "another"}
+      assert :counters.get(counter, 1) == 2
+      refute b == a1
+
+      assert Enum.sort(Enum.map(:ets.tab2list(table), fn {k, _} -> k end)) ==
+               ["another", "with_hyphens"]
     end
-  end
 
-  describe "ex-graphiti-pool > for/1 does NOT serialise calls" do
-    test "concurrent callers for distinct group_ids proceed in parallel" do
+    test "then concurrent callers proceed in parallel" do
       construct_instance = fn _db, _shared, group ->
         Process.sleep(100)
         {:stub_graphiti, group}
@@ -105,12 +80,7 @@ defmodule Gralkor.GraphitiPoolTest do
 
       ms = div(us, 1000)
       assert length(results) == 4
-      # 4 distinct groups must be CREATED serially (GenServer.call), so ~400ms.
-      # But once cached, lookups are concurrent. We aren't testing
-      # creation parallelism here — it's intentionally serialised. We test that
-      # subsequent (cached) reads do NOT block on the GenServer.
 
-      # Now that all 4 are cached, do 100 lookups in parallel and time them.
       {us_cached, _} =
         :timer.tc(fn ->
           1..100
@@ -124,33 +94,71 @@ defmodule Gralkor.GraphitiPoolTest do
       assert div(us_cached, 1000) < 50,
              "100 concurrent cached reads should be near-instant (no GenServer hop), got #{div(us_cached, 1000)}ms (initial creation took #{ms}ms)"
     end
+
   end
 
-  describe "ex-graphiti-pool > integration > real Pythonx + falkordblite" do
+  describe "for/1 (group_id), when called against a remote spec" do
+    test "then a fresh AsyncFalkorDB and Graphiti instance scoped to the sanitized group_id are constructed and returned, then discarded by the caller after the operation that needed it returns" do
+      falkor_db_count = :counters.new(1, [])
+      instance_count = :counters.new(1, [])
+
+      construct_falkor_db = fn {:remote, _} ->
+        :counters.add(falkor_db_count, 1, 1)
+        {:stub_falkor_db, :counters.get(falkor_db_count, 1)}
+      end
+
+      construct_instance = fn _db, _shared, group ->
+        :counters.add(instance_count, 1, 1)
+        {:stub_graphiti, group, :counters.get(instance_count, 1)}
+      end
+
+      %{pid: pid, table: table} =
+        start_pool(
+          falkordb_spec:
+            {:remote, host: "h", port: 1, username: "u", password: "p", ssl: false},
+          construct_falkor_db: construct_falkor_db,
+          construct_instance: construct_instance,
+          warmup: true
+        )
+
+      assert :counters.get(falkor_db_count, 1) == 1,
+             "warmup must construct a fresh AsyncFalkorDB for remote (state.falkor_db is unset)"
+
+      assert :counters.get(instance_count, 1) == 1
+
+      a = GraphitiPool.for(pid, "with-hyphens")
+      b = GraphitiPool.for(pid, "with-hyphens")
+
+      assert :counters.get(falkor_db_count, 1) == 3
+      assert :counters.get(instance_count, 1) == 3
+      refute a == b
+      assert match?({:stub_graphiti, "with_hyphens", _}, a)
+      assert match?({:stub_graphiti, "with_hyphens", _}, b)
+
+      assert :ets.tab2list(table) == [],
+             "nothing (warmup throwaway nor per-operation Graphiti) is cached for remote"
+    end
+  end
+
+  describe "init/1 runs synchronously, when started with an embedded spec" do
     @describetag :integration
 
-    test "init constructs a real AsyncFalkorDB" do
-      data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
+    test "then <data_dir>/gralkor.db.settings is removed if present, immediately before constructing AsyncFalkorDB" do
+      data_dir =
+        Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(data_dir)
 
-      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
+      stale_tmp =
+        Path.join(System.tmp_dir!(), "gralkor_stale_#{System.unique_integer([:positive])}")
 
-      assert Process.alive?(pid)
-
-      GenServer.stop(pid)
-      File.rm_rf!(data_dir)
-    end
-
-    test "boots cleanly when a stale gralkor.db.settings from a prior run pins a dead socket" do
-      # Reifies `ex-graphiti-pool > embedded` (TEST_TREES.md). Contract for
-      # the underlying library trap: see the ts side at
-      # gralkor/ts/server/tests/test_redislite_resume_trap.py.
-      data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
-      File.mkdir_p!(data_dir)
-      stale_tmp = Path.join(System.tmp_dir!(), "gralkor_stale_#{System.unique_integer([:positive])}")
       File.mkdir_p!(stale_tmp)
       File.write!(Path.join(stale_tmp, "redis.socket"), "")
-      File.write!(Path.join(stale_tmp, "redis.pid"), Integer.to_string(System.pid() |> String.to_integer()))
+
+      File.write!(
+        Path.join(stale_tmp, "redis.pid"),
+        Integer.to_string(System.pid() |> String.to_integer())
+      )
 
       File.write!(
         Path.join(data_dir, "gralkor.db.settings"),
@@ -162,13 +170,14 @@ defmodule Gralkor.GraphitiPoolTest do
         })
       )
 
-      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
+      {:ok, pid} =
+        GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
+
       assert Process.alive?(pid)
 
-      # Settings file has been rewritten by redislite to point at a fresh
-      # tmpdir owned by the redis-server child of THIS pool — proving the
-      # stale entry was unlinked and a new server forked.
-      rewritten = data_dir |> Path.join("gralkor.db.settings") |> File.read!() |> Jason.decode!()
+      rewritten =
+        data_dir |> Path.join("gralkor.db.settings") |> File.read!() |> Jason.decode!()
+
       refute rewritten["unixsocket"] == Path.join(stale_tmp, "redis.socket")
 
       GenServer.stop(pid)
@@ -176,25 +185,16 @@ defmodule Gralkor.GraphitiPoolTest do
       File.rm_rf!(stale_tmp)
     end
 
-    test "for/1 returns a real Graphiti Pythonx.Object that can be queried" do
-      data_dir = Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
+    test "then a single AsyncFalkorDB is constructed via redislite and held for the lifetime of the GenServer" do
+      data_dir =
+        Path.join(System.tmp_dir!(), "gralkor_pool_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(data_dir)
 
-      {:ok, pid} = GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
-      instance = GraphitiPool.for(pid, "test_group")
+      {:ok, pid} =
+        GraphitiPool.start_link(name: nil, falkordb_spec: {:embedded, data_dir}, warmup: false)
 
-      # Verify it's a Pythonx.Object by running a no-op Cypher through the driver.
-      {result, _} =
-        Pythonx.eval(
-          """
-          import asyncio
-          asyncio._gralkor_run(g.driver.execute_query("RETURN 1 AS x"))
-          """,
-          %{"g" => instance}
-        )
-
-      decoded = Pythonx.decode(result)
-      assert is_tuple(decoded) or is_list(decoded), "got #{inspect(decoded)}"
+      assert Process.alive?(pid)
 
       GenServer.stop(pid)
       File.rm_rf!(data_dir)

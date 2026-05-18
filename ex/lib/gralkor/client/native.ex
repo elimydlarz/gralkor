@@ -61,9 +61,21 @@ defmodule Gralkor.Client.Native do
   end
 
   @impl Gralkor.Client
-  def end_session(session_id) do
+  def flush(session_id) do
     raise_if_blank!(:session_id, session_id)
     CaptureBuffer.flush(session_id)
+  end
+
+  @impl Gralkor.Client
+  def flush_and_await(session_id, timeout_ms) do
+    raise_if_blank!(:session_id, session_id)
+
+    unless is_integer(timeout_ms) and timeout_ms > 0 do
+      raise ArgumentError,
+            "Gralkor.Client.Native: timeout_ms must be a positive integer, got #{inspect(timeout_ms)}"
+    end
+
+    CaptureBuffer.flush_and_await(session_id, timeout_ms)
   end
 
   @impl Gralkor.Client

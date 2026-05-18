@@ -111,14 +111,14 @@ defmodule Gralkor.RemoteFalkorDbJourneyTest do
     end
   end
 
-  describe "ex-remote-falkordb-journey > session_end flush" do
-    test "captured turns are flushed and become recallable after end_session", %{
+  describe "ex-remote-falkordb-journey > flush_and_await (remote)" do
+    test "captured turns become recallable once flush_and_await returns :ok", %{
       group_id: group_id
     } do
       session_id = "session_#{System.unique_integer([:positive])}"
 
       :ok =
-        Client.impl().capture(session_id, group_id, "TestAgent", [
+        Client.impl().capture(session_id, group_id, "TestAgent", "Eli", [
           Message.new(
             "user",
             "Important context: Eli's favourite colour is teal, and Eli drives a blue Subaru Outback."
@@ -129,7 +129,7 @@ defmodule Gralkor.RemoteFalkorDbJourneyTest do
           )
         ])
 
-      :ok = Client.impl().end_session(session_id)
+      :ok = Client.impl().flush_and_await(session_id, 60_000)
 
       Process.sleep(45_000)
 

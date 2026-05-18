@@ -382,6 +382,24 @@ ex-capture-buffer (ex stack; src: ex/lib/gralkor/capture_buffer.ex; unit: ex/tes
       then retries at 1s, 2s, 4s (exponential)
     when the flush callback fails after 3 retries
       then logs "capture exhausted" at :error and drops
+  flush_and_await/2 (session_id, timeout_ms)
+    when called for a session_id with buffered turns
+      then the entry is consumed (a subsequent turns_for/1 returns [], and a subsequent append starts a fresh entry)
+      when the flush callback returns :ok within timeout_ms
+        then :ok is returned
+        and a flush-completed event is logged at :info naming the turn count and elapsed time
+      when the flush callback does not return within timeout_ms
+        then {:error, :timeout} is returned
+        and a timeout event is logged at :warning naming the session id
+      when the flush callback returns {:error, :capture_client_4xx}
+        then {:error, :capture_client_4xx} is returned without retry
+      when the flush callback returns {:error, {:upstream_llm, _}}
+        then {:error, {:upstream_llm, _}} is returned without retry
+      when the flush callback returns {:error, _} for any other reason
+        then the same 1s/2s/4s retry schedule applies, governed by the caller's timeout_ms — if the retries together exceed the timeout, {:error, :timeout} is returned
+    when called for a session_id with no entry
+      then :ok is returned without scheduling a flush
+      and an empty-flush event is logged at :info naming the session id
   flush_all/0
     when called with pending entries
       then every entry is flushed via the same callback and retry machinery and awaited
@@ -432,7 +450,7 @@ ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/5; unit: ex/t
   observability
     when test mode is enabled
       then logs the captured messages
-  flush (fires from end_session/1 and shutdown only)
+  flush (fires from flush/1, flush_and_await/2, and shutdown only)
     when the distilled episode body is empty
       then no episode is added
       and nothing is logged
@@ -442,16 +460,34 @@ ex-capture (ex stack; src: ex/lib/gralkor/client/native.ex#capture/5; unit: ex/t
       and how long the add took
     when test mode is enabled
       then also logs the distilled episode body
-ex-end-session (ex stack; src: ex/lib/gralkor/client/native.ex#end_session/1; unit: ex/test/gralkor/client/native_test.exs)
+ex-flush (ex stack; src: ex/lib/gralkor/client/native.ex#flush/1; unit: ex/test/gralkor/client/native_test.exs)
   when called with a session_id with buffered turns
-    then Gralkor.CaptureBuffer.flush/1 is invoked
-    and :ok is returned without awaiting the flush completion
+    then the buffered turns are scheduled for flush and :ok is returned before the flush completes
   when called with a session_id with no buffered turns
-    then :ok is returned and no flush is scheduled
+    then :ok is returned and no work is scheduled
   if session_id is missing or blank
     then raises ArgumentError
   observability
-    then logs "[gralkor] session_end session:… turns:N" at :info
+    then a flush-scheduled event is logged at :info naming the session id and turn count
+ex-flush-and-await (ex stack; src: ex/lib/gralkor/client/native.ex#flush_and_await/2; unit: ex/test/gralkor/client/native_test.exs)
+  when called with a session_id with buffered turns and a positive timeout_ms
+    when the flush completes within the timeout
+      then :ok is returned
+      and an immediate recall/4 for the bound group surfaces the just-flushed turns
+    when the flush does not complete within the timeout
+      then {:error, :timeout} is returned
+      and the buffered turns are still available to flush on a later call
+    if the backend fails before the timeout
+      then {:error, reason} is returned
+  when called with a session_id with no buffered turns
+    then :ok is returned
+  if session_id is missing or blank
+    then raises ArgumentError
+  if timeout_ms is missing or non-positive
+    then raises ArgumentError
+  observability
+    then a flush-and-await event is logged at :info naming the session id, turn count, and timeout
+    then the outcome (ok / timeout / error) is logged at :info on return
 ```
 
 ## Tools
@@ -552,41 +588,35 @@ ex-python-runtime (src: ex/lib/gralkor/python.ex; unit: ex/test/gralkor/python_t
       then init/1 returns {:stop, {:boot_failed, reason}} so the supervisor restarts (and the BEAM eventually exits if the failure is permanent)
   liveness
     then once booted, no health probes run — runtime failures surface from the next call into PythonX (which crashes the GenServer and triggers a supervisor restart)
-ex-graphiti-pool (src: ex/lib/gralkor/graphiti_pool.ex; unit: ex/test/gralkor/graphiti_pool_test.exs)
+ex-graphiti-pool (src: ex/lib/gralkor/graphiti_pool.ex; unit: ex/test/gralkor/graphiti_pool_test.exs; integration: ex/test/gralkor/graphiti_pool_test.exs)
   LLM call ownership (decided in pythonx-spike/LEARNINGS.md)
     Distill and Interpret (Elixir-side pre/post-processing) call the LLM via req_llm — see ex-format-transcript and ex-interpret
     Graphiti-internal LLM and embedding (entity/edge extraction during add_episode; embedder during search; reranker) go through graphiti-core's bundled Python clients — never req_llm — because graphiti owns those call sites and routing them through a Python↔Elixir↔HTTP shim adds two hops for no win
   Gralkor.GraphitiPool's init/1 runs synchronously
     then `Gralkor.Python.install_async_runtime/0` is invoked (idempotent) so the pool can be booted standalone — under normal supervision Gralkor.Python has already installed the loop and this is a no-op; in tests / one-off scripts that start GraphitiPool directly, this is what makes the loop available
+    then the graphiti-core LLM client, embedder, and cross-encoder are constructed once via Pythonx and shared across every Graphiti instance for the lifetime of the GenServer
+      where the embedder is constructed with `batch_size=1` regardless of provider
+        (graphiti's batched embedder path expects N vectors back for N inputs; gemini-embedding-2-preview returns ONE vector for any number of inputs in a single call, so batch_size=1 forces one-input-per-request and lets graphiti's per-item bookkeeping line up)
     when started with an embedded spec (`{:embedded, data_dir: dir}`)
       then `<data_dir>/gralkor.db.settings` is removed if present, immediately before constructing AsyncFalkorDB
         (redislite writes this resume-cache file alongside the db on every successful boot, pinning the unix-socket and pidfile of the redis-server it spawned. On the next boot it reads the file and decides "is the previous server still running?" by checking `kill -0 <pidfile_PID>` — a check that returns true for zombies and for any unrelated process the OS recycled the PID to. When that check returns true, redislite skips spawning fresh and blindly reconnects to the cached socket; the connection raises `ConnectionError` and the call fails with no fallback. See contract: `ts/server/tests/test_redislite_resume_trap.py`. We always want our own redis-server child for this BEAM's lifecycle, so the unlink runs unconditionally — the cost is one ~1s redis-server fork per boot.)
-      then the AsyncFalkorDB is constructed via `redislite.async_falkordb_client.AsyncFalkorDB(<data_dir>/gralkor.db)` (falkordblite spawns the redis-server child)
-    when started with a remote spec (`{:remote, host:, port:, username:, password:, ssl:}`)
-      then the AsyncFalkorDB is constructed via `falkordb.asyncio.FalkorDB(host:, port:, username:, password:, ssl:)` and `redislite` is not imported (no local redis-server is spawned)
-    then a FalkorDriver wrapping that AsyncFalkorDB, the graphiti-core LLM client, the embedder, and the cross-encoder are constructed once via Pythonx and shared across all Graphiti instances in the pool
-      where the embedder is constructed with `batch_size=1` regardless of provider
-        (graphiti's batched embedder path expects N vectors back for N inputs; gemini-embedding-2-preview returns ONE vector for any number of inputs in a single call, so batch_size=1 forces one-input-per-request and lets graphiti's per-item bookkeeping line up)
+      then a single AsyncFalkorDB is constructed via `redislite.async_falkordb_client.AsyncFalkorDB(<data_dir>/gralkor.db)` (falkordblite spawns the redis-server child) and held for the lifetime of the GenServer
     then warmup runs: search is invoked once with a throwaway query and group_id, then Gralkor.Interpret.interpret_facts is invoked once with an empty conversation and a throwaway facts_text, paying graphiti-core's cold-start cost before consumers can call recall
     then logs "[gralkor] warmup — search:… interpret:… <total>ms" at :info
     if any warmup call raises or returns {:error, _}
       then it is caught and logged at :warning as "[gralkor] warmup failed (non-fatal): <reason>"
       and boot proceeds (best-effort — same as the ts stack's server-warmup-on-boot)
-  for/1 (group_id)
-    when called with a group_id for the first time
-      then a Graphiti instance is constructed scoped to that group_id and cached
-    when called twice with the same group_id
-      then the same instance is returned both times (no re-construction)
-    when called with different group_ids
-      then different instances are returned
-    then group_id is sanitized before construction
-    then for/1 does NOT serialise calls — concurrent callers proceed in parallel (the spike showed Pythonx releases the GIL during graphiti's awaited I/O; serialising would throw away that parallelism). The GenServer owns lifecycle (init, terminate); the cache is an ETS table read directly by callers.
-  no eviction (mirrors server's _graphiti_for)
-    then instances live for the lifetime of the GenServer — there is no LRU or TTL
+  for/1 (group_id) — also driven by search/4, add_episode/4, build_indices/1, build_communities/2, which all delegate to it
+    when called against an embedded spec
+      then the Graphiti instance for the sanitized group_id is looked up from a shared ETS cache; on first use it is constructed and inserted, then lives for the lifetime of the GenServer
+        (the cached instance wraps the shared AsyncFalkorDB, LLM client, embedder, and cross-encoder)
+      then concurrent callers proceed in parallel
+        (the spike showed Pythonx releases the GIL during graphiti's awaited I/O; serialising would throw that away. The GenServer owns lifecycle (init, terminate); the cache is an ETS table read directly by callers.)
+    when called against a remote spec
+      then a fresh AsyncFalkorDB and Graphiti instance scoped to the sanitized group_id are constructed and returned, then discarded by the caller after the operation that needed it returns
+        (redis-py-async's connection pool does not validate transports before lending. Over a multi-hour idle, the network path between the BEAM and a managed FalkorDB silently kills the TCP connection; asyncio runs `_call_connection_lost` and nulls the transport's `_write_ready`. The next operation through that pool calls the nulled callable and raises `TypeError: 'NoneType' object is not callable` from inside `_SelectorSocketTransport.writelines`, before redis-py classifies it as a `ConnectionError` — so neither `retry_on_error` nor a caller-side retry on `ConnectionError` catches it. Constructing per operation removes the surface: there is no long-lived pool to rot.)
   rationale (not behaviour)
-    pinning each Graphiti instance to one group_id keeps graphiti-core's add_episode driver-clone branch inert,
-    so concurrent calls for the same or different groups proceed independently with no driver lock —
-    same invariant as server-side _graphiti_for
+    pinning each Graphiti instance to one group_id keeps graphiti-core's add_episode driver-clone branch inert, so concurrent calls for the same or different groups proceed independently with no driver lock. For embedded that pinning lives in the cache (one Graphiti per group_id, lifetime of the GenServer — mirrors server-side `_graphiti_for`); for remote it lives in call scope (one Graphiti per operation).
 ts-server-manager (ts stack; src: ts/src/server-manager.ts; unit: ts/test/server-manager.test.ts)
   bundledServerDir
     then resolves to the "server" sibling of the compiled module's directory (i.e. <pkg>/server/)
@@ -876,10 +906,18 @@ ex-client (src: ex/lib/gralkor/client.ex; unit: ex/test/support/gralkor_client_c
       then raises ArgumentError
     if user_name is missing or blank
       then raises ArgumentError
-  when end_session/1 is called with a session_id
-    when the backend acknowledges the end
+  when flush/1 is called with a session_id
+    then :ok is returned before the flush completes
+    if the backend later fails
+      then the failure is not observable through the return value
+  when flush_and_await/2 is called with a session_id and a timeout_ms
+    when the flush completes within the timeout
       then :ok is returned
-    if the backend fails
+      and a subsequent recall/4 for the same group surfaces the just-flushed turns
+    when the flush does not complete within the timeout
+      then {:error, :timeout} is returned
+      and the buffered turns are still available to flush on a later call
+    if the backend fails before the timeout
       then {:error, reason} is returned
   when memory_add/3 is called with group_id, content, and source_description
     when the backend acknowledges the add
@@ -926,11 +964,17 @@ ex-client-native (src: ex/lib/gralkor/client/native.ex; integration: ex/test/gra
     then the call raises with ArgumentError
   if capture is called with a missing or blank user_name
     then the call raises with ArgumentError
-  if end_session is called with a blank string session_id
+  if flush is called with a blank string session_id
     then the call raises with ArgumentError
-  if end_session is called with a nil session_id
+  if flush is called with a nil session_id
     then the call raises with ArgumentError
-  (per-operation deadline behaviour is described in the Timeouts tree under ex-timeouts)
+  if flush_and_await is called with a blank string session_id
+    then the call raises with ArgumentError
+  if flush_and_await is called with a nil session_id
+    then the call raises with ArgumentError
+  if flush_and_await is called with a non-positive timeout_ms
+    then the call raises with ArgumentError
+  (per-operation deadline behaviour is described in the Timeouts tree under ex-timeouts; flush_and_await is governed by the caller-supplied timeout, not the global deadline)
   runs the shared ex-client port contract (via test/support/gralkor_client_contract.ex)
 ex-client-in-memory (src: ex/lib/gralkor/client/in_memory.ex; unit: ex/test/gralkor/client/in_memory_test.exs)
   when an operation is called
@@ -1058,12 +1102,17 @@ jido-memory-journey (ex stack; functional: ex/test/functional/end_to_end_test.ex
         then {:ok, block} is returned
         and block is a non-empty <gralkor-memory> block
         and the block references the stored content semantically (contains "concise" or similar)
-  session_end flush
-    given a pending turn in Gralkor.CaptureBuffer (no idle elapsed)
-      when Gralkor.Client.end_session/1 is called with the session_id
+  flush
+    given a pending turn in Gralkor.CaptureBuffer
+      when Gralkor.Client.flush/1 is called with the session_id
         then :ok is returned before the episode is ingested
-        and the episode lands in the bound group_id without waiting for any idle window
-        and a follow-up Gralkor.Client.recall/3 surfaces the turn content via search
+        and the episode eventually lands in the bound group_id
+        and a follow-up Gralkor.Client.recall/3 surfaces the turn content
+  flush_and_await
+    given a pending turn in Gralkor.CaptureBuffer
+      when Gralkor.Client.flush_and_await/2 is called with the session_id and a generous timeout
+        then :ok is returned only after the episode is queryable
+        and an immediate follow-up Gralkor.Client.recall/3 surfaces the turn content
   graceful-shutdown flush
     given a pending turn in Gralkor.CaptureBuffer (no idle elapsed)
       when the supervision tree stops (Application.stop or supervisor shutdown)
@@ -1096,11 +1145,11 @@ ex-remote-falkordb-journey (ex stack; functional: ex/test/functional/remote_falk
       when Gralkor.Client.recall/3 is called with a fresh session_id and a related query
         then {:ok, block} is returned
         and the block references the stored content semantically
-  session_end flush
+  flush_and_await (remote)
     given a pending turn in Gralkor.CaptureBuffer
-      when Gralkor.Client.end_session/1 is called with the session_id
-        then the episode lands in the remote FalkorDB
-        and a follow-up Gralkor.Client.recall/3 surfaces the turn content via search
+      when Gralkor.Client.flush_and_await/2 is called with the session_id
+        then :ok is returned only after the episode is queryable in the remote FalkorDB
+        and an immediate follow-up Gralkor.Client.recall/3 surfaces the turn content
   shutdown
     when the application stops
       then Gralkor.CaptureBuffer.terminate/2 awaits flush_all/0 and the AsyncFalkorDB driver closes cleanly

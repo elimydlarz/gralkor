@@ -74,6 +74,20 @@ defmodule Gralkor.CaptureBuffer do
     GenServer.call(__MODULE__, {:flush, session_id})
   end
 
+  @doc """
+  Synchronously flush the session's turns and wait for completion.
+
+  Returns `:ok` only after the flush callback has finished — for the Native
+  adapter this means the episode is queryable via `recall/4` (graphiti's
+  `add_episode` is sync through embed + persist). Returns `{:error, :timeout}`
+  if the configured retry budget (1s/2s/4s plus the flush's own latency)
+  exceeds `timeout_ms`; the buffered turns are still available to flush again.
+  """
+  def flush_and_await(session_id, timeout_ms)
+      when is_binary(session_id) and is_integer(timeout_ms) and timeout_ms > 0 do
+    GenServer.call(__MODULE__, {:flush_and_await, session_id, timeout_ms}, :infinity)
+  end
+
   @doc "Flush every buffered session and await each. Used at shutdown."
   def flush_all do
     GenServer.call(__MODULE__, :flush_all, :infinity)
@@ -145,6 +159,42 @@ defmodule Gralkor.CaptureBuffer do
     end
   end
 
+  def handle_call({:flush_and_await, session_id, timeout_ms}, _from, state) do
+    case Map.pop(state.entries, session_id) do
+      {nil, _entries} ->
+        Logger.info("[gralkor] flush_and_await — session:#{session_id} empty")
+        {:reply, :ok, state}
+
+      {{group, agent, user, turns}, entries} ->
+        Logger.info(
+          "[gralkor] flush_and_await — session:#{session_id} turns:#{length(turns)} timeout_ms:#{timeout_ms}"
+        )
+
+        task =
+          Task.async(fn ->
+            do_flush(group, agent, user, turns, state.flush_callback, state.retries)
+          end)
+
+        case Task.yield(task, timeout_ms) || Task.shutdown(task, :brutal_kill) do
+          {:ok, :ok} ->
+            Logger.info("[gralkor] flush_and_await done — session:#{session_id} outcome:ok")
+            {:reply, :ok, %{state | entries: entries}}
+
+          {:ok, {:error, reason}} ->
+            Logger.warning(
+              "[gralkor] flush_and_await done — session:#{session_id} outcome:error reason:#{inspect(reason)}"
+            )
+
+            {:reply, {:error, reason}, %{state | entries: entries}}
+
+          nil ->
+            Logger.warning("[gralkor] flush_and_await timeout — session:#{session_id}")
+            {:reply, {:error, :timeout},
+             %{state | entries: Map.put(entries, session_id, {group, agent, user, turns})}}
+        end
+    end
+  end
+
   def handle_call(:flush_all, _from, state) do
     tasks =
       for {_session_id, {group, agent, user, turns}} <- state.entries do
@@ -179,13 +229,13 @@ defmodule Gralkor.CaptureBuffer do
         Logger.info("[gralkor] capture flushed — turns:#{length(turns)} elapsed:#{elapsed}ms")
         :ok
 
-      {:error, :capture_client_4xx} ->
+      {:error, :capture_client_4xx} = err ->
         Logger.warning("[gralkor] capture dropped (4xx)")
-        :dropped
+        err
 
-      {:error, {:upstream_llm, _}} ->
+      {:error, {:upstream_llm, _}} = err ->
         Logger.warning("[gralkor] capture dropped (upstream error)")
-        :dropped
+        err
 
       {:error, _reason} ->
         retry(group, agent, user, turns, cb, retries, t0)
@@ -208,7 +258,7 @@ defmodule Gralkor.CaptureBuffer do
 
   defp retry(_group, _agent, _user, _turns, _cb, [], _t0) do
     Logger.error("[gralkor] capture exhausted")
-    :exhausted
+    {:error, :exhausted}
   end
 
   defp retry(group, agent, user, turns, cb, [delay | rest], t0) do

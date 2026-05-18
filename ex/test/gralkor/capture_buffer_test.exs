@@ -183,6 +183,88 @@ defmodule Gralkor.CaptureBufferTest do
     end
   end
 
+  describe "ex-capture-buffer > flush_and_await/2 when called for a session_id with buffered turns and the flush callback returns :ok within the timeout" do
+    test "returns :ok and consumes the entry" do
+      :ok = CaptureBuffer.append("s1", "g", "Susu", "Eli", [Message.new("user", "1")])
+
+      assert :ok = CaptureBuffer.flush_and_await("s1", 1_000)
+      assert_receive {:flushed, "g", "Susu", "Eli", [[%Message{content: "1"}]]}, 1_000
+
+      assert [] = CaptureBuffer.turns_for("s1")
+    end
+
+    test "logs a flush-completed event at :info" do
+      :ok = CaptureBuffer.append("s1", "g", "Susu", "Eli", [Message.new("user", "1")])
+
+      logs =
+        capture_log(fn ->
+          assert :ok = CaptureBuffer.flush_and_await("s1", 1_000)
+        end)
+
+      assert logs =~ "[gralkor] flush_and_await done — session:s1 outcome:ok"
+    end
+  end
+
+  describe "ex-capture-buffer > flush_and_await/2 when called for a session_id with buffered turns and the flush callback does not return within the timeout" do
+    setup do
+      test_pid = self()
+
+      slow_callback = fn _g, _a, _u, _t ->
+        send(test_pid, :callback_started)
+        Process.sleep(5_000)
+        :ok
+      end
+
+      :ok = stop_supervised(CaptureBuffer)
+      {:ok, _} = start_supervised({CaptureBuffer, flush_callback: slow_callback, retries: []})
+      :ok
+    end
+
+    test "returns {:error, :timeout} and the entry remains available to flush later" do
+      :ok = CaptureBuffer.append("s1", "g", "Susu", "Eli", [Message.new("user", "x")])
+
+      assert {:error, :timeout} = CaptureBuffer.flush_and_await("s1", 50)
+      assert_receive :callback_started, 1_000
+
+      assert [[%Message{content: "x"}]] = CaptureBuffer.turns_for("s1")
+    end
+  end
+
+  describe "ex-capture-buffer > flush_and_await/2 when called for a session_id with buffered turns and the callback returns a non-retryable error" do
+    setup do
+      test_pid = self()
+
+      err_callback = fn _g, _a, _u, _t ->
+        send(test_pid, :callback_invoked)
+        {:error, :capture_client_4xx}
+      end
+
+      :ok = stop_supervised(CaptureBuffer)
+      {:ok, _} = start_supervised({CaptureBuffer, flush_callback: err_callback, retries: []})
+      :ok
+    end
+
+    test "propagates the error without retry and consumes the entry" do
+      :ok = CaptureBuffer.append("s1", "g", "Susu", "Eli", [Message.new("user", "x")])
+
+      assert {:error, :capture_client_4xx} = CaptureBuffer.flush_and_await("s1", 1_000)
+      assert_receive :callback_invoked, 500
+      assert [] = CaptureBuffer.turns_for("s1")
+    end
+  end
+
+  describe "ex-capture-buffer > flush_and_await/2 when called for a session_id with no entry" do
+    test "returns :ok without scheduling a flush and logs an empty-flush event" do
+      logs =
+        capture_log(fn ->
+          assert :ok = CaptureBuffer.flush_and_await("unknown", 1_000)
+        end)
+
+      assert logs =~ "[gralkor] flush_and_await — session:unknown empty"
+      refute_receive {:flushed, _, _, _, _}, 100
+    end
+  end
+
   describe "ex-capture-buffer > flush_all/0" do
     test "when called with pending entries, every entry is flushed and awaited" do
       :ok = CaptureBuffer.append("s1", "g", "Susu", "Eli", [Message.new("user", "1")])
