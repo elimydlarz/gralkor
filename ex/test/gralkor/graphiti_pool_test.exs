@@ -18,7 +18,7 @@ defmodule Gralkor.GraphitiPoolTest do
       end,
       construct_instance: fn _db, _shared, group_id -> {:stub_graphiti, group_id} end,
       warmup: false,
-      install_async_runtime: false
+      install_loop_fn: fn -> :ok end
     ]
 
     {:ok, pid} = GraphitiPool.start_link(Keyword.merge(defaults, opts))
@@ -141,6 +141,19 @@ defmodule Gralkor.GraphitiPoolTest do
   end
 
   describe "init/1 runs synchronously" do
+    test "then `Gralkor.Python.install_async_runtime/0` is invoked so the pool can be booted standalone" do
+      install_count = :counters.new(1, [])
+
+      install_loop_fn = fn ->
+        :counters.add(install_count, 1, 1)
+        :ok
+      end
+
+      %{pid: pid} = start_pool(install_loop_fn: install_loop_fn)
+      assert Process.alive?(pid)
+      assert :counters.get(install_count, 1) == 1
+    end
+
     test "then the graphiti-core LLM client, embedder, and cross-encoder are constructed once via Pythonx and shared across every Graphiti instance for the lifetime of the GenServer" do
       shared_count = :counters.new(1, [])
       instance_shareds = :ets.new(:shareds, [:public, :duplicate_bag])

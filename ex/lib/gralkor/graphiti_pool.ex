@@ -211,16 +211,12 @@ defmodule Gralkor.GraphitiPool do
 
     construct_instance = Keyword.get(opts, :construct_instance, &default_construct_instance/3)
     warmup? = Keyword.get(opts, :warmup, true)
-    install_loop? = Keyword.get(opts, :install_async_runtime, true)
+    install_loop_fn = Keyword.get(opts, :install_loop_fn, &Gralkor.Python.install_async_runtime/0)
 
     :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
     register_table(self(), table)
 
-    # Idempotent — installs the shared asyncio loop if Gralkor.Python hasn't.
-    # Lets GraphitiPool be used standalone (production + integration tests).
-    # Unit tests with stubbed construction pass `install_async_runtime: false`
-    # to avoid spinning up Pythonx.
-    if install_loop?, do: :ok = Gralkor.Python.install_async_runtime()
+    :ok = install_loop_fn.()
 
     shared = construct_shared_clients.(llm_model, embedder_model)
 
