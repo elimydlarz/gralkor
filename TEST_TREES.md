@@ -748,6 +748,14 @@ ex-config-defaults (ex stack; src: ex/lib/gralkor/config.ex; unit: ex/test/gralk
   when the consumer omits LLM provider/model
     then defaults are applied (single source of truth in Gralkor.Config) — req_llm picks the provider; the embedder and cross-encoder defaults match the server-side ts stack so the two stacks remain interchangeable from a consumer's POV
   (the trees below this layer say "the configured LLM" — they do not branch on provider, so adding/removing providers does not ripple into other trees)
+  model-spec shape (the value Config.llm_model/0 and Config.embedder_model/0 return)
+    then the shape is %{provider: atom(), id: String.t()} — the inline-map shape ReqLLM.model/1 accepts without a catalog lookup (and therefore without an "unverified model" IO.warn when the model id is newer than the LLMDB catalog snapshot)
+    when GRALKOR_LLM_MODEL / GRALKOR_EMBEDDER_MODEL is unset or blank
+      then the default map is returned
+    when GRALKOR_LLM_MODEL / GRALKOR_EMBEDDER_MODEL is set to "provider:model"
+      then it parses to %{provider: :provider, id: "model"}
+    if the env var is set to a value missing the ":" separator or with a blank half
+      then llm_model/0 / embedder_model/0 raises ArgumentError naming the env var and the bad value
 ```
 
 ## Operations
