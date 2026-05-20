@@ -9,17 +9,24 @@ defmodule Gralkor.Config do
       remote (network `host:port` plus optional credentials, set via the
       `:gralkor_ex, :falkordb` application env). Remote wins when both are
       configured. See `falkordb_spec/0`.
-    * The LLM and embedder models — read from the `GRALKOR_LLM_MODEL` and
-      `GRALKOR_EMBEDDER_MODEL` env vars, falling back to the defaults below.
-
-  Models are stored as req_llm-style `"provider:model"` strings — when graphiti
-  needs them split, the provider/model halves are extracted at the call site.
+    * The LLM and embedder models — set via the `GRALKOR_LLM_MODEL` and
+      `GRALKOR_EMBEDDER_MODEL` env vars in `"provider:model"` form (operator
+      contract). `llm_model/0` and `embedder_model/0` return them as
+      `%{provider: atom(), id: String.t()}` maps — the inline-map shape
+      `ReqLLM.model/1` accepts without a catalog lookup (no "unverified model"
+      `IO.warn` when the model id is newer than the LLMDB snapshot bundled
+      with `req_llm`).
   """
 
   # Defaults match server-side gralkor/server/main.py — both stacks pick the
   # same model so consumers see identical output.
-  @default_llm_model "google:gemini-3.1-flash-lite"
-  @default_embedder_model "google:gemini-embedding-2-preview"
+  @default_llm_model %{provider: :google, id: "gemini-3.1-flash-lite"}
+  @default_embedder_model %{provider: :google, id: "gemini-embedding-2-preview"}
+
+  @typedoc """
+  Resolved model spec — the inline-map shape `ReqLLM.model/1` accepts directly.
+  """
+  @type model_spec :: %{provider: atom(), id: String.t()}
 
   @typedoc """
   Resolved FalkorDB selection. `:remote` carries the validated keyword list
@@ -80,21 +87,28 @@ defmodule Gralkor.Config do
     kw
   end
 
-  @spec llm_model() :: String.t()
-  def llm_model do
-    case System.get_env("GRALKOR_LLM_MODEL") do
-      nil -> @default_llm_model
-      "" -> @default_llm_model
-      m -> m
+  @spec llm_model() :: model_spec()
+  def llm_model, do: resolve_model_env("GRALKOR_LLM_MODEL", @default_llm_model)
+
+  @spec embedder_model() :: model_spec()
+  def embedder_model, do: resolve_model_env("GRALKOR_EMBEDDER_MODEL", @default_embedder_model)
+
+  defp resolve_model_env(var, default) do
+    case System.get_env(var) do
+      nil -> default
+      "" -> default
+      m -> parse_model_env!(var, m)
     end
   end
 
-  @spec embedder_model() :: String.t()
-  def embedder_model do
-    case System.get_env("GRALKOR_EMBEDDER_MODEL") do
-      nil -> @default_embedder_model
-      "" -> @default_embedder_model
-      m -> m
+  defp parse_model_env!(var, value) do
+    case String.split(value, ":", parts: 2) do
+      [provider, id] when provider != "" and id != "" ->
+        %{provider: String.to_atom(provider), id: id}
+
+      _ ->
+        raise ArgumentError,
+              "expected #{var} in the form \"provider:model\"; got #{inspect(value)}"
     end
   end
 end
