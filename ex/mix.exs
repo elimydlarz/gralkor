@@ -80,7 +80,7 @@ defmodule Gralkor.MixProject do
         "GitHub" => @source_url,
         "Issues" => "#{@source_url}/issues"
       },
-      files: ~w(lib config mix.exs README.md .formatter.exs)
+      files: ~w(lib config mix.exs README.md CHANGELOG.md .formatter.exs)
     ]
   end
 
