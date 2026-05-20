@@ -158,7 +158,7 @@ defmodule Gralkor.ConfigTest do
     test "the default llm_model shape is accepted by ReqLLM.model/1 without emitting an 'unverified model' IO.warn" do
       stderr =
         capture_io(:stderr, fn ->
-          assert {:ok, %ReqLLM.Model{}} = ReqLLM.model(Config.llm_model())
+          assert {:ok, %LLMDB.Model{}} = ReqLLM.model(Config.llm_model())
         end)
 
       refute stderr =~ "Using unverified model"
@@ -167,7 +167,7 @@ defmodule Gralkor.ConfigTest do
     test "the default embedder_model shape is accepted by ReqLLM.model/1 without emitting an 'unverified model' IO.warn" do
       stderr =
         capture_io(:stderr, fn ->
-          assert {:ok, %ReqLLM.Model{}} = ReqLLM.model(Config.embedder_model())
+          assert {:ok, %LLMDB.Model{}} = ReqLLM.model(Config.embedder_model())
         end)
 
       refute stderr =~ "Using unverified model"
