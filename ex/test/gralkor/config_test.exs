@@ -1,6 +1,8 @@
 defmodule Gralkor.ConfigTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureIO
+
   alias Gralkor.Config
 
   setup do
