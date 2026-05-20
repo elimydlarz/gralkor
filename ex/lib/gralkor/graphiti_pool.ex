@@ -362,12 +362,12 @@ defmodule Gralkor.GraphitiPool do
   end
 
   defp default_construct_shared_clients(llm_model, embedder_model) do
-    {llm_provider, llm_name} = parse_model(llm_model)
-    {embedder_provider, embedder_name} = parse_model(embedder_model)
+    %{provider: llm_provider, id: llm_name} = llm_model
+    %{provider: embedder_provider, id: embedder_name} = embedder_model
 
-    if llm_provider != "google" or embedder_provider != "google" do
+    if llm_provider != :google or embedder_provider != :google do
       raise ArgumentError,
-            "Gralkor.GraphitiPool currently only supports Google models; got llm=#{llm_model}, embedder=#{embedder_model}"
+            "Gralkor.GraphitiPool currently only supports Google models; got llm=#{inspect(llm_model)}, embedder=#{inspect(embedder_model)}"
     end
 
     {client, _} = Pythonx.eval("from google import genai\ngenai.Client()\n", %{})
