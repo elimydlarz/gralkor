@@ -103,25 +103,54 @@ defmodule Gralkor.ConfigTest do
     end
   end
 
-  describe "falkordb-connection > llm_model and embedder_model" do
-    test "default to the canonical google models when env is unset" do
-      assert Config.llm_model() == "google:gemini-3.1-flash-lite"
-      assert Config.embedder_model() == "google:gemini-embedding-2-preview"
+  describe "ex-config-defaults > model-spec shape > llm_model and embedder_model" do
+    test "default to the canonical google models as %{provider:, id:} maps when env is unset" do
+      assert Config.llm_model() == %{provider: :google, id: "gemini-3.1-flash-lite"}
+      assert Config.embedder_model() == %{provider: :google, id: "gemini-embedding-2-preview"}
     end
 
-    test "GRALKOR_LLM_MODEL overrides the default" do
+    test "GRALKOR_LLM_MODEL is parsed to a map" do
       System.put_env("GRALKOR_LLM_MODEL", "openai:gpt-4")
-      assert Config.llm_model() == "openai:gpt-4"
+      assert Config.llm_model() == %{provider: :openai, id: "gpt-4"}
     end
 
-    test "GRALKOR_EMBEDDER_MODEL overrides the default" do
+    test "GRALKOR_EMBEDDER_MODEL is parsed to a map" do
       System.put_env("GRALKOR_EMBEDDER_MODEL", "openai:text-embedding-3-small")
-      assert Config.embedder_model() == "openai:text-embedding-3-small"
+      assert Config.embedder_model() == %{provider: :openai, id: "text-embedding-3-small"}
+    end
+
+    test "model ids may contain colons (provider is split off first only)" do
+      System.put_env("GRALKOR_LLM_MODEL", "anthropic:claude-3:opus")
+      assert Config.llm_model() == %{provider: :anthropic, id: "claude-3:opus"}
     end
 
     test "blank env values fall back to defaults" do
       System.put_env("GRALKOR_LLM_MODEL", "")
-      assert Config.llm_model() == "google:gemini-3.1-flash-lite"
+      assert Config.llm_model() == %{provider: :google, id: "gemini-3.1-flash-lite"}
+    end
+
+    test "GRALKOR_LLM_MODEL without a colon raises ArgumentError naming the env var and value" do
+      System.put_env("GRALKOR_LLM_MODEL", "gemini-3.1-flash-lite")
+
+      assert_raise ArgumentError, ~r/GRALKOR_LLM_MODEL.*gemini-3\.1-flash-lite/, fn ->
+        Config.llm_model()
+      end
+    end
+
+    test "GRALKOR_EMBEDDER_MODEL with a blank provider half raises ArgumentError" do
+      System.put_env("GRALKOR_EMBEDDER_MODEL", ":gemini-embedding-2-preview")
+
+      assert_raise ArgumentError, ~r/GRALKOR_EMBEDDER_MODEL/, fn ->
+        Config.embedder_model()
+      end
+    end
+
+    test "GRALKOR_LLM_MODEL with a blank model half raises ArgumentError" do
+      System.put_env("GRALKOR_LLM_MODEL", "google:")
+
+      assert_raise ArgumentError, ~r/GRALKOR_LLM_MODEL/, fn ->
+        Config.llm_model()
+      end
     end
   end
 end
