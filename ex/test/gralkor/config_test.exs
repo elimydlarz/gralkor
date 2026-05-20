@@ -29,7 +29,7 @@ defmodule Gralkor.ConfigTest do
     :ok
   end
 
-  defp restore_env(_key, nil), do: :ok
+  defp restore_env(key, nil), do: System.delete_env(key)
   defp restore_env(key, ""), do: System.put_env(key, "")
   defp restore_env(key, v), do: System.put_env(key, v)
 
