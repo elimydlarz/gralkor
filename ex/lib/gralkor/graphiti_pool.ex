@@ -414,13 +414,6 @@ defmodule Gralkor.GraphitiPool do
     %{llm_client: llm, embedder: embedder, cross_encoder: cross_encoder}
   end
 
-  defp parse_model(model_string) do
-    case String.split(model_string, ":", parts: 2) do
-      [provider, name] -> {provider, name}
-      _ -> raise ArgumentError, "expected '<provider>:<model>', got #{inspect(model_string)}"
-    end
-  end
-
   defp do_warmup(state) do
     t0 = System.monotonic_time(:millisecond)
     instance = ensure_warmup_instance(state)
