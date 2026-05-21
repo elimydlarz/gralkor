@@ -530,6 +530,7 @@ class RecallRequest(BaseModel):
     agent_name: str = Field(min_length=1)
     query: str
     max_results: int = 10
+    interpret_max_output_tokens: int | None = Field(default=None, gt=0)
 
 
 class RecallResponse(BaseModel):
@@ -816,8 +817,17 @@ async def _recall_body(req: RecallRequest) -> RecallResponse:
         t_interpret = t_search
     else:
         facts_text = "\n".join(format_fact(f) for f in facts)
+        interpret_kwargs: dict[str, int] = {}
+        if req.interpret_max_output_tokens is not None:
+            interpret_kwargs["output_token_budget"] = req.interpret_max_output_tokens
         relevant_facts = await _recall_vertex_call(
-            lambda: interpret_facts(conversation, facts_text, g.llm_client, req.agent_name)
+            lambda: interpret_facts(
+                conversation,
+                facts_text,
+                g.llm_client,
+                req.agent_name,
+                **interpret_kwargs,
+            )
         )
         t_interpret = time.monotonic()
         body = "\n".join(relevant_facts) if relevant_facts else NO_RELEVANT_MEMORIES_BODY

@@ -28,7 +28,8 @@ defmodule Gralkor.Recall do
   @type search_fn ::
           (group_id(), query :: String.t(), max :: pos_integer() ->
              {:ok, [String.t()]} | {:error, term()})
-  @type interpret_fn :: (String.t() -> {:ok, [String.t()]} | {:error, term()})
+  @type interpret_fn ::
+          (String.t(), pos_integer() -> {:ok, [String.t()]} | {:error, term()})
   @type turns_fn :: (String.t() -> [[Message.t()]])
 
   @type opts :: [
@@ -36,7 +37,8 @@ defmodule Gralkor.Recall do
           interpret_fn: interpret_fn(),
           turns_fn: turns_fn(),
           max_results: pos_integer(),
-          deadline_ms: pos_integer()
+          deadline_ms: pos_integer(),
+          output_token_budget: pos_integer()
         ]
 
   @spec recall(group_id(), String.t(), session_id(), String.t(), opts()) ::
@@ -90,9 +92,21 @@ defmodule Gralkor.Recall do
         {:ok, facts} when is_list(facts) ->
           facts_text = format_facts(facts)
 
+          interpret_opts =
+            case Keyword.fetch(opts, :output_token_budget) do
+              {:ok, budget} -> [output_token_budget: budget]
+              :error -> []
+            end
+
           {relevant, ms} =
             time(fn ->
-              Interpret.interpret_facts(conversation, facts_text, interpret_fn, agent_name)
+              Interpret.interpret_facts(
+                conversation,
+                facts_text,
+                interpret_fn,
+                agent_name,
+                interpret_opts
+              )
             end)
 
           case relevant do

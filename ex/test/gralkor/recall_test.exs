@@ -7,7 +7,7 @@ defmodule Gralkor.RecallTest do
   alias Gralkor.Recall
 
   defp ok_search(facts), do: fn _g, _q, _max -> {:ok, facts} end
-  defp ok_interpret(list), do: fn _prompt -> {:ok, list} end
+  defp ok_interpret(list), do: fn _prompt, _budget -> {:ok, list} end
   defp turns_for(turns), do: fn _session_id -> turns end
 
   defp default_opts(extras \\ []) do
@@ -77,7 +77,7 @@ defmodule Gralkor.RecallTest do
       ref = make_ref()
       test_pid = self()
 
-      interpret_fn = fn prompt ->
+      interpret_fn = fn prompt, _budget ->
         send(test_pid, {ref, prompt})
         {:ok, ["fact — reason"]}
       end
@@ -122,7 +122,7 @@ defmodule Gralkor.RecallTest do
       ref = make_ref()
       test_pid = self()
 
-      interpret_fn = fn prompt ->
+      interpret_fn = fn prompt, _budget ->
         send(test_pid, {ref, prompt})
         {:ok, ["fact — reason"]}
       end
@@ -180,6 +180,57 @@ defmodule Gralkor.RecallTest do
       _ = Recall.recall("g", "TestAgent", nil, "q", default_opts(search_fn: search_fn))
 
       assert_receive {^ref, 10}
+    end
+  end
+
+  describe "ex-recall > request shape > output_token_budget" do
+    test "when called with an output_token_budget option, it is forwarded to Gralkor.Interpret.interpret_facts" do
+      ref = make_ref()
+      test_pid = self()
+
+      interpret_fn = fn _prompt, budget ->
+        send(test_pid, {ref, budget})
+        {:ok, ["f — r"]}
+      end
+
+      _ =
+        Recall.recall(
+          "g",
+          "TestAgent",
+          nil,
+          "q",
+          default_opts(
+            search_fn: ok_search(["- f"]),
+            interpret_fn: interpret_fn,
+            output_token_budget: 4321
+          )
+        )
+
+      assert_receive {^ref, 4321}
+    end
+
+    test "when called without an output_token_budget option, Gralkor.Interpret.interpret_facts applies its default (2000)" do
+      ref = make_ref()
+      test_pid = self()
+
+      interpret_fn = fn _prompt, budget ->
+        send(test_pid, {ref, budget})
+        {:ok, ["f — r"]}
+      end
+
+      _ =
+        Recall.recall(
+          "g",
+          "TestAgent",
+          nil,
+          "q",
+          default_opts(
+            search_fn: ok_search(["- f"]),
+            interpret_fn: interpret_fn
+          )
+        )
+
+      assert_receive {^ref, 2000}
     end
   end
 

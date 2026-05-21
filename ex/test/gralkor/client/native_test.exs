@@ -55,6 +55,46 @@ defmodule Gralkor.Client.NativeTest do
     end
   end
 
+  describe "ex-client-native > interpret output budget > if :interpret_max_output_tokens is set to a non-positive or non-integer value" do
+    setup do
+      original = Application.get_env(:gralkor_ex, :interpret_max_output_tokens)
+
+      on_exit(fn ->
+        if original == nil do
+          Application.delete_env(:gralkor_ex, :interpret_max_output_tokens)
+        else
+          Application.put_env(:gralkor_ex, :interpret_max_output_tokens, original)
+        end
+      end)
+
+      :ok
+    end
+
+    test "raises ArgumentError on zero" do
+      Application.put_env(:gralkor_ex, :interpret_max_output_tokens, 0)
+
+      assert_raise ArgumentError, ~r/interpret_max_output_tokens/, fn ->
+        Native.recall("g", "TestAgent", "s1", "q")
+      end
+    end
+
+    test "raises ArgumentError on negative" do
+      Application.put_env(:gralkor_ex, :interpret_max_output_tokens, -1)
+
+      assert_raise ArgumentError, ~r/interpret_max_output_tokens/, fn ->
+        Native.recall("g", "TestAgent", "s1", "q")
+      end
+    end
+
+    test "raises ArgumentError on non-integer" do
+      Application.put_env(:gralkor_ex, :interpret_max_output_tokens, "lots")
+
+      assert_raise ArgumentError, ~r/interpret_max_output_tokens/, fn ->
+        Native.recall("g", "TestAgent", "s1", "q")
+      end
+    end
+  end
+
   describe "ex-client-native > if recall is called with a blank agent_name" do
     test "raises ArgumentError" do
       assert_raise ArgumentError, ~r/agent_name/, fn ->

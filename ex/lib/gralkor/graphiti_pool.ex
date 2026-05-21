@@ -469,10 +469,10 @@ defmodule Gralkor.GraphitiPool do
 
   defp time_warmup_interpret(%{interpret_fn: nil}), do: {0, :ok}
 
-  defp time_warmup_interpret(%{interpret_fn: interpret_fn}) when is_function(interpret_fn, 1) do
+  defp time_warmup_interpret(%{interpret_fn: interpret_fn}) when is_function(interpret_fn, 2) do
     time(fn ->
       try do
-        interpret_fn.("Conversation context:\n\n\nMemory facts to interpret:\n- warmup")
+        interpret_fn.("Conversation context:\n\n\nMemory facts to interpret:\n- warmup", 2_000)
         :ok
       rescue
         e -> {:error, Exception.message(e)}

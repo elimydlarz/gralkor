@@ -190,7 +190,7 @@ defmodule Gralkor.GraphitiPoolTest do
     test "then warmup runs: search is invoked once with a throwaway query and group_id, then Gralkor.Interpret.interpret_facts is invoked once" do
       interpret_count = :counters.new(1, [])
 
-      interpret_fn = fn _text ->
+      interpret_fn = fn _text, _budget ->
         :counters.add(interpret_count, 1, 1)
         :ok
       end
@@ -211,7 +211,7 @@ defmodule Gralkor.GraphitiPoolTest do
     test "then logs \"[gralkor] warmup — search:… interpret:… <total>ms\" at :info" do
       log =
         capture_log(fn ->
-          %{pid: pid} = start_pool(interpret_fn: fn _ -> :ok end, warmup: true)
+          %{pid: pid} = start_pool(interpret_fn: fn _, _ -> :ok end, warmup: true)
           GenServer.stop(pid)
         end)
 
@@ -223,7 +223,7 @@ defmodule Gralkor.GraphitiPoolTest do
     test "then it is caught and logged at :warning as \"[gralkor] warmup failed (non-fatal): <reason>\" and boot proceeds" do
       log =
         capture_log(fn ->
-          %{pid: pid} = start_pool(interpret_fn: fn _ -> :ok end, warmup: true)
+          %{pid: pid} = start_pool(interpret_fn: fn _, _ -> :ok end, warmup: true)
           assert Process.alive?(pid), "boot proceeded after warmup failure"
           GenServer.stop(pid)
         end)

@@ -38,6 +38,19 @@ defmodule Gralkor.Client.Native do
         ms when is_integer(ms) -> Keyword.put(opts, :deadline_ms, ms)
       end
 
+    opts =
+      case Application.get_env(:gralkor_ex, :interpret_max_output_tokens) do
+        nil ->
+          opts
+
+        budget when is_integer(budget) and budget > 0 ->
+          Keyword.put(opts, :output_token_budget, budget)
+
+        other ->
+          raise ArgumentError,
+                "Gralkor.Client.Native: :gralkor_ex, :interpret_max_output_tokens must be a positive integer, got #{inspect(other)}"
+      end
+
     Recall.recall(group_id, agent_name, session_id, query, opts)
   end
 
@@ -112,8 +125,8 @@ defmodule Gralkor.Client.Native do
     model = Config.llm_model()
     schema = Interpret.interpret_schema()
 
-    fn prompt ->
-      case ReqLLM.generate_object(model, prompt, schema) do
+    fn prompt, max_tokens ->
+      case ReqLLM.generate_object(model, prompt, schema, max_tokens: max_tokens) do
         {:ok, response} ->
           object = ReqLLM.Response.object(response)
           {:ok, Map.get(object, :relevantFacts) || Map.get(object, "relevantFacts") || []}

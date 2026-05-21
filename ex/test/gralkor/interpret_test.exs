@@ -2,16 +2,17 @@ defmodule Gralkor.InterpretTest do
   use ExUnit.Case, async: true
 
   alias Gralkor.Interpret
+  alias Gralkor.InterpretParseFailed
   alias Gralkor.Message
 
   # ── ex-interpret ─────────────────────────────────────────────
 
-  describe "ex-interpret > interpret_facts/4 calls the configured LLM with the prompt" do
+  describe "ex-interpret > interpret_facts/5 calls the configured LLM with the prompt" do
     test "the prompt includes the labelled conversation messages and the formatted facts" do
       ref = make_ref()
       test_pid = self()
 
-      interpret_fn = fn prompt ->
+      interpret_fn = fn prompt, _budget ->
         send(test_pid, {ref, prompt})
         {:ok, []}
       end
@@ -30,14 +31,14 @@ defmodule Gralkor.InterpretTest do
     end
   end
 
-  describe "ex-interpret > interpret_facts/4 when the LLM returns relevant facts" do
+  describe "ex-interpret > interpret_facts/5 when the LLM returns relevant facts" do
     test "returns the list unchanged" do
       facts = [
         "X is a thing (created 2020) — relevant because the user asked about X",
         "Y was deprecated (invalid since 2022) — context for the timeline question"
       ]
 
-      interpret_fn = fn _ -> {:ok, facts} end
+      interpret_fn = fn _, _ -> {:ok, facts} end
 
       assert ^facts =
                Interpret.interpret_facts(
@@ -49,9 +50,9 @@ defmodule Gralkor.InterpretTest do
     end
   end
 
-  describe "ex-interpret > interpret_facts/4 when the LLM returns an empty list" do
+  describe "ex-interpret > interpret_facts/5 when the LLM returns an empty list" do
     test "returns []" do
-      interpret_fn = fn _ -> {:ok, []} end
+      interpret_fn = fn _, _ -> {:ok, []} end
 
       assert [] =
                Interpret.interpret_facts(
@@ -63,11 +64,11 @@ defmodule Gralkor.InterpretTest do
     end
   end
 
-  describe "ex-interpret > interpret_facts/4 if the LLM response is malformed" do
-    test "raises" do
-      interpret_fn = fn _ -> {:ok, %{not: "a list"}} end
+  describe "ex-interpret > interpret_facts/5 if the LLM response cannot be parsed against the schema" do
+    test "raises Gralkor.InterpretParseFailed (a distinct exception; no partial list is returned)" do
+      interpret_fn = fn _, _ -> {:ok, %{not: "a list"}} end
 
-      assert_raise RuntimeError, ~r/malformed/, fn ->
+      assert_raise InterpretParseFailed, fn ->
         Interpret.interpret_facts(
           [Message.new("user", "q")],
           "- f",
@@ -77,8 +78,8 @@ defmodule Gralkor.InterpretTest do
       end
     end
 
-    test "raises when the call returns {:error, _}" do
-      interpret_fn = fn _ -> {:error, :upstream} end
+    test "raises RuntimeError when the call returns {:error, _} (upstream LLM failure, distinct from parse failure)" do
+      interpret_fn = fn _, _ -> {:error, :upstream} end
 
       assert_raise RuntimeError, ~r/interpret failed/, fn ->
         Interpret.interpret_facts(
@@ -91,17 +92,130 @@ defmodule Gralkor.InterpretTest do
     end
   end
 
-  describe "ex-interpret > interpret_facts/4 if agent_name is missing or blank" do
+  describe "ex-interpret > interpret_facts/5 if agent_name is missing or blank" do
     test "raises ArgumentError on blank" do
       assert_raise ArgumentError, ~r/agent_name/, fn ->
-        Interpret.interpret_facts([Message.new("user", "q")], "- f", fn _ -> {:ok, []} end, "")
+        Interpret.interpret_facts([Message.new("user", "q")], "- f", fn _, _ -> {:ok, []} end, "")
       end
     end
 
     test "raises ArgumentError on nil" do
       assert_raise ArgumentError, ~r/agent_name/, fn ->
-        Interpret.interpret_facts([Message.new("user", "q")], "- f", fn _ -> {:ok, []} end, nil)
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          fn _, _ -> {:ok, []} end,
+          nil
+        )
       end
+    end
+  end
+
+  describe "ex-interpret > interpret_facts/5 when opts[:output_token_budget] is omitted" do
+    test "a default of 2000 is applied (passed to interpret_fn and rendered into the prompt)" do
+      ref = make_ref()
+      test_pid = self()
+
+      interpret_fn = fn prompt, budget ->
+        send(test_pid, {ref, prompt, budget})
+        {:ok, []}
+      end
+
+      _ =
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          interpret_fn,
+          "Susu"
+        )
+
+      assert_receive {^ref, prompt, 2000}
+      assert prompt =~ "Respond within 2000 tokens"
+    end
+  end
+
+  describe "ex-interpret > interpret_facts/5 if opts[:output_token_budget] is non-positive or non-integer" do
+    test "raises ArgumentError on zero" do
+      assert_raise ArgumentError, ~r/output_token_budget/, fn ->
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          fn _, _ -> {:ok, []} end,
+          "Susu",
+          output_token_budget: 0
+        )
+      end
+    end
+
+    test "raises ArgumentError on negative" do
+      assert_raise ArgumentError, ~r/output_token_budget/, fn ->
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          fn _, _ -> {:ok, []} end,
+          "Susu",
+          output_token_budget: -1
+        )
+      end
+    end
+
+    test "raises ArgumentError on non-integer" do
+      assert_raise ArgumentError, ~r/output_token_budget/, fn ->
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          fn _, _ -> {:ok, []} end,
+          "Susu",
+          output_token_budget: "lots"
+        )
+      end
+    end
+  end
+
+  describe "ex-interpret > interpret_facts/5 calls interpret_fn with the prompt AND the output_token_budget" do
+    test "interpret_fn receives both the prompt and the configured budget so it can pass max_tokens to the provider" do
+      ref = make_ref()
+      test_pid = self()
+
+      interpret_fn = fn prompt, budget ->
+        send(test_pid, {ref, prompt, budget})
+        {:ok, []}
+      end
+
+      _ =
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          interpret_fn,
+          "Susu",
+          output_token_budget: 3500
+        )
+
+      assert_receive {^ref, _prompt, 3500}
+    end
+  end
+
+  describe "ex-interpret > interpret_facts/5 the interpretation prompt carries a budget instruction" do
+    test "the prompt includes a 'respond within N tokens' instruction matching the configured budget" do
+      ref = make_ref()
+      test_pid = self()
+
+      interpret_fn = fn prompt, _budget ->
+        send(test_pid, {ref, prompt})
+        {:ok, []}
+      end
+
+      _ =
+        Interpret.interpret_facts(
+          [Message.new("user", "q")],
+          "- f",
+          interpret_fn,
+          "Susu",
+          output_token_budget: 4096
+        )
+
+      assert_receive {^ref, prompt}
+      assert prompt =~ "Respond within 4096 tokens"
     end
   end
 

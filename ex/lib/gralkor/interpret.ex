@@ -9,33 +9,47 @@ defmodule Gralkor.Interpret do
       conversation messages and a formatted facts string, dropping oldest
       messages until the prompt fits the configured char budget. Renders
       role labels using `agent_name`.
-    * `interpret_facts/4` — call the LLM with that prompt and a structured-
+    * `interpret_facts/5` — call the LLM with that prompt and a structured-
       output schema; return the list of relevant facts the LLM selected.
 
   See `ex-interpret` and `ex-interpret-context` in `gralkor/TEST_TREES.md`.
   """
 
+  alias Gralkor.InterpretParseFailed
   alias Gralkor.Message
 
   @default_budget 8_000
+  @default_output_token_budget 2_000
 
-  @type interpret_fn :: (String.t() -> {:ok, [String.t()]} | {:error, term()})
+  @type interpret_fn ::
+          (String.t(), pos_integer() ->
+             {:ok, [String.t()]} | {:error, term()})
 
   @doc """
   Run the LLM over the conversation context + facts text, returning the
   filtered list of relevant facts.
 
-  Raises if the LLM call returns `{:error, _}` or a non-list response.
-  Raises if `agent_name` is missing or blank.
+  `opts[:output_token_budget]` (default `#{@default_output_token_budget}`) is
+  passed to `interpret_fn` so the LLM-side wiring can set `max_tokens` on the
+  provider call, and is also rendered into the prompt as a self-limit
+  instruction.
+
+  Raises `Gralkor.InterpretParseFailed` if the LLM returns a response that
+  can't be parsed against the schema (truncation, schema mismatch). Raises
+  `RuntimeError` if the call returns `{:error, _}` (upstream LLM failure).
+  Raises `ArgumentError` if `agent_name` is blank or the output token budget
+  is non-positive/non-integer.
   """
   @spec interpret_facts([Message.t()], String.t(), interpret_fn(), String.t(), keyword()) ::
           [String.t()]
   def interpret_facts(messages, facts_text, interpret_fn, agent_name, opts \\ [])
-      when is_list(messages) and is_binary(facts_text) and is_function(interpret_fn, 1) do
+      when is_list(messages) and is_binary(facts_text) and is_function(interpret_fn, 2) do
     raise_if_blank!(agent_name)
+    output_token_budget = output_token_budget!(opts)
     prompt = build_interpretation_context(messages, facts_text, agent_name, opts)
+    prompt_with_budget = prompt <> "\n\n" <> budget_instruction(output_token_budget)
 
-    case interpret_fn.(prompt) do
+    case interpret_fn.(prompt_with_budget, output_token_budget) do
       {:ok, list} when is_list(list) ->
         list
 
@@ -43,7 +57,7 @@ defmodule Gralkor.Interpret do
         raise "interpret failed: #{inspect(reason)}"
 
       other ->
-        raise "interpret returned malformed response: #{inspect(other)}"
+        raise InterpretParseFailed, raw_response: other
     end
   end
 
@@ -85,6 +99,21 @@ defmodule Gralkor.Interpret do
   end
 
   # ── internal ────────────────────────────────────────────────
+
+  defp output_token_budget!(opts) do
+    value = Keyword.get(opts, :output_token_budget, @default_output_token_budget)
+
+    if is_integer(value) and value > 0 do
+      value
+    else
+      raise ArgumentError,
+            "output_token_budget must be a positive integer, got #{inspect(value)}"
+    end
+  end
+
+  defp budget_instruction(budget) do
+    "Respond within #{budget} tokens. Keep each relevance reason short so the full list fits."
+  end
 
   defp raise_if_blank!(name) when is_binary(name) do
     if String.trim(name) == "" do

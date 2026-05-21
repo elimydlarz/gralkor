@@ -12,7 +12,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from pipelines.interpret import (
+    DEFAULT_OUTPUT_TOKEN_BUDGET,
     INTERPRET_CHAR_BUDGET,
+    InterpretParseFailed,
     InterpretResult,
     build_interpretation_context,
     interpret_facts,
@@ -65,14 +67,99 @@ class TestInterpretFacts:
             )
             assert result == []
 
-        async def test_raises_when_llm_response_is_malformed(self, mock_llm_client):
+        async def test_raises_InterpretParseFailed_when_response_misses_relevantFacts(
+            self, mock_llm_client
+        ):
             mock_llm_client.generate_response.return_value = {"text": "old shape"}
-            with pytest.raises(RuntimeError, match="malformed"):
+            with pytest.raises(InterpretParseFailed):
                 await interpret_facts(
                     [Message(role="user", content="hi")],
                     "- fact",
                     mock_llm_client,
                     "TestAgent",
+                )
+
+        async def test_raises_InterpretParseFailed_when_response_is_not_a_dict(
+            self, mock_llm_client
+        ):
+            mock_llm_client.generate_response.return_value = "not a dict"
+            with pytest.raises(InterpretParseFailed):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact",
+                    mock_llm_client,
+                    "TestAgent",
+                )
+
+    class TestOutputTokenBudget:
+        async def test_default_budget_is_2000_and_passed_as_max_tokens(
+            self, mock_llm_client
+        ):
+            mock_llm_client.generate_response.return_value = {"relevantFacts": []}
+            await interpret_facts(
+                [Message(role="user", content="hi")],
+                "- fact",
+                mock_llm_client,
+                "TestAgent",
+            )
+            assert DEFAULT_OUTPUT_TOKEN_BUDGET == 2000
+            call_kwargs = mock_llm_client.generate_response.call_args.kwargs
+            assert call_kwargs["max_tokens"] == 2000
+
+        async def test_configured_budget_is_passed_as_max_tokens(self, mock_llm_client):
+            mock_llm_client.generate_response.return_value = {"relevantFacts": []}
+            await interpret_facts(
+                [Message(role="user", content="hi")],
+                "- fact",
+                mock_llm_client,
+                "TestAgent",
+                output_token_budget=4321,
+            )
+            call_kwargs = mock_llm_client.generate_response.call_args.kwargs
+            assert call_kwargs["max_tokens"] == 4321
+
+        async def test_prompt_carries_budget_instruction(self, mock_llm_client):
+            mock_llm_client.generate_response.return_value = {"relevantFacts": []}
+            await interpret_facts(
+                [Message(role="user", content="hi")],
+                "- fact",
+                mock_llm_client,
+                "TestAgent",
+                output_token_budget=3500,
+            )
+            call_args = mock_llm_client.generate_response.call_args
+            prompt = call_args.args[0]
+            user_content = next(m.content for m in prompt if m.role == "user")
+            assert "Respond within 3500 tokens" in user_content
+
+        async def test_zero_budget_raises_ValueError(self, mock_llm_client):
+            with pytest.raises(ValueError, match="output_token_budget"):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact",
+                    mock_llm_client,
+                    "TestAgent",
+                    output_token_budget=0,
+                )
+
+        async def test_negative_budget_raises_ValueError(self, mock_llm_client):
+            with pytest.raises(ValueError, match="output_token_budget"):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact",
+                    mock_llm_client,
+                    "TestAgent",
+                    output_token_budget=-1,
+                )
+
+        async def test_non_integer_budget_raises_ValueError(self, mock_llm_client):
+            with pytest.raises(ValueError, match="output_token_budget"):
+                await interpret_facts(
+                    [Message(role="user", content="hi")],
+                    "- fact",
+                    mock_llm_client,
+                    "TestAgent",
+                    output_token_budget="lots",  # type: ignore[arg-type]
                 )
 
     class TestWhenLlmClientIsNone:

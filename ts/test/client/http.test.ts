@@ -242,6 +242,61 @@ describe("GralkorHttpClient (adapter-specific)", () => {
     });
   });
 
+  describe("interpret output budget", () => {
+    it("when constructed with interpretMaxOutputTokens, every recall body includes the field", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        interpretMaxOutputTokens: 4321,
+        fetch: async (_url, init) => {
+          capturedBody = JSON.parse(init?.body as string);
+          return new Response(
+            JSON.stringify({ memory_block: "<gralkor-memory>x</gralkor-memory>" }),
+            { status: 200 },
+          );
+        },
+      });
+      await client.recall("g1", "s1", "q", "TestAgent");
+      expect(capturedBody?.interpret_max_output_tokens).toBe(4321);
+    });
+
+    it("when constructed without interpretMaxOutputTokens, the field is omitted from the body", async () => {
+      let capturedBody: Record<string, unknown> | undefined;
+      const client = new GralkorHttpClient({
+        baseUrl: "http://gralkor.test",
+        fetch: async (_url, init) => {
+          capturedBody = JSON.parse(init?.body as string);
+          return new Response(
+            JSON.stringify({ memory_block: "<gralkor-memory>x</gralkor-memory>" }),
+            { status: 200 },
+          );
+        },
+      });
+      await client.recall("g1", "s1", "q", "TestAgent");
+      expect(capturedBody).not.toHaveProperty("interpret_max_output_tokens");
+    });
+
+    it("when constructed with a non-positive interpretMaxOutputTokens, the constructor throws", () => {
+      expect(
+        () =>
+          new GralkorHttpClient({
+            baseUrl: "http://gralkor.test",
+            interpretMaxOutputTokens: 0,
+          }),
+      ).toThrow(/interpretMaxOutputTokens/);
+    });
+
+    it("when constructed with a non-integer interpretMaxOutputTokens, the constructor throws", () => {
+      expect(
+        () =>
+          new GralkorHttpClient({
+            baseUrl: "http://gralkor.test",
+            interpretMaxOutputTokens: 1.5,
+          }),
+      ).toThrow(/interpretMaxOutputTokens/);
+    });
+  });
+
   describe("when capture is called", () => {
     it("includes agent_name in the HTTP body", async () => {
       let capturedBody: Record<string, unknown> | undefined;

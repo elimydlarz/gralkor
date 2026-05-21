@@ -5,6 +5,13 @@ export interface GralkorHttpClientOptions {
   baseUrl: string;
   /** Override fetch, e.g. for tests. Defaults to global fetch. */
   fetch?: typeof fetch;
+  /**
+   * Output-token budget the server passes to its interpret pipeline on every
+   * `/recall`. When omitted, the server applies its own default (2000). Raise
+   * for wide-recall workloads where the default truncates and surfaces as
+   * `InterpretParseFailed` server-side. Must be a positive integer.
+   */
+  interpretMaxOutputTokens?: number;
 }
 
 /**
@@ -30,11 +37,19 @@ export interface GralkorHttpClientOptions {
 export class GralkorHttpClient implements GralkorClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly interpretMaxOutputTokens: number | undefined;
 
   constructor(options: GralkorHttpClientOptions) {
     if (!options.baseUrl) throw new Error("baseUrl is required");
+    if (options.interpretMaxOutputTokens !== undefined) {
+      requirePositiveInteger(
+        "interpretMaxOutputTokens",
+        options.interpretMaxOutputTokens,
+      );
+    }
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.fetchImpl = options.fetch ?? fetch;
+    this.interpretMaxOutputTokens = options.interpretMaxOutputTokens;
   }
 
   async recall(
@@ -48,6 +63,9 @@ export class GralkorHttpClient implements GralkorClient {
     const body: Record<string, unknown> = { group_id: groupId, query, agent_name: agentName };
     if (typeof sessionId === "string") body.session_id = sessionId;
     if (maxResults !== undefined) body.max_results = maxResults;
+    if (this.interpretMaxOutputTokens !== undefined) {
+      body.interpret_max_output_tokens = this.interpretMaxOutputTokens;
+    }
     const res = await this.post("/recall", body, 12_000);
     if ("error" in res) return res;
     const respBody = res.ok as { memory_block?: string };
@@ -169,5 +187,11 @@ function requireSessionId(id: string): void {
 function requireAgentName(name: string): void {
   if (typeof name !== "string" || name.trim() === "") {
     throw new Error("agent_name must be a non-blank string");
+  }
+}
+
+function requirePositiveInteger(field: string, value: unknown): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${field} must be a positive integer, got ${String(value)}`);
   }
 }

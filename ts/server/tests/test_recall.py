@@ -138,6 +138,59 @@ async def test_applies_default_max_results_when_omitted(client, mock_graphiti):
     assert call_kwargs["num_results"] == 10
 
 
+async def test_forwards_interpret_max_output_tokens_to_interpret_facts(client, mock_graphiti):
+    mock_graphiti.search.return_value = [make_edge(fact="F")]
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["F — r."]}
+
+    await client.post(
+        "/recall",
+        json={
+            "session_id": "sess",
+            "group_id": "grp",
+            "agent_name": "TestAgent",
+            "query": "q",
+            "max_results": 10,
+            "interpret_max_output_tokens": 4321,
+        },
+    )
+    call_kwargs = mock_graphiti.llm_client.generate_response.await_args.kwargs
+    assert call_kwargs["max_tokens"] == 4321
+
+
+async def test_applies_default_interpret_max_output_tokens_when_omitted(
+    client, mock_graphiti
+):
+    mock_graphiti.search.return_value = [make_edge(fact="F")]
+    mock_graphiti.llm_client.generate_response.return_value = {"relevantFacts": ["F — r."]}
+
+    await client.post(
+        "/recall",
+        json={
+            "session_id": "sess",
+            "group_id": "grp",
+            "agent_name": "TestAgent",
+            "query": "q",
+            "max_results": 10,
+        },
+    )
+    call_kwargs = mock_graphiti.llm_client.generate_response.await_args.kwargs
+    assert call_kwargs["max_tokens"] == 2000
+
+
+async def test_rejects_non_positive_interpret_max_output_tokens(client, mock_graphiti):
+    resp = await client.post(
+        "/recall",
+        json={
+            "session_id": "sess",
+            "group_id": "grp",
+            "agent_name": "TestAgent",
+            "query": "q",
+            "interpret_max_output_tokens": 0,
+        },
+    )
+    assert resp.status_code == 422
+
+
 async def test_sanitizes_hyphenated_group_id(client, mock_graphiti):
     mock_graphiti.search.return_value = []
     await client.post(

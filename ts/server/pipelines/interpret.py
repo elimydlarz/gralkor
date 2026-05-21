@@ -34,6 +34,19 @@ INTERPRET_TOKEN_BUDGET = 250_000
 _CHARS_PER_TOKEN = 4
 INTERPRET_CHAR_BUDGET = INTERPRET_TOKEN_BUDGET * _CHARS_PER_TOKEN
 
+DEFAULT_OUTPUT_TOKEN_BUDGET = 2000
+
+
+class InterpretParseFailed(Exception):
+    """Raised when the LLM's interpret response cannot be parsed against the
+    InterpretResult schema — typically because output_token_budget was too
+    small and the response truncated mid-list. Distinct from generic
+    RuntimeError so callers can catch parse failure specifically."""
+
+    def __init__(self, message: str, raw_response: object = None) -> None:
+        super().__init__(message)
+        self.raw_response = raw_response
+
 
 class InterpretResult(BaseModel):
     relevantFacts: list[str] = Field(
@@ -54,6 +67,12 @@ def _require_agent_name(agent_name: str) -> None:
         raise ValueError("agent_name is required and must be non-blank")
 
 
+def _require_positive_int(name: str, value: object) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer, got {value!r}")
+    return value
+
+
 def _render_label(role: str, agent_name: str) -> str:
     if role == "user":
         return "User"
@@ -62,6 +81,13 @@ def _render_label(role: str, agent_name: str) -> str:
     if role == "behaviour":
         return agent_name
     return role.capitalize()
+
+
+def _budget_instruction(output_token_budget: int) -> str:
+    return (
+        f"Respond within {output_token_budget} tokens. Keep each relevance "
+        f"reason short so the full list fits."
+    )
 
 
 def build_interpretation_context(
@@ -102,8 +128,10 @@ async def interpret_facts(
     facts_text: str,
     llm_client: "LLMClient",
     agent_name: str,
+    output_token_budget: int = DEFAULT_OUTPUT_TOKEN_BUDGET,
 ) -> list[str]:
     _require_agent_name(agent_name)
+    _require_positive_int("output_token_budget", output_token_budget)
     if llm_client is None:
         raise RuntimeError(
             "interpret_facts: llm_client is required (configure an LLM provider API key)"
@@ -112,19 +140,26 @@ async def interpret_facts(
     from graphiti_core.prompts.models import Message as LLMMessage
 
     context = build_interpretation_context(messages, facts_text, agent_name)
+    context_with_budget = context + "\n\n" + _budget_instruction(output_token_budget)
     prompt = [
         LLMMessage(role="system", content=INTERPRET_SYSTEM_PROMPT),
-        LLMMessage(role="user", content=context),
+        LLMMessage(role="user", content=context_with_budget),
     ]
 
     response = await llm_client.generate_response(
         prompt,
         response_model=InterpretResult,
-        max_tokens=500,
+        max_tokens=output_token_budget,
     )
     if not isinstance(response, dict):
-        raise RuntimeError("interpret_facts: malformed response (not a dict)")
+        raise InterpretParseFailed(
+            "interpret_facts: response was not a dict (schema mismatch or truncation)",
+            raw_response=response,
+        )
     raw = response.get("relevantFacts")
     if not isinstance(raw, list):
-        raise RuntimeError("interpret_facts: malformed response (relevantFacts missing or not a list)")
+        raise InterpretParseFailed(
+            "interpret_facts: relevantFacts missing or not a list (schema mismatch or truncation)",
+            raw_response=response,
+        )
     return [str(item).strip() for item in raw if str(item).strip()]

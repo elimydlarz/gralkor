@@ -46,6 +46,10 @@ POST /recall endpoint (ts stack; src: server/main.py; unit: server/tests/test_re
       then at most that many facts are returned
     when the request body omits max_results
       then the server applies its default (10)
+    when the request body includes interpret_max_output_tokens
+      then it is forwarded as the output_token_budget to interpret_facts
+    when the request body omits interpret_max_output_tokens
+      then interpret_facts applies its default (2000)
     then group_id is sanitized (hyphens → underscores) before use
   if the request body includes a blank session_id
     then 422 is returned (Gralkor requires session_id to be a non-blank string or absent)
@@ -88,10 +92,16 @@ POST /recall endpoint (ts stack; src: server/main.py; unit: server/tests/test_re
       then also logs "[gralkor] [test] recall query: <raw query>" at DEBUG
       and when facts are returned also logs "[gralkor] [test] recall block: <memory block>" at DEBUG
 interpret-facts (ts stack; src: server/pipelines/interpret.py; unit: server/tests/test_interpret.py)
-  takes conversation messages, formatted facts, an llm_client, and an agent_name
+  takes conversation messages, formatted facts, an llm_client, an agent_name, and an output_token_budget
     if agent_name is missing or blank
       then raises
+    when output_token_budget is omitted
+      then a default of 2000 is applied
+    if output_token_budget is non-positive
+      then raises
   calls llm_client with the interpretation context (built via build_interpretation_context with the agent_name) and the response_model
+    and llm_client is invoked with max_tokens set to output_token_budget (so the LLM is told the hard ceiling, not the legacy hardcoded 500)
+    and the interpretation prompt carries a "respond within {output_token_budget} tokens" instruction so the model self-limits the breadth of its answer
     and the response_model (InterpretResult.relevantFacts) carries a Field
       description instructing the LLM to copy each fact line verbatim
       (preserving every timestamp parenthetical, dropping the leading '- ')
@@ -101,8 +111,8 @@ interpret-facts (ts stack; src: server/pipelines/interpret.py; unit: server/test
         fact with timestamps + ' — ' + relevance reason)
     when the LLM returns an empty list
       then returns []
-    when the LLM response is malformed
-      then raises
+    if the LLM response cannot be parsed against InterpretResult (truncation, schema mismatch)
+      then raises InterpretParseFailed (a distinct error class; no partial list is returned)
   when llm_client is None
     then raises
 build_interpretation_context (ts stack; src: server/pipelines/interpret.py; unit: server/tests/test_interpret.py)
@@ -135,6 +145,10 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
       then at most that many facts are searched
     when called without max_results
       then the default (10) is applied
+    when called with an output_token_budget option
+      then it is forwarded to Gralkor.Interpret.interpret_facts as its output_token_budget
+    when called without an output_token_budget option
+      then Gralkor.Interpret.interpret_facts applies its default (2000)
     then group_id is sanitized (hyphens → underscores) before use
     if agent_name is missing or blank
       then raises ArgumentError
@@ -172,10 +186,15 @@ ex-recall (ex stack; src: ex/lib/gralkor/recall.ex; unit: ex/test/gralkor/recall
         then also logs the resulting memory block
   (rate-limit / transient upstream errors: req_llm owns the retry. ex layer adds nothing.)
 ex-interpret (ex stack; src: ex/lib/gralkor/interpret.ex; unit: ex/test/gralkor/interpret_test.exs)
-  interpret_facts/4 takes conversation messages, formatted facts, an LLM client, and an agent_name
+  interpret_facts/5 takes conversation messages, formatted facts, an LLM client (interpret_fn), an agent_name, and an opts keyword list
     if agent_name is missing or blank
       then raises ArgumentError
-    calls the configured LLM (via req_llm) with the interpretation context (built via build_interpretation_context/3 with the agent_name) and the structured-output schema
+    when opts[:output_token_budget] is omitted
+      then a default of 2000 is applied
+    if opts[:output_token_budget] is non-positive or non-integer
+      then raises ArgumentError
+    calls interpret_fn with the prompt (built via build_interpretation_context/3 with the agent_name) AND the output_token_budget — interpret_fn has arity 2 so the LLM-side wiring (e.g. req_llm) can pass max_tokens through to the provider
+    and the interpretation prompt carries a "respond within {output_token_budget} tokens" instruction so the model self-limits the breadth of its answer
     and the structured-output schema instructs the LLM to copy each fact line verbatim
       (preserving every timestamp parenthetical, dropping the leading '- ')
       then ' — ' then a one-sentence relevance reason
@@ -183,8 +202,8 @@ ex-interpret (ex stack; src: ex/lib/gralkor/interpret.ex; unit: ex/test/gralkor/
       then returns the list unchanged
     when the LLM returns an empty list
       then returns []
-    if the LLM response is malformed
-      then raises
+    if the LLM response cannot be parsed against the structured-output schema (truncation, schema mismatch)
+      then raises Gralkor.InterpretParseFailed (a distinct exception; no partial list is returned)
 ex-format-fact (ex stack; src: ex/lib/gralkor/format.ex; unit: ex/test/gralkor/format_test.exs)
   Gralkor.Format.format_fact/1 takes a map with :fact (required) and optional :created_at, :valid_at, :invalid_at, :expired_at timestamp strings
     then returns "- {fact}" with each present timestamp appended in parentheses in this order: "(created …)", "(valid from …)", "(invalid since …)", "(expired …)"
@@ -966,6 +985,10 @@ ex-client-native (src: ex/lib/gralkor/client/native.ex; integration: ex/test/gra
     then the session_id is forwarded to Gralkor.Recall.recall/1 and used to fetch buffered conversation
   when recall is called with a nil session_id
     then Gralkor.Recall is invoked with no session_id and the conversation context is empty
+  interpret output budget
+    then :gralkor_ex, :interpret_max_output_tokens is read each call from app env (not at boot, so operators can change it without restarting) and, when set, forwarded to Gralkor.Recall as the output_token_budget option (the forwarding-correctness path is covered by ex-recall's output_token_budget subtree against the synthetic interpret_fn; Native is the thin pipe from app env to that opt)
+    if :gralkor_ex, :interpret_max_output_tokens is set to a non-positive integer or a non-integer value
+      then the call raises ArgumentError at the port boundary (configuration error surfaces immediately, not as a downstream LLM failure)
   if capture is called with a blank string session_id
     then the call raises with ArgumentError
   if capture is called with a nil session_id
@@ -1069,6 +1092,13 @@ ts-client-http (src: ts/src/client/http.ts; integration: ts/test/client/http.tes
     then the session_id field is included in the HTTP body
   when recall is called with a null session_id
     then the session_id field is omitted from the HTTP body
+  interpret output budget
+    when the constructor is given an interpretMaxOutputTokens option
+      then every recall request body includes interpret_max_output_tokens with that value (so the server uses it as the output_token_budget for interpret_facts)
+    when the constructor is given no interpretMaxOutputTokens option
+      then the recall request body omits interpret_max_output_tokens — the server applies its default (2000)
+    if interpretMaxOutputTokens is set to a non-positive integer or a non-integer value
+      then the constructor throws (configuration error surfaces at wiring, not as a downstream HTTP failure)
   if capture is called with a blank string session_id
     then the call throws
   if capture is called with a null session_id
@@ -1133,6 +1163,8 @@ jido-memory-journey (ex stack; functional: ex/test/functional/end_to_end_test.ex
       then the supervisor restarts it
       and the next Gralkor.Client.recall/3 call returns {:ok, _} within the boot window
 ```
+
+The interpret output budget contract (configurability + typed parse-failure on schema mismatch) is asserted at the pipeline layer (`ex-interpret`, `interpret-facts`) and the adapter layer (`ex-client-native`, `ts-client-http`, `POST /recall endpoint`, `ex-recall`). It is not visible at this journey layer — the journey covers the graphiti round-trip, not the interpret pipeline's response-shape contract.
 
 ```
 ex-remote-falkordb-journey (ex stack; functional: ex/test/functional/remote_falkordb_journey_test.exs)
